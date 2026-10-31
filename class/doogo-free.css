@@ -793,3 +793,38 @@
   .dg.bk.nz .bk-plat-hero-tag{font-size:16.5px;padding:10px 16px}
   .dg.bk.nz .bk-plat-hero-logo{width:min(100%,190px);padding:8px 14px;border-radius:14px}
 }
+
+/* 참여자 전원 증정 — 한 장짜리 간단 카드 (선물 아이콘 · 작은 글씨 · 제목 · 자료 개수 · 오픈채팅 버튼) + 접힌 목록 */
+.dg .fc-bs{margin:56px auto 0;width:min(100%,760px)}
+.dg .fc-bs-card{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:20px;background:#121215;border:1px solid rgba(255,214,90,.34);box-shadow:0 22px 44px -32px rgba(0,0,0,.9)}
+.dg .fc-bs-ic{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:linear-gradient(180deg,#fff3a8,#f7e27a);font-size:26px;line-height:1}
+.dg .fc-bs-tx{flex:1;min-width:0}
+.dg .fc-bs-tx small{display:block;font-size:13px;font-weight:700;letter-spacing:-.01em;color:#f7e27a}
+.dg .fc-bs-tx h2{margin:2px 0 0;font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.35;color:#f4f4f6;text-align:left}
+.dg .fc-bs-tx h2 em{font-style:normal;color:var(--ac,#ffd23f)}
+.dg .fc-bs-tx p{margin:3px 0 0;font-size:14px;color:#a7a7b0}
+.dg .fc-bs-tx p b{color:#f4f4f6;font-weight:800}
+.dg .fc-bs-go{flex:none;display:inline-flex;align-items:center;gap:6px;height:46px;padding:0 18px;border-radius:999px;background:linear-gradient(#fff171,#fee500);border:1px solid #fff479cc;color:#171500;font-size:15px;font-weight:900;text-decoration:none;white-space:nowrap}
+.dg .fc-bs-go span{font-size:17px;line-height:1}
+.dg .fc-bs-more{margin:10px 0 0}
+.dg .fc-bs-more summary{display:block;cursor:pointer;list-style:none;padding:6px;text-align:center;font-size:14px;font-weight:700;color:#a7a7b0}
+.dg .fc-bs-more summary::-webkit-details-marker{display:none}
+.dg .fc-bs-more summary::after{content:"";display:inline-block;width:7px;height:7px;margin:0 0 3px 8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .2s}
+.dg .fc-bs-more[open] summary::after{transform:rotate(-135deg);margin-bottom:-1px}
+.dg .fc-bs-more ol{margin:6px 0 0;padding:14px 18px 14px 38px;border-radius:16px;background:#17171a;border:1px solid rgba(255,255,255,.08);color:#d9d9de;font-size:14.5px;line-height:1.8}
+.dg .fc-bs-more p{margin:8px 0 0;text-align:center;font-size:13px;line-height:1.6;color:#a7a7b0}
+@media (max-width:560px){
+  .dg .fc-bs{margin-top:44px}
+  .dg .fc-bs-card{flex-wrap:wrap;gap:12px 14px;padding:16px}
+  .dg .fc-bs-ic{width:46px;height:46px;border-radius:14px;font-size:23px}
+  .dg .fc-bs-tx h2{font-size:18px}
+  .dg .fc-bs-go{width:100%;justify-content:center;height:48px}
+  .dg .fc-bs-more ol{font-size:14px;padding:12px 14px 12px 32px}
+}
+.dg.bk.nz .fc-bs-card{background:#fff;border:1px solid #e9dca0;box-shadow:0 22px 44px -34px rgba(11,42,91,.4),0 0 0 5px #fffbe9}
+.dg.bk.nz .fc-bs-tx small{color:#9a7a00}
+.dg.bk.nz .fc-bs-tx h2{color:var(--nz-navy)}
+.dg.bk.nz .fc-bs-tx h2 em{color:var(--nz-fern)}
+.dg.bk.nz .fc-bs-tx p, .dg.bk.nz .fc-bs-more summary, .dg.bk.nz .fc-bs-more p{color:var(--sub)}
+.dg.bk.nz .fc-bs-tx p b{color:var(--nz-navy)}
+.dg.bk.nz .fc-bs-more ol{background:#f6fafc;border:1px solid #e1ebf2;color:var(--nz-navy)}

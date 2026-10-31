@@ -265,13 +265,15 @@
       }).join("") + "</div>" +
       '<div class="gift-timeline" aria-label="선물 공개 일정">' + items.map((x, i) => "<span><strong>" + (giftOpen(x, now) ? "D-DAY" : dayLabel(x.openAt, now)) + "</strong>" + (i + 1) + "번째 선물 오픈</span>").join("") + "</div></section>";
   };
+  /* 참여자 전원 증정: 한 장짜리 간단 카드 (배지 · 제목 · 자료 개수 + 오픈채팅 버튼). 자료 목록은 ‘자료 N가지 보기’를 눌러야 펼쳐져요 */
   FC.bonus = (F) => {
     const B = F.bonus || {}, items = (B.items || []).filter((x) => x && x.title);
     if (!items.length) return "";
-    return '<section class="fc-bonus" aria-labelledby="fc-bonus-t"><div class="section-heading">' + (B.kicker ? "<span>" + esc(B.kicker) + "</span>" : "") + '<h2 id="fc-bonus-t">' + emText(B.title) + "</h2>" + (B.desc ? "<p>" + nl(B.desc) + "</p>" : "") + "</div>" +
-      '<div class="fc-bonus-card">' + (B.badge ? '<p class="fc-bonus-badge">' + esc(B.badge) + "</p>" : "") +
-      '<ol class="fc-bonus-list">' + items.map((x, i) => '<li><b>' + String(i + 1).padStart(2, "0") + "</b><span><strong>" + esc(x.title) + "</strong>" + (x.desc ? "<small>" + esc(x.desc) + "</small>" : "") + "</span></li>").join("") + "</ol>" +
-      (B.note ? '<p class="fc-bonus-note">' + esc(B.note) + "</p>" : "") + "</div></section>";
+    const badge = String(B.badge || "").replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, "").replace(/\s+/g, " ").trim();
+    const k = F.kakao || {}, go = k.url ? '<a class="fc-bs-go" href="' + esc(k.url) + '" target="_blank" rel="noreferrer">오픈채팅에서 받기<span aria-hidden="true">→</span></a>' : "";
+    return '<section class="fc-bonus fc-bs" aria-labelledby="fc-bonus-t"><div class="fc-bs-card"><span class="fc-bs-ic" aria-hidden="true">🎁</span>' +
+      '<div class="fc-bs-tx">' + (badge ? "<small>" + esc(badge) + "</small>" : "") + '<h2 id="fc-bonus-t">' + emText(B.title || "참여자 *전원 증정*") + '</h2><p>자료 <b>' + items.length + "가지</b> 전원 무료</p></div>" + go + "</div>" +
+      '<details class="fc-bs-more"><summary>자료 ' + items.length + "가지 보기</summary><ol>" + items.map((x) => "<li>" + esc(x.title) + "</li>").join("") + "</ol>" + (B.note ? "<p>" + esc(B.note) + "</p>" : "") + "</details></section>";
   };
   FC.kakao = (F) => { const k = F.kakao; if (!k.url) return ""; return '<section class="question-cta question-cta--compact"><span class="micro-badge micro-badge--kakao">' + esc(k.badge) + "</span><h2>" + esc(k.title) + "</h2>" + (k.desc ? "<p>" + nl(k.desc) + "</p>" : "") +
       '<a class="kakao-cta" href="' + esc(k.url) + '" target="_blank" rel="noreferrer">' + esc(k.label) + '<span aria-hidden="true">→</span></a>' + (k.note ? "<small>" + esc(k.note) + "</small>" : "") + "</section>"; };

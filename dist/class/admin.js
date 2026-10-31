@@ -1770,9 +1770,11 @@
       case "schedule": return lpField("liveAt", "강의 날짜 · 시간", "datetime", "이 시간까지 남은 시간이 카운트다운으로 보이고, 지나면 ‘LIVE’로 바뀌어요.");
       case "hero": return lpField("hero.title", "헤드라인 (두 줄, 아래 줄이 강조돼요)", "textarea") + lpField("hero.instructor", "강사 이름") + lpField("hero.sub", "설명", "textarea") + more(lpField("hero.badge", "맨 위 작은 배지") + lpField("hero.note", "작은 안내 문구") + lpField("company", "맨 아래 상호 (© 표시)"));
       case "intro": return lpField("intro.youtube", "대표 영상 유튜브 주소", "url", "첫 화면 바로 아래에 크게 보여요. 누르면 그 자리에서 재생돼요. 비우면 칸이 숨겨져요.") + lpField("intro.title", "제목") + more(lpField("intro.desc", "설명") + lpField("intro.caption", "재생 버튼 아래 작은 글") + lpField("intro.kicker", "작은 영문 제목"));
-      case "bonus": return lpField("bonus.title", "제목 (*별표*로 감싸면 강조색)") + lpField("bonus.badge", "자료 목록 위 배지 (예: 🎁 톡방 참여자 전원 공개 예정 🎁)") +
-        lpCards("bonus.items", [["title", "자료 이름"], ["desc", "한 줄 설명 (선택)"]], "자료 추가", { max: 12, title: (i) => String(i + 1).padStart(2, "0") }) +
-        lpField("bonus.note", "목록 아래 안내") + more(lpField("bonus.desc", "제목 아래 설명", "textarea") + lpField("bonus.kicker", "작은 영문 제목"));
+      // 페이지에는 한 장짜리 간단 카드(배지 · 제목 · 자료 개수 · 오픈채팅 버튼)로 보이고, 자료 목록은 ‘자료 N가지 보기’를 눌러야 펼쳐져요
+      case "bonus": return '<p class="a-memo">페이지에는 <b>한 장짜리 간단 카드</b>로 보여요 (작은 글씨 · 제목 · 자료 개수 · 오픈채팅 버튼). 자료 목록은 방문자가 ‘자료 N가지 보기’를 누르면 펼쳐져요. 아예 숨기려면 위 ‘이 칸 페이지에 보이기’를 끄세요.</p>' +
+        lpField("bonus.title", "제목 (*별표*로 감싸면 강조색)") + lpField("bonus.badge", "제목 위 작은 글씨 (예: 톡방 참여자 전원 공개 예정)") +
+        lpCards("bonus.items", [["title", "자료 이름"]], "자료 추가", { max: 12, title: (i) => String(i + 1).padStart(2, "0") }) +
+        lpField("bonus.note", "펼친 목록 아래 안내");
       case "videos": return lpCards("videos.items", [["youtube", "유튜브 주소", "url"], ["title", "영상 제목"], ["channel", "채널명"]], "영상 추가", { max: 3, title: (i) => ["왼쪽 영상", "가운데 영상", "오른쪽 영상"][i] || (i + 1) + "번 영상" }) +
         more(lpField("videos.title", "칸 제목") + lpField("videos.desc", "칸 설명") + lpField("videos.kicker", "작은 영문 제목"));
       case "question": return lpField("question.url", "버튼 링크 (구글폼 등)", "url", "비워 두면 이 페이지에서 질문을 받아 ‘받은 질문’에 모아요.") + lpField("question.title", "제목 (*별표*로 감싸면 강조색 · 예: 문대표의 *사전 미션*)") + lpField("question.label", "버튼 글자") + more(lpField("question.desc", "설명 (줄바꿈 가능)", "textarea") + lpField("question.promise", "강조 문구 (설명 아래 초록 상자 · 비우면 숨김)", "textarea") + lpField("question.badge", "작은 배지") + lpField("question.note", "버튼 아래 안내"));
