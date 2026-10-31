@@ -2853,7 +2853,7 @@
   }
   const vdRqTxt = (o) => (o.refundReq && typeof o.refundReq === "object" ? "회원 환불 요청 · " + o.refundReq.why + (o.refundReq.text ? " · " + o.refundReq.text : "") : "강사 취소 · 환불 필요");
   const vdThumb = (p, cls) => '<span class="vda-th ' + (cls || "") + '">' + VX().thumbArt(p) + "</span>";
-  const vdInsOpts = (sel) => '<option value="">외부 크리에이터 (강사 플랫폼 없음)</option>' + DB.data.instructors.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === sel ? " selected" : "") + ">" + esc(x.displayName) + " (" + esc(x.name) + ")</option>").join("");
+  const vdInsOpts = (sel) => '<option value="">외부 크리에이터 (강사 플랫폼 없음)</option>' + DB.data.instructors.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === sel ? " selected" : "") + ">" + esc(vdName(x.id) !== x.displayName ? vdName(x.id) + " · 두잉고 " + x.displayName : x.displayName) + " (" + esc(x.name) + ")</option>").join(""); // DOOGO CLASS 이름이 따로 있으면 함께 (유나 · 두잉고 초이)
   const vdStoreBtn = (href, label) => '<button type="button" class="a-btn a-btn-ghost" data-action="store-split" data-href="' + esc(href || "#/vod") + '">' + icon("layers", "sm") + (label || "스토어 미리보기") + "</button>";
 
   /* ---------- 1) VOD 매출 · 주문 · 강사 정산 ---------- */
@@ -2954,7 +2954,9 @@
   const vdPayout = (key, ym) => VD().payouts.find((x) => x.key === key && x.ym === ym) || null;
   const vdPayDate = (ym) => bizDay(vdYMadd(ym, 1) + "-10");
   const vdProf = (key) => { const ins = /^ext:/.test(key) ? null : DB.instructor(key); return (ins && ins.vodSettle) || {}; };
-  const vdKeyName = (key) => (/^ext:/.test(key) ? key.slice(4) : insName(key));
+  /** DOOGO CLASS 화면에서 쓰는 강사 이름 — 스토어 전용 이름이 있으면 그 이름 (예: 두잉고 초이 → DOOGO CLASS 유나) */
+  const vdName = (iid) => { const a = VX().storeAs ? VX().storeAs(iid) : null; return a ? a.name : insName(iid); };
+  const vdKeyName = (key) => (/^ext:/.test(key) ? key.slice(4) : vdName(key));
   /* 광고비 · 환불 차감이 그 달 정산액보다 크면 남은 금액은 다음 달 정산에서 이어서 빼요 (이월) */
   function vdCarry(key, ym) {
     if (/^ext:/.test(key)) return 0;
@@ -3030,7 +3032,7 @@
   /* 정산 비율 · 광고비 (마스터): 기본 강사 5 : 플랫폼 5 · 광고비도 5 : 5. 강사와 조율한 비율을 확정하면 강사센터 › 판매 정산에 바로 보여요 */
   const vdRateIns = () => { const v = VD(); return DB.data.instructors.filter((x) => v.products.some((p) => p.iid === x.id && VX().typeOf(p) === "vod")); };
   // 비율 표 대상: 클래스를 가진 모든 강사 (두잉고 계정이 없으면 ext:이름)
-  const vdRateKeys = () => { const X = VX(), map = {}; VD().products.forEach((p) => { const k = X.tkey(p); if (!k || map[k]) return; map[k] = { id: k, name: /^ext:/.test(k) ? k.slice(4) : insName(p.iid) || p.creator || k }; }); return Object.keys(map).map((k) => map[k]); };
+  const vdRateKeys = () => { const X = VX(), map = {}; VD().products.forEach((p) => { const k = X.tkey(p); if (!k || map[k]) return; map[k] = { id: k, name: /^ext:/.test(k) ? k.slice(4) : vdName(p.iid) || p.creator || k }; }); return Object.keys(map).map((k) => map[k]); };
   /** 정산 기준 한 줄 설명 (마스터 · 강사 화면 공용) */
   function vdRuleTxt() {
     const X = VX(), m = X.taxMode();
@@ -3313,7 +3315,7 @@
       '<section class="a-card">' + finNav("ad-ym", vdYMtxt(ym) + " 광고비") + '<span class="a-cal-sum">집행 <b>' + won(tot) + "</b> · 강사 분담 <b>" + won(insPart) + "</b> · 플랫폼 부담 <b>" + won(tot - insPart) + "</b> · ROAS <b>" + roasTxt(vdRoas(revAll, tot)) + "</b></span></div>" +
         '<form id="vda-ad-form" class="a-form vda-ad-f ad-f" novalidate><input type="hidden" name="ym" value="' + esc(ym) + '">' +
           '<div class="a-field"><label for="vda-ad-day">집행일</label><input class="a-input" id="vda-ad-day" name="day" type="date" value="' + esc(dDef) + '" min="' + ym + '-01" max="' + ym + "-" + String(new Date(yr, Number(ym.slice(5, 7)), 0).getDate()).padStart(2, "0") + '"></div>' +
-          '<div class="a-field"><label for="vda-ad-iid">강사</label><select class="a-input" id="vda-ad-iid" name="iid">' + list.map((x) => '<option value="' + esc(x.id) + '">' + esc(x.displayName) + "</option>").join("") + "</select></div>" +
+          '<div class="a-field"><label for="vda-ad-iid">강사</label><select class="a-input" id="vda-ad-iid" name="iid">' + list.map((x) => '<option value="' + esc(x.id) + '">' + esc(vdName(x.id)) + "</option>").join("") + "</select></div>" +
           '<div class="a-field"><label for="vda-ad-pid">광고한 강의 <small>(선택)</small></label><select class="a-input" id="vda-ad-pid" name="pid"><option value="">강사 전체 강의</option>' + vodPs.map((p) => '<option value="' + esc(p.id) + '" data-iid="' + esc(p.iid) + '"' + (list[0] && p.iid !== list[0].id ? " hidden" : "") + '>[' + esc(p.creator || insName(p.iid)) + "] " + esc(p.title) + "</option>").join("") + "</select></div>" +
           '<div class="a-field"><label for="vda-ad-ch">채널</label><select class="a-input" id="vda-ad-ch" name="ch">' + AD_CH.map((x) => '<option value="' + x[0] + '">' + esc(x[1]) + "</option>").join("") + "</select></div>" +
           '<div class="a-field"><label for="vda-ad-amt">광고비 (원)</label><input class="a-input" id="vda-ad-amt" name="amount" type="number" min="1000" step="1000" inputmode="numeric" placeholder="300000"></div>' +
@@ -3324,7 +3326,7 @@
         '<section class="a-card"><div class="a-card-head"><h2>강사별</h2><span class="a-muted">' + vdYMtxt(ym) + " · ROAS = 그 강사 그 달 매출 ÷ 광고비</span></div>" +
           (Object.keys(byIns).length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>강사</th><th class="right">광고비</th><th class="right">강사 분담</th><th class="right">매출</th><th class="right">ROAS</th><th>정산</th></tr></thead><tbody>' +
             Object.keys(byIns).map((iid) => { const a = byIns[iid].reduce((s, x) => s + (Number(x.amount) || 0), 0), sp = X.adSplitOf(iid), sh = byIns[iid].reduce((s, x) => s + Math.round((Number(x.amount) || 0) * sp / 100 / 10) * 10, 0), rev = revOf((o) => vdKey(o) === iid);
-              return "<tr><td><b>" + esc(insName(iid)) + '</b></td><td class="right num">' + won(a) + '</td><td class="right num">' + won(sh) + '<small class="a-memo">' + sp + '%</small></td><td class="right num">' + won(rev) + '</td><td class="right num"><b>' + roasTxt(vdRoas(rev, a)) + "</b></td><td>" + (vdAdLocked(iid, ym) ? pill("확정됨", "ok") : pill(ym < thisM ? "확정 전" : "집계 중", "mute")) + "</td></tr>"; }).join("") +
+              return "<tr><td><b>" + esc(vdName(iid)) + '</b></td><td class="right num">' + won(a) + '</td><td class="right num">' + won(sh) + '<small class="a-memo">' + sp + '%</small></td><td class="right num">' + won(rev) + '</td><td class="right num"><b>' + roasTxt(vdRoas(rev, a)) + "</b></td><td>" + (vdAdLocked(iid, ym) ? pill("확정됨", "ok") : pill(ym < thisM ? "확정 전" : "집계 중", "mute")) + "</td></tr>"; }).join("") +
           "</tbody></table></div>" : emptyBox("megaphone", vdYMtxt(ym) + "에 적은 광고비가 없어요.")) + "</section>" +
         '<section class="a-card"><div class="a-card-head"><h2>채널별</h2><span class="a-muted">' + vdYMtxt(ym) + "</span></div>" +
           (tot ? '<ul class="fin-bars">' + AD_CH.filter((x) => byCh[x[0]]).map((x) => { const p = Math.round(byCh[x[0]] / tot * 100); return '<li><div class="fin-bh"><b>' + esc(x[1]) + '</b><span class="num">' + won(byCh[x[0]]) + '</span></div><span class="fin-bar"><i style="width:' + p + '%"></i></span><small>' + p + "%</small></li>"; }).join("") + "</ul>" : emptyBox("megaphone", "채널별로 보여 줄 광고비가 없어요.")) + "</section>" +
@@ -3333,7 +3335,7 @@
         (ads.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>집행일</th><th>강사</th><th>강의</th><th>채널</th><th class="right">광고비</th><th class="right">강사 분담</th><th class="right">ROAS</th><th>메모</th><th class="right"></th></tr></thead><tbody>' +
           ads.map((x) => { const sp = X.adSplitOf(x.iid), me2 = Math.round((Number(x.amount) || 0) * sp / 100 / 10) * 10, p = x.pid ? vdP(x.pid) : null, lock = vdAdLocked(x.iid, x.ym);
             const rev = p ? revOf((o) => o.pid === p.id) : null, pAd = p ? ads.filter((y) => y.pid === p.id).reduce((s, y) => s + (Number(y.amount) || 0), 0) : 0;
-            return '<tr><td class="vda-nw">' + esc(x.day ? fmtMD(x.day) : vdYMtxt(x.ym)) + "</td><td><b>" + esc(insName(x.iid)) + "</b></td><td>" + (p ? esc(p.title) : '<span class="a-muted">전체 강의</span>') + "</td><td>" + esc(adChName(x.ch)) + '</td><td class="right num">' + won(x.amount) + '</td><td class="right num">' + won(me2) + '<small class="a-memo">' + sp + '%</small></td><td class="right num">' + (p ? roasTxt(vdRoas(rev, pAd)) + '<small class="a-memo">이 강의</small>' : "-") + "</td><td>" + esc(x.memo || "") + '</td><td class="right">' + (lock ? pill("확정됨", "ok") : '<button type="button" class="a-icon-btn sm" data-action="vda-ad-del" data-id="' + esc(x.id) + '" aria-label="지우기">' + icon("trash", "sm") + "</button>") + "</td></tr>"; }).join("") +
+            return '<tr><td class="vda-nw">' + esc(x.day ? fmtMD(x.day) : vdYMtxt(x.ym)) + "</td><td><b>" + esc(vdName(x.iid)) + "</b></td><td>" + (p ? esc(p.title) : '<span class="a-muted">전체 강의</span>') + "</td><td>" + esc(adChName(x.ch)) + '</td><td class="right num">' + won(x.amount) + '</td><td class="right num">' + won(me2) + '<small class="a-memo">' + sp + '%</small></td><td class="right num">' + (p ? roasTxt(vdRoas(rev, pAd)) + '<small class="a-memo">이 강의</small>' : "-") + "</td><td>" + esc(x.memo || "") + '</td><td class="right">' + (lock ? pill("확정됨", "ok") : '<button type="button" class="a-icon-btn sm" data-action="vda-ad-del" data-id="' + esc(x.id) + '" aria-label="지우기">' + icon("trash", "sm") + "</button>") + "</td></tr>"; }).join("") +
         "</tbody></table></div>" : emptyBox("megaphone", vdYMtxt(ym) + "에 적은 광고비가 없어요. 위에서 적어 주세요.")) + "</section>" +
       '<section class="a-card"><div class="a-card-head"><h2>' + yr + '년 광고비 · 매출</h2><span class="a-muted">막대: 매출(진한) · 광고비(옅은) · 아래 숫자는 ROAS</span></div>' +
         '<div class="a-rev-chart ad-yc" aria-hidden="true">' + yrows.map((x) => '<div class="a-rev-col' + (x.m === thisM ? " now" : "") + '"><small class="num">' + roasTxt(vdRoas(x.r, x.a)).replace("-", "") + '</small><span class="a-rev-bar fin-yb"><i class="p" style="height:' + (x.a ? Math.max(3, Math.round(x.a / ymax * 100)) : 0) + '%"></i><i style="height:' + (x.r ? Math.max(3, Math.round(x.r / ymax * 100)) : 0) + '%"></i></span><b>' + (x.i + 1) + "월</b></div>").join("") + "</div></section>";
@@ -3347,7 +3349,7 @@
   // 예정 비율 (적용 시작일이 아직 안 온 마스터 확정)
   const vdRateNextTxt = (r) => (r.next ? fmtFull(DB.date.toStr(new Date(r.next.from))) + "부터 " + VX().RATE_KEYS.map((x) => x[1] + " " + r.next[x[0]] + "%").join(" · ") : "");
   function vdRateModal(key) {
-    const X = VX(), r = X.rateOf(key), name = /^ext:/.test(key) ? key.slice(4) : insName(key);
+    const X = VX(), r = X.rateOf(key), name = /^ext:/.test(key) ? key.slice(4) : vdName(key);
     if (!name) return;
     const fi = (k, label, n, hint) => '<div class="a-field"><label for="vr-' + k + '">' + label + '</label><div class="vda-pct"><input class="a-input" id="vr-' + k + '" name="' + k + '" type="number" min="0" max="100" value="' + n + '" inputmode="numeric"><span>%</span></div><small class="a-muted">' + hint + "</small></div>";
     const hs = (h) => X.RATE_KEYS.map((x) => { const n = h[x[0]] != null && h[x[0]] !== "" ? h[x[0]] : x[0] === "coach" || x[0] === "tea" ? h.addon : h.vod; return x[1] + " " + (n == null || n === "" ? "-" : n + "%"); }).join(" · ") + " · 광고비 " + h.ad + "%";
@@ -3370,7 +3372,7 @@
     const prev = v.insRates[key] || {}, keep = (e) => { const o = {}; ["vod", "ebook", "book", "live", "coach", "tea", "addon", "ad", "at", "from", "by"].forEach((k) => { if (e[k] != null) o[k] = e[k]; }); return o; };
     const hist = (prev.hist || []).concat(prev.at ? [keep(prev)] : []).slice(-50);
     v.insRates[key] = Object.assign(vals, { addon: vals.coach, memo: f.memo.value.trim(), at: Date.now(), from, by: S && S.staffId ? (staffOf(S.staffId) || {}).name || "운영자" : "마스터", hist });
-    const name = /^ext:/.test(key) ? key.slice(4) : insName(key);
+    const name = /^ext:/.test(key) ? key.slice(4) : vdName(key);
     commit(name + " 강사 정산 비율을 확정했어요 (" + X.RATE_KEYS.map((x) => x[1] + " " + vals[x[0]] + "%").join(" · ") + " · " + fmtFull(DB.date.toStr(new Date(from))) + "부터).");
   }
   function saveVodTax(f) {
@@ -3404,7 +3406,7 @@
     if (!(amt > 0) || amt > 1e10) return no("광고비를 원 단위 숫자로 적어 주세요.");
     const p = pid ? vdP(pid) : null;
     if (pid && (!p || p.iid !== iid)) return no("고른 강의가 이 강사님 강의가 아니에요. 강의를 다시 골라 주세요.");
-    if (vdAdLocked(iid, ym)) return no(insName(iid) + " 강사님 " + vdYMtxt(ym) + " 정산이 이미 확정됐어요. 강사 정산에서 확정을 취소한 뒤 적거나, 다음 달 광고비로 적어 주세요.");
+    if (vdAdLocked(iid, ym)) return no(vdName(iid) + " 강사님 " + vdYMtxt(ym) + " 정산이 이미 확정됐어요. 강사 정산에서 확정을 취소한 뒤 적거나, 다음 달 광고비로 적어 주세요.");
     const ch = f.ch && AD_CH.some((x) => x[0] === f.ch.value) ? f.ch.value : "";
     (v.adSpend = v.adSpend || []).push(Object.assign({ id: DB.uid("ad"), iid, pid, ym, amount: amt, memo: f.memo.value.trim(), at: Date.now() }, day ? { day } : {}, ch ? { ch } : {}));
     if (ui.adYM && ui.adYM !== ym) ui.adYM = ym;
@@ -3452,7 +3454,7 @@
   function vdInsCard() {
     const X = VX(); if (!X.tkey) return "";
     const off = X.insOff(), map = {};
-    VD().products.forEach((p) => { const k = X.tkey(p); if (!k) return; const t = (map[k] = map[k] || { k, name: p.creator || insName(p.iid), n: 0, live: 0, ph: "" }); t.n++; if (p.status === "on" || p.status === "soon") t.live++; if (!t.ph) t.ph = X.phOf(p); });
+    VD().products.forEach((p) => { const k = X.tkey(p); if (!k) return; const t = (map[k] = map[k] || { k, name: p.creator || vdName(p.iid), n: 0, live: 0, ph: "" }); t.n++; if (p.status === "on" || p.status === "soon") t.live++; if (!t.ph) t.ph = X.phOf(p); });
     const list = Object.keys(map).map((k) => map[k]).sort((a, b) => (off.indexOf(a.k) >= 0) - (off.indexOf(b.k) >= 0) || b.n - a.n);
     if (!list.length) return "";
     return '<section class="a-card vda-ins"><div class="a-card-head"><h2>강사 스토어 노출</h2><span class="a-muted">끄면 그 강사의 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 새로 살 수 없어요. 클래스는 지우지 않아서 다시 켜면 그대로 돌아와요. 이미 산 회원은 내 강의실에서 계속 들어요.</span></div><div class="vda-ins-g">' +
@@ -3620,7 +3622,7 @@
       '</form><aside class="vda-side"><div class="vda-prev" id="vda-prev">' + vdPrevHtml(d) + "</div></aside></div>";
   }
   function vdPrevHtml(d) {
-    const p = Object.assign({}, d, { creator: d.creator || (d.iid ? insName(d.iid) : "") }), pr = VX().priceOf(p), pc = VX().pctOf(p), st = VD_ST[d.status] || VD_ST.hidden;
+    const p = Object.assign({}, d, { creator: d.creator || (d.iid ? vdName(d.iid) : "") }), pr = VX().priceOf(p), pc = VX().pctOf(p), st = VD_ST[d.status] || VD_ST.hidden;
     return '<p class="vda-prev-h">스토어 카드 미리보기 ' + pill(st[0], st[1]) + '</p><div class="vda-prev-card">' + vdThumb(p, "card") + '<small>' + esc(p.creator || "크리에이터") + "</small><b>" + esc(d.title || "클래스 이름") + '</b><div class="vda-prev-price">' + (pr === 0 ? "<strong>무료</strong>" : (pc ? "<em>" + pc + "%</em>" : "") + "<strong>" + won(pr) + "</strong>" + (pc ? "<s>" + won(d.price) + "</s>" : "")) + "</div></div>" +
       '<ul class="vda-prev-chk">' + [[!!d.title, "클래스 이름"], [Number(d.price) >= 0 && d.price !== "", "가격"], [!!(d.thumb || d.thumbText), "썸네일"], [(d.learn || []).length > 0 && !!d.intro, "소개 · 배우는 것"], [(d.curriculum || []).some((c) => (c.lessons || []).length), "커리큘럼"], [(d.curriculum || []).some((c) => (c.lessons || []).some((l) => l.video)), "영상 연결"]].map((x) => '<li class="' + (x[0] ? "on" : "") + '">' + icon(x[0] ? "check" : "minus", "xs") + x[1] + "</li>").join("") + "</ul>";
   }
@@ -3700,7 +3702,7 @@
     const pid = id === "new" ? "v" + Date.now().toString(36) : id;
     d.curriculum.forEach((c, ci) => { c.id = c.id || pid + "-c" + DB.uid("").slice(-5) + ci; c.lessons.forEach((l, li) => { l.id = l.id || pid + "-l" + DB.uid("").slice(-6) + ci + li; }); });
     d.faq = (d.faq || []).filter((q) => q[0] && q[1]);
-    if (!d.creator && d.iid) d.creator = insName(d.iid);
+    if (!d.creator && d.iid) d.creator = vdName(d.iid);
     const clean = Object.assign({}, d); delete clean.__id; delete clean.dupOf;
     const list = VD().products;
     if (id === "new") { clean.id = pid; clean.createdAt = Date.now(); if (clean.status === "on") clean.openedAt = Date.now(); list.unshift(clean); }
@@ -5139,7 +5141,7 @@
   };
   const CRM_SRC = { instagram: "인스타그램", youtube: "유튜브", naver: "네이버", google: "구글", kakao: "카카오톡 채널", meta: "메타 광고", ins: "강사 링크", migrate: "기존 사이트 이관", direct: "직접 방문" };
   const crmSrcK = (m) => ((m.src || {}).s || "direct");
-  const crmSrc = (m) => { const s = m.src || {}; return (CRM_SRC[crmSrcK(m)] || crmSrcK(m)) + (s.by ? " · " + insName(s.by) : "") + (s.c ? " · " + s.c : ""); };
+  const crmSrc = (m) => { const s = m.src || {}; return (CRM_SRC[crmSrcK(m)] || crmSrcK(m)) + (s.by ? " · " + vdName(s.by) : "") + (s.c ? " · " + s.c : ""); };
   const crmMaskE = (e) => { const s = String(e || ""), i = s.indexOf("@"); return i > 0 ? s.slice(0, Math.min(2, i)) + "***" + s.slice(i) : s ? "***" : "-"; };
   const crmMaskP = (p) => { const s = String(p || ""); return s ? s.replace(/^(\d{3})-?(\d{3,4})-?(\d{4})$/, "$1-****-$3") : "-"; };
   const crmE = (m) => (ui.crmPii ? m.email || "-" : crmMaskE(m.email));
@@ -5267,7 +5269,7 @@
     if (!m) return crmSubTitle + emptyBox("userX", "회원을 찾을 수 없어요. 탈퇴했거나 잘못된 주소예요.");
     const v = VD(), X = VX(), pf = crmProf(m), st = crmStage(pf.stage), c = m.consent || VX().consentOf(m.marketing, m.createdAt), cps = v.coupons || [];
     const cpName = (cid) => (cps.find((x) => x.id === cid) || {}).name || "삭제된 쿠폰";
-    const fan = Object.keys(pf.ins).filter((i) => pf.ins[i] >= 2).map((i) => insName(i) + " 팬").filter((t) => (m.tags || []).indexOf(t) < 0);
+    const fan = Object.keys(pf.ins).filter((i) => pf.ins[i] >= 2).map((i) => vdName(i) + " 팬").filter((t) => (m.tags || []).indexOf(t) < 0);
     const card = (t, body, extra) => '<section class="a-card crm-card"><div class="a-card-head"><h2>' + t + "</h2>" + (extra || "") + "</div>" + body + "</section>";
     const classes = pf.pids.map((pid) => { const p = vdP(pid) || {}, end = X.accessEnd ? X.accessEnd(m.id, pid) : 0, pc = pf.pct[pid], tp = X.typeOf(p); return '<li class="crm-cls"><span class="crm-cls-t"><b>' + esc(p.title || "삭제된 클래스") + "</b><small>" + esc(p.creator || "") + " · " + esc((X.TYPE[tp] || [tp])[0]) + (end && end < 4e12 ? " · " + (end > Date.now() ? "~" + crmDate(end) : "수강 끝") : "") + "</small></span>" + (pc != null ? '<span class="crm-cls-p"><span class="a-bar"><span style="width:' + pc + '%"></span></span><small class="num">' + pc + "%</small></span>" : '<span class="a-muted p-small">' + (X.isEvent(p) ? esc(X.fmtEvent ? X.fmtEvent(p.eventAt) : p.eventAt || "") : "-") + "</span>") + "</li>"; }).join("");
     const ords = pf.os.slice().sort((a, b) => b.at - a.at);

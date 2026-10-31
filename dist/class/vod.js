@@ -40,7 +40,7 @@
   // 상품 v2 필드: color = [썸네일 바탕색, 포인트 색], hook(강조 띠) · tagline(강사 한 줄) · headline(소개 큰 제목 2줄) · likeBase(기존 찜 수) · openAt(오픈 예정일)
   const V2 = {
     v1: { color: ["#1c1c1e", "#d4f53c"], hook: "재고 0원 · 사업자 없이 시작", tagline: "뉴질랜드 건기식 브랜드 대표", headline: "해외 건기식 브랜드,\n0원으로 여는 법 알려드릴게요.", likeBase: 24, badges: ["HOT", "BEST"] },
-    v2: { color: ["#1c1c1e", "#ff2d87"], hook: "그림 실력 0이어도 OK", tagline: "긱스쿨 AI 굿즈 강사", headline: "AI 그림으로 굿즈 만들어\n파는 법 알려드릴게요.", likeBase: 15, badges: ["NEW", "NICE"] },
+    v2: { color: ["#1c1c1e", "#ff2d87"], hook: "그림 실력 0이어도 OK", tagline: "AI 굿즈 크리에이터", headline: "AI 그림으로 굿즈 만들어\n파는 법 알려드릴게요.", likeBase: 15, badges: ["NEW", "NICE"] },
     v3: { color: ["#1c1c1e", "#ff9f1a"], hook: "귤 하나로 월매출 10억", tagline: "산지직송 브랜드 대표", headline: "농산물도 브랜드가 되면\n두 배로 팔려요.", likeBase: 31, badges: ["HOT", "BEST"] },
     v4: { color: ["#1c1c1e", "#19e3a1"], hook: "구매 전환율 2배", tagline: "상세페이지 구조 전문가", headline: "팔리는 상세페이지는\n순서가 정해져 있어요.", likeBase: 12, badges: ["NICE"] },
     v5: { color: ["#1c1c1e", "#3fb6ff"], hook: "하루 1시간 루틴", tagline: "AI 콘텐츠 크리에이터", headline: "챗GPT로 쓰고\n블로그로 버는 루틴.", likeBase: 9, badges: [] },
@@ -69,9 +69,9 @@
         color: ["#1c1c1e", "#19e3a1"], hook: "바로 쓰는 문장 100개", tagline: "산지직송 브랜드 대표", thumbText: "상세페이지\n문장 100", headline: "쓸 말이 막힐 때,\n펼쳐 보는 문장집.", likeBase: 11, badges: ["UPDATE"],
         who: ["상세페이지 문장이 늘 막히는 분"], learn: ["첫 화면 한 줄 문장 20개", "맛 · 식감 표현 30개", "산지 · 생산자 이야기 문장 30개", "후기 유도 문장 20개"], intro: "갓농부가 실제로 팔면서 반응이 좋았던 문장만 모았어요. 10월에 제철 문장 20개를 더했어요.",
         curriculum: [CH("PART 1 첫 화면", [L("한 줄로 사게 만드는 문장", 14, { preview: true })]), CH("PART 2 맛 · 식감", [L("맛 표현 문장", 18)]), CH("PART 3 산지 이야기", [L("생산자 · 산지 문장", 18)]), CH("PART 4 후기", [L("후기 유도 문장", 14)])] }),
-      P({ id: "v12", type: "live", title: "AI 굿즈 LIVE 클래스: 2시간 만에 스티커 10종 완성", sub: "Zoom으로 화면을 같이 보며 캐릭터부터 인쇄용 파일까지 만들어요", cat: "ai", iid: "choi", creator: "초이", price: 59000, sale: 49000, saleEnd: "2026-11-10", eventAt: "2026-11-14T20:00", eventMin: 120, seats: 30, link: "https://zoom.us/j/0000000000", replayDays: 7, base: 0, createdAt: Date.parse("2026-10-21"),
-        color: ["#1c1c1e", "#ff2d87"], hook: "실시간 Zoom 실습", tagline: "긱스쿨 AI 굿즈 강사", thumbText: "AI 굿즈\nLIVE 실습", headline: "혼자 하면 막히는 부분,\nLIVE로 같이 끝내요.", likeBase: 14, badges: ["NEW"],
-        who: ["VOD로는 자꾸 미루게 되는 분", "질문하면서 바로 따라 하고 싶은 분"], learn: ["AI로 일관된 캐릭터 만들기", "스티커 10종 인쇄용 파일", "제작 업체에 바로 보내는 법"], intro: "2시간 동안 초이와 화면을 같이 보며 실습해요. 끝난 뒤 7일 동안 다시보기를 드려요.",
+      P({ id: "v12", type: "live", title: "AI 굿즈 LIVE 클래스: 2시간 만에 스티커 10종 완성", sub: "Zoom으로 화면을 같이 보며 캐릭터부터 인쇄용 파일까지 만들어요", cat: "ai", iid: "choi", creator: "유나", price: 59000, sale: 49000, saleEnd: "2026-11-10", eventAt: "2026-11-14T20:00", eventMin: 120, seats: 30, link: "https://zoom.us/j/0000000000", replayDays: 7, base: 0, createdAt: Date.parse("2026-10-21"),
+        color: ["#1c1c1e", "#ff2d87"], hook: "실시간 Zoom 실습", tagline: "AI 굿즈 크리에이터", thumbText: "AI 굿즈\nLIVE 실습", headline: "혼자 하면 막히는 부분,\nLIVE로 같이 끝내요.", likeBase: 14, badges: ["NEW"],
+        who: ["VOD로는 자꾸 미루게 되는 분", "질문하면서 바로 따라 하고 싶은 분"], learn: ["AI로 일관된 캐릭터 만들기", "스티커 10종 인쇄용 파일", "제작 업체에 바로 보내는 법"], intro: "2시간 동안 유나와 화면을 같이 보며 실습해요. 끝난 뒤 7일 동안 다시보기를 드려요.",
         curriculum: [CH("LIVE 진행 순서", [L("오프닝 · 오늘 만들 것", 10), L("AI로 캐릭터 만들기 실습", 50), L("인쇄용 파일 만들기", 40), L("Q&A", 20)])] }),
       P({ id: "v13", type: "offline", title: "1인 무역 오프라인 워크숍 · 서울 강남", sub: "20명이 한자리에 모여 내 상품 찾기부터 공급처 연락까지 같이 해요", cat: "biz", iid: "moon", creator: "문대표", price: 150000, sale: 120000, saleEnd: "2026-11-15", eventAt: "2026-11-22T14:00", eventMin: 240, seats: 20, place: "서울 강남구 테헤란로 (자세한 주소는 신청 후 안내)", base: 0, createdAt: Date.parse("2026-10-19"),
         color: ["#1c1c1e", "#3fb6ff"], hook: "20명 한정 · 현장 실습", tagline: "뉴질랜드 건기식 브랜드 대표", thumbText: "1인 무역\n오프라인 워크숍", headline: "온라인으로 듣고 끝내지 말고,\n현장에서 같이 시작해요.", likeBase: 22, badges: ["HOT"],
@@ -110,9 +110,9 @@
         intro: "두고보는 문대표가 뉴질랜드에서 건강식품 브랜드를 직접 키우며 겪은 시행착오를 강의로 정리했어요.\n\n이 클래스는 ‘무엇을 팔지’보다 ‘어떻게 시작할지’에 집중해요. 강의를 따라 하면 첫 공급처 연락, 첫 상세페이지, 첫 광고까지 한 달 안에 끝낼 수 있게 설계했어요.",
         curriculum: [CH("시작하기 전에", [L("이 클래스로 얻게 될 것", 6, { preview: true, video: "S43tftq_ZT4" }), L("건기식 시장, 지금 들어가도 될까?", 14)]), CH("공급처 찾기", [L("뉴질랜드 제조사 리스트 만드는 법", 18), L("첫 연락 메일 템플릿", 12), L("샘플 받고 비교하는 법", 16)]), CH("판매 준비", [L("통관 · 인증 · 표시사항 정리", 22), L("상세페이지 구조 그대로 따라 하기", 25)]), CH("첫 주문 받기", [L("광고 3만 원으로 반응 보기", 19), L("재구매를 만드는 후기 관리", 15)])],
         faq: [["완전 초보도 들을 수 있나요?", "네. 사업자 등록 전 단계부터 차근차근 설명해요."], ["강의는 언제까지 볼 수 있나요?", "결제할 때 고른 수강권 기간(180일 · 365일 · 3년) 동안 횟수 제한 없이 볼 수 있어요. 기간이 끝나면 1년 연장권으로 진도 그대로 이어서 들을 수 있어요."], ["클래스를 들으면 수입이 보장되나요?", "수입은 보장하지 않아요. 시작에 필요한 방법과 준비 과정을 다루며, 실제 결과는 실행과 시장 조건에 따라 달라져요."]] }),
-      P({ id: "v2", title: "AI로 그림 그리고 굿즈로 파는 법", sub: "그림 실력 없이도 AI로 캐릭터를 만들고 스티커 · 키링으로 판매해요", cat: "ai", iid: "choi", creator: "초이", price: 199000, sale: 139000, saleEnd: "2026-11-05", thumbText: "AI 그림으로\n굿즈 만들기", base: 680, createdAt: Date.parse("2026-10-18"),
+      P({ id: "v2", title: "AI로 그림 그리고 굿즈로 파는 법", sub: "그림 실력 없이도 AI로 캐릭터를 만들고 스티커 · 키링으로 판매해요", cat: "ai", iid: "choi", creator: "유나", price: 199000, sale: 139000, saleEnd: "2026-11-05", thumbText: "AI 그림으로\n굿즈 만들기", base: 680, createdAt: Date.parse("2026-10-18"),
         who: ["그림은 못 그리지만 굿즈를 만들어 보고 싶은 분", "인스타 · 아이디어스에서 부업을 시작하고 싶은 분"], learn: ["AI 그림 도구로 일관된 캐릭터 만들기", "인쇄용 파일 만들기 (스티커 · 키링)", "제작 업체 고르고 발주하는 법", "SNS로 첫 판매 만들기"],
-        intro: "긱스쿨에서 강의 중인 초이의 굿즈 클래스를 VOD로 만나 보세요. AI로 만든 캐릭터를 실제 상품으로 만들어 파는 전 과정을 보여 드려요.",
+        intro: "AI 굿즈로 판매를 이어 가고 있는 유나의 굿즈 클래스를 VOD로 만나 보세요. AI로 만든 캐릭터를 실제 상품으로 만들어 파는 전 과정을 보여 드려요.",
         curriculum: [CH("AI 그림 기초", [L("오리엔테이션", 5, { preview: true, video: "UBuXWFtgavE" }), L("프롬프트 기본기", 17), L("캐릭터를 일관되게 만드는 법", 21)]), CH("굿즈 만들기", [L("인쇄용 파일 만들기", 19), L("제작 업체 비교 · 발주", 14)]), CH("판매하기", [L("상세페이지와 사진", 16), L("인스타로 첫 판매", 18)])] }),
       P({ id: "v3", title: "귤 하나로 월매출 10억, 농산물 온라인 판매 실전", sub: "산지직송 브랜드를 만들고 스마트스토어 · 자사몰로 파는 법", cat: "commerce", iid: "farmer", creator: "갓농부", price: 249000, sale: 179000, saleEnd: "2026-11-30", thumbText: "귤 하나로\n월매출 10억", base: 2105, createdAt: Date.parse("2026-07-20"),
         who: ["농산물 · 식품을 온라인으로 팔고 싶은 분", "스마트스토어 매출이 정체된 분"], learn: ["산지와 직접 계약하는 법", "제철 상품 기획 캘린더", "리뷰가 쌓이는 포장 · 배송", "자사몰로 재구매 만들기"],
@@ -122,7 +122,7 @@
         who: ["유입은 있는데 구매가 안 일어나는 분", "상세페이지를 처음 만드는 분"], learn: ["구매 이유를 만드는 첫 화면", "리뷰 · 증거를 배치하는 순서", "모바일에서 읽히는 문장 쓰기"],
         intro: "부알남이 수백 개의 상세페이지를 고치며 찾은 ‘팔리는 순서’를 알려 드려요.",
         curriculum: [CH("구조 이해", [L("팔리는 상세페이지의 7단계", 12, { preview: true }), L("첫 화면 3초 법칙", 14)]), CH("실전 작성", [L("문장 템플릿 20개", 26), L("사진 · 영상 배치", 18)]), CH("개선", [L("데이터로 고치는 법", 16)])] }),
-      P({ id: "v5", title: "챗GPT로 블로그 수익화, 하루 1시간 루틴", sub: "주제 잡기부터 글쓰기 · 애드센스 · 체험단까지", cat: "ai", iid: "choi", creator: "초이", price: 89000, sale: 59000, saleEnd: "", thumbText: "챗GPT로\n블로그 수익화", base: 1510, createdAt: Date.parse("2026-09-28"),
+      P({ id: "v5", title: "챗GPT로 블로그 수익화, 하루 1시간 루틴", sub: "주제 잡기부터 글쓰기 · 애드센스 · 체험단까지", cat: "ai", iid: "choi", creator: "유나", price: 89000, sale: 59000, saleEnd: "", thumbText: "챗GPT로\n블로그 수익화", base: 1510, createdAt: Date.parse("2026-09-28"),
         who: ["블로그를 시작했지만 꾸준히 못 쓰는 분"], learn: ["돈이 되는 주제 고르기", "챗GPT로 초안 쓰고 다듬기", "애드센스 · 체험단 연결"], intro: "하루 1시간으로 블로그를 꾸준히 운영하는 루틴을 알려 드려요.",
         curriculum: [CH("준비", [L("수익 구조 이해하기", 10, { preview: true }), L("주제 고르기", 14)]), CH("글쓰기", [L("챗GPT 초안 프롬프트", 18), L("사람 냄새 나게 다듬기", 15)])] }),
       P({ id: "v6", title: "뉴질랜드 직구 소싱 A to Z", sub: "직구 상품 고르기 · 가격 정하기 · 배송 루트까지", cat: "biz", iid: "moon", creator: "문대표", price: 149000, sale: 99000, saleEnd: "", thumbText: "직구 소싱\nA to Z", base: 540, createdAt: Date.parse("2026-10-01"),
@@ -159,8 +159,8 @@
   function ids(p) { (p.curriculum || []).forEach((c, ci) => { c.id = c.id || p.id + "-c" + (ci + 1); (c.lessons || []).forEach((l, li) => { l.id = l.id || p.id + "-l" + (ci + 1) + "-" + (li + 1); }); }); return p; }
   function addLessonNotes(p) { (p.curriculum || []).forEach((c) => (c.lessons || []).forEach((l) => { const x = V3L[l.id]; if (!x) return; Object.keys(x).forEach((k) => { if (!l[k] || (Array.isArray(l[k]) && !l[k].length)) l[k] = Array.isArray(x[k]) ? x[k].map((f) => Object.assign({}, f)) : x[k]; }); if (!Array.isArray(l.files)) l.files = []; })); return p; }
   function seedSoon() {
-    return ids({ id: "v9", status: "soon", type: "vod", openAt: "2026-11-20", title: "틱톡샵으로 해외 판매 시작하기", sub: "계정 만들기부터 첫 주문 · 배송까지", cat: "commerce", iid: "choi", creator: "초이", price: 199000, sale: 149000, saleEnd: "2026-11-30", accessDays: 365, level: "입문", thumbText: "틱톡샵으로\n해외 판매", base: 0, likeBase: 27, createdAt: Date.parse("2026-10-25"),
-      color: ["#1c1c1e", "#ff2d87"], hook: "11월 20일 오픈", tagline: "긱스쿨 AI 굿즈 강사", headline: "틱톡샵, 지금 시작하면\n먼저 자리 잡아요.", badges: ["NEW"], share: null, faq: [],
+    return ids({ id: "v9", status: "soon", type: "vod", openAt: "2026-11-20", title: "틱톡샵으로 해외 판매 시작하기", sub: "계정 만들기부터 첫 주문 · 배송까지", cat: "commerce", iid: "choi", creator: "유나", price: 199000, sale: 149000, saleEnd: "2026-11-30", accessDays: 365, level: "입문", thumbText: "틱톡샵으로\n해외 판매", base: 0, likeBase: 27, createdAt: Date.parse("2026-10-25"),
+      color: ["#1c1c1e", "#ff2d87"], hook: "11월 20일 오픈", tagline: "AI 굿즈 크리에이터", headline: "틱톡샵, 지금 시작하면\n먼저 자리 잡아요.", badges: ["NEW"], share: null, faq: [],
       who: ["해외 판매를 처음 시작하는 분"], learn: ["틱톡샵 계정 세팅", "첫 상품 올리기", "숏폼으로 첫 주문 받기"], intro: "오픈 알림을 받아 두면 할인가로 가장 먼저 들을 수 있어요.",
       curriculum: [CH("준비", [L("틱톡샵 구조", 10, { preview: true }), L("계정 세팅", 14)]), CH("판매", [L("상품 등록", 16), L("숏폼으로 판매하기", 20)])] });
   }
@@ -170,7 +170,7 @@
       { id: "vb2", eyebrow: "BEST · 문대표", title: "재고 없이 0원으로\n해외 건기식 브랜드 런칭", sub: "지금 26% 할인 · 12개월 시청", pid: "v1", color: ["#232326", "#3a0f18"], on: true },
       { id: "vb6", eyebrow: "오프라인 · 20명 한정", title: "1인 무역 워크숍,\n현장에서 같이 시작해요", sub: "11월 22일(일) 서울 강남 · 얼리버드 20% 할인", pid: "v13", color: ["#0f2a4a", "#1c4f86"], on: true },
       { id: "vb3", eyebrow: "TEACHER", title: "내 노하우를\nVOD 클래스로 팔아 보세요", sub: "강사 모집 중 · 촬영 · 편집 · 판매까지 함께해요", href: "#/vod/recruit", color: ["#c9f7b0", "#c9f7b0"], dark: true, sticker: "강사\n모집 중", on: true },
-      { id: "vb4", eyebrow: "NEW · 초이", title: "그림 실력 없어도\nAI로 굿즈 만들기", sub: "캐릭터부터 첫 판매까지", pid: "v2", color: ["#ff5c8a", "#ff8fa8"], on: true },
+      { id: "vb4", eyebrow: "NEW · 유나", title: "그림 실력 없어도\nAI로 굿즈 만들기", sub: "캐릭터부터 첫 판매까지", pid: "v2", color: ["#ff5c8a", "#ff8fa8"], on: true },
       { id: "vb5", eyebrow: "무료 특강", title: "1인 무역,\n처음이라면 여기서", sub: "40분이면 구조가 보여요 · 평생 무료", pid: "v7", color: ["#7a7a80", "#5f5f66"], on: true }
     ];
   }
@@ -273,7 +273,7 @@
       pitch: "그런 분들을 위해 뉴질랜드 현지에서 건기식 브랜드를 직접 운영하는 문대표가, 재고 없이 0원으로 첫 브랜드를 런칭하는 전 과정을 공개합니다! 현지 제조사 리스트 만들기 · 첫 연락 메일 · 샘플 요청부터 수입식품 영업등록 · 통관 · 표시사항, 상세페이지와 광고 3만 원 테스트까지. 감으로 하는 소싱이 아니라, 숫자로 마진을 계산하고 서류는 체크리스트로 끝내는 실전 순서를 그대로 따라 하게 됩니다. 여기에 공급처 연락 메일 템플릿 · 통관 서류 체크리스트 · 마진 계산표까지 BONUS 자료로 싹 다 드려요! 이제 혼자 검색하며 헤매지 말고, 첫 공급처 연락부터 첫 주문까지 한 번에 끝내 보세요 :)",
       tags: ["해외소싱", "건기식브랜드", "재고없이", "통관", "스마트스토어"] },
     v2: { pains: ["그림을 못 그리는데 굿즈를 만들 수 있을까?", "AI로 그리면 캐릭터가 매번 달라져서 못 쓰겠다.", "만들어도 어디서 어떻게 팔아야 할지 모르겠다."],
-      pitch: "그런 분들을 위해 AI 굿즈로 판매를 이어 가고 있는 초이가, 그림 실력 없이 AI로 나만의 캐릭터를 만들고 스티커 · 키링으로 실제 판매까지 가는 과정을 공개합니다! 캐릭터를 매번 똑같이 뽑는 프롬프트, 인쇄 업체에 바로 보내는 파일 만들기, 소량 제작 단가 비교, 스마트스토어 · 아이디어스 · 플리마켓 판매까지. 예쁜 그림을 만드는 수업이 아니라 팔리는 굿즈를 만드는 수업이에요. 캐릭터 프롬프트 모음 · 인쇄용 템플릿까지 BONUS로 드려요! 작게 만들어 보고 반응을 확인하는 가장 빠른 방법, 지금 시작해 보세요 :)",
+      pitch: "그런 분들을 위해 AI 굿즈로 판매를 이어 가고 있는 유나가, 그림 실력 없이 AI로 나만의 캐릭터를 만들고 스티커 · 키링으로 실제 판매까지 가는 과정을 공개합니다! 캐릭터를 매번 똑같이 뽑는 프롬프트, 인쇄 업체에 바로 보내는 파일 만들기, 소량 제작 단가 비교, 스마트스토어 · 아이디어스 · 플리마켓 판매까지. 예쁜 그림을 만드는 수업이 아니라 팔리는 굿즈를 만드는 수업이에요. 캐릭터 프롬프트 모음 · 인쇄용 템플릿까지 BONUS로 드려요! 작게 만들어 보고 반응을 확인하는 가장 빠른 방법, 지금 시작해 보세요 :)",
       tags: ["AI굿즈", "캐릭터", "스티커", "부업"] },
     v3: { pains: ["농산물은 어디서 사 와야 남는 장사가 될까?", "제철이 지나면 매출이 뚝 떨어진다.", "배송 클레임 하나에 하루 매출이 날아간다."],
       pitch: "그런 분들을 위해 귤 하나로 시작해 월매출 10억을 만든 갓농부가, 산지 계약부터 스마트스토어 · 자사몰 판매까지 실제로 쓰는 방법을 전부 공개합니다! 좋은 산지를 고르는 기준과 계약 방법, 1년 매출을 이어 가는 제철 캘린더, 가격 정하기와 마진 계산, 포장 · 배송 클레임을 줄이는 체크리스트까지. 감으로 파는 농산물이 아니라 숫자와 계절로 파는 시스템을 직접 만들게 됩니다. 산지 계약서 양식 · 제철 캘린더 · 클레임 응대 문장까지 BONUS로 싹 다 드려요! 한 철 장사가 아니라 1년 내내 팔리는 산지직송 브랜드를 만들어 보세요 :)",
@@ -282,7 +282,7 @@
       pitch: "그런 분들을 위해 상세페이지를 직접 고쳐 전환율을 올려 온 부알남이, 잘 팔리는 상세페이지의 7단계 순서와 문장을 그대로 공개합니다! 첫 화면 3초 안에 사는 이유를 보여 주는 법, 고민 → 해결 → 증거 → 혜택으로 이어지는 구성, 후기 · 비교표 배치, 휴대폰에서 읽히는 문장 길이까지. 예쁜 페이지가 아니라 팔리는 페이지를 만드는 기준을 실제로 고친 전후 사례로 보여 드려요. 상세페이지 구성안 템플릿 · 첫 화면 문장 공식까지 BONUS로 드려요! 이제 감으로 고치지 말고, 순서대로 고쳐서 전환율을 확인해 보세요 :)",
       tags: ["상세페이지", "전환율", "스마트스토어", "카피라이팅"] },
     v5: { pains: ["블로그를 해야 한다는데 무슨 글을 써야 할지 모르겠다.", "챗GPT로 쓰면 티가 나서 오히려 노출이 안 된다.", "꾸준히 썼는데 돈이 되는 건 하나도 없다."],
-      pitch: "그런 분들을 위해 챗GPT로 하루 1시간 블로그 루틴을 운영하는 초이가, 주제 고르기부터 수익화까지 매일 쓰는 방법을 그대로 공개합니다! 돈이 되는 주제를 고르는 기준, 챗GPT로 초안을 뽑고 사람 냄새 나게 다듬는 법, 검색에 걸리는 제목과 구성, 애드센스 · 체험단 · 제휴 링크 연결까지. 글을 많이 쓰는 수업이 아니라 1시간 안에 한 편을 끝내는 루틴을 만드는 수업이에요. 프롬프트 모음 · 주제 캘린더까지 BONUS로 드려요! 오늘부터 하루 1시간, 쌓이는 블로그를 만들어 보세요 :)",
+      pitch: "그런 분들을 위해 챗GPT로 하루 1시간 블로그 루틴을 운영하는 유나가, 주제 고르기부터 수익화까지 매일 쓰는 방법을 그대로 공개합니다! 돈이 되는 주제를 고르는 기준, 챗GPT로 초안을 뽑고 사람 냄새 나게 다듬는 법, 검색에 걸리는 제목과 구성, 애드센스 · 체험단 · 제휴 링크 연결까지. 글을 많이 쓰는 수업이 아니라 1시간 안에 한 편을 끝내는 루틴을 만드는 수업이에요. 프롬프트 모음 · 주제 캘린더까지 BONUS로 드려요! 오늘부터 하루 1시간, 쌓이는 블로그를 만들어 보세요 :)",
       tags: ["챗GPT", "블로그수익화", "애드센스", "부업"] },
     v6: { pains: ["직구 판매, 어떤 상품을 골라야 할까?", "가격을 얼마로 정해야 남는지 계산이 안 된다.", "배송이 오래 걸려서 클레임이 걱정된다."],
       pitch: "그런 분들을 위해 뉴질랜드 현지에서 직접 상품을 고르는 문대표가, 직구 소싱의 A부터 Z까지 숫자로 보여 드립니다! 잘 팔리는 현지 상품 고르는 기준, 환율 · 배송비 · 수수료까지 넣은 가격 계산, 배송 루트별 장단점과 클레임을 줄이는 안내 문구까지. 감으로 고르는 직구가 아니라 남는 상품만 고르는 방법을 배우게 됩니다. 마진 계산표 · 배송 안내 문구 템플릿까지 BONUS로 드려요! 첫 직구 상품, 이 강의로 정해 보세요 :)",
@@ -297,7 +297,7 @@
       pitch: "부알남이 Zoom으로 상세페이지 첫 화면을 같이 보며, 3초 안에 사는 이유를 보여 주는 공식을 알려 드립니다. 끝까지 남아 질문하면 내 상세페이지 첫 화면도 바로 봐 드려요. 신청자 전용 선물 자료와 사전 질문은 무료강의 안내 페이지에서 받을 수 있어요 :)",
       tags: ["무료LIVE", "상세페이지"] },
     "fl-choi": { pains: ["AI로 그린 캐릭터, 굿즈로 팔 수 있을까?", "매번 다른 그림이 나와서 캐릭터가 안 잡힌다."],
-      pitch: "초이가 Zoom으로 AI 캐릭터를 처음부터 같이 만들며, 굿즈로 만들기 좋은 그림을 고르는 기준까지 알려 드립니다. 끝나고 나면 내 캐릭터 1개가 손에 남아요. 신청자 전용 선물 자료는 무료강의 안내 페이지에서 받을 수 있어요 :)",
+      pitch: "유나가 Zoom으로 AI 캐릭터를 처음부터 같이 만들며, 굿즈로 만들기 좋은 그림을 고르는 기준까지 알려 드립니다. 끝나고 나면 내 캐릭터 1개가 손에 남아요. 신청자 전용 선물 자료는 무료강의 안내 페이지에서 받을 수 있어요 :)",
       tags: ["무료LIVE", "AI굿즈"] },
     "fl-farmer": { pains: ["농산물 온라인 판매, 첫 박스는 어떻게 팔지?", "산지에서 바로 보내도 괜찮을까?"],
       pitch: "갓농부가 Zoom으로 귤 한 박스를 온라인에서 처음 팔기까지의 순서를 실시간으로 알려 드립니다. 산지 고르기, 첫 판매 채널, 배송 클레임 줄이는 법까지 질문도 바로 받아요. 신청자 전용 선물 자료는 무료강의 안내 페이지에서 받을 수 있어요 :)",
@@ -308,7 +308,7 @@
       learn: ["첫 화면 3초 안에 사는 이유 보여 주기", "구매 버튼까지 내려오게 만드는 순서", "내 상세페이지 바로 점검"], who: ["상세페이지를 처음 만드는 분", "광고는 나가는데 구매가 안 되는 분"] },
     { id: "fl-farmer", iid: "farmer", creator: "갓농부", title: "갓농부 무료 LIVE: 귤 한 박스로 시작하는 농산물 판매", sub: "산지 고르기부터 첫 판매 채널까지 · 누구나 무료", thumbText: "농산물 판매\n첫 박스 팔기", tagline: "산지직송 브랜드 대표", acc: "#3fb6ff", cat: "commerce",
       learn: ["좋은 산지 고르는 기준", "첫 판매 채널 정하기", "배송 클레임 줄이는 법"], who: ["농산물 온라인 판매가 처음인 분", "산지직송 브랜드를 꿈꾸는 분"] },
-    { id: "fl-choi", iid: "choi", creator: "초이", title: "초이 무료 LIVE: AI로 첫 굿즈 캐릭터 만들기", sub: "그림 실력 없이 캐릭터 1개 완성까지 · 누구나 무료", thumbText: "AI 캐릭터\n첫 굿즈 만들기", tagline: "AI 콘텐츠 크리에이터", acc: "#ff2d87", cat: "ai",
+    { id: "fl-choi", iid: "choi", creator: "유나", title: "유나 무료 LIVE: AI로 첫 굿즈 캐릭터 만들기", sub: "그림 실력 없이 캐릭터 1개 완성까지 · 누구나 무료", thumbText: "AI 캐릭터\n첫 굿즈 만들기", tagline: "AI 콘텐츠 크리에이터", acc: "#ff2d87", cat: "ai",
       learn: ["AI로 캐릭터 일관되게 뽑기", "굿즈로 만들기 좋은 그림 고르기", "첫 판매 채널 고르기"], who: ["AI 굿즈가 궁금한 분", "그림은 못 그리지만 캐릭터를 만들고 싶은 분"] }
   ];
   function seedV12(v) {
@@ -366,7 +366,7 @@
     if (!v.adSpend.length) { const d0 = new Date(); d0.setDate(1); d0.setMonth(d0.getMonth() - 1); v.adSpend.push({ id: "ad-demo1", iid: "moon", pid: "v1", ym: d0.getFullYear() + "-" + String(d0.getMonth() + 1).padStart(2, "0"), amount: 400000, memo: "메타(인스타그램) 광고 · 해외 건기식 브랜드", at: now() }); }
   }
   /* v17: 무료 LIVE → 얼리버드 (상품은 둘 · 운영은 하나) · 판매 영역 ‘무료 LIVE’(기본 꺼짐 → 스토어는 지금 그대로) · 홈 섹션 ‘무료 LIVE’ · ‘얼리버드 할인중’
-   * 시안 데이터: 문대표 11/17 무료 LIVE → VOD, 갓농부 어제 끝난 무료 LIVE → 얼리버드 진행 중, 초이 · 부알남 · 갓농부 다음 회차 → 각자 VOD */
+   * 시안 데이터: 문대표 11/17 무료 LIVE → VOD, 갓농부 어제 끝난 무료 LIVE → 얼리버드 진행 중, 유나 · 부알남 · 갓농부 다음 회차 → 각자 VOD */
   function seedV17(v) {
     v.biz = Object.assign({ ebook: true, live: false, free: false }, v.biz || {}); if (v.biz.flive == null) v.biz.flive = false;
     if (Array.isArray(v.homeRails) && v.homeRails.length) {
@@ -414,7 +414,7 @@
     });
     v.crm = v.crm || {};
     v.crm.rules = Object.assign({ fanN: 3, fanAmt: 500000, fanDays: 60, riskDays: 45, sleepDays: 365, newDays: 7 }, v.crm.rules || {});
-    if (!Array.isArray(v.crm.tags)) v.crm.tags = ["얼리어답터", "후기 작성러", "문대표 팬", "갓농부 팬", "초이 팬", "AI 관심", "오프라인 참석", "기존 사이트 회원", "VIP 상담"];
+    if (!Array.isArray(v.crm.tags)) v.crm.tags = ["얼리어답터", "후기 작성러", "문대표 팬", "갓농부 팬", "유나 팬", "AI 관심", "오프라인 참석", "기존 사이트 회원", "VIP 상담"];
     ["segs", "camps", "msgs", "views", "dl"].forEach((k) => { if (!Array.isArray(v.crm[k])) v.crm[k] = []; });
     if (!v.crm.auto) v.crm.auto = { welcome: true, nobuy: true, live: true, like: false, start: true, cpexp: true, expire: true, winback: false, birth: false, reconsent: true };
     if (v.members.some((m) => m.id === "vm-c01")) return;
@@ -435,7 +435,7 @@
     const S = [
       ["vm-c01", "정OO", "kakao", -96, true, true, { s: "instagram", c: "summer_farm" }, ["갓농부 팬", "오프라인 참석", "VIP 상담"], [["v3", -94, 0, 1], ["v11", -27], ["v1", -20, 0, 0.7], ["v8", -15, 0, 0.9], ["v13", -6]], -1, { pts: 3500, birth: "11-03", gender: "female", age: "30~39", rv: [["v3", 5, "제철 캘린더 그대로 따라 해서 첫 주문 받았어요. 포장 팁까지 바로 써먹었어요!", -60], ["v8", 5, "브랜드 이름 짓는 파트 덕분에 패키지를 새로 맞췄어요.", -8]], note: "오프라인 강의 때 다음 기수 · 1:1 코칭권 문의함. 평일 저녁 연락 선호." }],
       ["vm-c02", "최OO", "email", -78, true, false, { s: "youtube", c: "moon_live" }, ["문대표 팬"], [["v1", -76, 0, 0.9], ["v6", -25, 0, 0.6], ["v10", -12], ["v4", -9, 0, 0.3]], -2, { pts: 1500, rv: [["v1", 5, "공급처 연락 메일 템플릿이 제일 좋았어요. 실제로 답장 받았습니다.", -50]] }],
-      ["vm-c03", "한OO", "kakao", -36, true, true, { s: "kakao", c: "channel" }, ["초이 팬", "AI 관심"], [["v5", -30, 0, 1], ["v2", -10, 0, 0.5], ["v12", -7], ["v4", -3, 0, 0.1]], 0, { pts: 2000, birth: "02-17", gender: "male", age: "20~29", rv: [["v5", 4, "하루 1시간 루틴이 현실적이에요. 애드센스 파트가 조금 더 길면 좋겠어요.", -20]] }],
+      ["vm-c03", "한OO", "kakao", -36, true, true, { s: "kakao", c: "channel" }, ["유나 팬", "AI 관심"], [["v5", -30, 0, 1], ["v2", -10, 0, 0.5], ["v12", -7], ["v4", -3, 0, 0.1]], 0, { pts: 2000, birth: "02-17", gender: "male", age: "20~29", rv: [["v5", 4, "하루 1시간 루틴이 현실적이에요. 애드센스 파트가 조금 더 길면 좋겠어요.", -20]] }],
       ["vm-c04", "윤OO", "email", -50, true, false, { s: "naver" }, [], [["v4", -47, { cp: 5000 }, 0.8], ["v5", -20, 0, 0.4]], -5, {}],
       ["vm-c05", "장OO", "kakao", -40, false, true, { s: "instagram" }, [], [["v11", -28], ["v6", -26, 0, 0.7]], -8, {}],
       ["vm-c06", "임OO", "kakao", -33, true, false, { s: "meta", c: "ai_goods", m: "paid_social" }, ["AI 관심"], [["v5", -30, { ch: "ad" }, 0.6], ["v2", -9, { ch: "ad" }, 0.2]], -4, {}],
@@ -501,6 +501,23 @@
   }
   /* v21: 문대표 종이책 (전자책 메뉴 · 택배 배송) + 배송 설정 기본값 — 정식 서버는 배포 때 일회성 작업(api/_lib/books.js · oneoff.js)이 같은 책을 넣어요 */
   const MOON_BOOK = {"id": "b1", "type": "book", "status": "on", "showOff": true, "title": "내 인생의 추월차선은 내가 만든다", "sub": "0원에서 시작한 사람이 건네는 4단계 차선 변경법 · 문대표 첫 책", "cat": "biz", "iid": "moon", "creator": "문대표", "author": "문원오", "publisher": "청춘미디어", "price": 15900, "sale": null, "saleEnd": "", "pages": null, "size": "", "isbn": "", "pubDate": "", "shipFee": 0, "stock": "", "share": null, "level": "입문", "base": 0, "likeBase": 0, "cover": "assets/vod/book/moon-cover.webp", "detailImgs": [{"url": "assets/vod/book/moon-mock.webp", "name": "앞표지 · 뒤표지"}, {"url": "assets/vod/book/moon-spread.webp", "name": "표지 펼침면 · 저자 소개"}], "detailMode": "img-text", "color": ["#141414", "#ffd400"], "hook": "문대표 첫 책", "tagline": "두고홀딩스 대표 · 청춘미디어", "thumbText": "내 인생의 추월차선은\n내가 만든다", "headline": "열심히 사는데\n왜 통장은 늘 제자리일까?", "badges": ["NEW"], "pains": ["열심히 사는데 왜 통장은 늘 제자리일까?", "부자를 부러워만 하고, 무엇부터 해야 할지 모르겠다.", "한 번 크게 실패하고 나니 다시 시작할 엄두가 안 난다."], "pitch": "스무 개의 직업 끝에 통장 잔고 0원. 그의 차선을 바꾼 건 블로그 글 하나로 번 첫 5,000원이었어요. 그 첫 돈은 10개의 유통 브랜드사와 제조부터 IT 개발까지 아우르는 두고홀딩스, 뉴질랜드 아시아 최초의 건강식품 제조 인허가, 500명이 넘는 수강생으로 이어졌습니다. 아무것도 없이 시작한 사람이 실제로 밟은 네 단계, MOON 공식을 그대로 담았어요. 읽고 끝나는 책이 아니라 꼭지마다 저자의 실제 답을 보고 내 답을 쓰는 90일 차선 변경 워크북이에요.", "tags": ["문대표", "첫5000원", "MOON공식", "90일워크북", "부업", "창업"], "learn": ["M · 모르는 사람에게서 첫 돈을 받아라 — 1억짜리 계획보다 5,000원짜리 첫 판매", "O · 한 번 더 팔리게 만들어라 — 첫 주문은 마케팅이, 두 번째 주문은 신뢰가 만든다", "O · 내 손을 떠나도 돌아가게 하라 — 70%면 넘기고, 일을 문서로 만들어라", "N · 다음 층으로 올라가라 — 유통 → 브랜드 → 제조 → 교육, 천장을 알아채는 감각"], "who": ["열심히 사는데 통장은 늘 제자리인 분", "부자를 부러워만 하다 이제는 직접 시작하고 싶은 분", "첫 5,000원을 벌어 보고 싶은 부업 · 창업 준비생", "한 번 실패하고 다시 일어설 방법을 찾는 분"], "comment": "“하나의 시도가 실패한 것이지, 당신이라는 사람이 실패한 게 아니다.” 7억을 잃고 다시 일어서며 붙든 문장이에요. 꼭지마다 제 실제 답을 먼저 적어 두었으니, 그 아래에 여러분의 답을 써 보세요. 90일 뒤에는 나만의 차선 변경 계획이 완성돼 있을 거예요.", "intro": "내일은 당연히 오는 것이 아니다. 그래서 나는 ‘언젠가’라는 말을 버렸다.\n\n모르는 사람에게서 첫 돈을 받고(M), 한 번 더 팔리게 만들고(O), 내 손을 떠나도 돌아가게 하고(O), 다음 층으로 올라가라(N). 아무것도 없이 시작한 사람이 실제로 밟은 순서, MOON 공식이에요.\n\n이 책의 사용법 — 꼭지마다 저자의 실제 답(EX)을 먼저 보고, 그 아래에 당신의 답을 쓰세요. 90일 동안 한 꼭지씩, 당신만의 차선 변경 계획이 완성됩니다.\n\n· 7억을 잃고 다시 일어선 실패 읽는 법\n· 2,000개 말고 50개부터, 내 브랜드 시작법\n· 저자가 먼저 답한 질문 25개 · 90일 실천 계획", "creatorBio": "두고홀딩스 창업자이자 그룹 총괄 대표. 제조 · 유통 · 브랜딩 · 마케팅 · 교육 · 호텔 F&B · IT 개발을 아우르는 계열사와 10개의 유통 브랜드사를 이끌고 있어요. 농장 · 호텔 · 이삿짐 등 스무 개가 넘는 일을 거쳐 2019년 마누카꿀 하나로 이커머스를 독학해 첫 이익 5,000원을 남겼고, 2025년 뉴질랜드에서 아시아 최초로 건강식품 제조 인허가를 받았어요. 500명이 넘는 수강생에게 ‘모르는 사람에게서 첫 돈을 받는 법’을 가르치고 있어요.", "faq": [], "curriculum": [], "createdAt": 1793318400000};
+  /* v22: DOOGO CLASS 초이 → 유나 (예전 데이터를 가진 브라우저 · 서버는 일회성 작업 2026-11-01-store-choi-to-yuna 가 같은 일을 해요).
+   * 두잉고 강사 계정(choi)은 그대로 · ‘초이스’ 같은 다른 낱말은 그대로 */
+  function seedV22(v) {
+    const re = /초이(?!스)/g;
+    const walk = (x) => { if (Array.isArray(x)) x.forEach((y, i) => { if (typeof y === "string") x[i] = y.replace(re, "유나"); else if (y && typeof y === "object") walk(y); });
+      else Object.keys(x).forEach((k) => { const y = x[k]; if (typeof y === "string") { if (k !== "data" && k !== "photo") x[k] = y.replace(re, "유나"); } else if (y && typeof y === "object") walk(y); }); };
+    (v.products || []).forEach((p) => {
+      if (!p || p.iid !== "choi") return;
+      if (typeof p.intro === "string") p.intro = p.intro.replace(/긱스쿨에서 강의 중인 초이/g, "AI 굿즈로 판매를 이어 가고 있는 유나");
+      if (p.tagline === "긱스쿨 AI 굿즈 강사") p.tagline = "AI 굿즈 크리에이터";
+      if (/choi-profile/.test(String(p.creatorPhoto || ""))) p.creatorPhoto = "";
+    });
+    walk(v);
+    const uniq = (a) => (Array.isArray(a) ? a.filter((t, i) => a.indexOf(t) === i) : a);
+    if (v.crm) v.crm.tags = uniq(v.crm.tags);
+    (v.members || []).forEach((m) => { if (m && Array.isArray(m.tags)) m.tags = uniq(m.tags); });
+  }
   function seedV21(v) {
     if (!v.products.some((p) => p.id === MOON_BOOK.id)) v.products.push(JSON.parse(JSON.stringify(MOON_BOOK)));
     v.settings = v.settings || {}; if (!v.settings.ship) v.settings.ship = Object.assign({}, SHIP_DEF);
@@ -527,7 +544,7 @@
     if (!DB.freeOf) return;
     V().products.forEach((p) => { if (!p.fromFree) return; const f = DB.freeOf(p.fromFree); if (f && f.liveAt && p.eventAt !== f.liveAt) { p.eventAt = f.liveAt; save(); } });
   }
-  function V() { const d = DB.data, fresh = !d.vod || !Array.isArray(d.vod.products), keep = fresh && d.vod && typeof d.vod === "object" ? d.vod : null; if (fresh) { d.vod = seed(); DB.save(); } else if (d.vod.ver !== 4) { migrate(d.vod); DB.save(); } if (!d.vod.v8) { d.vod.v8 = 1; seedV8(d.vod); DB.save(); } if (!d.vod.v9) { d.vod.v9 = 1; seedV9(d.vod); DB.save(); } if (!d.vod.v10) { d.vod.v10 = 1; seedV10(d.vod); DB.save(); } if (!d.vod.v11) { d.vod.v11 = 1; seedV11(d.vod); DB.save(); } if (!d.vod.v12) { d.vod.v12 = 1; seedV12(d.vod); DB.save(); } if (!d.vod.v13) { d.vod.v13 = 1; seedV13(d.vod); DB.save(); } if (!d.vod.v14) { d.vod.v14 = 1; seedV14(d.vod); DB.save(); } if (!d.vod.v15) { d.vod.v15 = 1; seedV15(d.vod); DB.save(); } if (!d.vod.v16) { d.vod.v16 = 1; seedV16(d.vod); DB.save(); } if (!d.vod.v17) { d.vod.v17 = 1; seedV17(d.vod); DB.save(); } if (!d.vod.v18) { d.vod.v18 = 1; seedV18(d.vod); DB.save(); } if (!d.vod.v19) { d.vod.v19 = 1; seedV19(d.vod); DB.save(); } if (!d.vod.v20) { d.vod.v20 = 1; seedV20(d.vod); DB.save(); } if (!d.vod.v21) { d.vod.v21 = 1; seedV21(d.vod); DB.save(); } if (fresh && SRV()) srvClean(d.vod, keep); if (SRV()) srvShape(d.vod); return d.vod; }
+  function V() { const d = DB.data, fresh = !d.vod || !Array.isArray(d.vod.products), keep = fresh && d.vod && typeof d.vod === "object" ? d.vod : null; if (fresh) { d.vod = seed(); DB.save(); } else if (d.vod.ver !== 4) { migrate(d.vod); DB.save(); } if (!d.vod.v8) { d.vod.v8 = 1; seedV8(d.vod); DB.save(); } if (!d.vod.v9) { d.vod.v9 = 1; seedV9(d.vod); DB.save(); } if (!d.vod.v10) { d.vod.v10 = 1; seedV10(d.vod); DB.save(); } if (!d.vod.v11) { d.vod.v11 = 1; seedV11(d.vod); DB.save(); } if (!d.vod.v12) { d.vod.v12 = 1; seedV12(d.vod); DB.save(); } if (!d.vod.v13) { d.vod.v13 = 1; seedV13(d.vod); DB.save(); } if (!d.vod.v14) { d.vod.v14 = 1; seedV14(d.vod); DB.save(); } if (!d.vod.v15) { d.vod.v15 = 1; seedV15(d.vod); DB.save(); } if (!d.vod.v16) { d.vod.v16 = 1; seedV16(d.vod); DB.save(); } if (!d.vod.v17) { d.vod.v17 = 1; seedV17(d.vod); DB.save(); } if (!d.vod.v18) { d.vod.v18 = 1; seedV18(d.vod); DB.save(); } if (!d.vod.v19) { d.vod.v19 = 1; seedV19(d.vod); DB.save(); } if (!d.vod.v20) { d.vod.v20 = 1; seedV20(d.vod); DB.save(); } if (!d.vod.v21) { d.vod.v21 = 1; seedV21(d.vod); DB.save(); } if (!d.vod.v22) { d.vod.v22 = 1; seedV22(d.vod); DB.save(); } if (fresh && SRV()) srvClean(d.vod, keep); if (SRV()) srvShape(d.vod); return d.vod; }
   /** 정식 서버: 회원 · 주문 · 후기 등은 따로 와서(볼 수 있는 것만) 비어 있을 수 있어요 → 빈 목록으로 */
   function srvShape(v) {
     if (!Array.isArray(v.members)) v.members = []; if (!Array.isArray(v.orders)) v.orders = []; if (!Array.isArray(v.reviews)) v.reviews = []; if (!Array.isArray(v.pledges)) v.pledges = []; if (!Array.isArray(v.inquiries)) v.inquiries = []; if (!Array.isArray(v.payouts)) v.payouts = [];
@@ -647,7 +664,15 @@
   const paidOrders = (pid) => V().orders.filter((o) => o.pid === pid && o.status === "paid" && kindOf(o) === "course");
   const soldOf = (p) => (Number(p.base) || 0) + (SRV() ? Number((stat().sold || {})[p.id]) || 0 : paidOrders(p.id).length);
   const seatsLeft = (p) => (isEvent(p) && Number(p.seats) > 0 ? Math.max(0, Number(p.seats) - (SRV() ? Number((stat().sold || {})[p.id]) || 0 : V().orders.filter((o) => o.pid === p.id && (o.status === "paid" || o.status === "pending")).length)) : null);
-  const insPhoto = (iid) => { const c = DB.content && iid ? DB.content(iid) : null; return (c && c.brand && c.brand.photo) || ""; };
+  /* DOOGO CLASS 전용 강사 이름 · 사진: 두잉고 강사 계정(iid)은 그대로 두고 스토어에서만 다른 이름 · 사진으로 보여요.
+   * choi — 두잉고에서는 ‘유나’, DOOGO CLASS(아직 정식 계약 전 · 테스트 클래스)에서는 ‘유나’(AI로 만든 가상 인물 사진).
+   * 스토어에서는 두잉고 쪽 이름 · 사진 · SNS · 경력 · 두잉고 페이지 링크를 쓰지 않아요 */
+  const STORE_AS = { choi: { name: "유나", from: "초이", slug: "yuna", photo: "assets/vod/yuna-profile.webp", field: "AI 굿즈 크리에이터" } };
+  const storeAs = (iid) => (iid && Object.prototype.hasOwnProperty.call(STORE_AS, iid) ? STORE_AS[iid] : null);
+  /** 스토어에서 쓰는 강사 브랜드 정보 (STORE_AS 강사는 두잉고 정보 대신 빈 값 + 스토어 분야) */
+  const insBrand = (iid) => { const a = storeAs(iid); if (a) return { instructor: a.name, field: a.field, photo: a.photo }; return ((DB.content && iid ? DB.content(iid) : null) || {}).brand || {}; };
+  const insLanding = (iid) => (storeAs(iid) ? null : DB.landingOf && iid ? DB.landingOf(iid) : null);
+  const insPhoto = (iid) => insBrand(iid).photo || "";
   /** 강사 키: 두잉고 강사는 iid, 두잉고 계정이 없는 강사(예: 셀러훈)는 "ext:이름" — 강사진 · 스토어 노출 스위치가 이 키를 써요 */
   const tkey = (p) => (p ? p.iid || (p.creator ? "ext:" + p.creator : "") : "");
   /** 강사 사진: 두잉고 강사 브랜드 사진 → 클래스에 넣은 강사 사진(두잉고 계정 없는 강사) */
@@ -954,7 +979,7 @@
   /** 스토어 화면에 넣는 ‘강사 두잉고’ 안내 카드 */
   function dgCard(p, cls) {
     if (!dgOpen(p)) return "";
-    const ins = dgIns(p), c = DB.content(ins.id) || {}, nm = (c.brand && c.brand.instructor) || p.creator;
+    const ins = dgIns(p), nm = insBrand(ins.id).instructor || p.creator;
     return '<div class="vd-dg ' + (cls || "") + '"><span class="vd-dg-ic">' + (window.doinggoB ? window.doinggoB("black", "vd-dg-logo") : "두잉고") + '</span><div class="vd-dg-t"><b>' + esc(nm) + ' 강사 두잉고 강의실 <em>VOD</em></b><small>강의 영상 · 교재 · 업데이트 소식 · 실습 체크리스트를 한 곳에서 봐요</small></div>' +
       '<button type="button" class="vd-btn vd-btn-dark vd-btn-sm" data-v="dg" data-p="' + esc(p.id) + '">강의실 입장' + icon("arrowRight", "xs") + "</button></div>";
   }
@@ -1162,14 +1187,14 @@
       '<i class="vd-art-go" aria-hidden="true">' + icon("arrowUpRight", "xs") + "</i></span>";
   }
 
-  window.VOD = { BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
+  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
 
   /* ================= 두잉고 강의 묶음 (전체 클래스) ================= */
   // 무료강의 = 무료 VOD + 두잉고 강사 무료 LIVE(#/free) · 프리미엄강의 = LIVE · 오프라인 상품 + 두잉고 기수 강의(#/p) · VOD강의 = 유료 VOD · 전자책
   function liveItems() {
     const out = [];
     (DB.activeInstructors ? DB.activeInstructors() : []).forEach((x, i) => {
-      if (V().products.some((p) => p.fromFree === x.id && p.status !== "hidden")) return;
+      if (storeAs(x.id) || V().products.some((p) => p.fromFree === x.id && p.status !== "hidden")) return; // STORE_AS 강사의 두잉고 무료 LIVE 페이지는 스토어에 걸지 않아요
       const f = DB.freeOf && DB.freeOf(x.id), c = DB.content(x.id); if (!f || !f.published || !c) return;
       const t = new Date(f.liveAt).getTime(); if (!(t > now() - 3 * 36e5)) return;
       const b = c.brand || {};
@@ -1180,6 +1205,7 @@
   }
   function premiumItems() {
     return (DB.activeInstructors ? DB.activeInstructors() : []).map((x, i) => {
+      if (storeAs(x.id)) return null; // STORE_AS 강사의 두잉고 기수 페이지는 스토어에 걸지 않아요
       const c = DB.content(x.id), lp = DB.landingOf && DB.landingOf(x.id), b = (c && c.brand) || {}; if (!lp || lp.published === false) return null;
       const nx = DB.nextCohortName ? DB.nextCohortName(x.id) : "";
       return { ext: true, href: "#/p/" + x.id, p: { id: "pre-" + x.id, iid: x.id, creator: b.instructor || x.displayName, title: (b.courseTitle || "") + (nx ? " " + nx : ""), thumbText: twoLines(lp.hero.title || b.courseTitle), label: "프리미엄강의", labelSub: "한정인원 모집 중", color: ["#1c1c1e", ACC[(i + 5) % ACC.length]], hook: nx ? nx + " 모집" : "기수 모집", tagline: b.field || "", catLabel: "두잉고 기수 강의", priceTxt: "모집 중",
@@ -1490,20 +1516,22 @@
   function teacherList() {
     const map = {};
     V().products.filter((p) => tkey(p) && (p.status === "soon" || (p.status === "on" && !eventPast(p))) && bizShow(p)).forEach((p) => {
-      const k = tkey(p), t = (map[k] = map[k] || { iid: k, name: p.creator, tag: p.tagline || "", cats: [], ps: [], sold: 0, ph: "" });
+      const k = tkey(p), t = (map[k] = map[k] || { iid: k, name: (storeAs(p.iid) || {}).name || p.creator, tag: p.tagline || "", cats: [], ps: [], sold: 0, ph: "" });
       if (!t.ph) t.ph = phOf(p);
       const cl = catOf(p.cat).label; if (t.cats.indexOf(cl) < 0) t.cats.push(cl); t.ps.push(p); t.sold += soldOf(p);
       if (!t.tag && p.tagline) t.tag = p.tagline;
     });
-    // 순서: 첫 화면 강사진과 같게 문대표 → 초이 → 나머지(강의 많은 순 → 수강생 많은 순)
+    // 순서: 첫 화면 강사진과 같게 문대표 → 유나(두잉고 choi) → 나머지(강의 많은 순 → 수강생 많은 순)
     const pri = (t) => { const i = ["moon", "choi"].indexOf(t.iid); return i < 0 ? 9 : i; };
     const list = Object.keys(map).map((k) => map[k]).sort((a, b) => pri(a) - pri(b) || b.ps.length - a.ps.length || b.sold - a.sold);
     const pk = (homeRails().find((r) => r.k === "teach") || {}).picks || [];
     return pk.map((k) => list.find((t) => t.iid === k)).filter(Boolean).concat(list.filter((t) => pk.indexOf(t.iid) < 0));
   }
   const teachHome = (r) => { const h = (r && r.hide) || []; return teacherList().filter((t) => h.indexOf(t.iid) < 0); };
-  const snsOf = (iid) => { const b = ((DB.content && DB.content(iid)) || {}).brand || {}, url = (v, base) => (!v ? "" : /^https?:\/\//.test(v) ? v : base + String(v).replace(/^@/, "")); return [[url(b.instagram, "https://instagram.com/"), "camera", "인스타그램"], [url(b.youtubeChannel, "https://youtube.com/"), "video", "유튜브"], [url(b.kakaoChannel, "https://pf.kakao.com/"), "message", "카카오톡 채널"]].filter((x) => x[0]); };
-  const tHref = (iid) => "#/vod/teachers/" + encodeURIComponent(iid);
+  const snsOf = (iid) => { const b = insBrand(iid), url = (v, base) => (!v ? "" : /^https?:\/\//.test(v) ? v : base + String(v).replace(/^@/, "")); return [[url(b.instagram, "https://instagram.com/"), "camera", "인스타그램"], [url(b.youtubeChannel, "https://youtube.com/"), "video", "유튜브"], [url(b.kakaoChannel, "https://pf.kakao.com/"), "message", "카카오톡 채널"]].filter((x) => x[0]); };
+  // 강사 페이지 주소: STORE_AS 강사는 스토어 이름(slug)으로 (#/vod/teachers/yuna) · 예전 주소(choi)도 그대로 열려요
+  const tHref = (iid) => "#/vod/teachers/" + encodeURIComponent((storeAs(iid) || {}).slug || iid);
+  const tFromSlug = (s) => Object.keys(STORE_AS).find((k) => STORE_AS[k].slug === s) || s;
   /* 강사진 검색: 이름 · 소개 · 분야로 찾고, 초성(ㅁㄷㅍ → 문대표)도 맞춰요. 고른 분야 · 검색어는 다시 그려도 남아요 */
   const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
   const choOf = (s) => String(s || "").replace(/[가-힣]/g, (c) => CHO[Math.floor((c.charCodeAt(0) - 0xac00) / 588)]);
@@ -1549,9 +1577,10 @@
         : emptyBox("users", "강사진을 준비하고 있어요", "곧 새로운 강사님이 찾아와요.", "")) + "</div>", "");
   }
   function pageTeacher(iid) {
+    iid = tFromSlug(iid);
     const list = teacherList(), i = list.findIndex((x) => x.iid === iid), t = list[i];
     if (!t) return shell("teachers", '<div class="vd-wrap vd-tpg">' + emptyBox("users", "찾는 강사님이 없어요", "지금 DOOGO CLASS에서 강의하는 강사님을 확인해 보세요.", '<a class="vd-btn vd-btn-p" href="#/vod/teachers">강사진 보기</a>') + "</div>", "");
-    const b = ((DB.content && DB.content(iid)) || {}).brand || {}, ph = t.ph || insPhoto(iid), sns = snsOf(iid), lp = DB.landingOf && DB.landingOf(iid);
+    const b = insBrand(iid), ph = t.ph || insPhoto(iid), sns = snsOf(iid), lp = insLanding(iid);
     const career = lp && lp.about && Array.isArray(lp.about.career) ? lp.about.career.slice(0, 5).map((x) => (typeof x === "string" ? x : x.text || x.title || "")).filter(Boolean) : [];
     const rv = t.ps.reduce((a, p) => { const r = ratingOf(p.id); return { n: a.n + r.n, s: a.s + r.avg * r.n }; }, { n: 0, s: 0 });
     const bio = (t.ps.find((p) => p.creatorBio) || {}).creatorBio || (t.name + "님은 직접 해서 번 경험을 DOOGO CLASS 강의로 나누고 있어요. 강의를 누르면 커리큘럼 · 미리보기 · 수강 후기를 볼 수 있어요.");
@@ -1929,7 +1958,7 @@
   function pageProduct(id) {
     const p = product(id); if (!p || p.status === "hidden" || !insShown(p)) return shell("", '<div class="vd-wrap">' + emptyBox("alert", "판매 중인 클래스가 아니에요", "", '<a class="vd-btn vd-btn-o" href="#/vod">홈으로</a>') + "</div>");
     const m = me(), own = m && owns(m.id, p.id), rt = ratingOf(p.id), rs = reviewsOf(p.id), lz = lessons(p), cat = catOf(p.cat), pls = pledgesOf(p.id), t = typeOf(p), ev = isEvent(p), pvs = previewsOf(p);
-    const ins = p.iid && DB.instructor ? DB.instructor(p.iid) : null, insB = p.iid && DB.content ? ((DB.content(p.iid) || {}).brand || {}) : {}, lp = p.iid && DB.landingOf ? DB.landingOf(p.iid) : null;
+    const ins = p.iid && DB.instructor ? DB.instructor(p.iid) : null, insB = p.iid ? insBrand(p.iid) : {}, lp = insLanding(p.iid);
     const career = lp && lp.about && Array.isArray(lp.about.career) ? lp.about.career.slice(0, 5).map((x) => (typeof x === "string" ? x : x.text || x.title || "")).filter(Boolean) : [];
     // 함께 많이 보는 클래스: 같은 강사 강의만 모이지 않게 — 다른 강사 강의(같은 분야 먼저 · 강사 한 명당 1개) 사이에 같은 강사 강의 1개를 섞어요
     const pool = listed().filter((x) => x.id !== p.id && !isEvent(x)).sort((a, b) => (b.cat === p.cat) - (a.cat === p.cat) || soldOf(b) - soldOf(a));
@@ -1960,7 +1989,7 @@
           (ev ? '<div class="vd-evbox" data-rv><h3>' + icon("calendar", "sm") + (t === "live" ? "LIVE 강의 안내" : "오프라인 강의 안내") + "</h3><dl>" + infoRows(p).map((r) => "<div><dt>" + r[0] + "</dt><dd>" + esc(r[1]) + "</dd></div>").join("") + "<div><dt>" + (t === "live" ? "입장" : "준비물") + "</dt><dd>" + (t === "live" ? (p.via === "zoom" ? "신청하면 마이페이지에 Zoom 입장 링크가 열려요. 시작 10분 전부터 들어올 수 있어요." : "신청하면 마이페이지 › LIVE · 오프라인에 카카오톡 오픈채팅방 입장 버튼이 열려요. 강의 날 오픈채팅방에 유튜브 라이브 링크를 올려 드려요.") : "노트북 · 충전기 · 신분증 (자세한 주소는 신청 후 문자로 보내 드려요)") + "</dd></div></dl></div>" : "") +
           (p.intro ? '<div class="vd-pd-body" data-rv>' + esc(p.intro).split(/\n\n+/).map((x) => "<p>" + x.replace(/\n/g, "<br>") + "</p>").join("") + "</div>" : ""))) + (dm === "text-img" ? dimg : "") +
           ((p.gifts || []).length ? '<div class="vd-gift" data-rv>' + icon("download", "sm") + "<div><b>수강 선물</b><span>" + p.gifts.map((g) => esc(g.title) + (g.pages ? " (" + g.pages + "쪽)" : "")).join(" · ") + "</span></div></div>" : "") +
-          (ins && p.iid ? '<a class="vd-cross" href="#/p/' + esc(p.iid) + '" data-rv><span><small>프리미엄강의 · 한정인원 모집 중</small><b>' + esc(p.creator) + "님과 함께하는 두잉고 기수 강의</b><em>매주 과제 · 피드백 · 라이브 Q&A로 끝까지 함께해요</em></span>" + icon("arrowRight", "sm") + "</a>" : "") + "</section>" +
+          (ins && p.iid && !storeAs(p.iid) ? '<a class="vd-cross" href="#/p/' + esc(p.iid) + '" data-rv><span><small>프리미엄강의 · 한정인원 모집 중</small><b>' + esc(p.creator) + "님과 함께하는 두잉고 기수 강의</b><em>매주 과제 · 피드백 · 라이브 Q&A로 끝까지 함께해요</em></span>" + icon("arrowRight", "sm") + "</a>" : "") + "</section>" +
         (pvs.length ? sec("preview", "구매 전에 <span data-accent>미리보기</span>", '<p class="vd-curri-sum">강의 ' + lz.length + "개 중 " + pvs.length + "개를 결제 전에 먼저 볼 수 있어요. 나에게 맞는지 확인하고 시작하세요.</p>" +
           '<div class="vd-pvs" data-rv-kids>' + pvs.map((l) => '<button type="button" class="vd-pv-card" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(l.id) + '">' + pvThumb(p, l) + "<b>" + esc(l.title) + "</b><span>" + esc(l.desc || (chapOf(p, l).ch || {}).title || "") + "</span></button>").join("") + "</div>", "vd-pd-pv") : "") +
         plansSec(p, sec) +

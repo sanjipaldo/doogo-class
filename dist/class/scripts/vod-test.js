@@ -1015,6 +1015,29 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(F2.bonus.items.length === 1 && F2.bonus.items[0].title === "내가 쓴 자료" && !F2.off.intro, "강사가 넣은 증정 항목은 그대로 · 꺼져 있던 대표 영상은 다시 켬", F2);
     ok(OO.OPS.findIndex((x) => x.id === "2026-11-01-moon-free-mission") > OO.OPS.findIndex((x) => x.id === "2026-11-01-moon-free-1117"), "2차 작업은 1차 뒤에 실행", null);
   }
+  { // DOOGO CLASS 초이 → 유나 (스토어만 · 두잉고 강사 초이는 그대로)
+    const db = {
+      meta: { other: 1, vod: { products: [
+        { id: "v2", iid: "choi", creator: "초이", tagline: "긱스쿨 AI 굿즈 강사", intro: "긱스쿨에서 강의 중인 초이의 굿즈 클래스를 VOD로 만나 보세요.", pitch: "초이가 알려 드려요", creatorPhoto: "assets/home/choi-profile.webp" },
+        { id: "fl-choi", iid: "choi", creator: "초이", title: "초이 무료 LIVE: AI로 첫 굿즈 캐릭터 만들기" },
+        { id: "v1", iid: "moon", creator: "문대표", title: "베스트 초이스 강의" }],
+        banners: [{ id: "vb4", eyebrow: "NEW · 초이", pid: "v2" }], crm: { tags: ["초이 팬", "AI 관심", "유나 팬"] } } },
+      vcat: { products: [{ id: "fl-choi", iid: "choi", title: "초이 무료 LIVE: AI로 첫 굿즈 캐릭터 만들기" }, { id: "v1", iid: "moon", title: "베스트 초이스 강의" }] },
+      "vo:1": { pid: "fl-choi", title: "초이 무료 LIVE: AI로 첫 굿즈 캐릭터 만들기", items: [{ pid: "fl-choi", title: "초이 무료 LIVE: AI로 첫 굿즈 캐릭터 만들기" }] },
+      "vo:2": { pid: "v1", title: "베스트 초이스 강의" },
+      "vm:a": { tags: ["초이 팬", "유나 팬"] }, "vm:b": { tags: ["문대표 팬"] },
+      "ins:choi": { displayName: "초이" }, "content:choi": { brand: { instructor: "초이", photo: "assets/home/choi-profile.webp" } }
+    };
+    const w = OO.storeChoiToYuna((k) => (db[k] ? JSON.parse(JSON.stringify(db[k])) : null), (pre) => Object.keys(db).filter((k) => k.indexOf(pre) === 0));
+    const v = w.writes.meta.vod, P = (id) => v.products.find((p) => p.id === id);
+    ok(P("v2").creator === "유나" && P("v2").tagline === "AI 굿즈 크리에이터" && !/긱스쿨|초이/.test(P("v2").intro) && P("v2").pitch === "유나가 알려 드려요" && P("v2").creatorPhoto === "", "스토어 상품: 이름 · 분야 · 소개 · 사진(초이 사진 빼기)", P("v2"));
+    ok(P("fl-choi").title === "유나 무료 LIVE: AI로 첫 굿즈 캐릭터 만들기" && v.banners[0].eyebrow === "NEW · 유나" && v.crm.tags.join() === "유나 팬,AI 관심" && v.v22 === 1 && w.writes.meta.other === 1, "무료 LIVE 이름 · 배너 · 회원 태그 · v22 표시 (다른 칸은 그대로)", v);
+    ok(P("v1").title === "베스트 초이스 강의" && !w.writes["vo:2"] && w.writes.vcat.products[1].title === "베스트 초이스 강의", "‘초이스’ 같은 다른 낱말은 그대로", null);
+    ok(w.writes.vcat.products[0].title.indexOf("유나") === 0 && w.writes["vo:1"].title.indexOf("유나") === 0 && w.writes["vo:1"].items[0].title.indexOf("유나") === 0, "결제 가격표 · 주문 상품 이름", w.writes["vo:1"]);
+    ok(w.writes["vm:a"].tags.join() === "유나 팬" && !w.writes["vm:b"], "회원 태그 ‘초이 팬’ → ‘유나 팬’", null);
+    ok(!w.writes["ins:choi"] && !w.writes["content:choi"], "두잉고 강사 계정 · 콘텐츠(초이)는 그대로", Object.keys(w.writes));
+    ok(OO.OPS.some((x) => x.id === "2026-11-01-store-choi-to-yuna" && x.run === OO.storeChoiToYuna), "초이 → 유나 작업 목록 등록", null);
+  }
   delete jar.dc_v;
 
   console.log("\n영상 길이 (비메오 · 유튜브 실제 재생 시간)");

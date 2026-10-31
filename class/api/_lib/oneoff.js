@@ -469,6 +469,55 @@ function moonFreeMission(get) {
   return { writes: { [k]: Object.assign({}, c, { freeClass: F }) }, result };
 }
 
+/* ---------- DOOGO CLASS: 초이 → 유나 (대표님 요청 2026-10-31) ----------
+ * 초이 강사는 아직 DOOGO CLASS 정식 계약 전이라, 스토어(테스트 클래스)에서는 ‘유나’(AI로 만든 가상 인물 사진)로 보여요.
+ * 바꾸는 곳: 스토어 데이터(meta.vod: 상품 · 배너 · 회원 태그 · 문구) · 결제 가격표(vcat) 상품 이름 · 주문(vo:*) 상품 이름 · 회원(vm:*) 태그.
+ * 두잉고 강사 계정(ins:choi) · 두잉고 콘텐츠(content:choi)는 그대로 — 두잉고에서는 초이 이름 · 사진을 계속 써요.
+ * ‘초이스’ 같은 다른 낱말은 건드리지 않아요. v22 표시를 남겨 화면이 같은 작업을 또 하지 않게 해요 */
+const CHOI_RE = /초이(?!스)/g;
+function storeChoiToYuna(get, keys) {
+  const writes = {}, result = {};
+  const meta = get("meta");
+  const choiIds = new Set();
+  if (isObj(meta) && isObj(meta.vod)) {
+    const v = clone(meta.vod);
+    let n = 0;
+    (Array.isArray(v.products) ? v.products : []).forEach((p) => {
+      if (!isObj(p) || !(p.iid === "choi" || /^초이$/.test(String(p.creator || "").trim()))) return;
+      if (p.id) choiIds.add(p.id);
+      if (typeof p.intro === "string" && /긱스쿨에서 강의 중인 초이/.test(p.intro)) { p.intro = p.intro.replace(/긱스쿨에서 강의 중인 초이/g, "AI 굿즈로 판매를 이어 가고 있는 유나"); n++; }
+      if (p.tagline === "긱스쿨 AI 굿즈 강사") { p.tagline = "AI 굿즈 크리에이터"; n++; }
+      if (/choi-profile/.test(String(p.creatorPhoto || ""))) { p.creatorPhoto = ""; n++; }
+    });
+    n += renameWordDeep(v, CHOI_RE, "유나");
+    if (isObj(v.crm) && Array.isArray(v.crm.tags)) v.crm.tags = v.crm.tags.filter((t, i, a) => a.indexOf(t) === i); // ‘유나 팬’이 이미 있었으면 하나만
+    v.v22 = 1;
+    writes.meta = Object.assign({}, meta, { vod: v });
+    result.vod = n;
+  } else result.vod = "두고클래스 데이터 없음";
+  const cat = get("vcat");
+  if (isObj(cat) && Array.isArray(cat.products)) {
+    const c2 = clone(cat); let n = 0;
+    c2.products.forEach((p) => { if (isObj(p) && (p.iid === "choi" || choiIds.has(p.id)) && typeof p.title === "string") { const t = p.title.replace(CHOI_RE, "유나"); if (t !== p.title) { p.title = t; n++; } } });
+    if (n) { writes.vcat = c2; result.vcat = n; }
+  }
+  let on = 0, mn = 0;
+  keys("vo:").forEach((k) => {
+    const o = get(k); if (!isObj(o)) return;
+    const o2 = clone(o); let n = 0;
+    const fix = (x) => { if (isObj(x) && typeof x.title === "string" && (choiIds.has(x.pid) || x.iid === "choi")) { const t = x.title.replace(CHOI_RE, "유나"); if (t !== x.title) { x.title = t; n++; } } };
+    fix(o2); (Array.isArray(o2.items) ? o2.items : []).forEach(fix);
+    if (n) { writes[k] = o2; on++; }
+  });
+  keys("vm:").forEach((k) => {
+    const m = get(k); if (!isObj(m) || !Array.isArray(m.tags)) return;
+    const tags = m.tags.map((t) => (typeof t === "string" ? t.replace(CHOI_RE, "유나") : t)).filter((t, i, a) => a.indexOf(t) === i);
+    if (tags.length !== m.tags.length || tags.some((t, i) => t !== m.tags[i])) { writes[k] = Object.assign({}, m, { tags }); mn++; }
+  });
+  result.orders = on; result.members = mn;
+  return { writes, result };
+}
+
 /* 위에서부터 차례로 (앞 작업 결과를 뒤 작업이 본다) */
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
@@ -489,7 +538,8 @@ const OPS = [
   { id: "2026-10-31-moon-4th-cohort", note: "문대표 4기를 11월 21일(토)부터 4주로", run: moon4th },
   { id: "2026-10-31-moon-apply-link", note: "문대표 강사 소개 페이지 신청하기 링크(네이버) · 마지막 안내 4주", run: moonApplyLink },
   { id: "2026-11-01-moon-free-1117", note: "문대표 무료강의 11/17(화) 19:30 · 대표 영상 · 오픈채팅(네이버) · 선물 전자책 공개일(1편 지금 · 2편 11/9 · 3편 11/17 저녁 7시) · 포스터 날짜 · 자주 묻는 질문", run: moonFree1117 },
-  { id: "2026-11-01-moon-free-mission", note: "문대표 무료강의: 좌우 영상 3개 끄기(대표 영상만) · ‘문대표의 사전 미션’(새 구글폼 링크) · 참여자 전원 증정 혜택 01~08", run: moonFreeMission }
+  { id: "2026-11-01-moon-free-mission", note: "문대표 무료강의: 좌우 영상 3개 끄기(대표 영상만) · ‘문대표의 사전 미션’(새 구글폼 링크) · 참여자 전원 증정 혜택 01~08", run: moonFreeMission },
+  { id: "2026-11-01-store-choi-to-yuna", note: "DOOGO CLASS 초이 → 유나 (스토어 상품 · 배너 · 회원 태그 · 가격표 · 주문 이름 / 두잉고 강사 초이는 그대로)", run: storeChoiToYuna },
 ];
 
-module.exports = { OPS, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
