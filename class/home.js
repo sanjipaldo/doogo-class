@@ -19,6 +19,9 @@
   const { esc } = DB;
   const icon = window.icon;
   const isActive = () => document.body.dataset.mode === "home";
+  // 사용법 영상 (/doinggo/guide) — 같은 머리글 · 바닥글 안에서 guide.js 가 그려요
+  const isGuide = () => /^#\/doinggo\/guide(\/|\?|$)/.test(window.ROUTE ? ROUTE.hash : location.hash);
+  let pendingScroll = "", lastView = "";
   const IMG = "assets/home/";
 
   /* ---------- 내용 ---------- */
@@ -235,6 +238,7 @@
       '<button type="button" class="hm-logo" data-hm-scroll="top" aria-label="두잉고 맨 위로">' + brandLock() + "</button>" + (window.siteSwitch ? window.siteSwitch("dg") : "") +
       '<nav class="hm-nav" aria-label="소개 메뉴">' +
         scrollBtn("hm-classes", "강사진", "hm-nav-a") + scrollBtn("hm-features", "기능 소개", "hm-nav-a") + scrollBtn("hm-students", "수강생 화면", "hm-nav-a") + scrollBtn("hm-pricing", "이용료", "hm-nav-a") + scrollBtn("hm-faq", "자주 묻는 질문", "hm-nav-a") +
+        '<a class="hm-nav-a hm-nav-guide' + (isGuide() ? " on" : "") + '" href="#/doinggo/guide"' + (isGuide() ? ' aria-current="page"' : "") + ">사용법 영상</a>" +
       "</nav>" +
       // 오른쪽 위: 강사센터(글자) + 수강생 로그인(빨간 버튼). 입점 문의는 첫 화면 카드 · 강사진 · 맨 아래에서
       '<div class="hm-top-r"><a class="hm-top-link" href="#/center">강사센터</a><a class="hm-btn hm-btn-p hm-btn-sm hm-top-login" href="#/login">수강생 로그인</a></div>' +
@@ -626,10 +630,10 @@
     return '<footer class="hm-foot"><div class="hm-wrap">' +
       '<div class="hm-foot-top">' +
         '<div class="hm-foot-brand">' + brandLock() + "<p>강사님 이름으로 운영하는 강의 플랫폼.<br>강의 소개 랜딩페이지 · 무료강의 전자책 · 수강생 케어 튜토리얼 시스템을 하나로.</p>" +
-          '<div class="hm-foot-cta">' + applyBtn("입점 문의하기" + arrow(), "hm-btn hm-btn-p hm-btn-sm") + '<a class="hm-btn hm-btn-sec hm-btn-sm" href="#/center">강사센터</a></div></div>' +
+          '<div class="hm-foot-cta">' + applyBtn("입점 문의하기" + arrow(), "hm-btn hm-btn-p hm-btn-sm") + '<a class="hm-btn hm-btn-sec hm-btn-sm" href="#/center">강사센터</a><a class="hm-btn hm-btn-sec hm-btn-sm hm-foot-guide" href="#/doinggo/guide">' + icon("circlePlay", "xs") + "사용법 영상</a></div></div>" +
         '<nav class="hm-foot-cols" aria-label="바로가기">' +
           '<div class="hm-foot-col"><b>두잉고</b>' + scrollBtn("hm-features", "3가지 기능", "hm-foot-a") + scrollBtn("hm-students", "수강생 화면", "hm-foot-a") + scrollBtn("hm-teachers", "강사센터 둘러보기", "hm-foot-a") + scrollBtn("hm-pricing", "이용료 · 기수 운영", "hm-foot-a") + scrollBtn("hm-classes", "강사진", "hm-foot-a") + "</div>" +
-          '<div class="hm-foot-col"><b>바로가기</b>' + applyBtn("강사 입점 문의", "hm-foot-apply") + '<a href="#/center">강사센터 로그인</a><a href="#/login">수강생 로그인</a><a href="#/center/billing">다음 기수 신청</a></div>' +
+          '<div class="hm-foot-col"><b>바로가기</b>' + applyBtn("강사 입점 문의", "hm-foot-apply") + '<a href="#/center">강사센터 로그인</a><a href="#/login">수강생 로그인</a><a href="#/center/billing">다음 기수 신청</a><a class="hm-foot-gd" href="#/doinggo/guide/ins">' + icon("circlePlay", "xs") + '사용법 영상 · 강사</a><a class="hm-foot-gd" href="#/doinggo/guide/stu">' + icon("circlePlay", "xs") + "사용법 영상 · 수강생</a></div>" +
           '<div class="hm-foot-col"><b>고객지원</b>' + scrollBtn("hm-faq", "자주 묻는 질문", "hm-foot-a") + legal("terms", "이용약관", S.terms) + legal("privacy", "<strong>개인정보처리방침</strong>", S.privacy) +
             (S.email ? '<a href="mailto:' + esc(S.email) + '">이메일 문의</a>' : "") + "</div>" +
         "</nav>" +
@@ -726,6 +730,18 @@
   }
   function render() {
     window.applyStudentTheme(null);
+    const view = isGuide() ? "guide" : "home";
+    if (lastView && view !== lastView) window.scrollTo(0, 0);
+    lastView = view;
+    if (view === "guide" && window.GuideApp) {
+      document.title = "사용법 영상 | 두잉고";
+      dark = null;
+      root.innerHTML = fragFix('<div class="hm hm-guide">' + DSYM_DEFS + header() + '<main id="gd-root">' + window.GuideApp.html() + "</main>" + footer() + bwDock() + "</div>");
+      window.GuideApp.mount(root.querySelector("#gd-root"));
+      onScroll();
+      return;
+    }
+    if (window.GuideApp) window.GuideApp.stop();
     document.title = "두잉고 | 강의는 강사님이, 운영은 두잉고가"; // index.html <title> 과 같게 (SEO)
     dark = null;
     const list = classes();
@@ -737,6 +753,7 @@
     wireTcs();
     bwStage();
     if (/^#\/partner/.test(ROUTE.hash)) openApply();
+    if (pendingScroll) { const id = pendingScroll; pendingScroll = ""; setTimeout(() => scrollToId(id), 60); }
   }
   function mount() { root.innerHTML = ""; render(); window.scrollTo(0, 0); }
 
@@ -976,6 +993,8 @@
   function scrollToId(id) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const behavior = reduce ? "auto" : "smooth";
+    // 사용법 영상 화면의 소개 메뉴 · 로고: 소개 화면으로 가서 그 칸으로
+    if (isGuide()) { if (id !== "top") pendingScroll = id; ROUTE.hash = "#/doinggo"; return; }
     const el = id === "top" ? root.querySelector(".hm") : document.getElementById(id);
     if (!el) return;
     if (id === "top") window.scrollTo({ top: 0, behavior });

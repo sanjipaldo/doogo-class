@@ -1906,3 +1906,13 @@ textarea.hm-in { height: auto; min-height: 76px; padding: 13px 16px; line-height
   .th-night .app .bw-tab.on { color: #fff; }
   .th-night .app .guide-list .link-btn { background: #26272d; color: #f4f4f5; }
 }
+
+/* 머리글 메뉴: ‘사용법 영상’(링크)이 더해져도 한 줄 그대로 */
+.hm-nav-a, .hm-top-link { white-space: nowrap; flex: none; }
+a.hm-nav-a { display: inline-flex; align-items: center; text-decoration: none; }
+.hm-nav-guide.on { color: var(--pri); background: var(--pri-soft); }
+@media (max-width: 1320px) { .hm-top-in { gap: 20px; } .hm-nav-a { padding: 0 9px; font-size: 14.5px; } }
+@media (max-width: 1180px) { .hm-nav-a { padding: 0 7px; font-size: 14px; } }
+/* 바닥글 ‘사용법 영상’ 버튼 · 바로가기 */
+.hm-foot-guide { display: inline-flex; align-items: center; gap: 6px; }
+.hm-foot-gd { display: inline-flex; align-items: center; gap: 6px; color: var(--pri) !important; font-weight: 600; }
