@@ -828,3 +828,18 @@
 .dg.bk.nz .fc-bs-tx p, .dg.bk.nz .fc-bs-more summary, .dg.bk.nz .fc-bs-more p{color:var(--sub)}
 .dg.bk.nz .fc-bs-tx p b{color:var(--nz-navy)}
 .dg.bk.nz .fc-bs-more ol{background:#f6fafc;border:1px solid #e1ebf2;color:var(--nz-navy)}
+
+/* 무료강의 오픈 날짜를 크게 강조 + 강의 플랫폼(아이비클래스) 로고는 작게 */
+.dg.bk .upcoming-date{display:flex;width:fit-content;max-width:100%;align-items:center;gap:10px;margin:4px 0 2px;padding:12px 18px;border-radius:16px;background:rgba(var(--rgb),.10);border:1px solid rgba(var(--rgb),.30);font-size:21px;font-weight:900;line-height:1.35;letter-spacing:-.025em}
+.dg.bk .upcoming-date svg{flex:none;width:24px;height:24px}
+.dg.bk.nz .upcoming-date{background:#eaf6ef;border-color:#bfe3cd;color:var(--nz-fern)}
+.dg.bk .bk-plat-hero-logo{width:min(100%,220px);padding:10px 16px;border-radius:16px}
+.dg.bk.nz .bk-plat-hero-logo{width:min(100%,160px);padding:7px 12px;border-radius:12px}
+@media (max-width:560px){
+  .dg.bk .upcoming-date{font-size:18px;padding:11px 14px;gap:8px}
+  .dg.bk .upcoming-date svg{width:21px;height:21px}
+  .dg.bk .bk-plat-hero-logo{width:min(100%,180px)}
+  .dg.bk.nz .bk-plat-hero-logo{width:min(100%,136px);padding:6px 10px;border-radius:11px}
+}
+.dg .upcoming-date .ud-t{display:inline-flex;flex-wrap:wrap;column-gap:.35em}
+.dg .upcoming-date .ud-t>span{white-space:nowrap}

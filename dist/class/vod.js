@@ -667,7 +667,7 @@
   /* DOOGO CLASS 전용 강사 이름 · 사진: 두잉고 강사 계정(iid)은 그대로 두고 스토어에서만 다른 이름 · 사진으로 보여요.
    * choi — 두잉고에서는 ‘유나’, DOOGO CLASS(아직 정식 계약 전 · 테스트 클래스)에서는 ‘유나’(AI로 만든 가상 인물 사진).
    * 스토어에서는 두잉고 쪽 이름 · 사진 · SNS · 경력 · 두잉고 페이지 링크를 쓰지 않아요 */
-  const STORE_AS = { choi: { name: "유나", from: "초이", slug: "yuna", photo: "assets/vod/yuna-profile-v3.webp", field: "AI 굿즈 크리에이터" } };
+  const STORE_AS = { choi: { name: "유나", from: "초이", slug: "yuna", photo: "assets/vod/yuna-profile-v4.webp", field: "AI 굿즈 크리에이터" } };
   const storeAs = (iid) => (iid && Object.prototype.hasOwnProperty.call(STORE_AS, iid) ? STORE_AS[iid] : null);
   /** 스토어에서 쓰는 강사 브랜드 정보 (STORE_AS 강사는 두잉고 정보 대신 빈 값 + 스토어 분야) */
   const insBrand = (iid) => { const a = storeAs(iid); if (a) return { instructor: a.name, field: a.field, photo: a.photo }; return ((DB.content && iid ? DB.content(iid) : null) || {}).brand || {}; };

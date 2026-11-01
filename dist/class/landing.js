@@ -179,6 +179,8 @@
   const whenParts = (v) => { const k = kd(v); return !k ? null : { day: (k.mo + 1) + "월 " + k.dt + "일 (" + DOWK[k.dw] + ")", time: (k.h < 12 ? "오전 " : "오후 ") + pad((k.h % 12) || 12) + "시" + (k.mi ? " " + pad(k.mi) + "분" : "") }; };
   const shortWhen = (v) => { const w = whenParts(v); return w ? w.day + " " + w.time : ""; };
   const longWhen = (v) => { const k = kd(v); return !k ? "" : k.y + "년 " + (k.mo + 1) + "월 " + k.dt + "일 " + DOWL[k.dw] + " " + ampm(k) + " " + pad(k.mi) + "분"; };
+  // 날짜 · 시간을 따로 묶어서, 좁은 화면에서는 "날짜 / 시간" 으로만 줄이 바뀌게
+  const longParts = (v) => { const k = kd(v); return !k ? [] : [k.y + "년 " + (k.mo + 1) + "월 " + k.dt + "일 " + DOWL[k.dw], ampm(k) + " " + pad(k.mi) + "분"]; };
   const lockWhen = (v) => { const k = kd(v); return !k ? "공개일 확인 필요" : k.y + "-" + pad(k.mo + 1) + "-" + pad(k.dt) + " " + (k.h < 12 ? "오전" : "오후") + " " + ((k.h % 12) || 12) + ":" + pad(k.mi); };
   const dayLabel = (v, now) => { const n = Math.max(0, at(v) - now); return n <= 0 || Math.floor(n / 864e5) <= 0 ? "D-DAY" : "D-" + Math.floor(n / 864e5); };
   const leftLabel = (v, now) => { const n = Math.max(0, at(v) - now); return n <= 0 ? "공개됨" : "공개까지 " + Math.floor(n / 864e5) + "일 " + Math.floor(n % 864e5 / 36e5) + "시간 남음"; };
@@ -286,7 +288,7 @@
     return '<section class="upcoming-course" aria-labelledby="upcoming-course-title">' + plat + '<div class="upcoming-course-heading"><span>' + esc(L.kicker) + '</span><h2 id="upcoming-course-title">' + esc(L.title) + "</h2>" + (L.desc ? "<p>" + esc(L.desc) + "</p>" : "") + "</div>" +
       '<article class="upcoming-course-card"><div class="upcoming-course-image">' + (L.image ? '<img src="' + esc(L.image) + '" alt="' + esc(title.replace(/\n/g, " ")) + ' 대표 이미지">' : '<div class="fc-poster-auto"><b>' + esc(shortWhen(F.liveAt)) + " 무료강의</b><strong>" + esc(title).replace(/\n/g, "<br>") + "</strong><small>강사 " + esc(F.hero.instructor) + "</small></div>") + (L.tag ? "<span>" + esc(L.tag) + "</span>" : "") + "</div>" +
         '<div class="upcoming-course-content">' + (L.platform || L.platformLogo ? '<div class="upcoming-platform"><span class="bk-live-chip"><i aria-hidden="true"></i>LIVE 진행</span>' + (L.platform ? "<strong>" + esc(L.platform) + (L.platformLogo ? "에서 진행" : "") + "</strong>" : "") + "</div>" : "") +
-          '<span class="upcoming-date">' + SV(IC.cal, 17) + esc(longWhen(F.liveAt)) + "</span>" +
+          '<span class="upcoming-date">' + SV(IC.cal, 17) + '<span class="ud-t">' + longParts(F.liveAt).map((x) => "<span>" + esc(x) + "</span>").join(" ") + "</span></span>" +
           '<p class="upcoming-instructor">강사 <strong>' + esc(F.hero.instructor) + "</strong></p><h3>" + title.split("\n").map((x) => "<span>" + esc(x) + "<br></span>").join("") + "</h3>" +
           (L.summary ? '<p class="upcoming-description">' + esc(L.summary) + "</p>" : "") + ((L.points || []).length ? "<ul>" + L.points.map((x) => "<li>" + SV(IC.check, 17) + esc(x) + "</li>").join("") + "</ul>" : "") +
           (freeEnded(F) ? '<span class="upcoming-course-cta is-off" aria-disabled="true">신청이 마감됐어요</span>' : '<a class="upcoming-course-cta" href="' + esc(L.url || "#") + '"' + (L.url ? ' target="_blank" rel="noreferrer"' : ' data-fc="nolink"') + ">" + esc(L.label) + SV(IC.ext, 18) + "</a>") + (L.note ? "<small>" + esc(L.note) + "</small>" : "") +
