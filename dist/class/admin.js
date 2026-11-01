@@ -5937,6 +5937,8 @@
   function STAFF() {
     const d = DB.data;
     if (!Array.isArray(d.staff)) {
+      // 정식 서버에서는 예시 운영자 계정(아이디 = 비밀번호)을 만들지 않아요 — 운영자는 서버에서 마스터와 같은 권한이라서 (시안에서만 예시)
+      if (DB.remote.on) return (d.staff = []);
       d.staff = [
         { id: "st-demo1", name: "김매니저", loginId: "manager", pw: "manager", role: "ops", perms: STAFF_ROLES.ops.perms.slice(), status: "active", createdAt: "2026-09-01", lastLoginAt: Date.parse("2026-10-24T09:12:00") },
         { id: "st-demo2", name: "박정산", loginId: "finance", pw: "finance", role: "finance", perms: STAFF_ROLES.finance.perms.slice(), status: "active", createdAt: "2026-09-15", lastLoginAt: Date.parse("2026-10-20T14:40:00") }
@@ -6251,6 +6253,8 @@
     const d = DB.data;
     if (!d.affSettings) d.affSettings = { rs: 20, payDay: 10 };
     if (!d.affPayouts) d.affPayouts = {};
+    // 정식 서버에서는 예시 파트너(아이디 = 비밀번호) · 예시 이용료 기록을 만들지 않아요 (시안에서만 예시)
+    if (!Array.isArray(d.affiliates) && DB.remote.on) d.affiliates = [];
     if (!Array.isArray(d.affiliates)) {
       d.affiliates = [{ id: "aff-demo", name: "하지원", loginId: "partner", pw: "partner", phone: "010-0000-2186", code: "HAJIWON", rs: null, status: "active", bank: "국민은행", account: "000000-00-000000", holder: "하지원", memo: "예시 파트너 계정", createdAt: "2026-09-01",
         instructors: [{ iid: "logic", rs: 25, since: "2026-09-10" }, { iid: "choi", rs: null, since: "2026-09-20" }] }];
@@ -6335,7 +6339,7 @@
   const maskMail = (v) => { const m = String(v || "").split("@"); return m.length === 2 ? m[0].slice(0, 2) + "***@" + m[1] : "-"; };
   /** 예시 입점 문의 (하지원 파트너 추천 링크로 들어온 3건) — 한 번만 */
   function seedAffInq() {
-    const d = DB.data; if (d.affInqSeeded) return; d.affInqSeeded = true;
+    const d = DB.data; if (d.affInqSeeded || DB.remote.on) return; d.affInqSeeded = true;
     const T = (s) => Date.parse(s);
     const ex = [
       { id: "inq-demo-1", name: "박서연", phone: "010-4821-7730", email: "seoyeon.park@example.com", where: "유튜브 (구독자 3.2만)", course: "왕초보 엑셀 · 업무 자동화 6주 과정. 직장인 대상, 한 기수 30명 정도 생각하고 있어요.", link: "https://youtube.com/@example", message: "하지원 님 소개로 문의드려요.", ref: "HAJIWON", status: "new", at: T("2026-10-25T14:20:00") },

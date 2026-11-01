@@ -974,6 +974,19 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   Object.keys(w.writes).forEach((k) => { if (w.writes[k] === null) delete RD[k]; else RD[k] = w.writes[k]; });
   w = OO.launchReset(rdGet, rdKeys);
   ok(!Object.keys(w.writes).length, "운영 시작: 다시 돌려도 더 지우지 않아요", w.result);
+  // 일회성 작업: 예시 운영자 계정(비밀번호가 아직 예시 그대로)만 중지
+  const SM = { staff: [
+    { id: "st-demo1", loginId: "manager", pw: "manager", status: "active" },
+    { id: "st-demo2", loginId: "finance", pw: "finance-new9", status: "active" },
+    { id: "st-kim", loginId: "kim", pw: "manager", status: "active" }
+  ], other: 1 };
+  w = OO.demoStaffStop((k) => (k === "meta" ? JSON.parse(JSON.stringify(SM)) : null));
+  const sm2 = w.writes.meta;
+  ok(sm2 && sm2.staff[0].status === "stopped" && sm2.staff[0].pw === "manager" && sm2.staff[1].status === "active" && sm2.staff[2].status === "active" && sm2.staff.length === 3 && sm2.other === 1, "예시 운영자: 비밀번호가 예시 그대로인 예시 계정만 중지 (비밀번호를 바꾼 계정 · 진짜 운영자는 그대로)", w.result);
+  w = OO.demoStaffStop((k) => (k === "meta" ? sm2 : null));
+  ok(!Object.keys(w.writes).length, "예시 운영자: 다시 돌려도 그대로", w.result);
+  w = OO.demoStaffStop((k) => (k === "meta" ? { other: 1 } : null));
+  ok(!Object.keys(w.writes).length, "예시 운영자: 운영자 목록이 없으면 건드리지 않아요", w.result);
   // 일회성 작업: 문대표 4기 11/21(토) 4주
   w = OO.moon4th((k) => (k === "cohorts:moon" ? [{ id: "c3", name: "3기", startDate: "2026-10-01" }, { id: "c4", name: "4기", startDate: "2026-11-05", recruiting: true, curriculumId: "cur-4w", classDow: 6, classTime: "12:00" }] : null));
   const c4 = w.writes["cohorts:moon"][1];

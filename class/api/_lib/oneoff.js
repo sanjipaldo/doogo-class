@@ -537,6 +537,22 @@ function mediaDoogomd(get) {
   return { writes: { meta: Object.assign({}, meta, { media: list.concat([acc]) }) }, result: { created: "doogomd", code } };
 }
 
+/* ---------- 예시 운영자 계정 중지 ----------
+ * 예전 마스터 화면은 운영자 목록이 비어 있으면 예시 계정(김매니저 manager · 박정산 finance, 비밀번호 = 아이디)을 만들어 서버에도 저장했어요.
+ * 운영자는 서버에서 마스터와 같은 권한이라, 비밀번호가 아직 예시 그대로인 예시 계정만 중지해요 (지우지 않아요 · 마스터 › 운영자 계정에서 다시 켤 수 있어요). */
+function demoStaffStop(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !Array.isArray(meta.staff)) return { writes: {}, result: { skipped: "운영자 목록 없음" } };
+  const DEF = { "st-demo1": "manager", "st-demo2": "finance" }, stopped = [];
+  const staff = meta.staff.map((x) => {
+    if (!x || !DEF[x.id] || x.status !== "active" || String(x.pw == null ? "" : x.pw).trim() !== DEF[x.id]) return x;
+    stopped.push(x.loginId || x.id);
+    return Object.assign({}, x, { status: "stopped" });
+  });
+  if (!stopped.length) return { writes: {}, result: { skipped: "중지할 예시 운영자 계정이 없어요" } };
+  return { writes: { meta: Object.assign({}, meta, { staff }) }, result: { stopped } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -558,7 +574,8 @@ const OPS = [
   { id: "2026-11-01-moon-free-1117", note: "문대표 무료강의 11/17(화) 19:30 · 대표 영상 · 오픈채팅(네이버) · 선물 전자책 공개일(1편 지금 · 2편 11/9 · 3편 11/17 저녁 7시) · 포스터 날짜 · 자주 묻는 질문", run: moonFree1117 },
   { id: "2026-11-01-moon-free-mission", note: "문대표 무료강의: 좌우 영상 3개 끄기(대표 영상만) · ‘문대표의 사전 미션’(새 구글폼 링크) · 참여자 전원 증정 혜택 01~08", run: moonFreeMission },
   { id: "2026-11-01-store-choi-to-yuna", note: "DOOGO CLASS 초이 → 유나 (스토어 상품 · 배너 · 회원 태그 · 가격표 · 주문 이름 / 두잉고 강사 초이는 그대로)", run: storeChoiToYuna },
+  { id: "2026-11-01-demo-staff-stop", note: "예시 운영자 계정(manager · finance — 비밀번호가 아직 예시 그대로일 때만) 중지", run: demoStaffStop },
   { id: "2026-11-01-media-doogomd", note: "온드미디어 첫 계정 doogomd (비밀번호는 Vercel 환경 변수 MEDIA_INIT_PW · 해시로만 저장)", run: mediaDoogomd, when: () => !!String(process.env.MEDIA_INIT_PW || "").trim() },
 ];
 
-module.exports = { OPS, mediaDoogomd, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, demoStaffStop, mediaDoogomd, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
