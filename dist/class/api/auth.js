@@ -1,6 +1,6 @@
 /* POST /api/auth
  *  { action: "student", iid, name, phone4 }        수강생 로그인
- *  { action: "admin", tab, id, pw, iid? }           강사 · 코치 · 마스터 로그인 (tab: instructor | coach | master)
+ *  { action: "admin", tab, id, pw, iid? }           강사 · 코치 · 마스터 로그인 (tab: instructor | coach | master — 마스터 탭에서 운영자 · 파트너 · 온드미디어 계정도 받아요)
  *        코치가 여러 강사님 강의를 맡고 있으면(같은 이름 + 뒷자리) 로그인 대신 { choose, courses } 를 돌려주고, iid 를 골라 다시 보내면 그 강의로 들어가요
  *  { action: "coachSwitch", iid? }                  로그인한 코치가 맡은 다른 강의로 옮기기 (iid 없으면 맡은 강의 목록)
  *  { action: "logout", which: "student"|"admin" }
@@ -10,27 +10,13 @@ const crypto = require("crypto");
 const { send, body, handler, ip } = require("./_lib/http");
 const store = require("./_lib/store");
 const auth = require("./_lib/auth");
+const MD = require("./_lib/media");
 
 const IP_LIMIT = 40, NAME_LIMIT = 8;
 const norm = auth.norm;
 const eq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 // 한글 자판 상태로 친 글자(예: 한글2@)를 같은 자리의 영문 자판 글자(gksrmf2@)로 바꾼다 — 마스터 아이디 · 비밀번호는 둘 다 받아 준다
-const KO_L = "rRseEfaqQtTdwWczxvg".split("");
-const KO_V = ["k", "o", "i", "O", "j", "p", "u", "P", "h", "hk", "ho", "hl", "y", "n", "nj", "np", "nl", "b", "m", "ml", "l"];
-const KO_T = ["", "r", "R", "rt", "s", "sw", "sg", "e", "f", "fr", "fa", "fq", "ft", "fx", "fv", "fg", "a", "q", "qt", "t", "T", "d", "w", "c", "z", "x", "v", "g"];
-const KO_J = "ㄱㄲㄳㄴㄵㄶㄷㄸㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅃㅄㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
-const KO_JK = ["r", "R", "rt", "s", "sw", "sg", "e", "E", "f", "fr", "fa", "fq", "ft", "fx", "fv", "fg", "a", "q", "Q", "qt", "t", "T", "d", "w", "W", "c", "z", "x", "v", "g",
-  "k", "o", "i", "O", "j", "p", "u", "P", "h", "hk", "ho", "hl", "y", "n", "nj", "np", "nl", "b", "m", "ml", "l"];
-function koToKeys(s) {
-  let out = "";
-  for (const ch of String(s)) {
-    const c = ch.charCodeAt(0);
-    if (c >= 0xac00 && c <= 0xd7a3) { const n = c - 0xac00; out += KO_L[Math.floor(n / 588)] + KO_V[Math.floor((n % 588) / 28)] + KO_T[n % 28]; continue; }
-    const j = KO_J.indexOf(ch);
-    out += j >= 0 ? KO_JK[j] : ch;
-  }
-  return out;
-}
+const koToKeys = auth.koToKeys;
 
 async function limited(req, nameKey) {
   return (await store.rlCheck(["ip:" + ip(req)], IP_LIMIT)) || (await store.rlCheck([nameKey], NAME_LIMIT));
@@ -66,7 +52,17 @@ async function touchCoach(iid, cid) {
   }
 }
 
-/** 운영자(마스터가 만든 직원 계정) · 파트너 계정: meta 의 staff · affiliates (아이디 + 비밀번호) */
+/** 온드미디어 최근 접속 시각 (실패해도 로그인은 그대로) */
+async function touchMedia(id) {
+  for (let i = 0; i < 3; i++) {
+    const row = await store.getDoc("meta");
+    const a = row && row.v && (row.v.media || []).find((x) => x && x.id === id);
+    if (!a) return;
+    a.lastLoginAt = Date.now();
+    if ((await store.writeDoc("meta", row.v, row.ver)) !== false) return;
+  }
+}
+/** 운영자(마스터가 만든 직원 계정) · 파트너 계정 · 온드미디어 계정: meta 의 staff · affiliates · media (아이디 + 비밀번호) */
 async function accountLogin(req, res, tab, id, pw) {
   const nameKey = "acc:" + koToKeys(id).toLowerCase();
   if (await limited(req, nameKey)) return send(res, 429, { error: "locked" });
@@ -87,6 +83,15 @@ async function accountLogin(req, res, tab, id, pw) {
     await store.rlClear([nameKey]);
     auth.setCookie(req, res, "admin", auth.sign({ r: "partner", pid: pt.id }));
     return send(res, 200, { ok: true, role: "partner", pid: pt.id, name: pt.name || "" });
+  }
+  // 온드미디어(YouTube 채널 팀) 계정: 비밀번호는 해시로만 저장돼 있어요 (마스터가 만든 계정 · 아이디는 대소문자 무관)
+  const md = (meta.media || []).find((x) => x && n(x.loginId) === want && MD.checkLogin(x, pw));
+  if (md) {
+    if (md.status !== "active") return send(res, 200, { error: "paused-media" });
+    await store.rlClear([nameKey]);
+    await touchMedia(md.id).catch(() => {});
+    auth.setCookie(req, res, "admin", auth.sign({ r: "media", md: md.id }));
+    return send(res, 200, { ok: true, role: "media", mdid: md.id, name: md.name || md.channel || "" });
   }
   await fail(req, nameKey);
   return send(res, 200, { error: "notfound" });

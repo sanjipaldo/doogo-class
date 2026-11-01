@@ -3,7 +3,7 @@
  *  meta 의 vod           공개 정보: 클래스 · 카테고리 · 배너 · 쿠폰 · 설정 (마스터만 고침)
  *                        유료 강의 영상 · 수업 자료 · 전자책 파일 · LIVE 입장 링크는 산 회원(과 운영자)에게만 보내요
  *  vm:<회원>             회원 (+ 받은 쿠폰 · 찜 · 진도 · 학습 기록) — 본인 · 마스터
- *  vo:<주문번호>         주문 — 본인 · 마스터 · 그 클래스 강사(이름 가림). 만들기 · 결제 · 환불은 /api/vod-pay 로만
+ *  vo:<주문번호>         주문 — 본인 · 마스터 · 그 클래스 강사(이름 가림) · 그 주문을 데려온 온드미디어(판매 · RS 칸만). 만들기 · 결제 · 환불은 /api/vod-pay 로만
  *  vr:<id> · vpl:<id>    수강 후기 · 다짐 한마디 — 누구나 보기, 본인만 쓰기 (후기 포인트는 서버가 줘요)
  *  vq:<회원>:<id>        1:1 문의 — 본인 · 마스터 (답변은 마스터만)
  *  vpo:<강사>            VOD 정산 내역 — 그 강사 · 마스터 (강사는 세금계산서 알림 칸만)
@@ -101,6 +101,8 @@ function view(K, v, ids) {
       if (v == null) return master ? null : undefined;
       if (master || (me && v.mid === me)) return v;
       if (ids.admin && ids.admin.iid && v.iid === ids.admin.iid) return maskOrder(v);
+      // 온드미디어: 자기 홍보 링크로 들어온 주문만 (회원 · 결제 정보 없이 판매 · RS 계산 칸만)
+      if (ids.media && v.rs && v.rs.mid === ids.media.id) return require("./media").orderView(v);
       return undefined;
     case "vr": case "vpl": case "vstat":
       return v == null ? null : v;
@@ -124,6 +126,7 @@ function prefixes(ids) {
     p.push("vo:%");
     if (ids.admin.role === "instructor") p.push("vpo:" + ids.admin.iid);
   }
+  if (ids.media) p.push("vo:%");
   return p;
 }
 

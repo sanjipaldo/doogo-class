@@ -11,9 +11,11 @@
  *  bill:<강사>:<id>     기수 이용료 신청 · 정산 (마스터 + 그 강사만. 강사는 '다음 기수 열어 주세요' 신청만,
  *                       입금 · 세금계산서 · 기수 열기는 마스터만)
  *  vm: · vo: · vr: · vpl: · vq: · vpo: · vstat   두고클래스(VOD) 회원 · 주문 · 후기 · 문의 · 정산 → vodaccess.js
+ *  meta.media · meta.mdPayouts                    온드미디어(YouTube 채널 팀) RS 파트너 계정 · 지급 기록 → media.js
  */
 "use strict";
 const VA = require("./vodaccess");
+const MD = require("./media");
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const mask = (n) => { n = String(n || ""); return n ? n.slice(0, 1) + "OO" : "익명"; };
@@ -32,8 +34,8 @@ function parseKey(k) {
 }
 
 const isMaster = (ids) => !!(ids.admin && ids.admin.role === "master");
-/* meta 에서 마스터만 보는 칸 (운영자 · 파트너 계정에는 비밀번호가 들어 있어요) */
-const MASTER_META = ["staff", "affiliates", "affPayouts", "adminLog"];
+/* meta 에서 마스터만 보는 칸 (운영자 · 파트너 계정에는 비밀번호가 들어 있어요 · 온드미디어 계정 · RS 지급 기록) */
+const MASTER_META = ["staff", "affiliates", "affPayouts", "adminLog", "media", "mdPayouts"];
 const adminOf = (ids, iid) => !!(ids.admin && (ids.admin.role === "master" || ids.admin.iid === iid));
 const instructorOf = (ids, iid) => !!(ids.admin && (ids.admin.role === "master" || (ids.admin.role === "instructor" && ids.admin.iid === iid)));
 const coachOf = (ids, iid) => !!(ids.admin && ids.admin.role === "coach" && ids.admin.iid === iid);
@@ -74,7 +76,8 @@ function view(k, v, ids) {
   const K = parseKey(k);
   if (!K) return undefined;
   if (K.vod) return VA.view(K, v, ids);
-  if (isMaster(ids)) return v;
+  // 마스터도 온드미디어 비밀번호 해시는 받지 않아요 (‘설정됨’만)
+  if (isMaster(ids)) return K.type === "meta" ? MD.masterMeta(v) : v;
   // 강사 입점 문의: 마스터만 · 파트너는 자기가 추천한 문의만 (운영 메모 · 처리 기록은 빼고)
   if (K.type === "inq") { if (!(ids.partner && v && v.affId === ids.partner.pid)) return undefined; const o = clone(v); delete o.memo; delete o.log; return o; }
   // 이용료 신청은 그 강사 본인만 (마스터 메모는 빼고) · 파트너는 연결된 강사 것만 수익 계산용으로 (연락처는 빼고)
@@ -95,6 +98,8 @@ function view(k, v, ids) {
         Object.keys(v.affPayouts || {}).forEach((x) => { if (x.indexOf(ids.partner.pid + ":") === 0) po[x] = clone(v.affPayouts[x]); });
         o.affPayouts = po;
       } else { delete o.affSettings; delete o.affNotices; }
+      // 온드미디어: 자기 계정(비밀번호 · 운영 메모 빼고) · 자기 RS 지급 기록만
+      if (ids.media) MD.selfMeta(v, o, ids.media.id);
       if (ids.admin && ids.admin.iid && o.contracts) { const c = o.contracts[ids.admin.iid]; o.contracts = c ? { [ids.admin.iid]: c } : {}; }
       if (!ids.admin) {
         // 두고클래스 무통장 계좌를 비워 두면 기수 입금 계좌로 받아요 (마스터 설정 화면 안내 그대로) — 결제 화면에 보일 칸만 옮겨 줘요
@@ -145,12 +150,15 @@ function writer(k, ids, creating) {
   if (!K) return null;
   if (K.vod) return VA.writer(K, ids, creating);
   const same = (o, n) => n;
-  if (isMaster(ids)) return { fix: same };
+  // 마스터가 meta 를 저장할 때 온드미디어 새 비밀번호는 해시로 바꾸고, 화면이 모르는 해시는 서버 값을 지켜요
+  if (isMaster(ids)) return { fix: K.type === "meta" ? (o, n) => MD.fixMaster(o, n) : same };
   switch (K.type) {
     case "meta":
       // 강사: 자기 VOD 클래스 커리큘럼 · 자기 제출 서류만 (나머지는 서버 값 그대로)
       if (!creating && ids.admin && ids.admin.role === "instructor") return { fix: (o, n) => VA.fixInstructorMeta(o, n, ids.admin.iid) };
       if (!creating && ids.partner) return { fix: (o, n) => fixPartnerMeta(o, n, ids.partner.pid) };
+      // 온드미디어: 자기 연락처 · 정산 계좌 · 비밀번호만 (나머지는 서버 값 그대로)
+      if (!creating && ids.media) return { fix: (o, n) => MD.fixSelf(o, n, ids.media.id) };
       return null;
     case "inq":
       // 파트너: 강사 추천(새 문의) · 자기 추천 문의에 대화 남기기만

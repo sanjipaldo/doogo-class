@@ -54,7 +54,8 @@ async function restoreBackup(id) {
 /** 배포할 때: 아직 안 한 일회성 작업(oneoff.js)을 한 번씩 실행 */
 async function runPendingOps(log) {
   const done = await store.opsDone();
-  const pending = oneoff.OPS.filter((op) => !done.has(op.id));
+  // when(): 아직 할 수 없는 작업(예: 환경 변수를 기다리는 작업)은 대기 목록에서 빼요 — 기록도 안 해서 조건이 맞는 배포 때 돌아요
+  const pending = oneoff.OPS.filter((op) => !done.has(op.id) && (!op.when || op.when()));
   if (!pending.length) return [];
   const rows = (await store.exec("SELECT k, v, ver FROM docs")).rows;
   const cur = {}, ver = {};
@@ -63,7 +64,7 @@ async function runPendingOps(log) {
   const keys = (prefix) => Object.keys(cur).filter((k) => k.indexOf(prefix) === 0).sort();
   const ran = [];
   for (const op of pending) {
-    const { writes, result } = op.run(get, keys);
+    const { writes, result, retry } = op.run(get, keys);
     let ok = true;
     for (const k of Object.keys(writes)) {
       let v = writes[k];
@@ -79,7 +80,8 @@ async function runPendingOps(log) {
       cur[k] = v; ver[k] = nv;
     }
     // 겹친 변경이 있으면 기록하지 않아 다음 배포 때 다시 시도한다 (작업은 여러 번 돌아도 결과가 같게 짜여 있음)
-    if (ok) await store.opMark(op.id, op.note, result);
+    // retry: 아직 할 수 없는 작업(예: 환경 변수를 기다리는 작업)은 기록하지 않고 다음 배포 때 다시
+    if (ok && !retry) await store.opMark(op.id, op.note, result);
     ran.push({ id: op.id, note: op.note, ok, result, writes: Object.keys(writes).length });
     if (log) log(op, ok, result, Object.keys(writes).length);
   }

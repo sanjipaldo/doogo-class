@@ -1,7 +1,9 @@
 /* 일회성 데이터 작업 — 사용자가 직접 요청한 데이터 수정만 여기에 둔다.
  * 운영 배포 때 아직 안 한 작업만 한 번 실행하고 oplog 에 기록한다 (같은 작업은 다시 돌지 않음).
  * 실행 전에 배포 백업이 먼저 만들어지므로, 잘못되면 마스터 → 데이터 관리에서 그 백업으로 되돌릴 수 있다.
- * 각 작업은 run(get, keys) → { writes: { 문서키: 새 값 | null(삭제) }, result } 를 돌려준다.
+ * 각 작업은 run(get, keys) → { writes: { 문서키: 새 값 | null(삭제) }, result, retry? } 를 돌려준다.
+ * retry: true 면 기록하지 않아 다음 배포 때 다시 돈다 (예: 아직 넣지 않은 환경 변수가 필요한 작업).
+ * when(): false 면 아직 대기 목록에 넣지 않는다 (환경 변수가 생긴 배포 때 처음 돈다).
  * 이미 사람이 고친 내용은 건드리지 않도록 조건을 좁게 잡는다. */
 "use strict";
 
@@ -519,6 +521,22 @@ function storeChoiToYuna(get, keys) {
 }
 
 /* 위에서부터 차례로 (앞 작업 결과를 뒤 작업이 본다) */
+/* ---------- 온드미디어 첫 계정 doogomd ----------
+ * 비밀번호는 공개 저장소라 코드에 두지 않고, Vercel 환경 변수 MEDIA_INIT_PW 에서 읽어 해시로만 저장해요.
+ * 환경 변수가 없으면 기록하지 않고 건너뛰어 다음 배포 때 다시 시도해요(retry). 이미 doogomd 가 있으면 건드리지 않아요. */
+function mediaDoogomd(get) {
+  const meta = get("meta");
+  if (!isObj(meta)) return { writes: {}, result: { skipped: "meta 없음" }, retry: true };
+  const A = require("./auth"), MD = require("./media"), list = Array.isArray(meta.media) ? meta.media : [];
+  if (list.some((x) => x && A.koToKeys(String(x.loginId || "").replace(/\s+/g, "")).toLowerCase() === "doogomd")) return { writes: {}, result: { skipped: "doogomd 계정이 이미 있어요" } };
+  const pw = String(process.env.MEDIA_INIT_PW || "").trim();
+  if (!MD.pwOk(pw)) return { writes: {}, result: { skipped: "MEDIA_INIT_PW 환경 변수가 없어 다음 배포 때 다시 시도해요" }, retry: true };
+  const used = new Set(list.map((x) => x && MD.codeOf(x.code)));
+  const code = used.has("dgmd26") ? "dgmd" + Date.now().toString(36).slice(-4) : "dgmd26", at = Date.now();
+  const acc = { id: "md-doogomd", loginId: "doogomd", pwHash: MD.hashOf(pw), pwAt: at, code, name: "두고미디어", channel: "두고미디어 YouTube", url: "", subs: "", rate: "", email: "", phone: "", type: "biz", bizName: "주식회사 두고미디어", bizNo: "", bank: "", account: "", holder: "", memo: "첫 온드미디어 계정 (일회성 작업으로 만들었어요 · 구독자 수 · 정산 계좌를 채워 주세요)", status: "active", createdAt: at };
+  return { writes: { meta: Object.assign({}, meta, { media: list.concat([acc]) }) }, result: { created: "doogomd", code } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -540,6 +558,7 @@ const OPS = [
   { id: "2026-11-01-moon-free-1117", note: "문대표 무료강의 11/17(화) 19:30 · 대표 영상 · 오픈채팅(네이버) · 선물 전자책 공개일(1편 지금 · 2편 11/9 · 3편 11/17 저녁 7시) · 포스터 날짜 · 자주 묻는 질문", run: moonFree1117 },
   { id: "2026-11-01-moon-free-mission", note: "문대표 무료강의: 좌우 영상 3개 끄기(대표 영상만) · ‘문대표의 사전 미션’(새 구글폼 링크) · 참여자 전원 증정 혜택 01~08", run: moonFreeMission },
   { id: "2026-11-01-store-choi-to-yuna", note: "DOOGO CLASS 초이 → 유나 (스토어 상품 · 배너 · 회원 태그 · 가격표 · 주문 이름 / 두잉고 강사 초이는 그대로)", run: storeChoiToYuna },
+  { id: "2026-11-01-media-doogomd", note: "온드미디어 첫 계정 doogomd (비밀번호는 Vercel 환경 변수 MEDIA_INIT_PW · 해시로만 저장)", run: mediaDoogomd, when: () => !!String(process.env.MEDIA_INIT_PW || "").trim() },
 ];
 
-module.exports = { OPS, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, mediaDoogomd, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

@@ -41,7 +41,7 @@
     const ad = DB.session.admin();
     if (ad) {
       const a = me.admin;
-      const ok = a && a.role === ad.role && (a.role === "master" ? (a.staffId || null) === (ad.staffId || null) : a.role === "partner" ? a.pid === ad.partnerId : a.iid === ad.instructorId && (a.role !== "coach" || a.cid === ad.coachId));
+      const ok = a && a.role === ad.role && (a.role === "master" ? (a.staffId || null) === (ad.staffId || null) : a.role === "partner" ? a.pid === ad.partnerId : a.role === "media" ? a.mdid === ad.mediaId : a.iid === ad.instructorId && (a.role !== "coach" || a.cid === ad.coachId));
       if (!ok) DB.session.setAdmin(null);
     }
   }

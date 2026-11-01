@@ -808,6 +808,9 @@
     try {
       if (by && /^[\w-]{1,40}$/.test(by)) localStorage.setItem(ATTR, JSON.stringify({ ch: "ins", iid: by, at: now() }));
       else if (/^(ad|ads|paid|cpc|cpm|display|paid_social)$/.test(um)) localStorage.setItem(ATTR, JSON.stringify({ ch: "ad", at: now() }));
+      // 온드미디어 홍보 링크: /vod/p/<상품>?rs=<코드> — 주소의 rs 는 그대로 둬요(유튜브 앱 안 브라우저에서 ‘다른 브라우저로 열기’를 해도 이어지게)
+      const rc = rsCode(qs.get("rs")), pm = /^#\/vod\/p\/([\w-]{1,40})/.exec(ROUTE.hash || "");
+      if (rc.length >= 3 && pm) rsKeep(pm[1], rc);
       const us = String(qs.get("utm_source") || "").toLowerCase().replace(/[^\w.-]/g, "").slice(0, 30);
       if ((us || by) && !localStorage.getItem(SRC_KEY)) localStorage.setItem(SRC_KEY, JSON.stringify({ s: us || "ins", c: String(qs.get("utm_campaign") || "").slice(0, 40), m: um.slice(0, 20), by: by && /^[\w-]{1,40}$/.test(by) ? by : "", at: now() }));
     } catch (e) {}
@@ -864,7 +867,45 @@
     if (!a.holder) return { err: "예금주 이름을 적어 주세요." };
     return { acct: a }; };
   const taxMode = () => (TAX_MODES[STG().taxMode] ? STG().taxMode : "gross");
-  const insAmt = (o) => Math.floor((taxMode() === "supply" ? supplyOf(o) : baseOf(o)) * shareVal(o) / 100 / 10) * 10;
+  /* ---------- 온드미디어(YouTube 채널 팀) RS ----------
+   * 홍보 링크 /vod/p/<상품>?rs=<코드> 로 들어오면 이 브라우저에 { 코드, 누른 때 } 를 상품마다 기억해요 (같은 상품은 마지막 링크가 이겨요).
+   * 그 상품을 기간(기본 30일) 안에 사면 결제할 때 서버로 보내고, 서버가 코드 · 기간 · 상품을 다시 확인해 주문에 rs 를 남겨요 (api/_lib/media.js).
+   * RS = (판매가 − 환불) × (1 − PG 공제 %) × RS % — 강사 정산은 판매가에서 RS 를 먼저 뺀 금액 × 강사 비율이에요 (회사소개서 정산 구조).
+   * RS % 는 주문에 남은 값(그때 비율) 그대로라, 나중에 구독자 수 · 비율을 바꿔도 지난 주문은 그대로예요. 종이책 · 코칭권 · TEA TIME · 연장권은 RS 가 없어요. */
+  const RS_KEY = "dc:rs", RS_DEF = { lo: 10, hi: 20, subs: 100000, days: 30, pg: 5 };
+  const rsNum = (v, lo, hi, d) => { const n = Number(v); return v !== null && v !== undefined && v !== "" && isFinite(n) && n >= lo && n <= hi ? n : d; };
+  function rsRules() { const r = (STG() && STG().rs) || {}; return { lo: rsNum(r.lo, 0, 100, RS_DEF.lo), hi: rsNum(r.hi, 0, 100, RS_DEF.hi), subs: rsNum(r.subs, 0, 1e10, RS_DEF.subs), days: rsNum(r.days, 1, 365, RS_DEF.days), pg: rsNum(r.pg, 0, 30, RS_DEF.pg) }; }
+  /** 계정의 RS %: 마스터가 직접 정했으면 그 값, 아니면 구독자 수가 기준 이상이면 높은 %(20), 미만이면 낮은 %(10) */
+  const rsRateOf = (acc, R) => { R = R || rsRules(); const own = rsNum(acc && acc.rate, 0, 100, null); return own != null ? own : (Number(acc && acc.subs) || 0) >= R.subs ? R.hi : R.lo; };
+  const rsCode = (v) => String(v == null ? "" : v).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16);
+  const rsProduct = (p) => !!p && !isBook(p);
+  /** 이 주문의 온드미디어 RS (환불 전 전체 · 부가세 포함 · 10원 아래 버림) — 부분 환불은 화면이 남은 비율만큼 줄여요 */
+  const rsOf = (o) => { if (!o || !o.rs || kindOf(o) !== "course") return 0; const pg = Number(o.rs.pg) || 0, r = Number(o.rs.rate) || 0; return Math.max(0, Math.floor(baseOf(o) * (100 - pg) * r / 100000 + 1e-6) * 10); };
+  /** 강사 정산액 = (기준액 − 온드미디어 RS) × 강사 비율 (공급가액 방식이면 RS 도 ÷ 1.1) */
+  const insAmt = (o) => { const sup = taxMode() === "supply", b = sup ? supplyOf(o) : baseOf(o), r = rsOf(o), rb = sup ? Math.round(r / 1.1) : r; return Math.floor(Math.max(0, b - rb) * shareVal(o) / 100 / 10) * 10; };
+  function rsMap() { try { const m = JSON.parse(localStorage.getItem(RS_KEY) || "{}"); return m && typeof m === "object" && !Array.isArray(m) ? m : {}; } catch (e) { return {}; } }
+  function rsKeep(pid, c) {
+    try {
+      const m = rsMap(), t = now(); m[pid] = { c, at: t };
+      // 1년 지난 기록은 지우고 40개까지만
+      Object.keys(m).forEach((k) => { if (!m[k] || !(t - m[k].at < 365 * 864e5)) delete m[k]; });
+      Object.keys(m).sort((a, b) => m[b].at - m[a].at).slice(40).forEach((k) => delete m[k]);
+      localStorage.setItem(RS_KEY, JSON.stringify(m));
+    } catch (e) {}
+  }
+  /** 이 상품을 지금 사면 서버로 보낼 링크 기록 (기간 안일 때만) */
+  function rsFor(pid) { const x = pid ? rsMap()[pid] : null; return x && x.c && now() - x.at >= 0 && now() - x.at < rsRules().days * 864e5 ? { c: rsCode(x.c), p: pid, at: x.at } : null; }
+  /** 시안(서버 없음)에서 주문을 만들 때: 서버와 같은 확인으로 rs */
+  function rsLocal(p, k, sale) {
+    const x = rsFor(p && p.id);
+    if (!x || k !== "course" || !(sale > 0) || !rsProduct(p)) return null;
+    const acc = ((window.DB && DB.data && DB.data.media) || []).find((a) => a && a.status === "active" && rsCode(a.code) === x.c);
+    if (!acc) return null;
+    const R = rsRules();
+    return { mid: acc.id, code: rsCode(acc.code), ch: String(acc.channel || acc.name || "").slice(0, 60), rate: rsRateOf(acc, R), pg: R.pg, at: x.at };
+  }
+  /** 홍보 링크 주소 — 정식 주소에서는 언제나 https://www.doogoclass.com 으로 (다른 주소로 들어와 복사해도 같은 링크) */
+  const rsUrl = (pid, code) => { const h = "#/vod/p/" + encodeURIComponent(pid) + "?rs=" + encodeURIComponent(rsCode(code)); return /(^|\.)doogoclass\.com$|^doogo-class\.vercel\.app$/.test(location.hostname) ? "https://www.doogoclass.com" + h.slice(1) : ROUTE.abs(h); };
   function optTxt(o) {
     const k = kindOf(o);
     if (k === "coach") return "1:1 코칭권 " + ((o.coach || {}).n || 0) + "회 · " + ((o.coach || {}).days || 0) + "일";
@@ -1187,7 +1228,7 @@
       '<i class="vd-art-go" aria-hidden="true">' + icon("arrowUpRight", "xs") + "</i></span>";
   }
 
-  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
+  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, RS_DEF, rsRules, rsRateOf, rsCode, rsProduct, rsOf, rsUrl, rsFor, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
 
   /* ================= 두잉고 강의 묶음 (전체 클래스) ================= */
   // 무료강의 = 무료 VOD + 두잉고 강사 무료 LIVE(#/free) · 프리미엄강의 = LIVE · 오프라인 상품 + 두잉고 기수 강의(#/p) · VOD강의 = 유료 VOD · 전자책
@@ -3516,6 +3557,7 @@
     if (cr && cr.v) o.cashRcpt = cr.v;
     if (status === "pending") { const bk = bankInfo(); Object.assign(o, { depositor: (f.depositor && f.depositor.value.replace(/\s+/g, "")) || m.name || "", dueAt: at + (Number(V().settings.payDays) || 3) * 864e5, bankTo: { bank: bk.bank, account: bk.account, holder: bk.holder } }); }
     if (k === "course" && r.plan) o.days = r.plan.d;
+    if (k === "course") { const rs = rsLocal(p, k, r.pr); if (rs) o.rs = rs; }
     if (k === "extend") o.days = 365;
     if (k === "coach") o.coach = { n: r.c.n, days: r.c.days, price: r.c.price, used: 0, qs: [] };
     if (k === "tea") { const tt = teaOf(p); o.tea = { min: tt.min, d1: f.d1.value, d2: f.d2.value, slot: f.slot.value, mode: f.mode.value, topic: f.topic.value.trim().slice(0, 500), st: "req" }; }
@@ -3537,7 +3579,7 @@
     if (card && !payServer()) { err.textContent = "카드 · 간편결제는 PG 심사가 끝나면 열려요. 지금은 무통장 입금으로 결제해 주세요."; return; }
     const buyer = { name: bn || m.name, phone: bp || m.phone || "" }, depositor = method === "bank" && f.depositor ? f.depositor.value.replace(/\s+/g, "") : "";
     if (method === "bank" && r.tot > 0 && !depositor) { err.textContent = "입금자명을 적어 주세요. 통장에 찍히는 이름이에요."; if (f.depositor) f.depositor.focus(); return; }
-    const req = { pid: p.id, depositor, kind: k, plan: r.plan ? r.plan.d : null, coach: !!r.coach, mcid: r.y && r.cp ? r.y.x.id : "", points: r.pt || 0, method, ch: chOf(p), buyer, qty: r.qty, ship: ship || null, cashRcpt: cash || null, tea: k === "tea" ? { d1: f.d1.value, d2: f.d2.value, slot: f.slot.value, mode: f.mode.value, topic: f.topic.value.trim().slice(0, 500) } : null, expect: r.tot };
+    const req = { pid: p.id, depositor, kind: k, plan: r.plan ? r.plan.d : null, coach: !!r.coach, mcid: r.y && r.cp ? r.y.x.id : "", points: r.pt || 0, method, ch: chOf(p), rs: k === "course" ? rsFor(p.id) : null, buyer, qty: r.qty, ship: ship || null, cashRcpt: cash || null, tea: k === "tea" ? { d1: f.d1.value, d2: f.d2.value, slot: f.slot.value, mode: f.mode.value, topic: f.topic.value.trim().slice(0, 500) } : null, expect: r.tot };
     if (btn) btn.disabled = true; err.textContent = "";
     const run = card ? pgOpen({ title: p.title + (r.plan ? " · " + r.plan.label + " 수강권" : "") + (ship && r.qty > 1 ? " " + r.qty + "권" : ""), amount: r.tot, method, buyer: Object.assign({ email: m.email || "" }, buyer), req })
       : payApi("prepare", req).then((j) => { if (!j || !j.ok) throw new Error((j && j.message) || "주문을 만들지 못했어요."); return { server: j }; });

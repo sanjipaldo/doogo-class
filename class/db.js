@@ -1689,8 +1689,8 @@
     }
     if (a && a.role === "master") return true;
     // 강사는 meta 를 보내도 서버가 자기 VOD 커리큘럼 · 자기 제출 서류만 받아요 (나머지는 되돌림)
-    // 파트너도 meta 를 보내면 서버가 자기 계정 칸(연락처 · 계좌 · 비밀번호)만 받아요
-    if (k === "meta") return !!(a && (a.role === "instructor" || a.role === "partner"));
+    // 파트너 · 온드미디어도 meta 를 보내면 서버가 자기 계정 칸(연락처 · 계좌 · 비밀번호)만 받아요
+    if (k === "meta") return !!(a && (a.role === "instructor" || a.role === "partner" || a.role === "media"));
     if (p[0] === "inq") return !!(a && a.role === "partner");
     // 이용료 신청은 강사 본인만 (코치 · 수강생은 못 봄)
     if (p[0] === "bill") return !!(a && a.role === "instructor" && a.iid === p[1]);
@@ -1728,7 +1728,9 @@
       sent[k] = js; prev[k] = R.snap[k];
       const base = R.ver[k] || 0;
       if (js === undefined) changes.push({ k, base, del: true });
-      else if (R.snap[k] === undefined) changes.push({ k, base, put: cur[k] });
+      // 파트너 · 온드미디어는 meta 를 통째로 보내요 — 이 사람 화면의 계정 목록은 자기 계정 하나뿐이라 칸 번호(목록 순서)가 서버와 달라서,
+      // 바뀐 칸만 보내면 서버에서 다른 계정 자리에 얹혀요. 서버는 자기 계정의 허락된 칸만 골라 받아요 (access.js fixPartnerMeta · media.js fixSelf)
+      else if (R.snap[k] === undefined || (k === "meta" && R.me.admin && (R.me.admin.role === "partner" || R.me.admin.role === "media"))) changes.push({ k, base, put: cur[k] });
       else { const ops = []; diff(JSON.parse(R.snap[k]), cur[k], [], ops); changes.push({ k, base, ops }); }
     });
     if (!changes.length) return;

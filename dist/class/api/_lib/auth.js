@@ -1,6 +1,6 @@
 /* 로그인 — 서명한 토큰을 HttpOnly 쿠키에 담는다.
  *  dc_s: 수강생 { r:"student", sid, iid }
- *  dc_a: 강사센터 { r:"instructor"|"coach"|"master", iid, cid }
+ *  dc_a: 강사센터 { r:"instructor"|"coach"|"master", iid, cid } · 파트너 { r:"partner", pid } · 온드미디어 { r:"media", md }
  * 요청마다 지금 데이터로 다시 확인한다 (중지된 강사·코치, 탈퇴한 수강생은 바로 막힘). */
 "use strict";
 const crypto = require("crypto");
@@ -39,17 +39,34 @@ function setCookie(req, res, which, value) {
 }
 
 const norm = (s) => String(s || "").replace(/\s+/g, "");
+// 한글 자판 상태로 친 글자(예: 한글2@)를 같은 자리의 영문 자판 글자(gksrmf2@)로 바꾼다 — 마스터 · 운영자 · 파트너 · 온드미디어 아이디 · 비밀번호는 둘 다 받아 준다
+const KO_L = "rRseEfaqQtTdwWczxvg".split("");
+const KO_V = ["k", "o", "i", "O", "j", "p", "u", "P", "h", "hk", "ho", "hl", "y", "n", "nj", "np", "nl", "b", "m", "ml", "l"];
+const KO_T = ["", "r", "R", "rt", "s", "sw", "sg", "e", "f", "fr", "fa", "fq", "ft", "fx", "fv", "fg", "a", "q", "qt", "t", "T", "d", "w", "c", "z", "x", "v", "g"];
+const KO_J = "ㄱㄲㄳㄴㄵㄶㄷㄸㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅃㅄㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
+const KO_JK = ["r", "R", "rt", "s", "sw", "sg", "e", "E", "f", "fr", "fa", "fq", "ft", "fx", "fv", "fg", "a", "q", "Q", "qt", "t", "T", "d", "w", "W", "c", "z", "x", "v", "g",
+  "k", "o", "i", "O", "j", "p", "u", "P", "h", "hk", "ho", "hl", "y", "n", "nj", "np", "nl", "b", "m", "ml", "l"];
+function koToKeys(s) {
+  let out = "";
+  for (const ch of String(s)) {
+    const c = ch.charCodeAt(0);
+    if (c >= 0xac00 && c <= 0xd7a3) { const n = c - 0xac00; out += KO_L[Math.floor(n / 588)] + KO_V[Math.floor((n % 588) / 28)] + KO_T[n % 28]; continue; }
+    const j = KO_J.indexOf(ch);
+    out += j >= 0 ? KO_JK[j] : ch;
+  }
+  return out;
+}
 
 /** 쿠키 → 지금 유효한 신원 { student, admin } (없으면 null) */
 async function identify(req) {
   const c = cookies(req);
   const ps = verify(c[COOKIE.student]), pa = verify(c[COOKIE.admin]), pv = verify(c.dc_v);
-  const ids = { student: null, admin: null, vod: null, partner: null };
+  const ids = { student: null, admin: null, vod: null, partner: null, media: null };
   const keys = [];
   if (ps && ps.r === "student") keys.push("ins:" + ps.iid, "stu:" + ps.iid + ":" + ps.sid);
   if (pa && (pa.r === "instructor" || pa.r === "coach")) keys.push("ins:" + pa.iid);
-  // 파트너 · 운영자 계정은 meta(affiliates · staff)에 있어요 — 멈춘 계정이면 바로 막혀요
-  if (pa && (pa.r === "partner" || (pa.r === "master" && pa.staffId))) keys.push("meta");
+  // 파트너 · 운영자 · 온드미디어 계정은 meta(affiliates · staff · media)에 있어요 — 멈춘 계정이면 바로 막혀요
+  if (pa && (pa.r === "partner" || pa.r === "media" || (pa.r === "master" && pa.staffId))) keys.push("meta");
   const docs = keys.length ? await store.getDocs(keys) : {};
   const ins = (iid) => (docs["ins:" + iid] || {}).v;
   if (ps && ps.r === "student") {
@@ -64,6 +81,7 @@ async function identify(req) {
     if (pa.r === "master" && !pa.staffId) ids.admin = { role: "master" };
     else if (pa.r === "master") { const st = (meta.staff || []).find((x) => x && x.id === pa.staffId); if (st && st.status === "active") ids.admin = { role: "master", staffId: st.id }; }
     else if (pa.r === "partner") { const pt = (meta.affiliates || []).find((x) => x && x.id === pa.pid); if (pt && pt.status === "active") ids.partner = { pid: pt.id, iids: (pt.instructors || []).map((x) => x && x.iid).filter(Boolean) }; }
+    else if (pa.r === "media") { const md = (meta.media || []).find((x) => x && x.id === pa.md); if (md && md.status === "active") ids.media = { id: md.id }; }
     else {
       const i = ins(pa.iid);
       if (i && i.status === "active") {
@@ -79,8 +97,8 @@ async function identify(req) {
 }
 const publicMe = (ids) => ({
   student: ids.student ? { sid: ids.student.sid, iid: ids.student.iid } : null,
-  admin: ids.admin ? { role: ids.admin.role, iid: ids.admin.iid || null, cid: ids.admin.cid || null, staffId: ids.admin.staffId || null } : ids.partner ? { role: "partner", pid: ids.partner.pid } : null,
+  admin: ids.admin ? { role: ids.admin.role, iid: ids.admin.iid || null, cid: ids.admin.cid || null, staffId: ids.admin.staffId || null } : ids.partner ? { role: "partner", pid: ids.partner.pid } : ids.media ? { role: "media", mdid: ids.media.id } : null,
   vod: ids.vod ? { mid: ids.vod.mid } : null
 });
 
-module.exports = { sign, verify, identify, setCookie, publicMe, norm };
+module.exports = { sign, verify, identify, setCookie, publicMe, norm, koToKeys };

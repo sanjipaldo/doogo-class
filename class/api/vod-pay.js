@@ -1,7 +1,8 @@
 /* /api/vod-pay — 두고클래스 결제 · 취소 · 환불 (포트원 V2)
  *
  *  회원 (dc_v 로그인)
- *   { action: "prepare", pid, kind, plan, coach, mcid, points, method, buyer, tea, expect, qty, ship }
+ *   { action: "prepare", pid, kind, plan, coach, mcid, points, method, buyer, tea, expect, qty, ship, rs }
+ *        rs { c: 홍보 링크 코드, p: 링크의 상품, at: 링크를 누른 때 } → 맞으면 수강권 주문에 온드미디어 RS 를 남겨요 (_lib/media.js)
  *        종이책: qty(1~10권) · ship { name, phone, zip, addr1, addr2, memo } → 주문에 배송지 · 배송 상태(ship.st ready → prep → ship → done)를 남겨요
  *        → 서버가 금액을 계산해 ‘결제 대기’ 주문을 만들고 { paymentId, amount, orderName, no } 를 돌려줘요 (0원이면 바로 완료)
  *   { action: "complete", paymentId }   포트원에 결제를 다시 물어 PAID · 금액 · 통화가 맞을 때만 결제 완료
@@ -34,6 +35,7 @@ const store = require("./_lib/store");
 const { kstDay, addDays } = require("./_lib/vodprice");
 const BM = require("./_lib/bank");
 const PA = require("./_lib/payaction");
+const MD = require("./_lib/media");
 
 const fail = (res, status, message) => send(res, status, { ok: false, message });
 
@@ -113,12 +115,19 @@ async function prepare(res, m, b) {
   const cr = bank && b.cashRcpt && typeof b.cashRcpt === "object" ? b.cashRcpt : null, crNo = cr ? String(cr.no || "").replace(/[^0-9]/g, "") : "";
   if (cr && !((cr.type === "p" && /^01[016789]\d{7,8}$/.test(crNo)) || (cr.type === "b" && /^\d{10}$/.test(crNo)))) return fail(res, 400, cr.type === "b" ? "사업자등록번호 10자리를 확인해 주세요." : "현금영수증 휴대폰 번호를 확인해 주세요.");
   const paymentId = "pay_" + Date.now().toString(36) + V.uid("_").slice(1), at = Date.now(), nos = [];
+  // 온드미디어 홍보 링크로 들어왔으면(회원 브라우저가 기억한 { c, p, at }) 코드 · 기간 · 상품을 확인해 수강권 주문에 RS 를 남겨요
+  let rs = null;
+  if (b.rs && typeof b.rs === "object") {
+    const meta = ((await store.getDoc("meta")) || {}).v || {}, cat = (await V.catalog()) || {};
+    rs = MD.attach(meta, (cat.products || []).find((x) => x && x.id === q.items[0].pid), q.items[0], b.rs, at);
+  }
   const buyer = b.buyer && typeof b.buyer === "object" ? { name: String(b.buyer.name || m.name || "").slice(0, 20), phone: String(b.buyer.phone || m.phone || "").replace(/\s/g, "").slice(0, 14) } : null;
   for (let i = 0; i < q.items.length; i++) {
     let no = V.newNo(); const it = q.items[i];
     const ch = ["web", "ins", "ad"].indexOf(b.ch) >= 0 ? b.ch : "web";
     const o = Object.assign({ id: "", no, mid: m.id, method: q.total > 0 ? method.slice(0, 12) : q.points ? "point" : "free", status: bank ? "pending" : "ready", createdAt: at, at, paymentId, ch }, it, i ? { grp: nos[0] } : {}, buyer ? { buyer } : {}, bank ? { pg: { st: "bank" }, depositor, dueAt: at + bk.days * 864e5, bankTo: { bank: bk.bank, account: bk.account, holder: bk.holder } } : {});
     if (i === 0 && cr) o.cashRcpt = { type: cr.type, no: crNo };
+    if (i === 0 && rs) o.rs = rs;
     if (i === 0 && it.kind === "tea" && b.tea && typeof b.tea === "object") o.tea = { d1: String(b.tea.d1 || "").slice(0, 10), d2: String(b.tea.d2 || "").slice(0, 10), slot: String(b.tea.slot || "").slice(0, 30), mode: "online", topic: String(b.tea.topic || "").slice(0, 500), st: "req" };
     // id: 마스터 화면이 주문을 찾는 칸 (주문 번호와 같게)
     for (let t = 0; t < 4 && !(await V.create(V.K.order(no), Object.assign(o, { id: "vo-" + no, no }))); t++) no = V.newNo();
