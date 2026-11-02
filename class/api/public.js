@@ -52,11 +52,14 @@ async function freeQuestion(req, res, b) {
 /* 강사 입점 문의 — 문서 inq:<id> 로 저장, 마스터만 읽고 고친다
  * 두고 파트너스 지원서(source "partners")는 지원서 칸(form)을 정해 둔 이름 · 길이만 받아요 (모르는 칸은 버려요) */
 const SOURCES = ["doogoclass", "partners"];
-const FORM_TXT = { nick: 40, cat: 40, topic: 80, result: 160, exp: 40, ready: 40, when: 40, link2: 300, from: 40 };
+const FORM_TXT = { nick: 40, cat: 40, topic: 80, result: 160, exp: 40, ready: 40, when: 40, link2: 300, from: 40, ctime: 40, reach: 40, target: 120, film: 40, price: 40 };
+// 줄바꿈을 살리는 긴 칸 (2026-11-02 구글폼 지원서): 강사 소개 · 걸어온 길, 커리큘럼 초안
+const FORM_LONG = { career: 1500, curri: 1500 };
 function cleanForm(f, t) {
   if (!f || typeof f !== "object" || Array.isArray(f)) return null;
   const out = {};
   Object.keys(FORM_TXT).forEach((k) => { const v = t(f[k], FORM_TXT[k]); if (v) out[k] = v; });
+  Object.keys(FORM_LONG).forEach((k) => { const v = String(f[k] == null ? "" : f[k]).replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, FORM_LONG[k]); if (v) out[k] = v; });
   if (out.link2 && !/^https?:\/\//i.test(out.link2)) out.link2 = "https://" + out.link2;
   const kinds = (Array.isArray(f.kinds) ? f.kinds : []).map((x) => t(x, 30)).filter(Boolean).slice(0, 6);
   if (kinds.length) out.kinds = kinds;

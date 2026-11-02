@@ -1135,7 +1135,7 @@ body[data-mode="admin"] { background: #fdfbfb; }
 .p-aff-pill { display: inline-flex; align-items: center; gap: 4px; background: #fff1f3; color: #e0314d; border: 1px solid #ffd3da; }
 .a-inq-head { flex-wrap: wrap; }
 .a-inq-sels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.p-track { list-style: none; margin: 0; padding: 14px 6px 4px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: relative; }
+.p-track { list-style: none; margin: 0; padding: 14px 6px 4px; display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); position: relative; }
 .p-track li { position: relative; display: grid; justify-items: center; gap: 4px; text-align: center; }
 .p-track li::before { content: ""; position: absolute; top: 14px; left: -50%; width: 100%; height: 3px; background: #eee; z-index: 0; }
 .p-track li:first-child::before { display: none; }
@@ -3265,3 +3265,85 @@ td .md-yt { display: flex; width: fit-content; }
 .a-inq-block.a-inq-pt > b { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 8px; color: #e0103a; }
 .a-inq-pt .a-inq-info dd { white-space: pre-wrap; }
 @media (max-width: 640px) { .a-inq-pt .a-inq-info { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- 두고 파트너스 지원 · 입점 문의: 순서대로 처리 (2026-11-02) ----------
+ * 처리 단계 줄(새 접수 › 열람 › 상담 중 › 결과) + 접힌 줄(번호 · 이름 · 분야 · 상태) → 누르면 지원서가 펼쳐져요 */
+.a-inq-flow { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) repeat(3, minmax(0, .8fr)); gap: 8px; }
+.a-inq-flow li { position: relative; min-width: 0; }
+.a-inq-flow li:not(.end):not(:nth-child(3))::after { content: ""; position: absolute; right: -7px; top: 50%; width: 8px; height: 8px; border-top: 2px solid #d4d4d4; border-right: 2px solid #d4d4d4; transform: translateY(-50%) rotate(45deg); z-index: 1; }
+.a-inq-flow li.end:nth-child(4) { margin-left: 10px; }
+.a-inq-flow button { width: 100%; display: grid; gap: 2px; justify-items: start; padding: 12px 14px; border: 1px solid #ececec; border-radius: 12px; background: #fff; text-align: left; cursor: pointer; font: inherit; transition: border-color .15s, box-shadow .15s, background-color .15s; }
+.a-inq-flow button:hover { border-color: #cfcfcf; }
+.a-inq-flow button.on { border-color: var(--m-ink-deep); box-shadow: 0 0 0 2px rgba(0, 0, 0, .06); }
+.a-inq-flow small { font-size: 11px; font-weight: 800; color: var(--m-stone); letter-spacing: .04em; min-height: 13px; }
+.a-inq-flow b { font-size: 13.5px; font-weight: 800; color: var(--m-charcoal); }
+.a-inq-flow em { font-style: normal; font-size: 22px; font-weight: 900; line-height: 1.15; color: var(--m-ink-deep); }
+.a-inq-flow li.warn em { color: var(--m-attention); }
+.a-inq-flow li.info em { color: var(--m-info); }
+.a-inq-flow li.ok em { color: var(--m-success); }
+.a-inq-flow li.bad em { color: var(--m-critical-strong); }
+.a-inq-flow li.mute em { color: var(--m-slate); }
+.a-inq-hint { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; font-size: 13px; color: var(--m-slate); }
+.a-inq-list { gap: 8px; }
+.a-inq.a-inq2 { padding: 0; gap: 0; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+.a-inq2.is-next { border-color: #ffc2c8; box-shadow: 0 0 0 3px rgba(249, 66, 57, .07); }
+.a-inq2.open { border-color: #cfcfcf; box-shadow: 0 10px 28px rgba(0, 0, 0, .07); }
+.a-inq-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.a-inq-row:hover { background: #fafafa; }
+.a-inq-row:focus-visible { outline: 2px solid var(--m-ink-deep); outline-offset: -2px; }
+.a-inq-no { flex: none; min-width: 52px; font-size: 12px; font-weight: 800; color: var(--m-stone); font-variant-numeric: tabular-nums; }
+.a-inq-who { flex: 1 1 220px; min-width: 0; display: grid; gap: 2px; }
+.a-inq-who b { font-size: 15px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.a-inq-who b small { font-size: 12.5px; font-weight: 600; color: var(--m-steel); }
+.a-inq-who > small { font-size: 12.5px; color: var(--m-steel); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.a-inq-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; flex: 0 1 auto; }
+.a-inq-tags .a-pill { display: inline-flex; align-items: center; gap: 4px; }
+.a-pill.a-inq-next { background: var(--m-primary-deep); color: #fff; }
+.a-inq-when { flex: none; display: grid; justify-items: end; gap: 1px; min-width: 112px; font-size: 12.5px; font-weight: 700; color: var(--m-charcoal); }
+.a-inq-when small { font-size: 11.5px; font-weight: 600; color: var(--m-stone); }
+.a-inq2.is-next .a-inq-when small { color: var(--m-primary-deep); }
+.a-inq-chev { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: var(--m-steel); transition: transform .2s ease, background-color .15s; }
+.a-inq2.open .a-inq-chev { transform: rotate(180deg); background: #f2f2f2; }
+.a-inq-body { display: grid; gap: 14px; padding: 4px 18px 18px; border-top: 1px solid #f0f0f0; animation: inqBodyIn .25s ease; }
+@keyframes inqBodyIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.a-inq-info div.wide { grid-column: 1 / -1; }
+.a-inq-proc { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: #f7f7f8; }
+.a-inq-proc > b { font-size: 12.5px; font-weight: 800; color: var(--m-charcoal); }
+.a-inq-sbs { display: flex; flex-wrap: wrap; gap: 6px; }
+.a-inq-sb { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 14px; border: 1px solid #e2e2e2; border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: var(--m-charcoal); cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
+.a-inq-sb:hover { border-color: #bdbdbd; }
+.a-inq-sb.on.warn { background: var(--m-attention-soft); border-color: var(--m-attention); color: var(--m-attention); }
+.a-inq-sb.on.info { background: var(--m-info-soft); border-color: var(--m-info); color: var(--m-info); }
+.a-inq-sb.on.ok { background: var(--m-success-soft); border-color: var(--m-success); color: var(--m-success); }
+.a-inq-sb.on.bad { background: var(--m-critical-soft); border-color: var(--m-critical-strong); color: var(--m-critical-strong); }
+.a-inq-sb.on.mute { background: #eee; border-color: #8a8a8a; color: #474747; }
+.a-inq-log { border-top: 1px dashed #eee; padding-top: 10px; }
+.a-inq-log summary { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--m-slate); cursor: pointer; list-style: none; }
+.a-inq-log summary::-webkit-details-marker { display: none; }
+.a-inq-log summary span { padding: 0 7px; border-radius: 99px; background: #f0f0f0; font-size: 11.5px; }
+.a-inq-log ol { list-style: none; margin: 10px 0 0; padding: 0 0 0 14px; display: grid; gap: 8px; border-left: 2px solid #f0f0f0; }
+.a-inq-log li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; color: var(--m-slate); }
+.a-inq-log time { min-width: 108px; font-variant-numeric: tabular-nums; color: var(--m-steel); }
+@media (max-width: 900px) {
+  .a-inq-flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .a-inq-flow li.end:nth-child(4) { margin-left: 0; }
+  .a-inq-flow li:not(.end):not(:nth-child(3))::after { display: none; }
+}
+@media (max-width: 640px) {
+  .a-inq-flow { gap: 6px; }
+  .a-inq-flow button { padding: 9px 10px; border-radius: 10px; }
+  .a-inq-flow b { font-size: 12px; }
+  .a-inq-flow em { font-size: 18px; }
+  .a-inq-row { flex-wrap: wrap; gap: 6px 10px; padding: 12px 14px; }
+  .a-inq-no { min-width: 0; order: 0; }
+  .a-inq-row .a-avatar { display: none; }
+  .a-inq-who { flex: 1 1 calc(100% - 90px); order: 1; }
+  .a-inq-chev { order: 2; }
+  .a-inq-tags { order: 3; justify-content: flex-start; flex: 1 1 auto; }
+  .a-inq-when { order: 4; min-width: 0; justify-items: end; }
+  .a-inq-body { padding: 4px 14px 14px; }
+  .a-inq-info div.wide, .a-inq-pt .a-inq-info div { grid-column: 1 / -1; }
+  .a-inq-sb { height: 34px; padding: 0 12px; font-size: 12.5px; }
+  .p-track[style*="--n:5"] b { font-size: 10.5px; }
+  .p-track[style*="--n:5"] small { font-size: 10px; }
+}

@@ -1164,11 +1164,12 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const st20 = require(path.join(TMP, "class/api/_lib/store.js"));
     useJar({});
     const base = { action: "partner-apply", name: "지OO", phone: "010-1111-2222", email: "pt@example.com", where: "[두고 파트너스] 유튜브", course: "[VOD 강의 · 부업 · 창업] 주제\n노하우", link: "example.com/ch", message: "잘 부탁드려요", agree: true };
-    let r = await call("public", { body: Object.assign({}, base, { source: "partners", ref: "ab_c.1", form: { nick: "지OO스토어", cat: "부업 · 창업", kinds: ["VOD 강의", "전자책 · 종이책", 7, ""], topic: "x".repeat(200), result: "월매출 3천", exp: "처음이에요", ready: "아직 없어요", when: "1~2개월 안", link2: "blog.example.com", from: "유튜브", evil: "<script>", iid: "moon" } }) });
+    let r = await call("public", { body: Object.assign({}, base, { source: "partners", ref: "ab_c.1", form: { nick: "지OO스토어", cat: "부업 · 창업", kinds: ["VOD 강의", "전자책 · 종이책", 7, ""], topic: "x".repeat(200), result: "월매출 3천", exp: "처음이에요", ready: "아직 없어요", when: "1~2개월 안", link2: "blog.example.com", from: "유튜브", ctime: "저녁 (6시 이후)", career: "  2019 창업\r\n\r\n\r\n\r\n지금 2개 브랜드  ", curri: "y".repeat(2000), reach: "1천~1만 명", target: "직장인", film: "직접 찍어서 보낼게요", price: "상담하며 정할게요", evil: "<script>", iid: "moon" } }) });
     ok(r.status === 200 && r.json.ok, "두고 파트너스 지원서 저장", r.json);
     const inqs = async () => (await st20.listDocs({ prefixes: ["inq:%"] })).map((x) => x.v);
     const d = (await inqs()).find((x) => x.email === "pt@example.com") || {};
     ok(d.source === "partners" && d.ref === "ab_c.1" && d.form && d.form.nick === "지OO스토어" && d.form.topic.length === 80 && d.form.kinds.join("|") === "VOD 강의|전자책 · 종이책|7" && d.form.link2 === "https://blog.example.com" && !("evil" in d.form) && !("iid" in d.form) && !d.iid && d.link === "https://example.com/ch" && d.status === "new" && /노하우/.test(d.course), "지원서 칸: 정해 둔 칸 · 길이만 · 주소엔 https:// · 모르는 칸은 버려요", d);
+    ok(d.form && d.form.ctime === "저녁 (6시 이후)" && d.form.career === "2019 창업\n\n지금 2개 브랜드" && d.form.curri.length === 1500 && d.form.reach === "1천~1만 명" && d.form.target === "직장인" && d.form.film === "직접 찍어서 보낼게요" && d.form.price === "상담하며 정할게요", "구글폼 지원서 새 칸: 연락 시간 · 강사 소개(줄바꿈 유지) · 커리큘럼(1,500자) · 채널 규모 · 수강 대상 · 촬영 · 판매가", d.form);
     r = await call("public", { body: Object.assign({}, base, { email: "pt2@example.com", source: "hack", form: { nick: "x" }, ref: "bad ref!" }) });
     const d2 = (await inqs()).find((x) => x.email === "pt2@example.com") || {};
     ok(r.json.ok && !("source" in d2) && !("form" in d2) && !("ref" in d2), "모르는 source · 다른 출처의 form · 이상한 추천 코드는 저장하지 않아요", d2);

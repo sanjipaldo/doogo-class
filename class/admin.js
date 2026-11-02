@@ -2009,28 +2009,58 @@
   }
 
   /* ---------------- 마스터: 강사 입점 문의 (첫 화면 ‘강사 입점 문의’ 팝업으로 들어온 신청) ---------------- */
-  const INQ_STATUS = [["new", "새 문의", "warn"], ["contact", "상담 중", "info"], ["done", "계약 성사", "ok"], ["fail", "계약 미성사", "bad"], ["hold", "보류", "mute"]];
-  /** 상태 바꾸기 (기록 남김 → 파트너센터 진행 단계에 날짜로 보여요) */
+  /* 처리 순서 (2026-11-02): 새 접수 → 열람(마스터가 처음 펼치면 자동) → 상담 중 → 계약 완료 / 계약 안 됨 / 보류
+   * 예전 문서도 그대로 읽어요 (seen 이 없던 문서는 ‘상담’ 날짜를 열람 날짜로 같이 봐요) */
+  const INQ_STATUS = [["new", "새 접수", "warn"], ["seen", "열람", "info"], ["contact", "상담 중", "info"], ["done", "계약 완료", "ok"], ["fail", "계약 안 됨", "bad"], ["hold", "보류", "mute"]];
+  /** 아직 끝나지 않은 일 — 마스터 직원이 들어온 순서(오래된 것 먼저)대로 하나씩 처리해요 */
+  const INQ_TODO = ["new", "seen", "contact"];
+  /** 상태 바꾸기 (누가 · 언제 기록 남김 → 처리 기록 · 파트너센터 진행 단계에 날짜로 보여요) */
   function setInqStatus(x, st) {
     if ((x.status || "new") === st) return;
-    x.status = st; (x.log = x.log || []).push({ st, at: Date.now() });
+    x.status = st; (x.log = x.log || []).push({ st, at: Date.now(), by: whoAmI() });
+    if (st === "seen" && !x.seenAt) x.seenAt = Date.now();
     if (st === "done" && !x.doneAt) x.doneAt = Date.now();
     if (st === "fail") x.failAt = Date.now();
   }
   const inqStepAt = (x, st) => { const l = (x.log || []).filter((e) => e.st === st).pop(); return l ? l.at : null; };
-  /** 진행 단계: 문의 접수 → 두잉고 상담 → 계약 성사 → 플랫폼 오픈 */
+  /** 마스터가 지원서를 처음 펼치면 ‘열람’으로 바꾸고 누가 · 언제 열었는지 남겨요 */
+  function inqMarkSeen(x) {
+    if ((x.status || "new") !== "new") return false;
+    setInqStatus(x, "seen"); DB.saveInquiry(x);
+    actLog(x.name + " 님 " + (inqIsVod(x) ? "두고 파트너스 지원서" : "입점 문의") + "를 열람했어요."); DB.save();
+    return true;
+  }
+  /** 상태 버튼 · (예전) 상태 고르기 공통 */
+  function inqApplyStatus(x, st) {
+    if (!x || (x.status || "new") === st || !INQ_STATUS.some((s) => s[0] === st)) return;
+    setInqStatus(x, st); DB.saveInquiry(x);
+    const lb = inqStatus(x)[1], ro = "’" + josa(lb, "으로", "로").slice(lb.length);
+    actLog(x.name + " 님 " + (inqIsVod(x) ? "두고 파트너스 지원" : "입점 문의") + "을 ‘" + lb + ro + " 바꿨어요."); DB.save(); render();
+    const nx = INQ_TODO.indexOf(st) < 0 ? DB.inquiries().filter((q) => q.id !== x.id && inqIsVod(q) === inqIsVod(x) && INQ_TODO.indexOf(q.status || "new") >= 0).sort((a, b) => (a.at || 0) - (b.at || 0))[0] : null;
+    toast("‘" + lb + ro + " 바꿨어요." + (inqAff(x) ? " 파트너센터에도 보여요." : "") + (nx ? " 다음 차례는 " + nx.name + " 님이에요." : ""));
+  }
+  /** 진행 단계: 접수 → 열람 → 상담 → 계약 완료(또는 계약 안 됨) → VOD 강사 등록 · 플랫폼 오픈 */
   const inqIsPt = (x) => x.source === "partners" || /^\[두고 파트너스/.test(x.where || "");
   const inqIsVod = (x) => inqIsPt(x) || x.source === "doogoclass" || /^\[DOOGO CLASS/.test(x.where || "");
   /** 두고 파트너스 지원서 칸 (form) → [이름, 화면 HTML] */
   const inqLink = (u) => (/^https?:\/\//i.test(u || "") ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(u) + "</a>" : esc(u || "-"));
-  const inqFormRows = (F) => (F ? [["활동명", esc(F.nick || "")], ["강의 분야", esc(F.cat || "")], ["열고 싶은 클래스", esc((F.kinds || []).join(", "))], ["클래스 주제", esc(F.topic || "")], ["직접 낸 결과", esc(F.result || "")], ["강의 경험", esc(F.exp || "")], ["강의 자료 준비", esc(F.ready || "")], ["원하는 오픈 시기", esc(F.when || "")], ["다른 주소", F.link2 ? inqLink(F.link2) : ""], ["알게 된 곳", esc(F.from || "")]].filter((r) => r[1]) : []);
+  const inqFormRows = (F) => (F ? [["활동명", esc(F.nick || "")], ["연락받기 편한 시간", esc(F.ctime || "")], ["강의 분야", esc(F.cat || "")], ["열고 싶은 클래스", esc((F.kinds || []).join(", "))], ["클래스 주제", esc(F.topic || ""), 1], ["수강 대상", esc(F.target || ""), 1], ["강사 소개 · 이력", esc(F.career || ""), 1], ["직접 낸 결과", esc(F.result || ""), 1], ["커리큘럼 초안", esc(F.curri || ""), 1], ["강의 경험", esc(F.exp || "")], ["강의 자료 준비", esc(F.ready || "")], ["촬영 방식", esc(F.film || "")], ["원하는 오픈 시기", esc(F.when || "")], ["희망 판매가", esc(F.price || "")], ["채널 규모", esc(F.reach || "")], ["다른 주소", F.link2 ? inqLink(F.link2) : ""], ["알게 된 곳", esc(F.from || "")]].filter((r) => r[1]) : []);
+  /** 처리 기록 — 접수부터 상태가 바뀔 때마다 (누가 · 언제) */
+  const inqLogHtml = (x) => {
+    const l = (x.log || []).slice().reverse();
+    return '<details class="a-inq-log"><summary>' + icon("clock", "xs") + "처리 기록 <span>" + (l.length + 1) + "</span></summary><ol>" +
+      l.map((e) => { const s = INQ_STATUS.find((y) => y[0] === e.st) || [e.st, e.st, "mute"]; return "<li><time>" + fmtStamp(e.at) + "</time>" + pill(s[1], s[2]) + "<span>" + esc(e.by || "-") + "</span></li>"; }).join("") +
+      "<li><time>" + fmtStamp(x.at) + "</time>" + pill("접수", "mute") + "<span>" + (inqIsPt(x) ? "지원서가 들어왔어요" : "문의가 들어왔어요") + "</span></li></ol></details>";
+  };
   function inqTrack(x) {
-    const st = x.status || "new", hold = st === "hold", fail = st === "fail";
-    const lv = st === "new" ? 0 : st === "contact" ? 1 : st === "done" ? (x.iid ? 3 : 2) : fail ? 2 : 1;
-    // 계약 미성사: 3단계를 ‘계약 미성사(✕)’로 바꿔 보여 주고, 4단계는 흐리게
-    const vod = inqIsVod(x), steps = [[vod ? "지원 접수" : "문의 접수", x.at], [vod ? "상담" : "두잉고 상담", inqStepAt(x, "contact") || (fail ? x.failAt : null)], fail ? ["계약 미성사", x.failAt || inqStepAt(x, "fail")] : ["계약 성사", x.doneAt || inqStepAt(x, "done")], [inqIsVod(x) ? "VOD 강사 등록" : "플랫폼 오픈", x.openedAt]];
-    return '<ol class="p-track' + (hold ? " hold" : "") + (fail ? " fail" : "") + '">' + steps.map((s, i) => '<li class="' + (i < lv ? "done" : i === lv ? "now" : "") + '"><i>' + (fail && i === lv ? icon("x", "xs") : i < lv || (i === lv && i === 3) ? icon("check", "xs") : i + 1) + "</i><b>" + s[0] + "</b><small>" + (s[1] && i <= lv ? fmtMD(DB.date.toStr(new Date(s[1]))) : hold && i === lv ? "보류" : "") + "</small></li>").join("") + "</ol>";
+    const st = x.status || "new", hold = st === "hold", fail = st === "fail", been = (k) => (x.log || []).some((e) => e.st === k);
+    const lv = st === "new" ? 0 : st === "seen" ? 1 : st === "contact" ? 2 : st === "done" ? (x.iid ? 4 : 3) : fail ? 3 : been("contact") ? 2 : 1;
+    // 계약 안 됨: 4단계를 ‘계약 안 됨(✕)’로 바꿔 보여 주고, 5단계는 흐리게
+    const vod = inqIsVod(x), cAt = inqStepAt(x, "contact");
+    const steps = [[vod ? "지원 접수" : "문의 접수", x.at], ["열람", x.seenAt || inqStepAt(x, "seen") || cAt || (fail ? x.failAt : null)], [vod ? "상담" : "두잉고 상담", cAt || (fail ? x.failAt : null)], fail ? ["계약 안 됨", x.failAt || inqStepAt(x, "fail")] : ["계약 완료", x.doneAt || inqStepAt(x, "done")], [vod ? "VOD 강사 등록" : "플랫폼 오픈", x.openedAt]];
+    return '<ol class="p-track' + (hold ? " hold" : "") + (fail ? " fail" : "") + '" style="--n:5">' + steps.map((s, i) => '<li class="' + (i < lv ? "done" : i === lv ? "now" : "") + '"><i>' + (fail && i === lv ? icon("x", "xs") : i < lv || (i === lv && i === 4) ? icon("check", "xs") : i + 1) + "</i><b>" + s[0] + "</b><small>" + (s[1] && i <= lv ? fmtMD(DB.date.toStr(new Date(s[1]))) : hold && i === lv ? "보류" : "") + "</small></li>").join("") + "</ol>";
   }
+
   /** 파트너 ↔ 두잉고 1:1 대화 — 카카오톡과 같은 짜임(프로필 · 이름 · 말풍선 꼬리 · 같은 분 묶음 · 날짜선 · 안 읽음 1 · 시간), 색은 두잉고 */
   const ktTime = (ms) => { const d = new Date(ms), h = d.getHours(); return (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + ":" + String(d.getMinutes()).padStart(2, "0"); };
   const ktDay = (ms) => { const d = new Date(ms); return d.getFullYear() + "년 " + (d.getMonth() + 1) + "월 " + d.getDate() + "일 " + "일월화수목금토"[d.getDay()] + "요일"; };
@@ -2079,32 +2109,53 @@
     const k = ta.closest(".kt"); if (k) k.querySelector(".kt-send").classList.toggle("on", !!ta.value.trim());
   }
   const inqStatus = (x) => INQ_STATUS.find((s) => s[0] === (x.status || "new")) || INQ_STATUS[0];
-  /** only = "vod": 마스터 › DOOGO CLASS › 두고 파트너스 지원 (두고클래스 쪽 지원만 · 상태 탭은 그 안에서) */
+  /** only = "vod": 마스터 › DOOGO CLASS › 두고 파트너스 지원 (두고클래스 쪽 지원만 · 상태 탭은 그 안에서)
+   * 처리 방식 (2026-11-02): ‘처리할 일’(새 접수 · 열람 · 상담 중)을 들어온 순서대로 위에서부터 — 맨 위가 ‘다음 차례’.
+   * 줄을 누르면 지원서가 펼쳐지고(처음 펼치면 자동 ‘열람’), 아래 상태 버튼으로 상담 중 → 계약 완료 / 계약 안 됨 / 보류. 바꿀 때마다 누가 · 언제 처리 기록에 남아요 */
   function pageMasterPartners(r, only) {
     const isVod = inqIsVod, fk = only ? "vrFilter" : "inqFilter";
     const all = DB.inquiries().filter((x) => !only || isVod(x));
-    let f = ui[fk] || "all";
+    const todo = all.filter((x) => INQ_TODO.indexOf(x.status || "new") >= 0);
+    const noOf = {}; all.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((x, i) => { noOf[x.id] = i + 1; });
+    let f = ui[fk] || (todo.length ? "todo" : "all");
     const unread = all.filter((x) => msgUnreadM(x) > 0);
     if ((f === "msg" && !unread.length) || (only && (f === "aff" || f === "vod"))) f = ui[fk] = "all";
-    const shown = all.filter((x) => f === "all" || (f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? isVod(x) : (x.status || "new") === f));
-    const tabs = (unread.length ? [["msg", "새 메시지", unread.reduce((a, x) => a + msgUnreadM(x), 0)]] : []).concat([["all", "전체", all.length]]).concat(INQ_STATUS.map((s) => [s[0], s[1], all.filter((x) => (x.status || "new") === s[0]).length])).concat(only ? [] : [["aff", "파트너 소개", all.filter((x) => inqAff(x)).length], ["vod", "두고 파트너스", all.filter(isVod).length]]).map((t) =>
-      '<button type="button" class="a-tab' + (f === t[0] ? " on" : "") + '" data-action="' + (only ? "vr-tab" : "inq-tab") + '" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + t[2] + "</span></button>").join("");
+    const shown = all.filter((x) => f === "all" || (f === "todo" ? INQ_TODO.indexOf(x.status || "new") >= 0 : f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? isVod(x) : (x.status || "new") === f));
+    if (f === "todo" || f === "new" || f === "seen" || f === "contact") shown.sort((a, b) => (a.at || 0) - (b.at || 0)); // 처리할 일은 오래된 것부터
+    const nextId = (todo.slice().sort((a, b) => (a.at || 0) - (b.at || 0))[0] || {}).id;
+    const tabBtn = (t) => '<button type="button" class="a-tab' + (f === t[0] ? " on" : "") + '" data-action="' + (only ? "vr-tab" : "inq-tab") + '" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + t[2] + "</span></button>";
+    const tabs = (unread.length ? [["msg", "새 메시지", unread.reduce((a, x) => a + msgUnreadM(x), 0)]] : []).concat([["todo", "처리할 일", todo.length], ["all", "전체", all.length]]).concat(only ? [] : [["aff", "파트너 소개", all.filter((x) => inqAff(x)).length], ["vod", "두고 파트너스", all.filter(isVod).length]]).map(tabBtn).join("");
+    // 진행 흐름: 새 접수 › 열람 › 상담 중 › 계약 완료 · 계약 안 됨 · 보류 (누르면 그 상태만)
+    const cnt = (k) => all.filter((x) => (x.status || "new") === k).length;
+    const flow = '<ol class="a-inq-flow" aria-label="처리 단계별 건수">' + INQ_STATUS.map((s, i) => '<li class="' + s[2] + (i > 2 ? " end" : "") + '"><button type="button" class="' + (f === s[0] ? "on" : "") + '" data-action="' + (only ? "vr-tab" : "inq-tab") + '" data-k="' + s[0] + '"><small>' + (i < 3 ? "0" + (i + 1) : i < 5 ? "결과" : "잠시 멈춤") + "</small><b>" + s[1] + "</b><em>" + cnt(s[0]) + "</em></button></li>").join("") + "</ol>";
     const link = inqLink;
+    const ago = (t) => { const d = Math.floor((Date.now() - (t || 0)) / 864e5); return d <= 0 ? "오늘 접수" : d + "일째 기다리는 중"; };
     const card = (x) => {
-      const st = inqStatus(x), pa = inqAff(x), un = msgUnreadM(x);
-      return '<article class="a-inq' + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '"' + (un ? ' data-unread="1"' : "") + '><div class="a-inq-head"><span class="a-avatar">' + esc((x.name || "?").slice(0, 1)) + "</span><div><b>" + esc(x.name) + "</b><small>" + fmtStamp(x.at) + " 접수" + (x.ref ? " · 추천 코드 " + esc(x.ref) : "") + (x.byPartner ? " · 파트너가 직접 추천" : "") + "</small></div>" + (isVod(x) ? '<span class="a-pill inq-vod">' + icon(inqIsPt(x) ? "handshake" : "monitorPlay", "xs") + (inqIsPt(x) ? "두고 파트너스" : "DOOGO CLASS 강사 모집") + "</span>" : "") + (pa ? '<span class="a-pill p-aff-pill">' + icon("handshake", "xs") + esc(pa.name) + " 파트너 소개</span>" : "") + (un ? '<span class="a-pill inq-new-msg">' + icon("bell", "xs") + "새 메시지 " + un + "</span>" : "") + pill(st[1], st[2]) + "</div>" +
+      const st = inqStatus(x), cur = x.status || "new", pa = inqAff(x), un = msgUnreadM(x), F = x.form || {}, open = ui.inqOpen === x.id, next = x.id === nextId;
+      const sub = [F.cat, F.topic || String(x.course || "").replace(/^\[[^\]]*\]\s*/, "").split("\n")[0]].filter(Boolean).join(" · ");
+      const row = '<button type="button" class="a-inq-row" data-action="inq-open" data-id="' + esc(x.id) + '" aria-expanded="' + open + '">' +
+        '<span class="a-inq-no">No.' + noOf[x.id] + "</span>" + '<span class="a-avatar">' + esc((x.name || "?").slice(0, 1)) + "</span>" +
+        '<span class="a-inq-who"><b>' + esc(x.name) + (F.nick ? " <small>" + esc(F.nick) + "</small>" : "") + "</b><small>" + esc(sub.slice(0, 90) || "-") + "</small></span>" +
+        '<span class="a-inq-tags">' + (next ? '<span class="a-pill a-inq-next">' + icon("arrowRight", "xs") + "다음 차례</span>" : "") +
+          (isVod(x) && !(only && inqIsPt(x)) ? '<span class="a-pill inq-vod">' + icon(inqIsPt(x) ? "handshake" : "monitorPlay", "xs") + (inqIsPt(x) ? "두고 파트너스" : "DOOGO CLASS 강사 모집") + "</span>" : "") +
+          (pa ? '<span class="a-pill p-aff-pill">' + icon("handshake", "xs") + esc(pa.name) + " 파트너 소개</span>" : "") + (un ? '<span class="a-pill inq-new-msg">' + icon("bell", "xs") + "새 메시지 " + un + "</span>" : "") + pill(st[1], st[2]) + "</span>" +
+        '<span class="a-inq-when">' + fmtStamp(x.at) + "<small>" + (INQ_TODO.indexOf(cur) >= 0 ? ago(x.at) : (x.ref ? "추천 코드 " + esc(x.ref) : "")) + "</small></span>" + '<span class="a-inq-chev">' + icon("chevDown", "sm") + "</span></button>";
+      if (!open) return '<article class="a-inq a-inq2' + (next ? " is-next" : "") + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '">' + row + "</article>";
+      return '<article class="a-inq a-inq2 open' + (next ? " is-next" : "") + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '"' + (un ? ' data-unread="1"' : "") + ">" + row + '<div class="a-inq-body">' +
         inqTrack(x) +
         '<dl class="a-inq-info"><div><dt>이메일</dt><dd><a href="mailto:' + esc(x.email) + '">' + esc(x.email) + "</a></dd></div><div><dt>연락처</dt><dd><a href=\"tel:" + esc(String(x.phone || "").replace(/[^0-9+]/g, "")) + '">' + esc(x.phone) + "</a></dd></div>" +
-          "<div><dt>강의 중인 곳</dt><dd>" + esc(String(x.where || "").replace(/^\[[^\]]*\]\s*/, "") || "-") + "</dd></div><div><dt>강의 링크</dt><dd>" + link(x.link) + "</dd></div></dl>" +
+          "<div><dt>강의 · 활동하는 곳</dt><dd>" + esc(String(x.where || "").replace(/^\[[^\]]*\]\s*/, "") || "-") + "</dd></div><div><dt>대표 채널 · 포트폴리오</dt><dd>" + link(x.link) + "</dd></div>" +
+          (x.ref || x.byPartner ? "<div><dt>추천</dt><dd>" + (x.ref ? "추천 코드 " + esc(x.ref) : "") + (x.byPartner ? (x.ref ? " · " : "") + "파트너가 직접 추천" : "") + "</dd></div>" : "") + "</dl>" +
         '<div class="a-inq-block"><b>어떤 강의인가요</b><p>' + esc(x.course) + "</p></div>" +
-        (x.form ? '<div class="a-inq-block a-inq-pt"><b>' + icon("handshake", "xs") + "두고 파트너스 지원서</b><dl class=\"a-inq-info\">" + inqFormRows(x.form).map((r) => "<div><dt>" + r[0] + "</dt><dd>" + r[1] + "</dd></div>").join("") + "</dl></div>" : "") +
+        (x.form ? '<div class="a-inq-block a-inq-pt"><b>' + icon("handshake", "xs") + "두고 파트너스 지원서</b><dl class=\"a-inq-info\">" + inqFormRows(x.form).map((r) => "<div" + (r[2] ? ' class="wide"' : "") + "><dt>" + r[0] + "</dt><dd>" + r[1] + "</dd></div>").join("") + "</dl></div>" : "") +
         (x.message ? '<div class="a-inq-block"><b>남긴 말</b><p>' + esc(x.message) + "</p></div>" : "") +
         (pa ? inqThread(x, "master") : "") +
-        '<div class="a-inq-ctl"><div class="a-inq-sels"><label class="a-inq-st"><span>상태</span><select class="a-input a-sm" data-inq-status="' + esc(x.id) + '">' + INQ_STATUS.map((s) => '<option value="' + s[0] + '"' + (s[0] === st[0] ? " selected" : "") + ">" + s[1] + "</option>").join("") + "</select></label>" +
+        '<div class="a-inq-proc"><b>처리 상태</b><div class="a-inq-sbs" role="group" aria-label="처리 상태 바꾸기">' + INQ_STATUS.map((s) => '<button type="button" class="a-inq-sb ' + s[2] + (s[0] === cur ? " on" : "") + '" data-action="inq-st" data-id="' + esc(x.id) + '" data-st="' + s[0] + '" aria-pressed="' + (s[0] === cur) + '">' + (s[0] === cur ? icon("check", "xs") : "") + s[1] + "</button>").join("") + "</div></div>" +
+        '<div class="a-inq-ctl"><div class="a-inq-sels">' +
           '<label class="a-inq-st"><span>소개 파트너</span><select class="a-input a-sm" data-inq-aff="' + esc(x.id) + '"><option value="none">없음</option>' + affList().map((p) => '<option value="' + esc(p.id) + '"' + (pa && pa.id === p.id ? " selected" : "") + ">" + esc(p.name) + " (" + esc(p.code || p.loginId) + ")</option>").join("") + "</select></label></div>" +
-          '<textarea class="a-input" rows="2" data-inq-memo="' + esc(x.id) + '" placeholder="메모 (예: 10/12 통화 · 다음 주 미팅)" aria-label="메모">' + esc(x.memo || "") + "</textarea>" +
-          '<div class="a-row-actions">' + (!x.iid && (x.status || "new") !== "fail" ? btn(icon("store", "sm") + (inqIsVod(x) ? "VOD 강사로 등록" : "플랫폼 만들기"), "inq-make", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : "") + btn(icon("check", "sm") + "메모 저장", "inq-memo", "a-btn-outline a-btn-sm", ' data-id="' + esc(x.id) + '"') + btn(icon("trash", "sm") + "삭제", "inq-del", "a-btn-ghost a-btn-sm danger", ' data-id="' + esc(x.id) + '"') + "</div></div>" +
-      "</article>";
+          '<textarea class="a-input" rows="2" data-inq-memo="' + esc(x.id) + '" placeholder="메모 (예: 11/03 통화 · 다음 주 미팅) — 마스터만 봐요" aria-label="메모">' + esc(x.memo || "") + "</textarea>" +
+          '<div class="a-row-actions">' + (!x.iid && cur !== "fail" ? btn(icon("store", "sm") + (inqIsVod(x) ? "VOD 강사로 등록" : "플랫폼 만들기"), "inq-make", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : "") + btn(icon("check", "sm") + "메모 저장", "inq-memo", "a-btn-outline a-btn-sm", ' data-id="' + esc(x.id) + '"') + btn(icon("trash", "sm") + "삭제", "inq-del", "a-btn-ghost a-btn-sm danger", ' data-id="' + esc(x.id) + '"') + "</div></div>" +
+        inqLogHtml(x) + "</div></article>";
     };
     // 화면에 1.5초 이상 보인 카드의 파트너 메시지는 읽음으로 (메뉴 · 종 숫자가 줄어요)
     if (unread.length) setTimeout(markInqSeen, 300);
@@ -2117,18 +2168,27 @@
       : head("강사 입점 문의", "두잉고 첫 화면의 ‘강사 입점 문의’와 DOOGO CLASS ‘두고 파트너스’ 지원서로 들어온 신청이에요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. 파트너 추천 링크로 들어온 문의는 상태 · 1:1 대화가 그 파트너의 파트너센터에도 함께 보여요. (메모는 마스터만 봐요)",
           xlBtn + '<a class="a-btn a-btn-ghost" href="#/partner" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "문의 화면 열기</a>")) +
       alertBar +
-      '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" +
-        (shown.length ? '<div class="a-stack">' + shown.map(card).join("") + "</div>" : emptyBox("handshake", f === "all" ? (only ? "아직 들어온 두고 파트너스 지원이 없어요." : "아직 들어온 입점 문의가 없어요.") : f === "msg" ? "안 읽은 파트너 메시지가 없어요." : "이 상태의 문의가 없어요.")) + "</section>";
+      '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" + flow +
+        (f === "todo" && shown.length ? '<p class="a-inq-hint">' + icon("help", "xs") + "들어온 순서대로 위에서부터 처리해 주세요. 줄을 누르면 지원서가 펼쳐지고, 처음 펼치면 ‘열람’으로 바뀌어요.</p>" : "") +
+        (shown.length ? '<div class="a-stack a-inq-list">' + shown.map(card).join("") + "</div>" : emptyBox("handshake", f === "all" ? (only ? "아직 들어온 두고 파트너스 지원이 없어요." : "아직 들어온 입점 문의가 없어요.") : f === "todo" ? "처리할 지원이 없어요. 모두 처리했어요!" : f === "msg" ? "안 읽은 파트너 메시지가 없어요." : "이 상태의 지원이 없어요.")) + "</section>";
   }
   /** 입점 문의 · 두고 파트너스 지원 엑셀 — 지금 보고 있는 탭 그대로 (지원서 칸 · 상태 · 메모까지) */
   function inqXl(only, f) {
     const all = DB.inquiries().filter((x) => !only || inqIsVod(x));
-    const list = all.filter((x) => !f || f === "all" || (f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? inqIsVod(x) : (x.status || "new") === f));
+    const noOf = {}; all.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((x, i) => { noOf[x.id] = i + 1; });
+    const list = all.filter((x) => !f || f === "all" || (f === "todo" ? INQ_TODO.indexOf(x.status || "new") >= 0 : f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? inqIsVod(x) : (x.status || "new") === f));
     if (!list.length) { toast("내려받을 지원이 없어요."); return; }
-    const head = ["접수 일시", "구분", "상태", "성함", "활동명", "연락처", "이메일", "강의 분야", "열고 싶은 클래스", "클래스 주제", "어떤 강의인가요", "직접 낸 결과", "강의 경험", "강의 자료 준비", "원하는 오픈 시기", "강의 · 활동하는 곳", "채널 주소", "다른 주소", "알게 된 곳", "남긴 말", "추천 코드", "소개 파트너", "메모"];
+    const head = ["접수 번호", "접수 일시", "구분", "상태", "열람 일시", "마지막 처리", "성함", "활동명", "연락처", "이메일", "연락받기 편한 시간", "강의 분야", "열고 싶은 클래스", "클래스 주제", "수강 대상", "어떤 강의인가요", "커리큘럼 초안", "강사 소개 · 이력", "직접 낸 결과", "강의 경험", "강의 자료 준비", "촬영 방식", "원하는 오픈 시기", "희망 판매가", "강의 · 활동하는 곳", "채널 주소", "다른 주소", "채널 규모", "알게 된 곳", "남긴 말", "추천 코드", "소개 파트너", "메모", "처리 기록"];
     const p2 = (n) => String(n).padStart(2, "0"), full = (t) => { const d = new Date(t); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); };
-    const rows = [head].concat(list.map((x) => { const F = x.form || {}, pa = inqAff(x); return [x.at ? full(x.at) : "", inqIsPt(x) ? "두고 파트너스" : inqIsVod(x) ? "DOOGO CLASS 강사 모집" : "두잉고 입점 문의", inqStatus(x)[1], x.name || "", F.nick || "", x.phone || "", x.email || "", F.cat || "", (F.kinds || []).join(", "), F.topic || "", x.course || "", F.result || "", F.exp || "", F.ready || "", F.when || "", String(x.where || "").replace(/^\[[^\]]*\]\s*/, ""), x.link || "", F.link2 || "", F.from || "", x.message || "", x.ref || "", pa ? pa.name : "", x.memo || ""]; }));
-    XL.download(XL.write(only ? "두고 파트너스 지원" : "입점 문의", rows, { text: [5], widths: [17, 14, 10, 10, 14, 15, 24, 14, 22, 30, 50, 30, 16, 18, 14, 22, 30, 30, 16, 40, 10, 12, 30] }), (only ? "doogoclass-partners-" : "doinggo-inquiries-") + todayStr() + ".xlsx");
+    const stName = (k) => (INQ_STATUS.find((s) => s[0] === k) || [k, k])[1];
+    const rows = [head].concat(list.map((x) => {
+      const F = x.form || {}, pa = inqAff(x), lg = x.log || [], last = lg[lg.length - 1], seenAt = x.seenAt || inqStepAt(x, "seen");
+      return [noOf[x.id], x.at ? full(x.at) : "", inqIsPt(x) ? "두고 파트너스" : inqIsVod(x) ? "DOOGO CLASS 강사 모집" : "두잉고 입점 문의", inqStatus(x)[1], seenAt ? full(seenAt) : "", last ? full(last.at) + " " + stName(last.st) + (last.by ? " · " + last.by : "") : "",
+        x.name || "", F.nick || "", x.phone || "", x.email || "", F.ctime || "", F.cat || "", (F.kinds || []).join(", "), F.topic || "", F.target || "", x.course || "", F.curri || "", F.career || "", F.result || "", F.exp || "", F.ready || "", F.film || "", F.when || "", F.price || "",
+        String(x.where || "").replace(/^\[[^\]]*\]\s*/, ""), x.link || "", F.link2 || "", F.reach || "", F.from || "", x.message || "", x.ref || "", pa ? pa.name : "", x.memo || "",
+        lg.map((e) => full(e.at) + " " + stName(e.st) + (e.by ? " (" + e.by + ")" : "")).join("\n")];
+    }));
+    XL.download(XL.write(only ? "두고 파트너스 지원" : "입점 문의", rows, { text: [8], widths: [9, 17, 14, 10, 17, 30, 10, 14, 15, 24, 14, 14, 22, 30, 24, 50, 40, 40, 30, 16, 18, 16, 14, 14, 22, 30, 30, 12, 16, 40, 10, 12, 30, 40] }), (only ? "doogoclass-partners-" : "doinggo-inquiries-") + todayStr() + ".xlsx");
     toast("지원 " + list.length + "건을 엑셀로 내려받았어요.");
   }
   function findInq(id) { return DB.inquiries().find((x) => x.id === id); }
@@ -6594,13 +6654,13 @@
   function affInqStrip(p) {
     const qs = affInqs(p), c = (st) => qs.filter((q) => (q.status || "new") === st).length;
     return '<section class="a-card p-inq-strip"><div class="a-card-head"><h2>내 추천으로 들어온 입점 문의</h2><a class="a-link" href="#/center/partner/inquiries">전체 보기 ' + icon("arrowRight", "xs") + "</a></div>" +
-      '<div class="p-funnel">' + [["들어온 문의", qs.length, ""], ["상담 중", c("new") + c("contact"), "info"], ["계약 성사", c("done"), "ok"], ["계약 미성사", c("fail"), "bad"], ["보류", c("hold"), "mute"]].map((x) => '<a href="#/center/partner/inquiries" class="' + x[2] + '"><small>' + x[0] + "</small><b>" + x[1] + "<em>건</em></b></a>").join("") + "</div>" +
+      '<div class="p-funnel">' + [["들어온 문의", qs.length, ""], ["상담 중", c("new") + c("seen") + c("contact"), "info"], ["계약 완료", c("done"), "ok"], ["계약 안 됨", c("fail"), "bad"], ["보류", c("hold"), "mute"]].map((x) => '<a href="#/center/partner/inquiries" class="' + x[2] + '"><small>' + x[0] + "</small><b>" + x[1] + "<em>건</em></b></a>").join("") + "</div>" +
       (qs.length ? '<ul class="p-inq-mini">' + qs.slice(0, 3).map((q) => { const st = inqStatus(q); return '<li><span class="a-avatar">' + esc((q.name || "?").slice(0, 1)) + "</span><b>" + esc(q.name) + (inqUpdated(q) > (q.pSeen || 0) ? '<i class="p-new">N</i>' : "") + "</b><small>" + esc(String(q.course || "").slice(0, 34)) + "</small>" + pill(st[1], st[2]) + "</li>"; }).join("") + "</ul>" : emptyBox("link", "아직 추천 링크로 들어온 입점 문의가 없어요. 위의 추천 링크를 강사님께 보내 보세요.")) + "</section>";
   }
   function pagePartnerInquiries() {
     const p = affMe(), qs = affInqs(p), c = (st) => qs.filter((q) => (q.status || "new") === st).length;
-    const f = ui.pInqTab || "all", shown = qs.filter((q) => f === "all" || (f === "ing" ? ["new", "contact"].includes(q.status || "new") : (q.status || "new") === f));
-    const tabs = [["all", "전체", qs.length], ["ing", "상담 중", c("new") + c("contact")], ["done", "계약 성사", c("done")], ["fail", "계약 미성사", c("fail")], ["hold", "보류", c("hold")]].map((t) => '<button type="button" class="a-tab' + (f === t[0] ? " on" : "") + '" data-action="p-inq-tab" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + t[2] + "</span></button>").join("");
+    const f = ui.pInqTab || "all", shown = qs.filter((q) => f === "all" || (f === "ing" ? ["new", "seen", "contact"].includes(q.status || "new") : (q.status || "new") === f));
+    const tabs = [["all", "전체", qs.length], ["ing", "상담 중", c("new") + c("seen") + c("contact")], ["done", "계약 완료", c("done")], ["fail", "계약 안 됨", c("fail")], ["hold", "보류", c("hold")]].map((t) => '<button type="button" class="a-tab' + (f === t[0] ? " on" : "") + '" data-action="p-inq-tab" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + t[2] + "</span></button>").join("");
     const card = (q) => {
       const st = inqStatus(q), fresh = inqUpdated(q) > (q.pSeen || 0), done = (q.status || "new") === "done";
       return '<article class="a-inq p-inq' + (done ? " is-done" : "") + '"><div class="a-inq-head"><span class="a-avatar">' + esc((q.name || "?").slice(0, 1)) + "</span><div><b>" + esc(q.name) + (fresh ? '<i class="p-new">N</i>' : "") + "</b><small>" + fmtStamp(q.at) + " 접수 · 추천 코드 " + esc(q.ref || p.code || "") + "</small></div>" + pill(st[1], st[2]) + "</div>" +
@@ -6615,7 +6675,7 @@
     // 이 화면을 열면 ‘새 소식’ 표시를 읽음으로
     setTimeout(() => { let ch = false; qs.forEach((q0) => { const q = findInq(q0.id); if (q && inqUpdated(q) > (q.pSeen || 0)) { q.pSeen = Date.now(); DB.saveInquiry(q); ch = true; } }); if (ch) { const n = document.querySelector('.a-nav[href="#/center/partner/inquiries"] .a-nav-num, .a-nav[href="#/center/partner/inquiries"] span + span'); if (n) n.remove(); } }, 1500);
     return head("입점 문의", "내 추천 링크 · 코드로 들어온 강사님 입점 문의예요. 상담과 계약은 두잉고가 진행하고, 진행 상황과 계약 성사 여부가 여기에 그대로 보여요.") +
-      '<div class="a-kpis">' + kpi("들어온 문의", qs.length + "건", "내 추천 링크 · 코드", "#/center/partner/inquiries") + kpi("상담 중", c("new") + c("contact") + "건", "두잉고가 연락 · 미팅 중", "#/center/partner/inquiries", "") + kpi("계약 성사", c("done") + "건", qs.length ? "성사율 " + Math.round(c("done") / qs.length * 100) + "%" : "아직 없어요", "#/center/partner/inquiries", c("done") ? "ok" : "") + kpi("미성사 · 보류", c("fail") + c("hold") + "건", "계약 미성사 " + c("fail") + "건 · 보류 " + c("hold") + "건", "#/center/partner/inquiries") + "</div>" +
+      '<div class="a-kpis">' + kpi("들어온 문의", qs.length + "건", "내 추천 링크 · 코드", "#/center/partner/inquiries") + kpi("상담 중", c("new") + c("seen") + c("contact") + "건", "두잉고가 연락 · 미팅 중", "#/center/partner/inquiries", "") + kpi("계약 성사", c("done") + "건", qs.length ? "성사율 " + Math.round(c("done") / qs.length * 100) + "%" : "아직 없어요", "#/center/partner/inquiries", c("done") ? "ok" : "") + kpi("미성사 · 보류", c("fail") + c("hold") + "건", "계약 미성사 " + c("fail") + "건 · 보류 " + c("hold") + "건", "#/center/partner/inquiries") + "</div>" +
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" +
         (shown.length ? '<div class="a-stack">' + shown.map(card).join("") + "</div>" : emptyBox("handshake", qs.length ? "이 상태의 문의가 없어요." : "아직 추천 링크로 들어온 입점 문의가 없어요.", qs.length ? "" : btn(icon("link", "sm") + "내 추천 링크 복사", "aff-copy", "a-btn-primary a-btn-sm", ' data-v="' + esc(refUrl(p)) + '"'))) + "</section>" +
       '<p class="a-muted p-small p-privacy">' + icon("lock", "xs") + " 문의하신 강사님의 연락처 · 이메일은 개인정보 보호를 위해 일부만 보여요. 상담 · 계약은 두잉고 담당자가 진행해요.</p>";
@@ -6715,7 +6775,7 @@
           '<p class="a-error" id="pl-error"></p><button class="a-btn a-btn-primary" type="submit">' + icon("send", "sm") + "추천 보내기</button></form></section>" +
         '<div class="a-stack">' +
           '<section class="a-card"><div class="a-card-head"><h2>추천하면 이렇게 진행돼요</h2></div><ol class="p-steps p-steps-v">' +
-            [["send", "추천 접수", "파트너님 소개로 바로 기록"], ["headset", "두잉고 상담", "담당자가 강사님께 연락"], ["check", "계약 성사", "‘입점 문의’에 진행 상황 표시"], ["coins", "RS 수익", "기수 이용료 입금 시 확정"]].map((x, i) => '<li><span class="p-step-ic">' + icon(x[0], "sm") + "</span><em>STEP " + (i + 1) + "</em><b>" + x[1] + "</b><small>" + x[2] + "</small></li>").join("") + "</ol></section>" +
+            [["send", "추천 접수", "파트너님 소개로 바로 기록"], ["headset", "두잉고 상담", "담당자가 강사님께 연락"], ["check", "계약 완료", "‘입점 문의’에 진행 상황 표시"], ["coins", "RS 수익", "기수 이용료 입금 시 확정"]].map((x, i) => '<li><span class="p-step-ic">' + icon(x[0], "sm") + "</span><em>STEP " + (i + 1) + "</em><b>" + x[1] + "</b><small>" + x[2] + "</small></li>").join("") + "</ol></section>" +
           '<section class="a-card"><div class="a-card-head"><h2>내가 직접 추천한 강사님</h2><a class="a-link" href="#/center/partner/inquiries">입점 문의 ' + icon("arrowRight", "xs") + "</a></div>" +
             (mine.length ? '<ul class="p-inq-mini">' + mine.slice(0, 5).map((q) => { const st = inqStatus(q); return '<li><span class="a-avatar">' + esc((q.name || "?").slice(0, 1)) + "</span><b>" + esc(q.name) + "</b><small>" + fmtStamp(q.at) + "</small>" + pill(st[1], st[2]) + "</li>"; }).join("") + "</ul>" : emptyBox("userPlus", "아직 직접 추천한 강사님이 없어요.")) + "</section>" +
         "</div>" +
@@ -6791,7 +6851,7 @@
       ["강사님이 환불하면 어떻게 되나요?", "강사님 이용료가 환불되면 그 건의 RS도 함께 취소돼요. 이미 지급했다면 다음 정산에서 빼고 지급해요."],
       ["세금은 어떻게 처리되나요?", "개인 파트너는 사업소득으로 3.3%(소득세 3% + 지방소득세 0.3%)를 떼고 지급해요. 사업자 파트너는 세금계산서를 발행해 주시면 원천징수 없이 지급해요. 정산 유형은 두잉고 담당자가 정해 드려요."],
       ["지급 계좌를 바꾸고 싶어요", "‘내 정보 · 비밀번호’에서 언제든 바꿀 수 있어요. 지급일 3일 전까지 바꾼 계좌로 지급돼요."],
-      ["계약이 성사되지 않으면요?", "‘입점 문의’에 ‘계약 미성사’로 표시되고 RS는 생기지 않아요. 나중에 다시 진행되면 상태가 바뀌고 RS도 정상적으로 생겨요."]
+      ["계약이 성사되지 않으면요?", "‘입점 문의’에 ‘계약 안 됨’으로 표시되고 RS는 생기지 않아요. 나중에 다시 진행되면 상태가 바뀌고 RS도 정상적으로 생겨요."]
     ];
     return head("파트너 가이드", "RS가 어떻게 계산되고 언제 지급되는지, 자주 묻는 질문을 모았어요.") +
       '<div class="p-grid">' +
@@ -7609,7 +7669,7 @@
       case "aff-copy": { const ok = () => toast(d.msg || "추천 링크를 복사했어요."), no = () => toast("복사하지 못했어요. 링크를 길게 눌러 복사해 주세요.", "warn"); if (navigator.clipboard) navigator.clipboard.writeText(d.v).then(ok, no); else no(); break; }
       case "p-inq-tab": ui.pInqTab = d.k; render(); break;
       case "bell-go": e.preventDefault(); if (masterInqAlerts().msg) ui.inqFilter = "msg"; ROUTE.hash = "#/center/master/partners"; render(); break;
-      case "inq-jump": { const el = document.querySelector('.a-inq[data-inq="' + d.id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1600); const ta = el.querySelector("[data-inq-say]"); if (ta) setTimeout(() => { ktInit(el); ta.focus({ preventScroll: true }); }, 500); } break; }
+      case "inq-jump": { if (ui.inqOpen !== d.id) { ui.inqOpen = d.id; const xj = findInq(d.id); if (xj) inqMarkSeen(xj); render(); } const el = document.querySelector('.a-inq[data-inq="' + d.id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1600); const ta = el.querySelector("[data-inq-say]"); if (ta) setTimeout(() => { ktInit(el); ta.focus({ preventScroll: true }); }, 500); } break; }
       case "cal-m": { const t = todayStr().slice(0, 7); if (d.dir === "0") ui.calMonth = t; else { const cur = ui.calMonth || t, y = Number(cur.slice(0, 4)), m = Number(cur.slice(5, 7)) - 1 + Number(d.dir), dt = new Date(y, m, 1); ui.calMonth = dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0"); } render(); break; }
       case "cert-co": ui.certCo = d.k; render(); setTimeout(() => { const el = document.querySelector("[data-cert-co]"); if (el) el.closest(".a-card").scrollIntoView({ behavior: "smooth", block: "start" }); }, 30); break;
       case "cert-check": { const q = document.getElementById("cert-q"); ui.certQ = q ? q.value.trim() : ""; render(); break; }
@@ -7850,8 +7910,18 @@
         });
         break;
       }
-      case "inq-tab": ui.inqFilter = d.k; render(); break;
-      case "vr-tab": ui.vrFilter = d.k; render(); break;
+      case "inq-tab": ui.inqFilter = d.k; ui.inqOpen = null; render(); break;
+      case "inq-open": {
+        // 줄을 누르면 펼치기 · 접기. 처음 펼치면 ‘열람’으로 (누가 · 언제 처리 기록에)
+        const x = findInq(d.id); if (!x) break;
+        const was = ui.inqOpen === x.id; ui.inqOpen = was ? null : x.id;
+        const seen = !was && inqMarkSeen(x);
+        render();
+        if (!was) { const el = document.querySelector('.a-inq[data-inq="' + d.id + '"]'); if (el) { ktInit(el); const r0 = el.getBoundingClientRect(); if (r0.top < 70 || r0.top > innerHeight * 0.6) el.scrollIntoView({ block: "start", behavior: "smooth" }); } if (seen) toast("‘열람’으로 표시했어요. 처리 기록에 남아요."); }
+        break;
+      }
+      case "inq-st": inqApplyStatus(findInq(d.id), d.st); break;
+      case "vr-tab": ui.vrFilter = d.k; ui.inqOpen = null; render(); break;
       case "inq-xl": inqXl(d.only, d.f); break;
       case "inq-make": { if (staffDeny("master/instructors")) break; const x = findInq(d.id); if (x) insForm(null, { inq: x.id, name: x.name, phone: x.phone, email: x.email, course: x.course, vod: inqIsVod(x) }); break; }
       case "inq-memo": { const x = findInq(d.id), ta = document.querySelector('[data-inq-memo="' + d.id + '"]'); if (x && ta) { x.memo = ta.value.trim(); DB.saveInquiry(x); toast("메모를 저장했어요."); } break; }
@@ -8036,7 +8106,7 @@
     }
     else if (t.id === "att-file") { addAttFiles(t.files); t.value = ""; }
     else if (t.id === "img-file") { addImgFiles(t.files); t.value = ""; }
-    else if (t.dataset && t.dataset.inqStatus) { const x = findInq(t.dataset.inqStatus); if (x) { setInqStatus(x, t.value); DB.saveInquiry(x); actLog(x.name + " 님 입점 문의를 ‘" + inqStatus(x)[1] + "’" + josa(inqStatus(x)[1], "으로", "로").slice(inqStatus(x)[1].length) + " 바꿨어요."); DB.save(); render(); toast("‘" + inqStatus(x)[1] + "’" + josa(inqStatus(x)[1], "으로", "로").slice(inqStatus(x)[1].length) + " 바꿨어요." + (inqAff(x) ? " 파트너센터에도 보여요." : "")); } }
+    else if (t.dataset && t.dataset.inqStatus) inqApplyStatus(findInq(t.dataset.inqStatus), t.value);
     else if (t.dataset && t.dataset.certCo) { ui.certCo = t.value; render(); }
     else if (t.matches && t.matches("[data-split-sel]")) dgSplit(t.value);
     else if (t.dataset && t.dataset.logWho) { ui.logWho = t.value; (ui.pg = ui.pg || {}).log = 1; render(); }

@@ -1385,8 +1385,11 @@
         "</nav>" +
         '<div class="vd-gf-help"><b>도움이 필요하신가요?</b><p>수강 · 결제 · 환불 문의를 남겨 주시면<br>영업일 기준 하루 안에 답해 드려요.</p><div class="vd-gf-hbtn"><a class="vd-btn vd-btn-p" href="#/vod/my/help">1:1 문의하기 ' + icon("arrowRight", "xs") + "</a>" + kkBtn("vd-btn vd-btn-kakao", "카카오톡 상담") + "</div>" +
           (S.phone || S.hours ? '<p class="vd-gf-cs">' + (S.phone ? "<b>" + tel(S.phone) + "</b>" : "") + (S.hours ? "<small>" + esc(S.hours) + "</small>" : "") + "</p>" : "") + "</div></div>" +
-      '<div class="vd-gf-bot"><div class="vd-gf-biz"><strong>' + esc(S.company || "(주)두고홀딩스") + "</strong><dl>" + biz.map((x) => "<div><dt>" + x[0] + "</dt><dd>" + x[1] + "</dd></div>").join("") + "</dl>" + (S.notice ? "<p>" + esc(S.notice) + "</p>" : "") + '<p class="vd-gf-copy">© 2026 ' + esc(S.company || "(주)두고홀딩스") + ". All rights reserved.</p></div>" +
-        '<nav class="vd-gf-links" aria-label="약관">' + (() => { const n = window.CLASS_LEGAL_NOTICE ? '<em class="vd-gf-new" title="' + esc(window.CLASS_LEGAL_NOTICE.date) + '부터 바뀌어요">개정 예정</em>' : ""; return '<a href="#/terms">이용약관' + n + '</a><a href="#/privacy"><strong>개인정보처리방침</strong>' + n + "</a>"; })() + '<a href="#/refund">환불정책</a>' + lg("oss", "오픈소스 라이선스") + (bizDigits.length === 10 ? ext("https://www.ftc.go.kr/bizCommPop.do?wrkr_no=" + bizDigits, "사업자정보확인") : "") + '<a href="#/vod/partners">두고 파트너스 · 입점 문의</a></nav></div></div></footer>';
+      '<div class="vd-gf-bot"><div class="vd-gf-biz"><strong>' + esc(S.company || "(주)두고홀딩스") + "</strong><dl>" + biz.map((x) => "<div><dt>" + x[0] + "</dt><dd>" + x[1] + "</dd></div>").join("") + "</dl>" + (S.notice ? "<p>" + esc(S.notice) + "</p>" : "") +
+        // 약관 개정 공지 (약관 제3조 · 개인정보처리방침 13번: 시행 7일 전부터 화면에 공지) — 눈에 띄는 빨간 배지 대신 조용한 한 줄. 시행일(legal.js NEW_FROM)이 되면 저절로 사라져요
+        (window.CLASS_LEGAL_NOTICE ? '<p class="vd-gf-lnote">' + esc(window.CLASS_LEGAL_NOTICE.date) + '부터 <a href="#/terms">이용약관</a> · <a href="#/privacy">개인정보처리방침</a>이 일부 바뀌어요. 바뀌는 내용은 각 페이지 맨 위 개정 안내에서 볼 수 있어요.</p>' : "") +
+        '<p class="vd-gf-copy">© 2026 ' + esc(S.company || "(주)두고홀딩스") + ". All rights reserved.</p></div>" +
+        '<nav class="vd-gf-links" aria-label="약관"><a href="#/terms">이용약관</a><a href="#/privacy"><strong>개인정보처리방침</strong></a>' + '<a href="#/refund">환불정책</a>' + lg("oss", "오픈소스 라이선스") + (bizDigits.length === 10 ? ext("https://www.ftc.go.kr/bizCommPop.do?wrkr_no=" + bizDigits, "사업자정보확인") : "") + '<a href="#/vod/partners">두고 파트너스 · 입점 문의</a></nav></div></div></footer>';
   }
   // 휴대폰 아래 메뉴: 왼쪽 ‘메뉴’(전체 메뉴 · 검색) · 찜 · 가운데 ‘홈’ · 내 강의실 · 마이
   const tabbar = (on) => '<nav class="vd-tabbar" aria-label="아래 메뉴">' + [["menu", "", "menu", "메뉴"], ["likes", "#/vod/my/likes", "heart", "찜"], ["home", "#/vod", "home", "홈"], ["cls", "#/vod/my/classes", "monitorPlay", "내 강의실"], ["my", "#/vod/my", "user", "마이"]].map((t) => t[0] === "menu"
@@ -2044,8 +2047,8 @@
   function crdStats(p) {
     if (!p.iid) return "";
     const mine = listed().filter((x) => x.iid === p.iid);
-    const it = [[mine.length, "클래스"]].filter((x) => x[0]);
-    return it.length ? '<ul class="vd-crd-st">' + it.map((x) => "<li><b>" + x[0] + "</b><span>" + x[1] + "</span></li>").join("") + "</ul>" : "";
+    // 2026-11-02: 숫자 상자 대신 이름 오른쪽 알약 — 누르면 강사 페이지(다른 클래스)로
+    return mine.length ? '<a class="vd-crd-cnt" href="' + tHref(p.iid) + '" aria-label="' + esc(p.creator || "") + ' 강사 클래스 ' + mine.length + '개 보기">' + icon("monitorPlay", "xs") + "<span>클래스</span><b>" + mine.length + "</b></a>" : "";
   }
   function pageProduct(id) {
     const p = product(id); if (!p || p.status === "hidden" || !insShown(p)) return shell("", '<div class="vd-wrap">' + emptyBox("alert", "판매 중인 클래스가 아니에요", "", '<a class="vd-btn vd-btn-o" href="#/vod">홈으로</a>') + "</div>");
@@ -2086,7 +2089,7 @@
         (pvs.length ? sec("preview", "구매 전에 <span data-accent>미리보기</span>", '<p class="vd-curri-sum">강의 ' + lz.length + "개 중 " + pvs.length + "개를 결제 전에 먼저 볼 수 있어요. 나에게 맞는지 확인하고 시작하세요.</p>" +
           '<div class="vd-pvs" data-rv-kids>' + pvs.map((l) => '<button type="button" class="vd-pv-card" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(l.id) + '">' + pvThumb(p, l) + "<b>" + esc(l.title) + "</b><span>" + esc(l.desc || (chapOf(p, l).ch || {}).title || "") + "</span></button>").join("") + "</div>", "vd-pd-pv") : "") +
         // 강사 소개: 강사 얼굴이 먼저 크게 보이게 (PC 왼쪽 큰 세로 사진 · 모바일 위쪽 전체 폭) + 클래스 · 수강생 숫자
-        sec("creator", bk ? "저자 소개" : "강사 소개", '<div class="vd-crd vd-crd2" data-rv><div class="vd-crd-ph' + (phOf(p) ? "" : " no") + '">' + (phOf(p) ? '<img src="' + esc(phOf(p)) + '" alt="' + esc(p.creator) + ' 강사">' : "<i>" + esc((p.creator || "?").slice(0, 1)) + "</i>") + '<span class="vd-crd-cap"><small>CREATOR</small><b>' + esc(p.creator) + "</b></span></div><div class=\"vd-crd-body\"><small>" + esc(p.tagline || insB.field || "크리에이터") + "</small><b>" + esc(p.creator) + " <em>강사</em></b>" + crdStats(p) + "<p>" + esc(p.creatorBio || (p.creator + "님은 두잉고에서 기수를 운영하며 수강생과 함께 결과를 만들고 있어요. 이 클래스는 기수 강의의 핵심만 골라 언제든 볼 수 있게 만든 " + TYPE[t][0] + "예요.")) + "</p>" +
+        sec("creator", bk ? "저자 소개" : "강사 소개", '<div class="vd-crd vd-crd2" data-rv><div class="vd-crd-ph' + (phOf(p) ? "" : " no") + '">' + (phOf(p) ? '<img src="' + esc(phOf(p)) + '" alt="' + esc(p.creator) + ' 강사">' : "<i>" + esc((p.creator || "?").slice(0, 1)) + "</i>") + '<span class="vd-crd-cap"><small>CREATOR</small><b>' + esc(p.creator) + "</b></span></div><div class=\"vd-crd-body\"><small>" + esc(p.tagline || insB.field || "크리에이터") + "</small><div class=\"vd-crd-nm\"><b>" + esc(p.creator) + " <em>강사</em></b>" + crdStats(p) + "</div><p>" + esc(p.creatorBio || (p.creator + "님은 두잉고에서 기수를 운영하며 수강생과 함께 결과를 만들고 있어요. 이 클래스는 기수 강의의 핵심만 골라 언제든 볼 수 있게 만든 " + TYPE[t][0] + "예요.")) + "</p>" +
           (career.length ? '<ul class="vd-crd-car">' + career.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" : "") + '<a class="vd-tl-btn" href="' + (p.iid ? tHref(p.iid) : "#/vod/search?q=" + encodeURIComponent(p.creator || "")) + '">' + esc(p.creator) + " 강사 페이지 · 다른 클래스" + icon("chevRight", "xs") + "</a></div></div>") +
         plansSec(p, sec) +
         (noCur ? "" : sec("curri", curName, '<p class="vd-curri-sum">' + (t === "ebook" || bk ? (p.curriculum || []).length + "장 · 총 " + (Number(p.pages) || 0) + "쪽" : ev ? "총 " + durTxt(Number(p.eventMin) || totalMin(p)) + " 진행" : "파트 " + (p.curriculum || []).length + "개 · 클립 " + lz.length + "개 · 총 " + durTxt(totalMin(p))) + "</p>" +
@@ -3129,12 +3132,13 @@
       '<div class="pt-cheer"><img class="pt-cheer-img" data-rv="pop" src="' + PT_MS + 'mascot-cheer.webp" alt="" width="420" height="454" loading="lazy"><h2 data-eg>처음이라 막막해도 괜찮아요.<br><span data-accent>두고 파트너스</span>가 끝까지 함께해요.</h2><span class="pt-cheer-pill" data-rv>노하우만 있으면 충분해요</span></div></div></section>';
     const strip = '<section class="pt-strip"><div class="vd-wrap pt-strip-in" data-rv-kids>' + [["pen", "기획부터 함께", "처음이어도 커리큘럼을 같이 잡아요"], ["video", "촬영 · 편집", "스튜디오 · 장비 · 스태프 준비"], ["megaphone", "판매 · 홍보", "상세페이지 · 광고 · 알림까지"], ["calendar", "투명한 정산", "판매 · 정산을 날짜별로 확인"]].map((x) => '<div class="pt-st">' + icon(x[0], "sm") + "<b>" + x[1] + "</b><small>" + x[2] + "</small></div>").join("") + "</div></section>";
     // 왜 DOOGO CLASS? — 화면 모양(목업)은 숫자 없이 그림으로만 (실제 정산 · 판매 숫자처럼 보이지 않게)
-    const mkMake = '<div class="pt-mock pt-mk-make"><b>클래스 제작 진행</b><ol>' + [["기획 회의 · 커리큘럼", "done"], ["스튜디오 촬영", "done"], ["편집 · 자막", "done"], ["썸네일 · 상세페이지", "now"], ["오픈", ""]].map((x) => '<li class="' + x[1] + '"><i>' + (x[1] === "done" ? icon("check", "xs") : "") + "</i>" + x[0] + (x[1] === "now" ? "<em>진행 중</em>" : "") + "</li>").join("") + '</ol><div class="pt-mk-bar"><i></i></div></div>';
+    // 그림 칸(data-rv="open")은 화면에 들어올 때 하나씩 ‘열려요’: 칸이 가운데서 양옆으로 열리고 → 카드가 떠오르고 → 안쪽 항목(--k 순서)이 차례로
+    const mkMake = '<div class="pt-mock pt-mk-make"><b>클래스 제작 진행</b><ol>' + [["기획 회의 · 커리큘럼", "done"], ["스튜디오 촬영", "done"], ["편집 · 자막", "done"], ["썸네일 · 상세페이지", "now"], ["오픈", ""]].map((x, k) => '<li class="' + x[1] + '" style="--k:' + k + '"><i>' + (x[1] === "done" ? icon("check", "xs") : "") + "</i>" + x[0] + (x[1] === "now" ? "<em>진행 중</em>" : "") + "</li>").join("") + '</ol><div class="pt-mk-bar"><i></i></div></div>';
     const p0 = ps.find((p) => typeOf(p) === "vod" && p.thumb) || ps[0];
     const mkSell = '<div class="pt-mock pt-mk-sell">' + (p0 ? '<div class="pt-mk-card"><span class="pt-mk-th">' + thumbArt(p0) + "</span><b>" + esc(p0.title) + "</b><small>" + esc(p0.creator || "") + "</small></div>" : "") + '<div class="pt-mk-tags"><span class="pt-mk-tag t1">' + icon("bell", "xs") + "오픈 알림</span><span class=\"pt-mk-tag t2\">" + icon("gift", "xs") + "쿠폰</span><span class=\"pt-mk-tag t3\">" + icon("users", "xs") + "강사 페이지</span><span class=\"pt-mk-tag t4\">" + icon("megaphone", "xs") + "광고</span></div></div>";
-    const mkRoom = '<div class="pt-mock pt-mk-room"><div class="pt-mk-prog"><span>진도율</span><i><b></b></i></div><ul>' + [["file", "수업 자료 내려받기"], ["bot", "AI 조교에게 바로 질문"], ["message", "1:1 코칭권으로 피드백"], ["star", "끝까지 듣고 후기 남기기"]].map((x) => "<li>" + icon(x[0], "xs") + x[1] + "</li>").join("") + "</ul></div>";
-    const mkPay = '<div class="pt-mock pt-mk-pay"><div class="pt-mk-ph"><b>판매 · 정산 달력</b><span class="vd-fresh vd-fresh-upd">UPDATE<small>' + String(today()).slice(2, 7).replace("-", ".") + '</small></span></div><div class="pt-mk-bars">' + [38, 62, 45, 80, 56, 92, 70].map((h) => '<i style="--h:' + h + '%"></i>').join("") + '</div><div class="pt-mk-row"><span>' + icon("calendar", "xs") + "정산 예정</span><span>" + icon("refresh", "xs") + "재수강 할인</span></div></div>";
-    const feat = (i, eb, h, p, mock) => '<div class="pt-ft' + (i % 2 ? " rev" : "") + '"><div class="pt-ft-tx" data-rv><small>' + eb + "</small><h3>" + h + "</h3><p>" + p + "</p></div><div class=\"pt-ft-vis\" data-rv aria-hidden=\"true\">" + mock + "</div></div>";
+    const mkRoom = '<div class="pt-mock pt-mk-room"><div class="pt-mk-prog"><span>진도율</span><i><b></b></i></div><ul>' + [["file", "수업 자료 내려받기"], ["bot", "AI 조교에게 바로 질문"], ["message", "1:1 코칭권으로 피드백"], ["star", "끝까지 듣고 후기 남기기"]].map((x, k) => '<li style="--k:' + k + '">' + icon(x[0], "xs") + x[1] + "</li>").join("") + "</ul></div>";
+    const mkPay = '<div class="pt-mock pt-mk-pay"><div class="pt-mk-ph"><b>판매 · 정산 달력</b><span class="vd-fresh vd-fresh-upd">UPDATE<small>' + String(today()).slice(2, 7).replace("-", ".") + '</small></span></div><div class="pt-mk-bars">' + [38, 62, 45, 80, 56, 92, 70].map((h, k) => '<i style="--h:' + h + '%;--k:' + k + '"></i>').join("") + '</div><div class="pt-mk-row"><span>' + icon("calendar", "xs") + "정산 예정</span><span>" + icon("refresh", "xs") + "재수강 할인</span></div></div>";
+    const feat = (i, eb, h, p, mock) => '<div class="pt-ft' + (i % 2 ? " rev" : "") + '"><div class="pt-ft-tx" data-rv><small>' + eb + "</small><h3>" + h + "</h3><p>" + p + "</p></div><div class=\"pt-ft-vis\" data-rv=\"open\" aria-hidden=\"true\">" + mock + "</div></div>";
     const why = sec("", "WHY DOOGO CLASS", "강사님은 노하우만,<br>나머지는 DOOGO CLASS가 함께해요.", "", '<div class="pt-fts">' +
       feat(0, "01 · 제작", "강의 자료(PPT)만<br>준비하세요.", "기획 회의부터 스튜디오 촬영 · 편집 · 썸네일 · 상세페이지까지 DOOGO CLASS 제작팀이 함께 만들어요. 처음 강의하는 분도 말하는 순서와 자료 구성을 함께 잡아 드려요.", mkMake) +
       feat(1, "02 · 판매", "알리는 일은<br>DOOGO CLASS가 해요.", "스토어 첫 화면 · 분야별 추천 · 강사진 소개 · 오픈 알림 · 쿠폰 · 광고까지, 클래스가 팔리는 길을 함께 만들어요. 강사 페이지에는 강사님의 이야기와 모든 클래스가 모여요.", mkSell) +
@@ -3152,13 +3156,20 @@
     return shell("partners", '<div class="pt">' + hero + strip + voices + why + who + types + flow + faq + end + flt + "</div>", "", "vd-pt-page");
   }
 
-  /* 지원서: 기본 정보 → 클래스 → 경험 · 준비 → 채널 · 남길 말 → 동의
-     쓰던 내용은 이 탭에 잠깐 기억해요(sessionStorage) — 실수로 뒤로 가도 그대로 · 보내면 지워요 */
-  const PT_DRAFT = "dc:pt-draft";
+  /* 지원서 (2026-11-02 구글폼 형식): 머리 그림 → 제목 카드 → 섹션 5개를 한 장씩 (다음 · 이전) → 보내면 완료 카드
+     섹션: 1 기본 정보 → 2 강사 소개 → 3 클래스 → 4 준비 · 진행 → 5 마무리(동의 · 보내기)
+     질문마다 카드 하나 · 누르고 있는 카드는 왼쪽에 색 띠 · * 는 꼭 답할 질문(다음으로 넘어갈 때 확인)
+     쓰던 내용과 보고 있던 섹션은 이 탭에 잠깐 기억해요(sessionStorage) — 실수로 뒤로 가도 그대로 · 보내면 지워요 */
+  const PT_DRAFT = "dc:pt-draft", PT_SEC = "dc:pt-sec";
   const PT_EXP = ["처음이에요", "온라인 강의 경험", "오프라인 · 특강 경험", "온라인 · 오프라인 둘 다"];
   const PT_READY = ["아직 없어요", "목차 · 구성만 있어요", "강의 자료(PPT)가 있어요", "찍어 둔 영상도 있어요"];
   const PT_WHEN = ["최대한 빨리", "1~2개월 안", "3개월 안", "아직 정하지 않았어요"];
   const PT_FROM = ["DOOGO CLASS 수강 · 둘러보기", "유튜브", "인스타그램", "블로그 · 검색", "지인 소개", "두잉고 파트너 소개", "기타"];
+  const PT_CTIME = ["오전 (9시~12시)", "오후 (12시~6시)", "저녁 (6시 이후)", "언제든 괜찮아요"];
+  const PT_REACH = ["채널이 아직 없어요", "1천 명 미만", "1천~1만 명", "1만~10만 명", "10만 명 이상"];
+  const PT_FILM = ["스튜디오에서 함께 찍고 싶어요", "직접 찍어서 보낼게요", "상담하며 정할게요"];
+  const PT_PRICE = ["10만 원 미만", "10만~30만 원", "30만~50만 원", "50만 원 이상", "상담하며 정할게요"];
+  const PT_SECS = [["기본 정보", "연락드릴 정보예요. 지원 검토 · 상담 연락에만 써요."], ["강사 소개", "어떤 분인지 알려 주세요. 채널이 없어도 괜찮아요."], ["클래스", "열고 싶은 클래스를 알려 주세요. 처음이라 막연해도 생각나는 만큼만 적어 주세요."], ["준비 · 진행", "지금 준비된 만큼 골라 주세요. 정답은 없어요."], ["마무리", "거의 다 왔어요. 동의하고 보내 주세요."]];
   const ptKinds = () => ["VOD 강의", "전자책 · 종이책"].concat(bizOn("live") ? ["LIVE · 오프라인 강의"] : []).concat(["1:1 코칭 · TEA TIME"]);
   function ptDraft() { try { return JSON.parse(ss.get(PT_DRAFT) || "{}") || {}; } catch (e) { return {}; } }
   function ptSaveDraft(f) {
@@ -3166,51 +3177,101 @@
     Array.from(f.elements).forEach((el) => { if (!el.name || el.type === "submit") return; if (el.type === "checkbox") { if (el.name === "agree") return; (d[el.name] = d[el.name] || []); if (el.checked) d[el.name].push(el.value); } else if (el.type === "radio") { if (el.checked) d[el.name] = el.value; } else d[el.name] = el.value; });
     ss.set(PT_DRAFT, JSON.stringify(d));
   }
+  const ptSecNow = () => Math.min(5, Math.max(1, Number(ss.get(PT_SEC)) || 1));
   function pagePartnerApply() {
-    const m = me(), d = ptDraft(), cs = cats().map((c) => c.label).concat(["기타"]);
+    const m = me(), d = ptDraft(), cs = cats().map((c) => c.label).concat(["기타"]), cur = ptSecNow();
     const val = (k, def) => esc(d[k] != null ? d[k] : def || "");
-    const fl = (t, req, hint) => '<span class="pt-fl">' + t + (req ? ' <em aria-hidden="true">*</em>' : ' <i>선택</i>') + (hint ? "<small>" + hint + "</small>" : "") + "</span>";
-    const inp = (name, label, req, attrs, hint, def) => '<label class="pt-f">' + fl(label, req, hint) + '<input name="' + name + '" ' + (attrs || "") + (req ? " required" : "") + ' value="' + val(name, def) + '"></label>';
-    const area = (name, label, req, ph, hint, rows) => '<label class="pt-f">' + fl(label, req, hint) + '<textarea name="' + name + '" rows="' + (rows || 4) + '" maxlength="1500" placeholder="' + esc(ph) + '"' + (req ? " required" : "") + ">" + val(name) + "</textarea></label>";
-    const chips = (name, label, req, list, multi, def) => { const cur = multi ? (Array.isArray(d[name]) ? d[name] : def || []) : d[name] != null ? d[name] : def || ""; return '<fieldset class="pt-f pt-chips"><legend>' + fl(label, req, multi ? "여러 개 고를 수 있어요" : "") + "</legend><div>" + list.map((x) => '<label class="pt-chip-o"><input type="' + (multi ? "checkbox" : "radio") + '" name="' + name + '" value="' + esc(x) + '"' + ((multi ? cur.indexOf(x) >= 0 : cur === x) ? " checked" : "") + "><span>" + esc(x) + "</span></label>").join("") + "</div></fieldset>"; };
-    const sel = (name, label, list) => '<label class="pt-f">' + fl(label, false) + '<select name="' + name + '"><option value="">골라 주세요</option>' + list.map((x) => "<option" + (d[name] === x ? " selected" : "") + ">" + esc(x) + "</option>").join("") + "</select></label>";
-    const step = (n, t, body) => '<section class="pt-fs"><h2><span>' + n + "</span>" + t + "</h2>" + body + "</section>";
-    const side = '<aside class="pt-ap-side"><div class="pt-ap-sc"><span class="pt-eyebrow">' + icon("handshake", "xs") + "DOOGO PARTNERS</span><h1>두고 파트너스<br>지원서</h1><p>직접 해서 번 노하우를 클래스로 만들어 보세요. 적어 주신 내용은 담당자만 보고, 상담에만 써요.</p>" +
-      '<ol class="pt-ap-steps">' + ["기본 정보", "클래스", "경험 · 준비", "채널 · 남길 말", "동의 · 보내기"].map((x, i) => "<li><i>" + (i + 1) + "</i>" + x + "</li>").join("") + "</ol>" +
-      '<p class="pt-ap-time">' + icon("clock", "xs") + "작성 시간 약 3분 · <em>*</em> 표시만 꼭 적어 주세요</p>" +
-      '<a class="pt-ap-back" href="#/vod/partners">' + icon("arrowLeft", "xs") + "두고 파트너스 소개 다시 보기</a></div></aside>";
-    const form = '<form class="pt-form" data-pt-form novalidate>' +
-      step(1, "기본 정보", '<div class="pt-2">' + inp("name", "성함", 1, 'maxlength="40" autocomplete="name" placeholder="홍길동"', "", m ? m.name : "") + inp("nick", "활동명 · 브랜드명", 0, 'maxlength="40" placeholder="예: 갓농부, ○○스토어"') + "</div>" +
-        '<div class="pt-2">' + inp("phone", "연락처", 1, 'type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="010-0000-0000"', "", m ? m.phone || "" : "") + inp("email", "이메일", 1, 'type="email" inputmode="email" maxlength="120" autocomplete="email" placeholder="name@example.com"', "", m ? m.email || "" : "") + "</div>") +
-      step(2, "클래스", chips("cat", "강의 분야", 1, cs, false) + chips("kinds", "열고 싶은 클래스", 0, ptKinds(), true, ["VOD 강의"]) +
+    // 질문 카드: 제목(+ * 또는 ‘선택’) · 도움말 · 입력 · 틀렸을 때 문구
+    const qh = (id, t, req, hint, tag) => "<" + (tag || "label") + ' class="pt-gf-ql"' + (tag ? "" : ' for="' + id + '"') + ">" + t + (req ? ' <em aria-label="필수">*</em>' : "") + "</" + (tag || "label") + ">" + (hint ? '<p class="pt-gf-hint" id="' + id + '-h">' + hint + "</p>" : "");
+    const qerr = (id) => '<p class="pt-gf-err" id="' + id + '-e" role="alert">' + icon("alert", "xs") + "<span>이 질문에 답해 주세요</span></p>";
+    const inp = (name, label, req, attrs, hint, def) => { const id = "pt-" + name; return '<div class="pt-gf-q" data-q="' + name + '"' + (req ? " data-req" : "") + ">" + qh(id, label, req, hint) + '<input class="pt-gf-in" id="' + id + '" name="' + name + '" ' + (attrs || "") + (req ? ' required aria-required="true"' : "") + (hint ? ' aria-describedby="' + id + '-h"' : "") + ' value="' + val(name, def) + '">' + qerr(id) + "</div>"; };
+    const area = (name, label, req, ph, hint, rows, max) => { const id = "pt-" + name; return '<div class="pt-gf-q" data-q="' + name + '"' + (req ? " data-req" : "") + ">" + qh(id, label, req, hint) + '<textarea class="pt-gf-in pt-gf-ta" id="' + id + '" name="' + name + '" rows="' + (rows || 3) + '" maxlength="' + (max || 1500) + '" placeholder="' + esc(ph) + '"' + (req ? ' required aria-required="true"' : "") + (hint ? ' aria-describedby="' + id + '-h"' : "") + ">" + val(name) + "</textarea>" + qerr(id) + "</div>"; };
+    // 고르기: 하나(동그라미) · 여러 개(네모) — 구글폼처럼 세로 목록, 많으면 두세 칸
+    const opts = (name, label, req, list, multi, hint, def, cols) => {
+      const v0 = multi ? (Array.isArray(d[name]) ? d[name] : def || []) : d[name] != null ? d[name] : def || "", id = "pt-" + name;
+      return '<fieldset class="pt-gf-q pt-gf-ch" data-q="' + name + '"' + (req ? " data-req" : "") + ">" + qh(id, label, req, hint || (multi ? "여러 개 골라도 돼요" : ""), "legend") +
+        '<div class="pt-gf-opts' + (cols ? " c" + cols : "") + '">' + list.map((x) => '<label class="pt-gf-op"><input type="' + (multi ? "checkbox" : "radio") + '" name="' + name + '" value="' + esc(x) + '"' + ((multi ? v0.indexOf(x) >= 0 : v0 === x) ? " checked" : "") + '><i aria-hidden="true"></i><span>' + esc(x) + "</span></label>").join("") + "</div>" + qerr(id) + "</fieldset>";
+    };
+    const nav = (n) => '<div class="pt-gf-nav">' + (n > 1 ? '<button type="button" class="pt-gf-prev" data-v="pt-sec" data-n="' + (n - 1) + '">' + icon("arrowLeft", "xs") + "이전</button>" : "<span></span>") +
+      (n < 5 ? '<button type="button" class="vd-btn vd-btn-p pt-gf-next" data-v="pt-sec" data-n="' + (n + 1) + '">다음' + icon("arrowRight", "xs") + "</button>" : '<button type="submit" class="vd-btn vd-btn-p pt-gf-next pt-submit">지원서 보내기' + icon("send", "xs") + "</button>") + "</div>";
+    const sec = (n, body) => '<section class="pt-gf-sec" data-sec="' + n + '"' + (n === cur ? "" : " hidden") + ' aria-labelledby="pt-sh-' + n + '"><div class="pt-gf-card pt-gf-sh"><span>섹션 ' + n + " / 5</span><h2 id=\"pt-sh-" + n + '">' + PT_SECS[n - 1][0] + "</h2><p>" + PT_SECS[n - 1][1] + "</p></div>" + body + nav(n) + "</section>";
+    const ban = '<div class="pt-gf-ban" aria-hidden="true"><div class="pt-gf-ban-tx"><small>DOOGO PARTNERS</small><b>노하우를 클래스로,<br>첫걸음은 지원서부터</b></div><img src="' + PT_MS + 'mascot-hero.webp" alt="" width="880" height="760"></div>';
+    const title = '<div class="pt-gf-card pt-gf-title"><h1>두고 파트너스 지원서</h1><p>직접 해서 번 노하우를 DOOGO CLASS 클래스로 만들어 보세요. 기획 · 촬영 · 편집 · 상세페이지 · 판매 · 정산까지 함께해요. 적어 주신 내용은 담당자만 보고, 지원 검토 · 상담 연락에만 써요.</p>' +
+      '<ul class="pt-gf-meta"><li>' + icon("clock", "xs") + "약 5분</li><li>" + icon("layers", "xs") + "섹션 5개</li><li>" + icon("lock", "xs") + "담당자만 봐요</li></ul>" +
+      '<p class="pt-gf-req"><em>*</em> 표시는 꼭 답해 주세요' + (m ? " · " + esc(m.email || m.name || "") + " 님으로 쓰는 중" : "") + '</p><a class="pt-gf-back" href="#/vod/partners">' + icon("arrowLeft", "xs") + "두고 파트너스 소개 다시 보기</a></div>";
+    const prog = '<div class="pt-gf-prog" id="pt-gf-prog"><span><b id="pt-gf-pn">' + cur + "</b> / 5 · <em id=\"pt-gf-pt\">" + PT_SECS[cur - 1][0] + '</em></span><i role="progressbar" aria-valuemin="0" aria-valuemax="5" aria-valuenow="' + cur + '" aria-label="지원서 진행"><b id="pt-gf-pb" style="width:' + cur * 20 + '%"></b></i></div>';
+    const form = '<form class="pt-form pt-gf-form" data-pt-form novalidate>' +
+      sec(1, inp("name", "성함", 1, 'maxlength="40" autocomplete="name" placeholder="홍길동"', "", m ? m.name : "") + inp("nick", "활동명 · 브랜드명", 0, 'maxlength="40" placeholder="예: 갓농부, ○○스토어"', "스토어 · 강사 페이지에 보일 이름이에요. 없으면 비워 두세요.") +
+        inp("phone", "연락처", 1, 'type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="010-0000-0000"', "", m ? m.phone || "" : "") + inp("email", "이메일", 1, 'type="email" inputmode="email" maxlength="120" autocomplete="email" placeholder="name@example.com"', "", m ? m.email || "" : "") +
+        opts("ctime", "연락받기 편한 시간", 0, PT_CTIME, false, "", "", 2)) +
+      sec(2, area("career", "강사 소개 · 걸어온 길", 0, "예: 2019년 스마트스토어 창업 → 3년 만에 월매출 3,000만 원 · 지금은 브랜드 2개 운영 중", "지금 하는 일 · 대표 경력 · 수상 · 출간 등을 편하게 적어 주세요.", 4) +
+        inp("result", "직접 낸 결과", 0, 'maxlength="160" placeholder="예: 스마트스토어 월매출 3,000만 원 · 블로그 이웃 1만 명"', "숫자로 적어 주시면 상담이 빨라요.") +
+        inp("link", "대표 채널 · 포트폴리오 주소", 0, 'type="url" inputmode="url" maxlength="300" placeholder="https://"', "유튜브 · 블로그 · 인스타그램 · 스토어 · 노션 포트폴리오 무엇이든 좋아요.") + inp("link2", "다른 주소", 0, 'type="url" inputmode="url" maxlength="300" placeholder="https://"') +
+        opts("reach", "채널 규모 (구독자 · 팔로워)", 0, PT_REACH, false, "가장 큰 채널 기준이에요. 없어도 지원할 수 있어요.")) +
+      sec(3, opts("cat", "강의 분야", 1, cs, false, "", "", 3) + opts("kinds", "열고 싶은 클래스", 0, ptKinds(), true, "", ["VOD 강의"], 2) +
         inp("topic", "클래스 주제 한 줄", 1, 'maxlength="80" placeholder="예: 재고 없이 시작하는 해외 건기식 브랜드"') +
+        inp("target", "이런 분께 추천해요 (수강 대상)", 0, 'maxlength="120" placeholder="예: 부업으로 첫 매출을 내고 싶은 직장인"') +
         area("course", "어떤 노하우인가요", 1, "누구에게 · 무엇을 · 어떤 순서로 알려 주고 싶은지 자유롭게 적어 주세요", "", 5) +
-        inp("result", "직접 낸 결과", 0, 'maxlength="160" placeholder="예: 스마트스토어 월매출 3,000만 원 · 블로그 이웃 1만 명"', "숫자로 적어 주시면 상담이 빨라요")) +
-      step(3, "경험 · 준비", chips("exp", "강의 경험", 0, PT_EXP, false) + chips("ready", "강의 자료 준비", 0, PT_READY, false) +
-        '<div class="pt-2">' + inp("where", "지금 강의 · 활동하는 곳", 0, 'maxlength="120" placeholder="예: 유튜브 · 클래스101 · 아직 없어요"') + sel("when", "원하는 오픈 시기", PT_WHEN) + "</div>") +
-      step(4, "채널 · 남길 말", '<div class="pt-2">' + inp("link", "대표 채널 · 포트폴리오 주소", 0, 'type="url" inputmode="url" maxlength="300" placeholder="https://"') + inp("link2", "다른 주소", 0, 'type="url" inputmode="url" maxlength="300" placeholder="https://"') + "</div>" +
-        sel("from", "어떻게 알게 되셨나요", PT_FROM) + area("message", "하고 싶은 말", 0, "궁금한 점 · 원하는 진행 방식 · 연락받기 편한 시간 등", "", 3)) +
-      step(5, "동의 · 보내기", '<div class="pt-agree-box"><table><tr><th>받는 항목</th><td>성함 · 연락처 · 이메일 · 활동명 · 강의 정보 · 채널 주소</td></tr><tr><th>쓰는 곳</th><td>파트너 강사 지원 검토 · 상담 연락</td></tr><tr><th>보관 기간</th><td>상담이 끝나면 지체 없이 지워요 (계약하면 계약 기간 동안)</td></tr></table><p>동의하지 않을 수 있지만, 동의하지 않으면 지원서를 받을 수 없어요.</p></div>' +
-        '<label class="vd-agree pt-agree"><input type="checkbox" name="agree"><span>개인정보 수집 · 이용에 동의해요 <b>(필수)</b></span></label>' +
-        '<p class="vd-err" id="pt-err" role="alert"></p><button type="submit" class="vd-btn vd-btn-p vd-btn-xl pt-submit">지원서 보내기' + icon("send", "sm") + "</button>") +
+        area("curri", "커리큘럼 초안", 0, "예: 1강 시장 고르기 / 2강 첫 상품 소싱 / 3강 상세페이지 / 4강 광고 …", "생각나는 만큼만 적어 주세요. 없으면 상담할 때 함께 짜요.", 4)) +
+      sec(4, opts("exp", "강의 경험", 0, PT_EXP, false) + opts("ready", "강의 자료 준비", 0, PT_READY, false) + opts("film", "촬영은 어떻게 할까요", 0, PT_FILM, false, "DOOGO CLASS 스튜디오 · 장비 · 스태프가 준비돼 있어요.") +
+        opts("when", "원하는 오픈 시기", 0, PT_WHEN, false, "", "", 2) + opts("price", "생각하는 판매가", 0, PT_PRICE, false, "정해진 건 없어요. 상담할 때 시장 가격을 함께 봐요.", "", 2) +
+        inp("where", "지금 강의 · 활동하는 곳", 0, 'maxlength="120" placeholder="예: 유튜브 · 클래스101 · 아직 없어요"')) +
+      sec(5, opts("from", "어떻게 알게 되셨나요", 0, PT_FROM, false, "", "", 2) + area("message", "하고 싶은 말", 0, "궁금한 점 · 원하는 진행 방식 등", "", 3) +
+        '<fieldset class="pt-gf-q pt-gf-agree" data-q="agree" data-req><legend class="pt-gf-ql">개인정보 수집 · 이용 동의 <em aria-label="필수">*</em></legend><table><tr><th>받는 항목</th><td>성함 · 연락처 · 이메일 · 활동명 · 강사 소개 · 강의 정보 · 채널 주소</td></tr><tr><th>쓰는 곳</th><td>파트너 강사 지원 검토 · 상담 연락</td></tr><tr><th>보관 기간</th><td>상담이 끝나면 지체 없이 지워요 (계약하면 계약 기간 동안)</td></tr></table><p>동의하지 않을 수 있지만, 동의하지 않으면 지원서를 받을 수 없어요.</p>' +
+        '<label class="pt-gf-op pt-gf-agr"><input type="checkbox" name="agree"><i aria-hidden="true"></i><span>개인정보 수집 · 이용에 동의해요 <b>(필수)</b></span></label>' + qerr("pt-agree") + "</fieldset>" +
+        '<p class="vd-err" id="pt-err" role="alert"></p>') +
       "</form>";
-    return shell("partners", '<div class="pt pt-apply"><div class="vd-wrap pt-ap-g">' + side + '<div class="pt-ap-main" id="pt-ap-main">' + form + "</div></div></div>", "", "vd-pt-page");
+    const foot = '<p class="pt-gf-foot">DOOGO CLASS · 두고 파트너스 지원서 — 궁금한 점은 ' + kkBtn("pt-gf-kk", "카카오톡으로 물어보기") + "</p>";
+    return shell("partners", '<div class="pt pt-gf"><div class="pt-gf-w" id="pt-ap-main">' + ban + title + prog + form + foot + "</div></div>", "", "vd-pt-page vd-pt-gf");
+  }
+  /** 섹션의 * 질문이 다 채워졌는지 — 빈 질문 카드는 빨갛게, 첫 번째로 이동. 맞으면 true */
+  function ptCheck(f, n, quiet) {
+    const secEl = f.querySelector('.pt-gf-sec[data-sec="' + n + '"]'); if (!secEl) return true;
+    let first = null;
+    secEl.querySelectorAll(".pt-gf-q").forEach((q) => {
+      const name = q.dataset.q, el = f.elements[name]; let ok = true, msg = "이 질문에 답해 주세요";
+      const v = el && el.value != null && !el.length ? String(el.value).trim() : "";
+      if (q.hasAttribute("data-req")) {
+        if (q.classList.contains("pt-gf-ch") || name === "agree") ok = !!q.querySelector("input:checked");
+        else ok = !!v;
+      }
+      if (ok && v && name === "phone" && !/^[0-9+\-() ]{8,}$/.test(v)) { ok = false; msg = "연락처를 숫자로 적어 주세요 (예: 010-0000-0000)"; }
+      if (ok && v && name === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { ok = false; msg = "이메일 주소를 확인해 주세요"; }
+      if (name === "agree" && !ok) msg = "개인정보 수집 · 이용에 동의해 주세요";
+      q.classList.toggle("bad", !ok);
+      const e = q.querySelector(".pt-gf-err span"); if (e) e.textContent = msg;
+      const inpEl = q.querySelector("input:not([type=radio]):not([type=checkbox]), textarea"); if (inpEl) inpEl.setAttribute("aria-invalid", ok ? "false" : "true");
+      if (!ok && !first) first = q;
+    });
+    if (first && quiet) return false;
+    if (first) { const el = first.querySelector("input, textarea"); first.scrollIntoView({ block: "center", behavior: "smooth" }); if (el) setTimeout(() => el.focus({ preventScroll: true }), 300); return false; }
+    return true;
+  }
+  /** 섹션 넘기기 — 앞으로 갈 때만 지금 섹션을 확인해요 */
+  function ptGo(n) {
+    const f = document.querySelector("[data-pt-form]"); if (!f) return;
+    const cur = ptSecNow(); n = Math.min(5, Math.max(1, n));
+    if (n > cur) for (let i = cur; i < n; i++) if (!ptCheck(f, i)) { if (i !== cur) ptShow(f, i); return; }
+    ptShow(f, n);
+    const pg = document.getElementById("pt-gf-prog"); if (pg) { const y = pg.getBoundingClientRect().top + window.scrollY - 90; window.scrollTo({ top: Math.max(0, y), behavior: "smooth" }); }
+  }
+  function ptShow(f, n) {
+    ss.set(PT_SEC, String(n));
+    f.querySelectorAll(".pt-gf-sec").forEach((s) => { s.hidden = Number(s.dataset.sec) !== n; });
+    const pn = document.getElementById("pt-gf-pn"), pt = document.getElementById("pt-gf-pt"), pb = document.getElementById("pt-gf-pb");
+    if (pn) pn.textContent = n; if (pt) pt.textContent = PT_SECS[n - 1][0]; if (pb) { pb.style.width = n * 20 + "%"; pb.parentElement.setAttribute("aria-valuenow", n); }
+    const h = f.querySelector('.pt-gf-sec[data-sec="' + n + '"] h2'); if (h) { h.setAttribute("tabindex", "-1"); setTimeout(() => h.focus({ preventScroll: true }), 350); }
   }
   async function doPartnerApply(f) {
-    const err = document.getElementById("pt-err"), v = (n) => (f[n] && f[n].value != null ? String(f[n].value).trim() : ""), pick = (n) => Array.from(f.querySelectorAll('input[name="' + n + '"]:checked')).map((x) => x.value);
-    const bad = (msg, n) => { err.textContent = msg; const el = n && (f.querySelector('[name="' + n + '"]')); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: "center", behavior: "smooth" }); } };
-    if (!v("name")) return bad("성함을 적어 주세요.", "name");
-    if (!/^[0-9+\-() ]{8,}$/.test(v("phone"))) return bad("연락처를 숫자로 적어 주세요. (예: 010-0000-0000)", "phone");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v("email"))) return bad("이메일 주소를 확인해 주세요.", "email");
-    const cat = pick("cat")[0] || "";
-    if (!cat) return bad("강의 분야를 골라 주세요.", "cat");
-    if (!v("topic")) return bad("클래스 주제를 한 줄로 적어 주세요.", "topic");
-    if (!v("course")) return bad("어떤 노하우인지 적어 주세요.", "course");
-    if (!f.agree.checked) return bad("개인정보 수집 · 이용에 동의해 주세요.", "agree");
+    const err = document.getElementById("pt-err"), v = (n) => (f[n] && f[n].value != null && !f[n].length ? String(f[n].value).trim() : ""), pick = (n) => Array.from(f.querySelectorAll('input[name="' + n + '"]:checked')).map((x) => x.value);
+    // 모든 섹션 확인 — 빈 * 질문이 있는 섹션으로 데려가요
+    for (let i = 1; i <= 5; i++) if (!ptCheck(f, i, true)) { ptShow(f, i); ptCheck(f, i); err.textContent = "섹션 " + i + " · " + PT_SECS[i - 1][0] + "에 답하지 않은 질문이 있어요."; return; }
     err.textContent = "";
     const btn = f.querySelector("button[type=submit]"); btn.disabled = true; btn.classList.add("is-busy");
-    const kinds = pick("kinds"), exp = pick("exp")[0] || "", ready = pick("ready")[0] || "";
-    const form = { nick: v("nick"), cat, kinds, topic: v("topic"), result: v("result"), exp, ready, when: v("when"), link2: v("link2"), from: v("from") };
+    const kinds = pick("kinds"), cat = pick("cat")[0] || "", one = (n) => pick(n)[0] || "";
+    const form = { nick: v("nick"), cat, kinds, topic: v("topic"), result: v("result"), exp: one("exp"), ready: one("ready"), when: one("when"), link2: v("link2"), from: one("from"),
+      ctime: one("ctime"), career: v("career"), reach: one("reach"), target: v("target"), curri: v("curri"), film: one("film"), price: one("price") };
+    const bad = (msg) => { btn.disabled = false; btn.classList.remove("is-busy"); err.textContent = msg; };
     try {
       const r = await DB.applyPartner({
         name: v("name"), phone: v("phone"), email: v("email"), source: "partners", form,
@@ -3218,16 +3279,18 @@
         where: "[두고 파트너스] " + (v("where") || "-"), course: "[" + (kinds.join(", ") || "VOD 강의") + " / " + cat + "] " + v("topic") + "\n" + v("course"), link: v("link"),
         message: v("message"), agree: true
       });
-      if (!r || r.error || r.ok === false) { btn.disabled = false; btn.classList.remove("is-busy"); return bad(r && r.error === "locked" ? "지원이 많이 들어와 잠시 막혔어요. 조금 뒤에 다시 보내 주세요." : "보내지 못했어요. 입력한 내용을 확인하고 잠시 후 다시 시도해 주세요."); }
-      ss.set(PT_DRAFT, null);
+      if (!r || r.error || r.ok === false) return bad(r && r.error === "locked" ? "지원이 많이 들어와 잠시 막혔어요. 조금 뒤에 다시 보내 주세요." : "보내지 못했어요. 입력한 내용을 확인하고 잠시 후 다시 시도해 주세요.");
+      ss.set(PT_DRAFT, null); ss.set(PT_SEC, null);
       const box = document.getElementById("pt-ap-main");
       if (box) {
-        box.innerHTML = '<div class="pt-done"><span class="vd-done-ic">' + icon("check") + "</span><h2>지원서가 접수됐어요</h2><p>" + esc(v("name")) + " 강사님, 소중한 지원 고마워요.<br>담당자가 꼼꼼히 읽고 남겨 주신 연락처로 연락드릴게요.</p>" +
+        box.innerHTML = '<div class="pt-gf-ban pt-gf-ban-done" aria-hidden="true"><div class="pt-gf-ban-tx"><small>DOOGO PARTNERS</small><b>지원해 주셔서<br>고마워요!</b></div><img src="' + PT_MS + 'mascot-cheer.webp" alt="" width="420" height="454"></div>' +
+          '<div class="pt-gf-card pt-gf-title pt-done"><span class="vd-done-ic">' + icon("check") + "</span><h1>지원서가 접수됐어요</h1><p>" + esc(v("name")) + " 강사님, 소중한 지원 고마워요. 담당자가 들어온 순서대로 꼼꼼히 읽고, 남겨 주신 연락처로 연락드릴게요.</p>" +
           '<dl class="pt-done-sum">' + [["클래스 주제", v("topic")], ["강의 분야", cat], ["열고 싶은 클래스", kinds.join(", ") || "-"], ["연락처", v("phone")], ["이메일", v("email")]].map((x) => "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>").join("") + "</dl>" +
+          '<ol class="pt-done-next">' + [["지원서 확인", "담당자가 지원서를 열람해요"], ["상담 연락", "연락처 · 이메일로 연락드려요"], ["계약 · 제작", "함께 기획하고 촬영해요"]].map((x, i) => "<li><i>" + (i + 1) + "</i><b>" + x[0] + "</b><small>" + x[1] + "</small></li>").join("") + "</ol>" +
           '<div class="pt-done-btns"><a class="vd-btn vd-btn-p" href="#/vod">DOOGO CLASS 둘러보기</a>' + kkBtn("vd-btn vd-btn-o", "카카오톡 문의하기") + "</div></div>";
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
-    } catch (e) { btn.disabled = false; btn.classList.remove("is-busy"); bad("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."); }
+    } catch (e) { bad("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."); }
   }
 
   /* ---------- 미리보기 창 (클래스101처럼: 왼쪽 영상 · 오른쪽 미리보기 목록 · 아래 수강신청) ---------- */
@@ -3279,7 +3342,12 @@
     box.classList.add("mo");
     root.querySelectorAll("[data-eg]").forEach(egSplit);
     root.querySelectorAll("[data-rv-kids]").forEach((el) => Array.prototype.forEach.call(el.children, (c, i) => c.style.setProperty("--i", Math.min(i, 8))));
-    const show = (el) => { el.classList.add("is-in"); };
+    // 그림 칸 ‘열리기’(data-rv="open")는 한꺼번에 화면에 들어와도 0.45초 간격으로 하나씩 열려요
+    let openAt = 0;
+    const show = (el) => {
+      if (el.dataset.rv === "open" && !el.classList.contains("is-in")) { const now = performance.now(), wait = Math.max(0, openAt - now); openAt = Math.max(now, openAt) + 450; setTimeout(() => el.classList.add("is-in"), wait); return; }
+      el.classList.add("is-in");
+    };
     ui.mo = new IntersectionObserver((ens) => ens.forEach((en) => {
       const h = en.boundingClientRect.height, seen = en.isIntersecting && (en.intersectionRatio >= 0.12 || en.intersectionRect.height >= Math.min(160, h * 0.5));
       if (seen) { show(en.target); ui.mo.unobserve(en.target); }
@@ -3540,6 +3608,7 @@
     const v = t.dataset.v, m = me();
     if (v === "close") { if (e.target === t || t.tagName === "BUTTON" || t.tagName === "A") closeModal(); return; }
     if (v === "recruit") { e.preventDefault(); closeModal(); ROUTE.hash = "#/vod/partners"; return; }
+    if (v === "pt-sec") { e.preventDefault(); ptGo(Number(t.dataset.n) || 1); return; }
     if (v === "tpg-cat") { tpgC = t.dataset.tpgCat || ""; tpgApply(); return; }
     if (v === "tpg-clear" || v === "tpg-reset") { tpgQ = ""; if (v === "tpg-reset") tpgC = ""; const q = document.querySelector("[data-tpg-q]"); if (q) { q.value = ""; if (v === "tpg-clear") q.focus(); } tpgApply(); return; }
     if (v === "dg") { e.preventDefault(); enterDg(t.dataset.p, "", t.dataset.to); return; }
@@ -3715,7 +3784,8 @@
       let acct = null; if ((o.method === "bank" || o.method === "vbank") && kind !== "exchange") { const r = acctRead(f); if (r.err) { if (er) er.textContent = r.err; return; } acct = r.acct; }
       o.refundReq = Object.assign({ at: now(), by: "member", why, text: f.text.value.trim().slice(0, 300) }, kind ? { kind } : {}, acct ? { acct } : {}); save(); closeModal(); render();
       toast(o.ship ? CLAIM_K[kind] + " 요청을 보냈어요. 마이페이지 › 종이책 · 배송 조회에서 진행 상황을 볼 수 있어요." : "환불 요청을 보냈어요. 처리 결과는 주문 · 결제 내역에서 볼 수 있어요."); return; }
-    if (f.matches("[data-pt-form]")) { e.preventDefault(); doPartnerApply(f); return; }
+    // 지원서: 마지막 섹션 전에는 Enter 가 ‘다음’으로 (보내기는 마지막 섹션에서만)
+    if (f.matches("[data-pt-form]")) { e.preventDefault(); if (ptSecNow() < 5) ptGo(ptSecNow() + 1); else doPartnerApply(f); return; }
     if (f.matches("[data-vd-acct]")) { e.preventDefault(); doAcct(f); return; }
     if (f.matches("[data-vd-rvedit]")) { e.preventDefault(); const rv = V().reviews.find((x) => x.id === f.dataset.vdRvedit && x.mid === (me() || {}).id), tx = f.text.value.trim(); if (!rv) return; if (tx.length < 10) { toast("후기는 10자 이상 적어 주세요.", "warn"); return; } rv.text = tx; rv.rating = Number((f.querySelector("input[name=rating]:checked") || {}).value) || rv.rating; rv.editedAt = now(); save(); closeModal(); render(); toast("후기를 고쳤어요."); }
   });
