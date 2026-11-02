@@ -571,6 +571,31 @@ function mediaDoogomdChannel(get) {
   return { writes: { meta: Object.assign({}, meta, { media }) }, result: { updated: done, channel: a.channel, url: a.url } };
 }
 
+/* 2026-11 수강권 6개월 · 12개월 · 재수강 할인: 클래스 FAQ · 고객센터 FAQ 의 예전 문구(180일 · 365일 · 3년 / 1년 연장권)만 새 문구로 + 재수강 할인 기본값(켜짐 · 40%)
+ * 화면(vod.js seedV23)과 같은 바꾸기 — 강사 · 마스터가 직접 고친 다른 문장은 그대로 */
+const PLAN_TXT = [[/\(180일 · 365일 · 3년(?:, 연장권은 365일)?\)/g, "(6개월 · 12개월)"], [/기간이 끝나면 1년 연장권으로 진도 그대로 이어서 들을 수 있어요\./g, "기간이 끝나면 재수강 할인가로 진도 그대로 다시 들을 수 있어요."]];
+const planTxt = (t) => PLAN_TXT.reduce((a, r) => a.replace(r[0], r[1]), t);
+function plans612(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  const vod = Object.assign({}, meta.vod); let n = 0, h = 0;
+  vod.products = (Array.isArray(vod.products) ? vod.products : []).map((p) => {
+    if (!isObj(p) || !Array.isArray(p.faq)) return p;
+    let ch = false;
+    const faq = p.faq.map((f) => {
+      if (Array.isArray(f) && typeof f[1] === "string") { const t = planTxt(f[1]); if (t !== f[1]) { ch = true; n++; return [f[0], t].concat(f.slice(2)); } }
+      else if (isObj(f) && typeof f.a === "string") { const t = planTxt(f.a); if (t !== f.a) { ch = true; n++; return Object.assign({}, f, { a: t }); } }
+      return f;
+    });
+    return ch ? Object.assign({}, p, { faq }) : p;
+  });
+  if (Array.isArray(vod.helpFaq)) vod.helpFaq = vod.helpFaq.map((f) => { if (Array.isArray(f) && typeof f[2] === "string") { const t = planTxt(f[2]); if (t !== f[2]) { h++; return f.slice(0, 2).concat([t], f.slice(3)); } } return f; });
+  const st = Object.assign({}, isObj(vod.settings) ? vod.settings : {}), rb = !isObj(st.rebuy);
+  if (rb) st.rebuy = { on: true, pct: 40 };
+  vod.settings = st; vod.v23 = 1;
+  return { writes: { meta: Object.assign({}, meta, { vod }) }, result: { faq: n, helpFaq: h, rebuyDefault: rb } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -595,6 +620,7 @@ const OPS = [
   { id: "2026-11-01-demo-staff-stop", note: "예시 운영자 계정(manager · finance — 비밀번호가 아직 예시 그대로일 때만) 중지", run: demoStaffStop },
   { id: "2026-11-01-media-doogomd", note: "온드미디어 첫 계정 doogomd (비밀번호는 Vercel 환경 변수 MEDIA_INIT_PW · 해시로만 저장)", run: mediaDoogomd, when: () => !!String(process.env.MEDIA_INIT_PW || "").trim() },
   { id: "2026-11-02-media-doogomd-channel", note: "온드미디어 doogomd 채널: YouTube 돈맛스토리 주소 · 채널 이름 (비어 있거나 기본값일 때만)", run: mediaDoogomdChannel },
+  { id: "2026-11-03-plans-6-12-rebuy", note: "수강권 6개월 · 12개월 · 재수강 40% 할인: 클래스 FAQ · 고객센터 FAQ 예전 문구(180일 · 365일 · 3년 / 1년 연장권)만 새 문구로 + 재수강 할인 기본값", run: plans612 },
 ];
 
-module.exports = { OPS, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

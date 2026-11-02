@@ -1,0 +1,16 @@
+{
+  "name": "두고클래스 DOOGO CLASS",
+  "short_name": "두고클래스",
+  "description": "돈 되는 노하우, 두고클래스에서 — VOD · 전자책 · LIVE 온라인 클래스",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

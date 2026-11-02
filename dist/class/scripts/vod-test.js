@@ -1088,6 +1088,104 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(r.json.d["https://www.youtube.com/watch?v=abcdefghijk"] === 3723 && VDC[VDC.length - 1] === "api abcdefghijk", "YOUTUBE_API_KEY 가 있으면 유튜브 Data API (PT1H2M3S → 3723초)", { d: r.json.d, last: VDC[VDC.length - 1] });
   delete process.env.YOUTUBE_API_KEY;
 
+  console.log("19) 수강권 6개월 · 12개월 · 재수강 할인 · 최신성 업데이트 (2026-11)");
+  {
+    const VP = require(path.join(TMP, "class/api/_lib/vodprice.js")), st19 = require(path.join(TMP, "class/api/_lib/store.js"));
+    const X19 = VP.pricer({ products: [{ id: "pz", type: "vod", status: "on", price: 129000 }], settings: {} });
+    const ps19 = X19.plansOf(X19.product("pz"));
+    ok(ps19.length === 2 && ps19[0].d === 180 && ps19[0].label === "6개월" && ps19[1].d === 365 && ps19[1].label === "12개월" && ps19[1].sale === 142000 && VP.planLabel(1095) === "3년", "수강권은 6개월 · 12개월 두 가지 (예전 3년 주문 이름은 그대로)", ps19);
+    ok(VP.rbPrice(142000, 40) === 85200 && VP.rbPrice(65000, 40) === 39000, "재수강 할인가: 판매가 × 60% (100원 아래 버림)");
+    // 재수강: 수강 기간이 끝난 회원만 40% — 쿠폰은 같이 안 써요
+    useJar({ dc_a: auth.sign({ r: "master" }) });
+    r = await call("vod-pay", { body: { action: "catalog", catalog: { products: [{ id: "v5", title: "챗GPT로 블로그 수익화", type: "vod", status: "on", price: 89000, sale: 59000, saleEnd: "", dg: true, iid: "choi" }], coupons: [{ id: "cp-welcome", code: "WELCOME", name: "신규 5천", kind: "won", value: 5000, days: 30, auto: "signup", on: true }], settings: { refund: { instant: true, days: 7, maxUsed: 0 } }, biz: {} } } });
+    useJar({});
+    r = await call("vod-auth", { body: { action: "signup", email: "rb@example.com", pw: "test1234a", pw2: "test1234a", name: "재OO", phone: "010-0000-4444", agree: true } });
+    const rbMid = r.json.member && r.json.member.id, rbCp = r.json.member && r.json.member.coupons[0] && r.json.member.coupons[0].id;
+    r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "bank", depositor: "재OO" } });
+    ok(r.json.ok && r.json.amount === 65000, "처음 사는 회원은 정가 (12개월 65,000원)", r.json);
+    await call("vod-pay", { body: { action: "cancelPending", no: r.json.no } });
+    const oldNo = "DC250101" + String(Date.now()).slice(-6);
+    await st19.writeDoc("vo:" + oldNo, { id: "vo-" + oldNo, no: oldNo, mid: rbMid, pid: "v5", kind: "course", days: 180, title: "예전 수강", list: 59000, sale: 59000, amount: 59000, status: "paid", at: Date.now() - 200 * 864e5, paidAt: Date.now() - 200 * 864e5 });
+    const mdoc = await st19.getDoc("vm:" + rbMid); await st19.writeDoc("vm:" + rbMid, Object.assign({}, mdoc.v, { orderNos: (mdoc.v.orderNos || []).concat([oldNo]) }), mdoc.ver);
+    r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "bank", depositor: "재OO", mcid: rbCp, expect: 39000 } });
+    const rbo = r.json.ok ? (await st19.getDoc("vo:" + r.json.no)).v : {};
+    ok(r.json.ok && r.json.amount === 39000 && rbo.sale === 39000 && rbo.rebuy && rbo.rebuy.pct === 40 && rbo.rebuy.was === 65000 && !rbo.couponOff && !rbo.mcid, "기간이 끝난 회원: 12개월 65,000 → 재수강 40% = 39,000원 (쿠폰 안 씀 · 정산 기준 sale 도 할인가)", { r: r.json, o: rbo });
+    await call("vod-pay", { body: { action: "cancelPending", no: rbo.no } });
+    r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 180, method: "card" } });
+    ok(r.json.ok && r.json.amount === 35400 && /6개월 수강권 \(재수강 40%\)/.test(r.json.orderName), "카드 결제 이름: ‘6개월 수강권 (재수강 40%)’ · 59,000 → 35,400원", r.json);
+    r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "extend", method: "bank", depositor: "재OO" } });
+    ok(r.status === 409 && /재수강/.test(r.json.message), "1년 연장권은 더 팔지 않아요 → 재수강 할인 안내", r.json);
+    // 강사: 자기 클래스 최신성 업데이트 기록만 저장 (모양 확인)
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "choi" }) });
+    let j19 = await boot(); const mv19 = docOf(j19, "meta"), i5 = mv19.vod.products.findIndex((x) => x.id === "v5"), i6 = mv19.vod.products.findIndex((x) => x.id === "v6");
+    const td = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
+    const U1 = { id: "up-t1", at: td, title: "2026 최신 알고리즘 반영", n: { new: 1, upd: 1 }, lids: { new: ["l-new"], upd: ["l-a"] }, by: "ins", byName: "초이", createdAt: 1, hack: "<script>", notify: { st: "wait", act: { n: 2 }, end: { n: 1 } } };
+    r = await sync([{ k: "meta", base: verOf(j19, "meta"), ops: [{ p: ["vod", "products", i5, "upds"], v: [U1, { at: "어제", title: "모양이 틀린 기록" }] }, { p: ["vod", "products", i5, "updatedAt"], v: td }, { p: ["vod", "products", i5, "price"], v: 1 }, { p: ["vod", "products", i6, "upds"], v: [U1] }] }]);
+    useJar({ dc_a: auth.sign({ r: "master" }) });
+    j19 = await boot(); const q5 = docOf(j19, "meta").vod.products.find((x) => x.id === "v5"), q6 = docOf(j19, "meta").vod.products.find((x) => x.id === "v6");
+    ok(q5.upds && q5.upds.length === 1 && q5.upds[0].title === "2026 최신 알고리즘 반영" && !("hack" in q5.upds[0]) && q5.updatedAt === td && q5.price === 89000 && !(q6.upds && q6.upds.length), "강사: 자기 클래스 업데이트 기록 · 날짜만 저장 (모양 틀린 기록 · 다른 칸 · 남의 클래스는 그대로)", { u: q5.upds, at: q5.updatedAt, price: q5.price, q6: q6.upds });
+    useJar({});
+    j19 = await boot(); const v5 = docOf(j19, "meta").vod.products.find((x) => x.id === "v5");
+    ok(v5.upds && v5.upds[0].title && !("notify" in v5.upds[0]), "방문자: 업데이트 기록은 보이고 알림 보낸 수(notify)는 관리자만", v5.upds);
+    // 알림: 그 클래스 강사 · 마스터만 · 알림톡 연결 전이면 대상 수만
+    r = await call("vod-pay", { body: { action: "updNotify", pid: "v5", uid: "up-t1" } });
+    ok(r.status === 403, "알림: 관리자 로그인 없으면 못 보내요", r.json);
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "moon" }) });
+    r = await call("vod-pay", { body: { action: "updNotify", pid: "v5", uid: "up-t1" } });
+    ok(r.status === 403, "알림: 다른 강사 클래스는 못 보내요", r.json);
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "choi" }) });
+    r = await call("vod-pay", { body: { action: "updNotify", pid: "v5", uid: "nope" } });
+    ok(r.status === 404, "알림: 저장 안 된 업데이트는 404", r.json);
+    const sol0 = SOL.length;
+    r = await call("vod-pay", { body: { action: "updNotify", pid: "v5", uid: "up-t1" } });
+    ok(r.json.ok && r.json.st === "wait" && r.json.act.n >= 1 && r.json.end.n >= 1 && SOL.length === sol0 && /연결 전/.test(r.json.why), "알림톡 연결 전: 보내지 않고 수강 중 · 수강 끝남 대상 수만", r.json);
+    Object.assign(process.env, { SOLAPI_API_KEY: "sk-sol", SOLAPI_API_SECRET: "sec-sol", SOLAPI_SENDER: "0212345678", SOLAPI_PFID: "KA01PF-test" });
+    r = await call("vod-pay", { body: { action: "updNotify", pid: "v5", uid: "up-t1" } });
+    ok(r.json.ok && r.json.st === "wait" && /템플릿/.test(r.json.why), "템플릿을 안 골랐으면 대상 수만", r.json);
+    const mt19 = await st19.getDoc("meta"), mvv = mt19.v;
+    mvv.vod.crm = Object.assign({}, mvv.vod.crm, { send: Object.assign({}, (mvv.vod.crm || {}).send, { tpls: [{ name: "업데이트(수강 중)", id: "TPL-ACT", text: "#{이름}님, ‘#{강의명}’ 강의가 #{업데이트월}에 업데이트됐어요. #{업데이트} #{링크}" }, { name: "업데이트(끝남)", id: "TPL-END", text: "#{이름}님, 예전 강의 ‘#{강의명}’ 업데이트 안내" }], upd: { act: "0", end: "1" } }) });
+    await st19.writeDoc("meta", mvv, mt19.ver);
+    r = await call("vod-pay", { body: { action: "updNotify", pid: "v5", uid: "up-t1" } });
+    const um = SOL.slice(sol0).reduce((a, x) => a.concat(x.body.messages || []), []), ua = um.find((x) => x.kakaoOptions.templateId === "TPL-ACT"), ue = um.find((x) => x.kakaoOptions.templateId === "TPL-END");
+    ok(r.json.ok && r.json.st === "sent" && r.json.act.sent >= 1 && r.json.end.sent >= 1 && ua && ue && ua.type === "ATA" && ua.kakaoOptions.variables["#{강의명}"] === "챗GPT로 블로그 수익화" && ua.kakaoOptions.variables["#{업데이트}"] === "2026 최신 알고리즘 반영" && /^\d{4}년 \d{1,2}월$/.test(ua.kakaoOptions.variables["#{업데이트월}"]) && /\/vod\/p\/v5$/.test(ua.kakaoOptions.variables["#{링크}"]) && /‘챗GPT로 블로그 수익화’ 강의가 \d{4}년 \d{1,2}월에 업데이트됐어요\. 2026 최신 알고리즘 반영 https:\/\/www\.doogoclass\.com\/vod\/p\/v5/.test(ua.text), "알림톡: 수강 중 · 수강 끝남 템플릿을 나눠서 · 변수(강의명 · 업데이트월 · 업데이트 · 링크) 채워 보내요", { r: r.json, ua, ue: ue && ue.kakaoOptions.templateId });
+    const sol1 = SOL.length;
+    r = await call("vod-pay", { body: { action: "updNotify", pid: "v5", uid: "up-t1" } });
+    ok(r.json.ok && SOL.length === sol1 && r.json.act.sent === 0 && r.json.act.skip["이미 보냄"] >= 1, "같은 업데이트를 다시 눌러도 이미 받은 회원에게는 안 보내요", r.json);
+    ["SOLAPI_API_KEY", "SOLAPI_API_SECRET", "SOLAPI_SENDER", "SOLAPI_PFID"].forEach((k) => delete process.env[k]);
+    // 운영 데이터 일회성 작업: FAQ 예전 문구만 새 문구로 + 재수강 기본값
+    const OO = require(path.join(TMP, "class/api/_lib/oneoff.js")), oldA = "결제할 때 고른 수강권 기간(180일 · 365일 · 3년) 동안 횟수 제한 없이 볼 수 있어요. 기간이 끝나면 1년 연장권으로 진도 그대로 이어서 들을 수 있어요.";
+    const fakeMeta = { vod: { products: [{ id: "a", faq: [["언제까지?", oldA], ["직접 쓴 질문", "그대로 두세요"]] }, { id: "b" }], helpFaq: [["수강", "언제까지?", "수강권 기간(180일 · 365일 · 3년) 동안 볼 수 있어요."]], settings: { coach: { n: 5 } } } };
+    const op = OO.plans612((k) => (k === "meta" ? fakeMeta : null)), nm = op.writes.meta.vod;
+    ok(nm.products[0].faq[0][1] === "결제할 때 고른 수강권 기간(6개월 · 12개월) 동안 횟수 제한 없이 볼 수 있어요. 기간이 끝나면 재수강 할인가로 진도 그대로 다시 들을 수 있어요." && nm.products[0].faq[1][1] === "그대로 두세요" && nm.helpFaq[0][2] === "수강권 기간(6개월 · 12개월) 동안 볼 수 있어요." && nm.settings.rebuy.on && nm.settings.rebuy.pct === 40 && nm.settings.coach.n === 5 && op.result.faq === 1 && op.result.helpFaq === 1, "일회성 작업: FAQ 예전 문구만 6개월 · 12개월 · 재수강으로 + 재수강 할인 기본값 (다른 설정 그대로)", op.result);
+    ok(OO.OPS.some((x) => x.id === "2026-11-03-plans-6-12-rebuy"), "일회성 작업 목록에 등록");
+  }
+  {
+    console.log("20) 두고 파트너스 지원서 → 마스터 접수함 (2026-11)");
+    const st20 = require(path.join(TMP, "class/api/_lib/store.js"));
+    useJar({});
+    const base = { action: "partner-apply", name: "지OO", phone: "010-1111-2222", email: "pt@example.com", where: "[두고 파트너스] 유튜브", course: "[VOD 강의 · 부업 · 창업] 주제\n노하우", link: "example.com/ch", message: "잘 부탁드려요", agree: true };
+    let r = await call("public", { body: Object.assign({}, base, { source: "partners", ref: "ab_c.1", form: { nick: "지OO스토어", cat: "부업 · 창업", kinds: ["VOD 강의", "전자책 · 종이책", 7, ""], topic: "x".repeat(200), result: "월매출 3천", exp: "처음이에요", ready: "아직 없어요", when: "1~2개월 안", link2: "blog.example.com", from: "유튜브", evil: "<script>", iid: "moon" } }) });
+    ok(r.status === 200 && r.json.ok, "두고 파트너스 지원서 저장", r.json);
+    const inqs = async () => (await st20.listDocs({ prefixes: ["inq:%"] })).map((x) => x.v);
+    const d = (await inqs()).find((x) => x.email === "pt@example.com") || {};
+    ok(d.source === "partners" && d.ref === "ab_c.1" && d.form && d.form.nick === "지OO스토어" && d.form.topic.length === 80 && d.form.kinds.join("|") === "VOD 강의|전자책 · 종이책|7" && d.form.link2 === "https://blog.example.com" && !("evil" in d.form) && !("iid" in d.form) && !d.iid && d.link === "https://example.com/ch" && d.status === "new" && /노하우/.test(d.course), "지원서 칸: 정해 둔 칸 · 길이만 · 주소엔 https:// · 모르는 칸은 버려요", d);
+    r = await call("public", { body: Object.assign({}, base, { email: "pt2@example.com", source: "hack", form: { nick: "x" }, ref: "bad ref!" }) });
+    const d2 = (await inqs()).find((x) => x.email === "pt2@example.com") || {};
+    ok(r.json.ok && !("source" in d2) && !("form" in d2) && !("ref" in d2), "모르는 source · 다른 출처의 form · 이상한 추천 코드는 저장하지 않아요", d2);
+    r = await call("public", { body: Object.assign({}, base, { email: "pt3@example.com", agree: false, source: "partners" }) });
+    ok(r.status === 400, "개인정보 동의 없으면 받지 않아요", r.json);
+    let jb = await boot();
+    ok(!(jb.docs || []).some((x) => /^inq:/.test(x[0])), "방문자에게는 지원서가 보이지 않아요");
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "choi" }) });
+    jb = await boot();
+    ok(!(jb.docs || []).some((x) => /^inq:/.test(x[0])), "강사에게도 지원서가 보이지 않아요");
+    useJar({ dc_a: auth.sign({ r: "master" }) });
+    jb = await boot();
+    const md = (jb.docs || []).find((x) => /^inq:/.test(x[0]) && x[1] && x[1].email === "pt@example.com");
+    ok(md && md[1].form && md[1].form.cat === "부업 · 창업" && md[1].source === "partners", "마스터는 지원서를 칸까지 그대로 받아요", md && md[1]);
+    useJar({});
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

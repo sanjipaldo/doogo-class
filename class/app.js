@@ -874,9 +874,10 @@
   }
   function extendNote() {
     const X = VX(); if (!X || !me || !me.vodMid) return "";
-    const x = vodList().find((v) => v.o && X.canExtend(me.vodMid, v.p.id)); if (!x) return "";
-    const e = X.extendOf(x.p);
-    return '<div class="callout callout-warn vh-ext">' + icon("clock") + "<div><b>‘" + esc(x.p.title) + "’ 수강 기간이 " + Math.max(0, X.daysLeft(me.vodMid, x.p.id)) + '일 남았어요</b><span>1년 연장권(' + won(e.sale) + ')으로 진도 그대로 이어서 들을 수 있어요. <a href="#/vod/checkout/' + esc(x.p.id) + '?item=extend">연장하기</a></span></div></div>';
+    // 수강 기간이 30일 안으로 남은 강의: 끝나면 재수강 할인으로 다시 들을 수 있다고 미리 알려요 (예전 1년 연장권 대신)
+    const x = vodList().find((v) => { if (!v.o) return false; const d = X.daysLeft(me.vodMid, v.p.id); return d !== Infinity && d <= 30; }); if (!x) return "";
+    const rs = X.rebuySet ? X.rebuySet() : { on: false };
+    return '<div class="callout callout-warn vh-ext">' + icon("clock") + "<div><b>‘" + esc(x.p.title) + "’ 수강 기간이 " + Math.max(0, X.daysLeft(me.vodMid, x.p.id)) + '일 남았어요</b><span>' + (rs.on ? "기간이 끝나면 재수강 " + rs.pct + "% 할인가로 진도 그대로 다시 들을 수 있어요." : "기간 안에 꼭 끝까지 들어 보세요.") + "</span></div></div>";
   }
   function pageVodHome() {
     const list = vodList(), pc = vodPct(), lv = LV(), X = VX();
@@ -998,8 +999,8 @@
   // 두잉고 강의실 안의 VOD 재생 화면 (진도는 DOOGO CLASS와 같은 기록에 쌓인다)
   function pageVodPlay(pid, lid, tq) {
     const X = VX(), x = vodList().find((v) => v.p.id === pid);
-    if (!x) { const ext = me && me.vodMid && X.canExtend && X.canExtend(me.vodMid, pid);
-      return '<div class="page">' + pageHead(ML("vodclass"), "") + '<section class="card">' + empty("lock", ext ? "수강 기간이 끝난 강의예요. 1년 연장권을 사면 진도 · 노트 그대로 다시 들을 수 있어요." : "볼 수 있는 강의가 아니에요. 수강 기간이 끝났거나 구매하지 않은 강의예요.") + '<div class="btn-row">' + (ext ? '<a class="btn btn-primary" href="#/vod/checkout/' + esc(pid) + '?item=extend">' + icon("refresh", "sm") + "1년 연장하기</a>" : "") + '<a class="btn btn-secondary" href="#/vodclass">' + icon("arrowLeft", "sm") + "VOD 강의 목록</a></div></section></div>"; }
+    if (!x) { const ext = me && me.vodMid && X.canRebuy && X.canRebuy(me.vodMid, pid), rp = ext ? X.rebuySet().pct : 0;
+      return '<div class="page">' + pageHead(ML("vodclass"), "") + '<section class="card">' + empty("lock", ext ? "수강 기간이 끝난 강의예요. 재수강 " + rp + "% 할인가로 다시 결제하면 진도 · 노트 그대로 다시 들을 수 있어요." : "볼 수 있는 강의가 아니에요. 수강 기간이 끝났거나 구매하지 않은 강의예요.") + '<div class="btn-row">' + (ext ? '<a class="btn btn-primary" href="#/vod/p/' + esc(pid) + '">' + icon("refresh", "sm") + "재수강 " + rp + "% 할인으로 다시 듣기</a>" : "") + '<a class="btn btn-secondary" href="#/vodclass">' + icon("arrowLeft", "sm") + "VOD 강의 목록</a></div></section></div>"; }
     const n = vodNext(x), lz = n.lz, mid = x.o && me.vodMid ? me.vodMid : "";
     const cur = lz.find((l) => l.id === lid) || lz.find((l) => l.id === n.pr.last) || n.cur || lz[0];
     if (!cur) return '<div class="page">' + pageHead(x.p.title, "") + '<section class="card">' + empty("circlePlay", "아직 올라온 강의가 없어요.") + "</section></div>";
@@ -1009,7 +1010,7 @@
     vtLast = { t: 0, at: 0 };
     const tabs = '<div class="vt-tabs" role="tablist">' + [["toc", "목차", n.doneN + "/" + lz.length], ["note", "내 노트", ns.length ? String(ns.length) : ""], ["files", "자료", nFiles ? String(nFiles) : ""]].map((t) => '<button type="button" role="tab" class="' + (tab === t[0] ? "on" : "") + '" data-action="vt-tab" data-k="' + t[0] + '">' + t[1] + "<small" + (t[0] === "note" ? " data-ncount" : "") + ">" + t[2] + "</small></button>").join("") + "</div>";
     const toc = (x.p.curriculum || []).map((c, ci) => '<div class="vt-sch"><p class="vt-sch-h"><span>' + String(ci + 1).padStart(2, "0") + "</span>" + esc(c.title) + "</p>" + (c.lessons || []).map((l) => { const d = !!n.pr.done[l.id], on = l.id === cur.id, nc = notesOf(pid, l.id).length;
-      return '<a href="' + learnHref(pid, l.id) + '" class="vt-ls' + (on ? " on" : "") + (d ? " done" : "") + '"><i>' + (d ? icon("check", "xs") : on ? icon("play", "xs") : "") + "</i><span>" + esc(l.title) + '</span><em><span data-lnc>' + (nc ? icon("pen", "xs") + nc : "") + "</span>" + ((l.files || []).length ? icon("paperclip", "xs") : "") + "</em><small>" + X.lLen(l) + "</small></a>"; }).join("") + "</div>").join("");
+      return '<a href="' + learnHref(pid, l.id) + '" class="vt-ls' + (on ? " on" : "") + (d ? " done" : "") + '"><i>' + (d ? icon("check", "xs") : on ? icon("play", "xs") : "") + "</i><span>" + esc(l.title) + (X.freshTag ? X.freshTag(l) : "") + '</span><em><span data-lnc>' + (nc ? icon("pen", "xs") + nc : "") + "</span>" + ((l.files || []).length ? icon("paperclip", "xs") : "") + "</em><small>" + X.lLen(l) + "</small></a>"; }).join("") + "</div>").join("");
     const notePane = '<div class="vt-nn"><div class="vt-tags" role="radiogroup" aria-label="노트 종류">' + NOTE_TAGS.map((t, k) => '<label class="vt-tagr t-' + t[0] + '"><input type="radio" name="vt-tag" value="' + t[0] + '"' + (k === 0 ? " checked" : "") + "><span>" + t[1] + "</span></label>").join("") + "</div>" +
       '<textarea class="textarea vt-ta" id="vt-note-text" rows="4" maxlength="2000" placeholder="강의를 들으며 기억할 내용 · 궁금한 점 · 할 일을 적어 보세요 (Ctrl + Enter 저장)">' + esc(draftGet(pid, cur.id)) + "</textarea>" +
       '<div class="vt-nn-f"><label class="vt-tc" title="영상 시간 · 비우면 시간 없이 저장">' + icon("clock", "xs") + '<input id="vt-note-t" inputmode="numeric" autocomplete="off" placeholder="0:00" aria-label="영상 시간"></label><button type="button" class="link-btn vt-now" data-action="vt-now">지금 시간</button><button type="button" class="btn btn-primary btn-sm vt-save" data-action="vt-note-save">' + icon("check", "sm") + "저장</button></div></div>" +
@@ -1057,18 +1058,20 @@
     if (r && r.parts && r.parts[1]) return pageVodPlay(decodeURIComponent(r.parts[1]), r.parts[2] ? decodeURIComponent(r.parts[2]) : "", Number(r.params.get("t")) || 0);
     const list = vodList(), X = VX();
     const head = pageHead(ML("vodclass"), "DOOGO CLASS에서 구매한 " + esc(INS.displayName) + " 강사님의 VOD예요. 강의를 누르면 이 강의실에서 바로 재생되고, 진도는 DOOGO CLASS 마이페이지에도 똑같이 반영돼요.");
-    const exp = me && me.vodMid && X.canExtend ? X.products().filter((p) => p.iid === INS.id && !list.some((v) => v.p.id === p.id) && X.canExtend(me.vodMid, p.id)) : [];
-    const expBox = exp.length ? '<section class="card vc-exp"><div class="section-head"><h2>' + icon("clock", "sm") + " 기간이 끝난 강의</h2></div>" + exp.map((p) => '<div class="vc-exp-row"><span class="vc-th">' + X.thumbArt(p) + "</span><div><b>" + esc(p.title) + '</b><small>진도 · 노트는 그대로 남아 있어요</small></div><a class="btn btn-primary btn-sm" href="#/vod/checkout/' + esc(p.id) + '?item=extend">' + icon("refresh", "sm") + "1년 연장하기</a></div>").join("") + "</section>" : "";
+    const exp = me && me.vodMid && X.canRebuy ? X.products().filter((p) => p.iid === INS.id && !list.some((v) => v.p.id === p.id) && X.canRebuy(me.vodMid, p.id)) : [];
+    const expBox = exp.length ? '<section class="card vc-exp"><div class="section-head"><h2>' + icon("clock", "sm") + " 기간이 끝난 강의</h2></div>" + exp.map((p) => '<div class="vc-exp-row"><span class="vc-th">' + X.thumbArt(p) + "</span><div><b>" + esc(p.title) + '</b><small>진도 · 노트는 그대로 남아 있어요 · 다시 들으면 재수강 ' + X.rebuySet().pct + '% 할인</small></div><a class="btn btn-primary btn-sm" href="#/vod/p/' + esc(p.id) + '">' + icon("refresh", "sm") + "재수강 할인으로 다시 듣기</a></div>").join("") + "</section>" : "";
     if (!list.length) return '<div class="page">' + head + (expBox || '<section class="card">' + empty("circlePlay", "볼 수 있는 VOD가 없어요.") + "</section>") + "</div>";
     return '<div class="page">' + head + list.map((x) => {
       const n = vodNext(x), pc = vodPctOf(x);
       return '<section class="card vc-card" id="vc-' + esc(x.p.id) + '"><div class="vc-head"><span class="vc-th">' + X.thumbArt(x.p) + '</span><div class="vc-meta"><small>' + esc(x.p.creator) + " · 강의 " + n.lz.length + "개 · " + esc(X.durTxt(X.totalMin(x.p))) + "</small><h2>" + esc(x.p.title) + "</h2>" + progressBar(pc, true) +
           '<p class="tiny">진도율 <b>' + pc + "%</b> · " + n.doneN + " / " + n.lz.length + "강 · " + esc(vodExp(x)) + "</p>" +
+          // 최신성 업데이트: 최근 90일 안에 업데이트됐으면 ‘몇 월 업데이트 · NEW · UPDATE’ 안내 (강의 목록에도 배지)
+          (() => { const u = X.lastUpd ? X.lastUpd(x.p) : null, c = u ? X.freshCnt(n.lz) : null; return u && DB.date.diffDays(DB.date.todayStr(), u.at) <= 90 ? '<p class="vc-fresh">' + icon("refresh", "xs") + "<b>" + esc(X.ymTxt(u.at)) + " 업데이트</b>" + (c.n ? " · 새 강의 " + c.n + "개" : "") + (c.u ? " · 다시 찍은 강의 " + c.u + "개" : "") + (u.title ? " — " + esc(u.title) : "") + "</p>" : ""; })() +
           '<a class="btn btn-primary btn-sm" href="' + learnHref(x.p.id, n.cur ? n.cur.id : "") + '">' + icon("play", "sm") + (n.cur ? (n.doneN ? "이어 보기" : "1강부터 보기") : "다시 보기") + "</a></div></div>" +
         (x.p.curriculum || []).map((c) => { const ls = c.lessons || [], dn = ls.filter((l) => n.pr.done[l.id]).length;
           return '<div class="vc-ch"><h3>' + esc(c.title) + "<small>" + dn + " / " + ls.length + "</small></h3><ol>" + ls.map((l) => {
             const dd = !!n.pr.done[l.id], now = n.cur && n.cur.id === l.id;
-            return '<li class="' + (dd ? "done" : "") + (now ? " now" : "") + '"><a href="' + learnHref(x.p.id, l.id) + '"><i>' + (dd ? icon("check", "xs") : icon("play", "xs")) + "</i><span>" + esc(l.title) + (now ? '<em class="vc-now">' + (n.doneN ? "이어 보기" : "여기부터") + "</em>" : "") + "</span>" +
+            return '<li class="' + (dd ? "done" : "") + (now ? " now" : "") + '"><a href="' + learnHref(x.p.id, l.id) + '"><i>' + (dd ? icon("check", "xs") : icon("play", "xs")) + "</i><span>" + esc(l.title) + (X.freshTag ? X.freshTag(l) : "") + (now ? '<em class="vc-now">' + (n.doneN ? "이어 보기" : "여기부터") + "</em>" : "") + "</span>" +
               ((l.files || []).length ? '<small class="vc-att">' + icon("paperclip", "xs") + (l.files || []).length + "</small>" : "") + "<small>" + X.lLen(l) + "</small></a></li>";
           }).join("") + "</ol></div>"; }).join("") +
         "</section>";
@@ -1645,7 +1648,7 @@
       return { text: l.map((x) => { const nx = vodNext(x); return "‘" + x.p.title + "’ " + vodPctOf(x) + "% (" + nx.doneN + " / " + nx.lz.length + "강)" + (nx.cur ? " · 다음: " + nx.cur.title : " · 다 들었어요!"); }).join("\n"), links: l.slice(0, 2).map((x) => { const nx = vodNext(x); return [nx.cur ? "이어 보기" : "다시 보기", learnHref(x.p.id, nx.cur ? nx.cur.id : "")]; }) };
     }
     if (/(자료|pdf|다운|교안|파일)/i.test(t)) return { text: "수업 자료는 강의 영상 아래 ‘수업 자료’나 오른쪽(휴대폰은 아래) ‘자료’ 탭에서 미리보기 · 내려받기를 할 수 있어요." + (on("library") ? " 모든 강의의 자료는 ‘" + ML("library") + "’에도 모여 있어요." : ""), links: [[ML("vodclass"), "#/vodclass"]].concat(on("library") ? [[ML("library"), "#/library"]] : []) };
-    if (/(기간|언제까지|만료|연장)/.test(t)) return { text: l.length ? l.map((x) => "‘" + x.p.title + "’ · " + vodExp(x)).join("\n") + "\n기간이 30일 이내로 남으면 DOOGO CLASS 내 강의실에서 1년 연장권으로 진도 그대로 더 들을 수 있어요." : "열린 VOD가 없어요.", links: [["DOOGO CLASS 내 강의실", "#/vod/my/classes"]] };
+    if (/(기간|언제까지|만료|연장)/.test(t)) return { text: l.length ? l.map((x) => "‘" + x.p.title + "’ · " + vodExp(x)).join("\n") + "\n기간이 끝나면 DOOGO CLASS에서 재수강 할인가로 다시 결제해 진도 그대로 더 들을 수 있어요." : "열린 VOD가 없어요.", links: [["DOOGO CLASS 내 강의실", "#/vod/my/classes"]] };
     if (/(강사|직접|코칭|질문|물어|상담|티타임|tea|만나)/i.test(t)) return { text: n > 0 ? "1:1 코칭권이 " + n + "회 남았어요. 질문을 남기면 강사님이 직접 답해 드려요." + (coachEnd() ? " (" + coachEnd() + "까지)" : "") : "강사님께 직접 물어보려면 DOOGO CLASS에서 1:1 코칭권을 사면 돼요. 강사님과 직접 만나는 TEA TIME도 있어요.", links: n > 0 ? [["코칭 질문 남기기", "#/qna/requests/new"]] : [["코칭권 · TEA TIME 보기", "#/qna"]] };
     if (/(라이브|일정|강의\s*일정)/.test(t)) return { text: "VOD 클래스는 정해진 라이브 일정이 없어요. 원할 때 언제든 들으면 돼요. 강사님과 직접 이야기하고 싶다면 TEA TIME을 신청해 보세요.", links: [[ML("vodclass"), "#/vodclass"]] };
     return null;

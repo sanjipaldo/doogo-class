@@ -12,7 +12,7 @@
 const crypto = require("crypto");
 const store = require("./store");
 const auth = require("./auth");
-const { pricer, kstDay, addDays, BOOK_MAX } = require("./vodprice");
+const { pricer, kstDay, addDays, BOOK_MAX, planLabel, rbPrice } = require("./vodprice");
 
 const K = { member: (id) => "vm:" + id, email: (e) => "vme:" + String(e).toLowerCase(), kakao: (k) => "vmk:" + k, order: (no) => "vo:" + no, pay: (p) => "vpay:" + p, prog: (mid) => "vp:" + mid, cat: "vcat" };
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -96,12 +96,17 @@ async function quote(m, req, orders) {
     if (!ship) return { ok: false, message: "받는 분 · 휴대폰 번호 · 주소를 확인해 주세요." };
     if (p.stock != null && p.stock !== "") { const left = Math.max(0, Number(p.stock) - (await soldQty(p.id))); if (left < qty) return { ok: false, message: left ? "남은 재고가 " + left + "권이에요. 수량을 줄여 주세요." : "품절됐어요. 재입고되면 다시 열려요." }; }
   }
-  let pr = 0, list = 0, days = null, coach = 0, c = null;
+  // 예전 1년 연장권은 2026-11부터 팔지 않아요 → 기간이 끝난 강의는 수강권을 재수강 할인가로 다시 사요
+  if (kind === "extend") return { ok: false, message: "1년 연장권은 재수강 할인으로 바뀌었어요. 강의 페이지에서 수강권을 다시 골라 주세요." };
+  let pr = 0, list = 0, days = null, coach = 0, c = null, rb = null;
   if (book) { pr = X.priceOf(p) * qty; list = Math.max(Number(p.price) || 0, X.priceOf(p)) * qty; }
   else if (kind === "course") {
     if (X.isEvent(p) && p.seats) { const sold = await soldCount(p.id); if (sold >= Number(p.seats)) return { ok: false, message: "자리가 모두 찼어요." }; }
     const plan = X.plansOf(p).length ? X.planOf(p, req.plan) : null;
     pr = plan ? plan.sale : X.priceOf(p); list = plan ? plan.list : Number(p.price) || pr; days = plan ? plan.d : null;
+    // 재수강 할인: 이 회원의 결제 완료 주문으로 ‘예전에 수강했고 지금은 기간이 끝났는지’ 서버가 다시 확인 → 할인가가 그대로 정산 기준액(sale)
+    const rp = plan ? X.rebuyFor(p, mine) : 0;
+    if (rp) { rb = { pct: rp, was: plan.sale }; pr = rbPrice(plan.sale, rp); }
     c = X.coachOf(p); coach = req.coach && c ? c.price : 0;
   } else {
     if (!hasCourse) return { ok: false, message: "먼저 강의를 구매해야 살 수 있어요." };
@@ -110,7 +115,7 @@ async function quote(m, req, orders) {
   }
   // 쿠폰: 수강권에만 · 이 회원이 가진 쓸 수 있는 쿠폰
   let cp = 0, mc = null;
-  if (kind === "course" && req.mcid) {
+  if (kind === "course" && req.mcid && !rb) { // 재수강 할인은 쿠폰과 함께 쓰지 않아요
     mc = (m.coupons || []).find((x) => x.id === req.mcid && !x.usedAt && (!x.exp || x.exp >= X.today));
     const def = mc && ((cat.coupons || []).find((y) => y.id === mc.cid && y.on !== false));
     cp = def ? X.couponOff(def, p, pr) : 0;
@@ -120,10 +125,10 @@ async function quote(m, req, orders) {
   const sum = pr + coach + fee, pt = Math.max(0, Math.min(Math.floor(Number(req.points) || 0), Number(m.points) || 0, sum - cp)), ptMain = Math.min(pt, pr + fee - cp), ptC = pt - ptMain;
   const total = Math.max(0, sum - cp - pt);
   if (req.expect != null && Number(req.expect) !== total) return { ok: false, message: "가격이 방금 바뀌었어요. 새로고침한 뒤 다시 결제해 주세요.", total };
-  const items = [Object.assign({ kind, pid: p.id, title: p.title, list, sale: pr, amount: pr + fee - cp - ptMain, days, couponOff: cp || 0, mcid: mc ? mc.id : "", pointOff: ptMain || 0, iid: p.iid || "", share: p.share }, book ? { qty, unit: X.priceOf(p), shipFee: fee, ship: Object.assign(ship, { st: "ready" }) } : {})];
+  const items = [Object.assign({ kind, pid: p.id, title: p.title, list, sale: pr, amount: pr + fee - cp - ptMain, days, couponOff: cp || 0, mcid: mc ? mc.id : "", pointOff: ptMain || 0, iid: p.iid || "", share: p.share }, rb ? { rebuy: rb } : {}, book ? { qty, unit: X.priceOf(p), shipFee: fee, ship: Object.assign(ship, { st: "ready" }) } : {})];
   if (coach) items.push({ kind: "coach", pid: p.id, title: p.title, list: coach, sale: coach, amount: coach - ptC, days: null, couponOff: 0, mcid: "", pointOff: ptC || 0, coach: { n: c.n, days: c.days, price: c.price, used: 0 }, iid: p.iid || "" });
   if (kind === "coach" && c) items[0].coach = { n: c.n, days: c.days, price: c.price, used: 0 };
-  return { ok: true, items, total, points: pt, orderName: (p.title.length > 40 ? p.title.slice(0, 40) + "…" : p.title) + (book && qty > 1 ? " " + qty + "권" : "") + (days && kind === "course" ? " · " + (days === 1095 ? "3년" : days + "일") + " 수강권" : "") + (coach ? " + 1:1 코칭권" : "") };
+  return { ok: true, items, total, points: pt, orderName: (p.title.length > 40 ? p.title.slice(0, 40) + "…" : p.title) + (book && qty > 1 ? " " + qty + "권" : "") + (days && kind === "course" ? " · " + planLabel(days) + " 수강권" + (rb ? " (재수강 " + rb.pct + "%)" : "") : "") + (coach ? " + 1:1 코칭권" : "") };
 }
 /** 배송지 (받는 분 · 휴대폰 · 우편번호 · 주소 · 상세 주소 · 배송 요청) → 깨끗한 값 | null */
 function shipAddr(x) {

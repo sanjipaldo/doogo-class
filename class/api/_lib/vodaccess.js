@@ -75,7 +75,9 @@ function publicVod(v, ids) {
   if (ids.admin) return o;
   STAFF.forEach((k) => delete o[k]);
   const owns = new Set((ids.vod && ids.vod.owns) || []);
-  o.products = (v.products || []).map((p) => (p && owns.has(p.id) ? p : lockedProduct(p)));
+  // 최신성 업데이트 기록은 보여 주되, 알림을 몇 명에게 보냈는지(notify)는 관리자만
+  const noNotify = (p) => (p && Array.isArray(p.upds) && p.upds.some((u) => u && u.notify) ? Object.assign({}, p, { upds: p.upds.map((u) => { const x = Object.assign({}, u); delete x.notify; return x; }) }) : p);
+  o.products = (v.products || []).map((p) => noNotify(p && owns.has(p.id) ? p : lockedProduct(p)));
   return o;
 }
 const M_HIDE = ["pwHash", "paidPays"];
@@ -238,6 +240,17 @@ function metaFileScope(path, doc) {
   return "pub";
 }
 /** 강사가 meta 에서 고칠 수 있는 것: 자기 VOD 클래스의 커리큘럼(강의 영상 · 수업 자료 · 설명)과 자기 제출 서류만 */
+/** 강사가 저장한 최신성 업데이트 기록을 정해진 모양 · 길이로만 받아요 (20개까지) */
+function cleanUpds(list) {
+  const str = (v, n) => String(v == null ? "" : v).slice(0, n);
+  const num = (v) => Math.max(0, Math.min(999, Math.floor(Number(v) || 0)));
+  const ids = (a) => (Array.isArray(a) ? a.map((x) => str(x, 60)).filter(Boolean).slice(0, 200) : []);
+  return list.filter((u) => u && typeof u === "object" && /^\d{4}-\d{2}-\d{2}$/.test(String(u.at || ""))).slice(0, 20).map((u) => {
+    const out = { id: str(u.id, 60), at: String(u.at), title: str(u.title, 60), n: { new: num(u.n && u.n.new), upd: num(u.n && u.n.upd) }, lids: { new: ids(u.lids && u.lids.new), upd: ids(u.lids && u.lids.upd) }, by: u.by === "master" ? "master" : "ins", byName: str(u.byName, 30), createdAt: Number(u.createdAt) || 0 };
+    if (u.notify && typeof u.notify === "object") out.notify = JSON.parse(JSON.stringify(u.notify, (k, v) => (typeof v === "string" ? v.slice(0, 200) : v)));
+    return out;
+  });
+}
 function fixInstructorMeta(o, n, iid) {
   const out = clone(o) || {};
   if (!n || !iid) return out;
@@ -246,6 +259,9 @@ function fixInstructorMeta(o, n, iid) {
     if (!p || p.iid !== iid) return;
     const np = mine.find((x) => x.id === p.id);
     if (np && Array.isArray(np.curriculum)) out.vod.products[i].curriculum = clone(np.curriculum);
+    // 최신성 업데이트 (2026-11): 업데이트 기록 · 마지막 업데이트 날만 (모양을 확인해서 — 가격 · 상태 · 소개는 마스터만)
+    if (np && Array.isArray(np.upds)) out.vod.products[i].upds = cleanUpds(np.upds);
+    if (np && np.updatedAt !== undefined && (np.updatedAt === "" || /^\d{4}-\d{2}-\d{2}$/.test(String(np.updatedAt)))) out.vod.products[i].updatedAt = np.updatedAt;
   });
   const nc = n.contracts && n.contracts[iid];
   if (nc && nc.docs && typeof nc.docs === "object") { out.contracts = out.contracts || {}; out.contracts[iid] = Object.assign({}, out.contracts[iid] || {}, { docs: clone(nc.docs) }); }
@@ -314,4 +330,4 @@ async function after(K, prev, next, ids) {
   }
 }
 
-module.exports = { parse, identity, ownsOf, publicVod, lockedProduct, view, prefixes, writer, metaFileScope, canReadFile, fixInstructorMeta, after, afterOrder, bumpStat, markEbookDl, PRIV };
+module.exports = { parse, identity, ownsOf, publicVod, lockedProduct, view, prefixes, writer, metaFileScope, canReadFile, fixInstructorMeta, cleanUpds, after, afterOrder, bumpStat, markEbookDl, PRIV };

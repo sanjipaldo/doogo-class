@@ -23,6 +23,8 @@
  *   { action: "bankCancel", no }               입금 전 무통장 주문 취소 (쿠폰 · 포인트 돌려주기)
  *   { action: "bankLog" }                      최근 입금 알림(자동 입금 확인) · 못 맞춘 입금
  *   { action: "bankLink", id, no }             못 맞춘 입금을 주문에 직접 연결 → 입금 확인
+ *  마스터 · 그 클래스 강사 (dc_a 로그인)
+ *   { action: "updNotify", pid, uid }          VOD 최신성 업데이트를 산 회원에게 알림톡 (수강 중 · 수강 끝남 나눠서) — _lib/vodupd.js
  *  포트원 웹훅 (webhook-id · webhook-signature 헤더)  결제 완료 · 취소 알림 → 같은 확인 과정을 한 번 더 */
 "use strict";
 const { send, body, handler } = require("./_lib/http");
@@ -315,6 +317,12 @@ module.exports = handler(["POST"], async (req, res) => {
       console.error("[vod-pay] master", a, e.status || "", e.message);
       return fail(res, 502, e.status ? "포트원 응답: " + String(e.message || "").slice(0, 160) + " — 포트원 콘솔에서 결제 상태를 확인해 주세요." : "처리하지 못했어요. 잠시 후 다시 시도해 주세요.");
     }
+  }
+  if (a === "updNotify") {
+    const ids = await auth.identify(req);
+    if (!ids.admin) return fail(res, 403, "관리자 로그인이 필요해요.");
+    try { const r = await require("./_lib/vodupd").notify(ids, b); return send(res, r.status, r.json); }
+    catch (e) { console.error("[vod-pay] updNotify", e.message); return fail(res, 502, "알림을 보내지 못했어요. 잠시 후 다시 시도해 주세요."); }
   }
   const m = await V.current(req);
   if (!m) return fail(res, 401, "로그인이 필요해요.");

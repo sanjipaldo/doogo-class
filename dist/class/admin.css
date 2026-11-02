@@ -3136,6 +3136,8 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 .md-lk-tools select { min-width: 200px; max-width: 320px; }
 .vs-ch-rs { background: #fff3f1; color: #ea2013; }
 .vc-rs { display: block; color: #ea2013; font-size: 11.5px; }
+.vc-rb { display: block; color: #6d28d9; font-size: 11.5px; font-weight: 700; }
+.vda-rb-on { margin-top: 6px; }
 @media (max-width: 720px) {
   .md-hello { padding: 16px; }
   .md-hello h2 { font-size: 17px; }
@@ -3206,3 +3208,60 @@ td .md-yt { display: flex; width: fit-content; }
 /* 강사센터 · 관리 영역 스위치: 두잉고 쪽에 있을 때 새 정산 명세서가 있으면 DOOGO CLASS 버튼에 빨간 점 */
 .a-trk-sw button { position: relative; }
 .a-trk-dot { position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--m-primary); box-shadow: 0 0 0 2px #fff; }
+
+/* ---------- 최신성 업데이트 (2026-11): 클래스 목록 버튼 · 강의 화면 카드 · 업데이트 창 ---------- */
+.vu-chip { border-color: #bfeedb; color: #047857; }
+.vu-chip.on { background: #ecfdf5; }
+.vu-chip:hover { border-color: #059669; }
+.vu-card { border: 1px solid #bfeedb; background: linear-gradient(90deg, #f0fdf8, #fff); }
+.vu-card-b { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.vu-card-b > div { flex: 1 1 260px; min-width: 0; }
+.vu-card-b b { font-size: 16px; color: #065f46; }
+.vu-card-b p { margin: 4px 0 0; font-size: 13px; color: #047857; line-height: 1.55; }
+.vu-card-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #10b981; flex: none; }
+.vu-card-ic .icon { stroke: #fff; }
+.vu-lead { margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; background: #f0fdf8; color: #065f46; font-size: 13.5px; line-height: 1.6; }
+.vu-at { max-width: 180px; }
+.vu-h { display: block; margin: 16px 0 8px; font-size: 14.5px; }
+.vu-h small { margin-left: 6px; font-weight: 500; color: var(--m-ink-3, #6b7280); font-size: 12px; }
+.vu-ls { border-top: 1px solid var(--m-hairline-soft, #eee); }
+.vu-ch { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--m-hairline-soft, #eee); border-radius: 12px; background: #fff; }
+.vu-ch-h { display: block; margin-bottom: 6px; font-size: 13.5px; }
+.vu-l { padding: 8px 0; border-top: 1px dashed #eef0f3; }
+.vu-l:first-of-type { border-top: 0; }
+.vu-l-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.vu-l-t { flex: 1 1 220px; min-width: 0; font-size: 13.5px; }
+.vu-seg { display: inline-flex; padding: 3px; border-radius: 10px; background: #f3f4f6; gap: 2px; }
+.vu-seg label { position: relative; cursor: pointer; }
+.vu-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.vu-seg span { display: block; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #6b7280; white-space: nowrap; }
+.vu-seg input:checked + span { background: #fff; color: #111; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.vu-seg label.u input:checked + span { background: #10b981; color: #fff; }
+.vu-seg input:focus-visible + span { outline: 2px solid #10b981; outline-offset: 1px; }
+.vu-l.is-upd { background: #f6fffb; }
+.vu-vid { margin-top: 8px; }
+.vu-nl { display: grid; grid-template-columns: auto 1.2fr 1.4fr 70px auto; align-items: center; gap: 6px; margin-top: 8px; }
+.vu-nl .vd-fresh { margin: 0; }
+.vu-addl { margin-top: 6px; }
+.vu-noti { margin: 6px 0 4px; padding: 12px 14px; border-radius: 12px; background: #fffbeb; }
+.vu-noti small { display: block; margin-top: 6px; line-height: 1.55; }
+.vu-hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.vu-hist li { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 9px 12px; border-radius: 10px; background: #f8fafc; }
+.vu-hist-t { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.vu-hist-t b { font-size: 13px; }
+.vu-hist-t span { font-size: 13px; color: #111; }
+.vu-hist-n { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vu-card .vu-hist { margin-top: 12px; }
+@media (max-width: 640px) { .vu-nl { grid-template-columns: auto 1fr; } .vu-nl [name=nv] { grid-column: 1 / -1; } .vu-nl .vu-nm { width: 100%; } }
+.crm-vu { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--m-hairline-soft, #e5e7eb); }
+.crm-vu-ex summary { cursor: pointer; font-size: 12.5px; color: #047857; }
+.crm-vu-ex pre { margin: 6px 0 10px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; font: inherit; font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; }
+.vu-form { grid-template-columns: minmax(0, 1fr); }
+.vu-form > *, .vu-nl > *, .vu-ch, .vu-l { min-width: 0; }
+.vu-nl input { width: 100%; min-width: 0; }
+
+/* 두고 파트너스 지원서 칸 (마스터 › 두고 파트너스 지원 · 강사 입점 문의 카드) — 2026-11 */
+.a-inq-block.a-inq-pt { background: #fff7f8; box-shadow: inset 0 0 0 1px #ffdbe2; }
+.a-inq-block.a-inq-pt > b { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 8px; color: #e0103a; }
+.a-inq-pt .a-inq-info dd { white-space: pre-wrap; }
+@media (max-width: 640px) { .a-inq-pt .a-inq-info { grid-template-columns: minmax(0, 1fr); } }

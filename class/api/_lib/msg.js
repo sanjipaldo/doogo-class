@@ -76,9 +76,13 @@ async function solapi(messages, at) {
 function solapiMsg(ch, m, text, opt) {
   const to = phoneOf(m), from = String(env().SOLAPI_SENDER).replace(/\D/g, "");
   if (ch === "sms") return Object.assign({ to, from, text }, bytes(text) > 90 ? { type: "LMS", subject: opt.subject || "DOOGO CLASS" } : { type: "SMS" });
-  if (ch === "alim") return { to, from, type: "ATA", text, kakaoOptions: { pfId: env().SOLAPI_PFID, templateId: opt.templateId, variables: { "#{이름}": m.name || "회원" }, disableSms: true } };
+  if (ch === "alim") return { to, from, type: "ATA", text, kakaoOptions: { pfId: env().SOLAPI_PFID, templateId: opt.templateId, variables: alimVars(m, opt), disableSms: true } };
   return { to, from, type: "BMS_TEXT", text, kakaoOptions: { pfId: env().SOLAPI_PFID, bms: { targeting: opt.targeting || "I", chatBubbleType: "TEXT" } } };
 }
+
+/** 알림톡 변수: #{이름} + 보낼 때 함께 넘긴 변수(opt.vars — 예: #{강의명} · #{업데이트월} · #{링크}) */
+const alimVars = (m, opt) => Object.assign({ "#{이름}": m.name || "회원" }, opt && opt.vars && typeof opt.vars === "object" ? opt.vars : {});
+const alimText = (text, m, opt) => { const v = alimVars(m, opt); return String(text || "").replace(/#\{[^}]{1,20}\}|\{이름\}/g, (k) => (k === "{이름}" ? v["#{이름}"] : v[k] != null ? String(v[k]) : k)); };
 
 /* ---------- Resend (이메일) ---------- */
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -116,7 +120,7 @@ async function send(ch, members, opt) {
   } else {
     for (let i = 0; i < list.length; i += 500) {
       const part = list.slice(i, i + 500);
-      try { const r = await solapi(part.map((m) => solapiMsg(ch, m, ch === "alim" ? String(opt.text || "").replace(/#\{이름\}|\{이름\}/g, m.name || "회원") : textFor(ch, opt.text, m, opt), opt)), at); sent += part.length - r.failed; failed += r.failed; group = group || r.group; }
+      try { const r = await solapi(part.map((m) => solapiMsg(ch, m, ch === "alim" ? alimText(opt.text, m, opt) : textFor(ch, opt.text, m, opt), opt)), at); sent += part.length - r.failed; failed += r.failed; group = group || r.group; }
       catch (e) { console.error("[msg] solapi", e.status, e.message); failed += part.length; }
     }
   }

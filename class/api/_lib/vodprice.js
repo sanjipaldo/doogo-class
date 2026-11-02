@@ -3,7 +3,12 @@
  * 카탈로그(vcat)는 마스터가 클래스 · 쿠폰 · 설정을 저장할 때 서버로 올려요 (가격에 필요한 칸만). */
 "use strict";
 
-const PLAN_DAYS = [[180, "180일", 1], [365, "365일", 1.1], [1095, "3년", 1.2]];
+// 수강권: 6개월(180일) · 12개월(365일) 두 가지 (2026-11 — 예전 3년 수강권은 팔지 않아요. 이미 산 주문은 그대로)
+const PLAN_DAYS = [[180, "6개월", 1, 6], [365, "12개월", 1.1, 12]];
+const PLAN_OLD = { 1095: "3년" };
+const planLabel = (d) => { const x = PLAN_DAYS.find((y) => y[0] === Number(d)); return x ? x[1] : PLAN_OLD[Number(d)] || Number(d) + "일"; };
+/** 재수강 할인가: 판매가 × (100 − %) — 100원 아래는 버려요 (화면 vod.js rbPrice 와 같은 계산) */
+const rbPrice = (sale, pct) => Math.floor(sale * (100 - pct) / 100 / 100) * 100;
 const BIZ_DEF = { ebook: true, live: false, free: false, flive: false };
 const TYPES = { vod: 1, ebook: 1, live: 1, offline: 1, book: 1 };
 /** 종이책: 한 주문에 몇 권까지 · 배송비(주문마다 한 번) */
@@ -57,6 +62,22 @@ function pricer(cat, nowMs) {
     return { min: Number(t.min) || Number(d.min) || 60, price: t.price != null && t.price !== "" ? Number(t.price) : Number(d.price) || 99000 };
   }
   const extendPct = () => { const n = Number(S.extendPct); return n > 0 && n <= 100 ? n : 50; };
+  /** 재수강 할인 % (꺼져 있으면 0) — 마스터 설정 settings.rebuy { on, pct }, 비우면 켜짐 · 40% */
+  const rebuyPct = () => { const r = S.rebuy || {}, n = Number(r.pct); return r.on === false ? 0 : n > 0 && n < 100 ? n : 40; };
+  /** 이 회원이 이 강의를 볼 수 있는 마지막 시각 (화면 accessEnd 와 같은 계산): 결제 완료 수강권 · 예전 연장권을 이어 붙여요 · 기간 없는 강의 Infinity · 산 적 없으면 0 */
+  function accessEnd(p, orders) {
+    const os = (orders || []).filter((o) => o && o.pid === p.id && o.status === "paid" && ((o.kind || "course") === "course" || o.kind === "extend")).sort((a, b) => (a.paidAt || 0) - (b.paidAt || 0));
+    if (!os.length) return 0;
+    if (typeOf(p) !== "vod") return Infinity;
+    let end = 0;
+    for (const o of os) { const d = Number(o.days) || (o.kind === "extend" ? 365 : Number(p.accessDays) || 0); if (!d) return Infinity; end = Math.max(end, o.paidAt || 0) + d * 864e5; }
+    return end;
+  }
+  /** 재수강 할인 %: 예전에 이 강의를 수강했고(결제 완료) 지금은 수강 기간이 끝났을 때만 (아니면 0) */
+  function rebuyFor(p, orders) {
+    const pct = rebuyPct(); if (!pct || !p || typeOf(p) !== "vod" || !plansOf(p).length) return 0;
+    const e = accessEnd(p, orders); return e && e !== Infinity && e <= now ? pct : 0;
+  }
   function extendOf(p) { const y = plansOf(p).find((x) => x.d === 365) || defPlan(p); return y ? { d: 365, sale: r1k(y.sale * extendPct() / 100), list: y.sale } : null; }
   // 종이책은 도서정가제(정가의 10% 안 할인)라 쿠폰을 쓰지 않아요 — 할인가는 마스터가 정가의 90% 이상으로 정해요
   const shipOf = (p) => (typeOf(p) === "book" ? Math.max(0, Math.round(Number(p.shipFee) || 0)) : 0);
@@ -67,7 +88,7 @@ function pricer(cat, nowMs) {
     const off = c.kind === "pct" ? Math.floor(amount * c.value / 100 / 10) * 10 : Number(c.value) || 0;
     return Math.min(amount, c.kind === "pct" && c.max ? Math.min(off, c.max) : off);
   }
-  return { now, today, product, typeOf, isEvent, isFreeEv, basePrice, priceOf, plansOf, planOf, coachOf, teaOf, extendOf, couponOff, shipOf, evEnd, kst };
+  return { now, today, product, typeOf, isEvent, isFreeEv, basePrice, priceOf, plansOf, planOf, coachOf, teaOf, extendOf, couponOff, shipOf, evEnd, kst, rebuyPct, accessEnd, rebuyFor };
 }
 
-module.exports = { pricer, PLAN_DAYS, BOOK_MAX, r1k, kst, kstDay, addDays };
+module.exports = { pricer, PLAN_DAYS, PLAN_OLD, planLabel, rbPrice, BOOK_MAX, r1k, kst, kstDay, addDays };

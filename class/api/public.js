@@ -1,8 +1,9 @@
 /* POST /api/public — 로그인 없이 하는 일
  *  { action: "signup", iid, cohortId, name, phone4 }   수강 신청 (승인 대기로 등록)
  *  { action: "free-question", iid, name, text }        무료강의 페이지 질문 남기기
- *  { action: "partner-apply", name, email, phone, where, course, link, message, agree }
+ *  { action: "partner-apply", name, email, phone, where, course, link, message, agree, source?, form?, ref? }
  *                                                       강사 입점 문의 (마스터 → 입점 문의에서 관리)
+ *                                                       source "partners" = 두고클래스 ‘두고 파트너스’ 지원서 (form = 지원서 칸들)
  *  { action: "vdur", urls: [...] }                     강의 영상(비메오 · 유튜브)의 실제 길이(초) */
 "use strict";
 const crypto = require("crypto");
@@ -48,7 +49,19 @@ async function freeQuestion(req, res, b) {
   send(res, 503, { error: "busy" });
 }
 
-/* 강사 입점 문의 — 문서 inq:<id> 로 저장, 마스터만 읽고 고친다 */
+/* 강사 입점 문의 — 문서 inq:<id> 로 저장, 마스터만 읽고 고친다
+ * 두고 파트너스 지원서(source "partners")는 지원서 칸(form)을 정해 둔 이름 · 길이만 받아요 (모르는 칸은 버려요) */
+const SOURCES = ["doogoclass", "partners"];
+const FORM_TXT = { nick: 40, cat: 40, topic: 80, result: 160, exp: 40, ready: 40, when: 40, link2: 300, from: 40 };
+function cleanForm(f, t) {
+  if (!f || typeof f !== "object" || Array.isArray(f)) return null;
+  const out = {};
+  Object.keys(FORM_TXT).forEach((k) => { const v = t(f[k], FORM_TXT[k]); if (v) out[k] = v; });
+  if (out.link2 && !/^https?:\/\//i.test(out.link2)) out.link2 = "https://" + out.link2;
+  const kinds = (Array.isArray(f.kinds) ? f.kinds : []).map((x) => t(x, 30)).filter(Boolean).slice(0, 6);
+  if (kinds.length) out.kinds = kinds;
+  return Object.keys(out).length ? out : null;
+}
 async function partnerApply(req, res, b) {
   const t = (v, n) => String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, n);
   const a = {
@@ -57,6 +70,12 @@ async function partnerApply(req, res, b) {
   };
   if (!a.name || !a.course || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email) || !/^[0-9+\-() ]{8,}$/.test(a.phone) || b.agree !== true) return send(res, 400, { error: "input" });
   if (a.link && !/^https?:\/\//i.test(a.link)) a.link = "https://" + a.link;
+  if (SOURCES.indexOf(b.source) >= 0) a.source = b.source;
+  const form = a.source === "partners" ? cleanForm(b.form, t) : null;
+  if (form) a.form = form;
+  // 파트너 추천 링크(?ref=코드)로 들어와 쓴 문의 — 마스터 화면에 ‘추천 코드’로 보여요
+  const ref = t(b.ref, 30);
+  if (/^[A-Za-z0-9_.-]{2,30}$/.test(ref)) a.ref = ref;
   const k = "ip-partner:" + ip(req);
   if (await store.rlCheck([k], 6)) return send(res, 429, { error: "locked" });
   const doc = Object.assign({ id: uid("inq"), at: Date.now(), status: "new", memo: "" }, a);
