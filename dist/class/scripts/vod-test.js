@@ -987,6 +987,15 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(!Object.keys(w.writes).length, "예시 운영자: 다시 돌려도 그대로", w.result);
   w = OO.demoStaffStop((k) => (k === "meta" ? { other: 1 } : null));
   ok(!Object.keys(w.writes).length, "예시 운영자: 운영자 목록이 없으면 건드리지 않아요", w.result);
+  // 일회성 작업: doogomd 채널(돈맛스토리) — 비어 있거나 기본값일 때만
+  const DM = { media: [{ id: "md-doogomd", loginId: "doogomd", pwHash: "s1$x$y", code: "dgmd26", name: "두고미디어", channel: "두고미디어 YouTube", url: "" }, { id: "md-b", loginId: "other", channel: "다른 채널", url: "" }], other: 1 };
+  w = OO.mediaDoogomdChannel((k) => (k === "meta" ? JSON.parse(JSON.stringify(DM)) : null));
+  const dm2 = w.writes.meta;
+  ok(dm2 && dm2.media[0].url === "https://www.youtube.com/@돈맛스토리" && dm2.media[0].channel === "돈맛스토리" && dm2.media[0].name === "두고미디어" && dm2.media[0].pwHash === "s1$x$y" && dm2.media[1].url === "" && dm2.other === 1, "doogomd 채널: 주소 · 이름 채우기 (팀 이름 · 비밀번호 해시 · 다른 계정은 그대로)", w.result);
+  w = OO.mediaDoogomdChannel((k) => (k === "meta" ? dm2 : null));
+  ok(!Object.keys(w.writes).length, "doogomd 채널: 다시 돌려도 그대로", w.result);
+  w = OO.mediaDoogomdChannel((k) => (k === "meta" ? { media: [{ id: "md-doogomd", loginId: "doogomd", channel: "마스터가 고친 이름", url: "https://www.youtube.com/@custom" }] } : null));
+  ok(!Object.keys(w.writes).length, "doogomd 채널: 마스터가 고친 이름 · 주소는 안 건드려요", w.result);
   // 일회성 작업: 문대표 4기 11/21(토) 4주
   w = OO.moon4th((k) => (k === "cohorts:moon" ? [{ id: "c3", name: "3기", startDate: "2026-10-01" }, { id: "c4", name: "4기", startDate: "2026-11-05", recruiting: true, curriculumId: "cur-4w", classDow: 6, classTime: "12:00" }] : null));
   const c4 = w.writes["cohorts:moon"][1];

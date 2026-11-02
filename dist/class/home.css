@@ -1921,3 +1921,25 @@ a.hm-nav-a { display: inline-flex; align-items: center; text-decoration: none; }
 .hm-foot-cs .hm-foot-cs-kk { margin-top: 6px; background: #fee500; border-color: #fee500; color: #191919; }
 .hm-foot-cs .hm-foot-cs-kk .icon { color: #191919; }
 @media (hover: hover) { .hm-foot-cs .hm-foot-cs-kk:hover { border-color: #f2d900; background: #f9df00; color: #191919; } }
+
+/* 두잉고 마지막 문의 영역 · 회사소개서 (흰 바탕 · 검정 글씨 · 새 창) */
+.hm-cta .hm-btn-deck { background: #fff; border-color: var(--g300, #d4d4d8); color: var(--g900); }
+.hm-cta .hm-btn-deck .icon { color: var(--g900); }
+@media (hover: hover) { .hm-cta .hm-btn-deck:hover { border-color: var(--g900); color: var(--g900); } }
+
+/* ‘3가지 보기’ 아래 · 사용법 영상 띠 → /doinggo/guide */
+.hm-guide-cta { display: flex; align-items: center; gap: 18px; margin-top: 14px; padding: 22px 28px; border-radius: 16px; background: linear-gradient(100deg, #17171a 0%, #2a2a30 100%); color: #fff; text-decoration: none; box-shadow: 0 14px 34px -18px rgba(23, 23, 26, .55); transition: transform .2s ease, box-shadow .2s ease; }
+.hm-guide-ic { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--pri); color: #fff; box-shadow: 0 0 0 6px rgba(255, 255, 255, .08); }
+.hm-guide-ic .icon { width: 20px; height: 20px; margin-left: 2px; fill: currentColor; }
+.hm-guide-tx { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.hm-guide-tx small { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #ff8a95; }
+.hm-guide-tx b { font-size: 20px; font-weight: 800; line-height: 1.4; letter-spacing: -0.035em; color: #fff; }
+.hm-guide-tx em { font-style: normal; font-size: 13.5px; color: rgba(255, 255, 255, .62); }
+.hm-guide-go { display: inline-flex; align-items: center; gap: 4px; flex: none; height: 42px; padding: 0 18px; border-radius: 10px; background: #fff; color: #17171a; font-size: 14px; font-weight: 700; }
+@media (hover: hover) { .hm-guide-cta:hover { transform: translateY(-2px); box-shadow: 0 20px 40px -18px rgba(23, 23, 26, .6); } .hm-guide-cta:hover .hm-guide-go { background: #ffe8ea; } }
+@media (max-width: 720px) {
+  .hm-guide-cta { flex-wrap: wrap; gap: 14px; padding: 20px; }
+  .hm-guide-ic { width: 40px; height: 40px; }
+  .hm-guide-tx b { font-size: 17px; }
+  .hm-guide-go { flex: 1 1 100%; justify-content: center; }
+}

@@ -396,6 +396,7 @@
       secHead("target", "기수가 늘수록, 운영이 버거워지셨나요?", "1기 · 2기 · 3기를 이어 가는 강사님들이 가장 많이 겪는 일이에요.") +
       '<div class="hm-pains">' + PAINS.map((x, i) => '<article class="hm-pain hm-hov hm-reveal"' + d(i) + '><span class="hm-ic hm-ic-mute">' + icon(x[0]) + "</span><h3>" + x[1] + "</h3><p>" + x[2] + "</p></article>").join("") + "</div>" +
       '<div class="hm-answer hm-reveal"><span class="hm-sym" aria-hidden="true"></span><p>두잉고는 강의 운영에 필요한 ' + mark("3가지") + "를 강사님 이름의 플랫폼 하나에 담았어요.</p>" + scrollBtn("hm-features", "3가지 보기" + arrow(), "hm-answer-go") + "</div>" +
+      '<a class="hm-guide-cta hm-reveal" href="#/doinggo/guide"><span class="hm-guide-ic" aria-hidden="true">' + icon("play") + '</span><span class="hm-guide-tx"><small>사용법 영상</small><b>이제 고민하지 마시고, 바로 시작하세요</b><em>강사센터 · 수강생 화면을 실제 화면 영상으로 하나씩 보여 드려요</em></span><span class="hm-guide-go">사용법 영상 보기' + arrow() + "</span></a>" +
     "</div></section>";
   }
 
@@ -594,13 +595,15 @@
     "</div></section>";
   }
 
+  // 두잉고 · 두고클래스 회사소개서 (DocSend 공유 링크 — 새 창)
+  const DECK_URL = "https://docsend.com/view/v7hxrurp8thb6qgf";
   function finalCta() {
     const pts = [["headset", "상담은 무료", "강의 방식 · 자료 · 일정부터 함께 정리해요"], ["layers", "처음 세팅을 함께", "랜딩 · 전자책 · 커리큘럼을 같이 만들어요"], ["users", "수강생은 무료", "수강생 수와 상관없이 같은 이용료"]];
     return '<section class="hm-final"><div class="hm-wrap hm-final-in">' +
       '<div class="hm-final-copy"><p class="hm-final-k">' + icon("sparkles", "xs") + "다음 기수 준비, 지금 시작하세요</p>" +
         '<h2 class="hm-h2">다음 기수부터,<br>' + mark("두잉고") + "로 운영해 보세요</h2>" +
         "<p>강의 소개 랜딩페이지 · 무료강의 전자책 · 튜토리얼 시스템을 강사님 이름으로. 문의를 남겨 주시면 확인 후 바로 연락드려요.</p>" +
-        '<div class="hm-cta">' + applyBtn("입점 문의하기" + arrow(), "hm-btn hm-btn-p hm-btn-lg") + "</div></div>" +
+        '<div class="hm-cta">' + applyBtn("입점 문의하기" + arrow(), "hm-btn hm-btn-p hm-btn-lg") + '<a class="hm-btn hm-btn-sec hm-btn-lg hm-btn-deck" href="' + DECK_URL + '" target="_blank" rel="noopener">' + icon("file") + "회사소개서</a></div></div>" +
       '<ul class="hm-final-pts">' + pts.map((x) => '<li><span class="hm-final-ic">' + icon(x[0]) + "</span><span><b>" + x[1] + "</b><small>" + x[2] + "</small></span></li>").join("") + "</ul>" +
     "</div></section>";
   }
@@ -636,7 +639,7 @@
           '<div class="hm-foot-cta">' + applyBtn("입점 문의하기" + arrow(), "hm-btn hm-btn-p hm-btn-sm") + '<a class="hm-btn hm-btn-sec hm-btn-sm" href="#/center">강사센터</a><a class="hm-btn hm-btn-sec hm-btn-sm hm-foot-guide" href="#/doinggo/guide">' + icon("circlePlay", "xs") + "사용법 영상</a></div></div>" +
         '<nav class="hm-foot-cols" aria-label="바로가기">' +
           '<div class="hm-foot-col"><b>두잉고</b>' + scrollBtn("hm-features", "3가지 기능", "hm-foot-a") + scrollBtn("hm-students", "수강생 화면", "hm-foot-a") + scrollBtn("hm-teachers", "강사센터 둘러보기", "hm-foot-a") + scrollBtn("hm-pricing", "이용료 · 기수 운영", "hm-foot-a") + scrollBtn("hm-classes", "강사진", "hm-foot-a") + "</div>" +
-          '<div class="hm-foot-col"><b>바로가기</b>' + applyBtn("강사 입점 문의", "hm-foot-apply") + '<a href="#/center">강사센터 로그인</a><a href="#/login">수강생 로그인</a><a href="#/center/billing">다음 기수 신청</a><a class="hm-foot-gd" href="#/doinggo/guide/ins">' + icon("circlePlay", "xs") + '사용법 영상 · 강사</a><a class="hm-foot-gd" href="#/doinggo/guide/stu">' + icon("circlePlay", "xs") + "사용법 영상 · 수강생</a></div>" +
+          '<div class="hm-foot-col"><b>바로가기</b>' + applyBtn("강사 입점 문의", "hm-foot-apply") + '<a href="#/center">강사센터 로그인</a><a href="#/login">수강생 로그인</a><a href="#/center/billing">다음 기수 신청</a></div>' +
           '<div class="hm-foot-col"><b>고객지원</b>' + scrollBtn("hm-faq", "자주 묻는 질문", "hm-foot-a") + kk("카카오톡 상담", "hm-foot-kk") + legal("terms", "이용약관", S.terms) + legal("privacy", "<strong>개인정보처리방침</strong>", S.privacy) +
             (S.email ? '<a href="mailto:' + esc(S.email) + '">이메일 문의</a>' : "") + "</div>" +
         "</nav>" +

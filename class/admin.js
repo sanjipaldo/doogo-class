@@ -6843,6 +6843,19 @@
     return ["잠정" + part, "mute"];
   }
   const mdSum = (list, f) => list.reduce((a, o) => a + f(o), 0);
+  /* 채널 주소(YouTube) → { href, label } — @핸들은 한글로 풀어서 보여요 (http · https 주소만) */
+  const YT_MARK = '<svg class="md-yt-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="4.5" width="21" height="15" rx="4.5" fill="#ff0033"/><path d="M10 8.8v6.4l5.6-3.2z" fill="#fff"/></svg>';
+  function mdYt(a) {
+    const u = String((a && a.url) || "").trim();
+    if (!/^https?:\/\/[^\s"'<>]+$/i.test(u)) return null;
+    let label = "";
+    try {
+      const x = new URL(u), host = x.hostname.replace(/^(www|m)\./i, ""), path = decodeURIComponent(x.pathname).replace(/\/+$/, "");
+      label = /(^|\.)youtube\.com$/i.test(host) || host === "youtu.be" ? (/^\/@/.test(path) ? path.slice(1) : "YouTube 채널") : host + path;
+    } catch (e) { label = u.replace(/^https?:\/\//i, ""); }
+    return { href: u, label: label.slice(0, 40) };
+  }
+  const mdYtLink = (a) => { const y = mdYt(a); return y ? '<a class="md-yt" href="' + esc(y.href) + '" target="_blank" rel="noopener" title="' + esc(y.href) + '">' + YT_MARK + "<span>" + esc(y.label) + "</span></a>" : ""; };
   const mdPaidOut = (id) => Object.keys(mdPOs()).filter((k) => k.indexOf(id + ":") === 0 && mdPOs()[k] && mdPOs()[k].st === "paid").reduce((a, k) => a + (Number(mdPOs()[k].amount) || ((mdPOs()[k].snap || {}).pay) || 0), 0);
   // 링크 판매 묶음 (기간 · 계정 · 상품)
   function mdPeriod(k) {
@@ -7043,12 +7056,14 @@
   function mdTodo() { mdSeed(); let n = 0; const lm = vdYMadd(todayStr().slice(0, 7), -1); mdList().forEach((a) => { const st = mdStmt(a.id, lm), k = mdStState(st).k; if ((st.n || st.ded || st.carry) && (k === "ready" || k === "confirmed")) n++; }); return n; }
   function pageMasterMedia() {
     mdSeed();
-    const list = mdList(), ym = todayStr().slice(0, 7), R = mdR();
+    // 월별로 보기: ‹ › 로 달을 바꾸면 위 숫자 · 표의 ‘월’ 칸이 그 달로 (기본 이번 달)
+    const cym = todayStr().slice(0, 7), ym = ui.mdAM && ui.mdAM < cym ? ui.mdAM : cym, live = ym === cym, R = mdR(), list = mdList();
+    const mKpi = live ? "이번 달" : vdYMtxt(ym), mCol = live ? "이번 달" : Number(ym.slice(5)) + "월";
     const rows = list.map((a) => ({ a, cur: mdStmt(a.id, ym), all: mdOrders(a.id).filter((o) => vdKeep(o) > 0 && o.paidAt) }));
     return head("온드미디어 계정", "YouTube 채널 팀(온드미디어)의 로그인 계정을 만들고 관리해요. 계정마다 VOD별 홍보 링크가 따로 생기고, 그 링크로 팔린 VOD의 RS가 강사 정산 전에 먼저 빠져요.", btn(icon("sliders", "sm") + "RS 기준", "md-set", "a-btn-ghost") + btn(icon("userPlus", "sm") + "새 온드미디어 계정", "md-add", "a-btn-primary")) +
-      '<div class="a-kpis">' + kpi("사용 중인 계정", list.filter((a) => a.status === "active").length + "개", "전체 " + list.length + "개", "#/center/master/vod-media") + kpi("이번 달 링크 판매", rows.reduce((s, x) => s + x.cur.n, 0) + "건", "판매가 " + won(rows.reduce((s, x) => s + x.cur.base, 0)), "#/center/master/vod-media-rs", "ok") + kpi("이번 달 RS (잠정)", won(rows.reduce((s, x) => s + Math.max(0, x.cur.net), 0)), vdYMtxt(ym) + " 집계 중", "#/center/master/vod-media-pay") + kpi("RS 기준", R.hi + "% · " + R.lo + "%", "구독자 " + manTxt(R.subs) + " 기준 · 링크 " + R.days + "일 · PG " + R.pg + "%", "#/center/master/vod-media") + "</div>" +
-      '<section class="a-card">' + (list.length ? '<div class="a-table-wrap"><table class="a-table md-acc"><thead><tr><th>채널 · 팀</th><th>아이디 · 링크 코드</th><th>구독자 · RS율</th><th class="right">이번 달</th><th class="right">누적</th><th>정산 계좌</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
-        rows.map((x) => { const a = x.a; return "<tr><td><b>" + esc(mdName(a)) + '</b><small class="a-memo">' + esc(a.name || "") + (a.demo ? " · 예시" : "") + "</small></td><td>" + esc(a.loginId || "-") + '<small class="a-memo">?rs=' + esc(VX().rsCode(a.code)) + (a.hasPw === false || (!DB.remote.on && !a.pw) ? " · 비밀번호 없음" : "") + "</small></td><td>" + esc(mdSubsTxt(a)) + '<small class="a-memo"><b>RS ' + mdRate(a) + "%</b> · " + esc(mdRateWhy(a)) + '</small></td><td class="right num">' + x.cur.n + "건<small class=\"a-memo\">" + won(Math.max(0, x.cur.net)) + '</small></td><td class="right num">' + x.all.length + "건<small class=\"a-memo\">" + won(mdSum(x.all, mdRs)) + "</small></td><td>" + (a.account ? esc(VX().bankName(a.bank) || a.bank || "") + '<small class="a-memo">' + esc(a.holder || "") + (a.bankAt ? " · " + esc(vdWhen(a.bankAt)) + " 변경" : "") + "</small>" : pill("미등록", "warn")) + "</td><td>" + (a.status === "active" ? pill("사용 중", "ok") : pill("중지", "mute")) + (a.lastLoginAt ? '<small class="a-memo">' + esc(vdWhen(a.lastLoginAt)) + " 접속</small>" : "") + '</td><td class="right vs-acts">' + btn("홍보 링크", "md-links", "a-btn-ghost a-btn-sm", ' data-id="' + esc(a.id) + '"') + btn("수정", "md-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(a.id) + '"') + btn(a.status === "active" ? "중지" : "다시 사용", "md-toggle", "a-btn-ghost a-btn-sm", ' data-id="' + esc(a.id) + '"') + "</td></tr>"; }).join("") + "</tbody></table></div>"
+      '<div class="a-kpis">' + kpi("사용 중인 계정", list.filter((a) => a.status === "active").length + "개", "전체 " + list.length + "개", "#/center/master/vod-media") + kpi(mKpi + " 링크 판매", rows.reduce((s, x) => s + x.cur.n, 0) + "건", "판매가 " + won(rows.reduce((s, x) => s + x.cur.base, 0)), "#/center/master/vod-media-rs", "ok") + kpi(mKpi + " RS" + (live ? " (잠정)" : ""), won(rows.reduce((s, x) => s + Math.max(0, x.cur.net), 0)), vdYMtxt(ym) + (live ? " 집계 중" : " 판매분"), "#/center/master/vod-media-pay") + kpi("RS 기준", R.hi + "% · " + R.lo + "%", "구독자 " + manTxt(R.subs) + " 기준 · 링크 " + R.days + "일 · PG " + R.pg + "%", "#/center/master/vod-media") + "</div>" +
+      '<section class="a-card">' + (list.length ? '<div class="a-card-head a-cal-head md-am-head"><button type="button" class="a-icon-btn" data-action="md-am" data-dir="-1" aria-label="이전 달">' + icon("chevLeft") + "</button><h2>" + vdYMtxt(ym) + '</h2><button type="button" class="a-icon-btn" data-action="md-am" data-dir="1" aria-label="다음 달"' + (live ? " disabled" : "") + ">" + icon("chevRight") + '</button><span class="a-cal-sum">' + (live ? "이번 달 집계 중 (잠정) · ‹ 로 지난달을 볼 수 있어요" : "위 숫자 · ‘" + mCol + "’ 칸이 " + vdYMtxt(ym) + " 기준이에요") + "</span></div>" + '<div class="a-table-wrap"><table class="a-table md-acc"><thead><tr><th>채널 · 팀</th><th>아이디 · 링크 코드</th><th>구독자 · RS율</th><th class="right">' + mCol + "</th>" + '<th class="right">누적</th><th>정산 계좌</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
+        rows.map((x) => { const a = x.a; return "<tr><td><b>" + esc(mdName(a)) + '</b><small class="a-memo">' + esc(a.name || "") + (a.demo ? " · 예시" : "") + "</small>" + (mdYtLink(a) || '<small class="a-memo md-yt-none">채널 주소 미입력 · ‘수정’에서 넣어 주세요</small>') + "</td><td>" + esc(a.loginId || "-") + '<small class="a-memo">?rs=' + esc(VX().rsCode(a.code)) + (a.hasPw === false || (!DB.remote.on && !a.pw) ? " · 비밀번호 없음" : "") + "</small></td><td>" + esc(mdSubsTxt(a)) + '<small class="a-memo"><b>RS ' + mdRate(a) + "%</b> · " + esc(mdRateWhy(a)) + '</small></td><td class="right num">' + x.cur.n + "건<small class=\"a-memo\">" + won(Math.max(0, x.cur.net)) + '</small></td><td class="right num">' + x.all.length + "건<small class=\"a-memo\">" + won(mdSum(x.all, mdRs)) + "</small></td><td>" + (a.account ? esc(VX().bankName(a.bank) || a.bank || "") + '<small class="a-memo">' + esc(a.holder || "") + (a.bankAt ? " · " + esc(vdWhen(a.bankAt)) + " 변경" : "") + "</small>" : pill("미등록", "warn")) + "</td><td>" + (a.status === "active" ? pill("사용 중", "ok") : pill("중지", "mute")) + (a.lastLoginAt ? '<small class="a-memo">' + esc(vdWhen(a.lastLoginAt)) + " 접속</small>" : "") + '</td><td class="right vs-acts">' + btn("홍보 링크", "md-links", "a-btn-ghost a-btn-sm", ' data-id="' + esc(a.id) + '"') + btn("수정", "md-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(a.id) + '"') + btn(a.status === "active" ? "중지" : "다시 사용", "md-toggle", "a-btn-ghost a-btn-sm", ' data-id="' + esc(a.id) + '"') + "</td></tr>"; }).join("") + "</tbody></table></div>"
         : emptyBox("monitorPlay", "아직 온드미디어 계정이 없어요.<br>‘새 온드미디어 계정’으로 YouTube 채널 팀 계정을 만들어 주세요.", btn(icon("userPlus", "sm") + "새 온드미디어 계정", "md-add", "a-btn-primary"))) + "</section>" +
       '<section class="a-card a-settle-note"><h2>' + icon("shieldCheck", "sm") + " 운영 규칙</h2><ul>" +
         "<li>계정마다 링크 코드가 달라 VOD마다 고유한 홍보 링크가 생겨요. 채널이 10개면 계정도 10개 · 링크도 VOD × 10개예요.</li>" +
@@ -7105,7 +7120,7 @@
   function mdLinksModal(id) {
     const a = mdOf(id); if (!a) return;
     const ps = mdLinkProducts(), by = {}; mdOrders(a.id).forEach((o) => { const x = (by[o.pid] = by[o.pid] || { n: 0, rs: 0 }); if (vdKeep(o) > 0 && o.paidAt) { x.n++; x.rs += mdRs(o); } });
-    openModal(mdName(a) + " · 홍보 링크 " + ps.length + "개", '<p class="a-muted">링크 코드 <b>' + esc(VX().rsCode(a.code)) + "</b> · RS " + mdRate(a) + "% · 이 링크로 들어와 " + mdR().days + "일 안에 결제하면 이 채널 판매예요.</p>" + (ps.length ? '<div class="vs-links md-links">' + ps.map((p) => mdLinkRow(p, a, by[p.id])).join("") + "</div>" : emptyBox("link", "홍보할 수 있는 VOD가 아직 없어요.")), btn("링크 전체 복사", "md-copy-all", "a-btn-ghost", ' data-id="' + esc(a.id) + '"') + btn("닫기", "modal-close"), "lg");
+    openModal(mdName(a) + " · 홍보 링크 " + ps.length + "개", (mdYtLink(a) ? '<p class="md-links-ch">' + mdYtLink(a) + "</p>" : "") + '<p class="a-muted">링크 코드 <b>' + esc(VX().rsCode(a.code)) + "</b> · RS " + mdRate(a) + "% · 이 링크로 들어와 " + mdR().days + "일 안에 결제하면 이 채널 판매예요.</p>" + (ps.length ? '<div class="vs-links md-links">' + ps.map((p) => mdLinkRow(p, a, by[p.id])).join("") + "</div>" : emptyBox("link", "홍보할 수 있는 VOD가 아직 없어요.")), btn("링크 전체 복사", "md-copy-all", "a-btn-ghost", ' data-id="' + esc(a.id) + '"') + btn("닫기", "modal-close"), "lg");
   }
   function mdSetModal() {
     const R = mdR(), fi = (k, label, val, hint, attrs) => '<div class="a-field"><label for="mds-' + k + '">' + label + '</label><input class="a-input" id="mds-' + k + '" name="' + k + '" type="number" value="' + esc(val) + '" inputmode="numeric"' + (attrs || "") + '><small class="a-muted">' + hint + "</small></div>";
@@ -7143,6 +7158,46 @@
             : lkA ? '<div class="vs-links md-links">' + lps.map((p) => mdLinkRow(p, lkA)).join("") + "</div>" : "")
           : emptyBox("link", "계정을 만들면 VOD마다 링크가 생겨요.")) + "</section>";
   }
+  /* RS 정산 › 기간 조회 — 결제일로 날짜를 골라 채널별 링크 판매 · RS 를 봐요 (월별 명세 · 지급과는 따로, 보기 전용) */
+  const MD_RANGES = [["month", "이번 달"], ["last", "지난달"], ["d7", "최근 7일"], ["d30", "최근 30일"], ["year", "올해"]];
+  function mdRangeOf(k) {
+    const t = todayStr(), ym = t.slice(0, 7), A = DB.date.addDays;
+    if (k === "last") return [vdYMadd(ym, -1) + "-01", A(ym + "-01", -1)];
+    if (k === "d7") return [A(t, -6), t];
+    if (k === "d30") return [A(t, -29), t];
+    if (k === "year") return [ym.slice(0, 4) + "-01-01", t];
+    return [ym + "-01", t];
+  }
+  function mdRange() {
+    const ok = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || ""), d = mdRangeOf("last");
+    let f = ok(ui.mdRF) ? ui.mdRF : d[0], t = ok(ui.mdRT) ? ui.mdRT : d[1];
+    if (f > t) { const x = f; f = t; t = x; }
+    return [f, t];
+  }
+  const mdRangeOrders = (f, t) => mdOrders().filter((o) => { if (o.status === "pending" || !o.paidAt) return false; const d = DB.date.toStr(new Date(o.paidAt)); return d >= f && d <= t; }).sort((a, b) => b.paidAt - a.paidAt);
+  function mdRangeCard() {
+    const r = mdRange(), f = r[0], t = r[1], os = mdRangeOrders(f, t), live = os.filter((o) => vdKeep(o) > 0), refN = os.filter((o) => o.status === "refunded").length;
+    const by = {};
+    os.forEach((o) => { const x = (by[o.rs.mid] = by[o.rs.mid] || { id: o.rs.mid, ch: o.rs.ch, n: 0, base: 0, rs: 0, ref: 0 }); if (o.status === "refunded") x.ref++; if (vdKeep(o) > 0) { x.n++; x.base += mdBase(o); x.rs += mdRs(o); } });
+    const rows = Object.keys(by).map((k) => by[k]).sort((a, b) => b.rs - a.rs || b.n - a.n);
+    const pre = MD_RANGES.find((x) => { const q = mdRangeOf(x[0]); return q[0] === f && q[1] === t; });
+    return '<section class="a-card md-range-card"><div class="a-card-head"><h2>' + icon("calendar", "sm") + ' 기간 조회</h2><span class="a-muted">결제일 기준 · 날짜를 골라 채널별 링크 판매 · RS 를 봐요 (월별 확정 · 지급과는 따로, 보기 전용)</span></div>' +
+      '<form id="mdr-form" class="md-range" novalidate>' +
+        '<label class="md-range-d"><span>시작일</span><input class="a-input" type="date" name="from" value="' + f + '" max="' + todayStr() + '"></label><span class="md-range-sep" aria-hidden="true">~</span>' +
+        '<label class="md-range-d"><span>종료일</span><input class="a-input" type="date" name="to" value="' + t + '" max="' + todayStr() + '"></label>' +
+        '<button type="submit" class="a-btn a-btn-primary md-range-go">' + icon("search", "sm") + "조회</button>" +
+        '<div class="a-tabs md-range-pre">' + MD_RANGES.map((x) => '<button type="button" class="a-tab' + (pre && pre[0] === x[0] ? " on" : "") + '" data-action="mdr-pre" data-k="' + x[0] + '">' + x[1] + "</button>").join("") + "</div></form>" +
+      '<div class="md-range-sum"><span><b>' + esc(fmtFull(f)) + " ~ " + esc(fmtFull(t)) + "</b> · 판매 <b>" + live.length + "건</b> · 판매가 <b>" + won(mdSum(live, mdBase)) + "</b> · RS <b>" + won(mdSum(live, mdRs)) + "</b>" + (refN ? " · 환불 " + refN + "건" : "") + "</span>" + (os.length ? btn(icon("download", "sm") + "CSV", "mdr-csv", "a-btn-ghost a-btn-sm") : "") + "</div>" +
+      (rows.length ? '<div class="a-table-wrap"><table class="a-table vs-table md-range-t"><thead><tr><th>채널</th><th class="right">판매</th><th class="right">판매가 합계</th><th class="right">환불</th><th class="right">RS</th></tr></thead><tbody>' +
+        rows.map((x) => { const a = mdOf(x.id); return "<tr><td><b>" + esc(a ? mdName(a) : x.ch || "삭제된 채널") + "</b>" + (a ? mdYtLink(a) : "") + '</td><td class="right num">' + x.n + '건</td><td class="right num">' + won(x.base) + '</td><td class="right num">' + (x.ref ? x.ref + "건" : "-") + '</td><td class="right num"><b>' + won(x.rs) + "</b></td></tr>"; }).join("") +
+        '</tbody><tfoot><tr><td><b>합계</b></td><td class="right num"><b>' + live.length + '건</b></td><td class="right num"><b>' + won(mdSum(live, mdBase)) + '</b></td><td class="right num">' + (refN ? refN + "건" : "-") + '</td><td class="right num"><b>' + won(mdSum(live, mdRs)) + "</b></td></tr></tfoot></table></div>" +
+        '<details class="md-range-os"><summary>주문 ' + os.length + "건 보기</summary>" + mdOrderTable(os, { master: true }) + "</details>"
+        : emptyBox("calendar", esc(fmtFull(f)) + " ~ " + esc(fmtFull(t)) + " 사이에 링크 판매가 없어요.")) + "</section>";
+  }
+  function saveMdRange(f) {
+    const v = (k) => String((f.elements.namedItem(k) || {}).value || "");
+    ui.mdRF = v("from"); ui.mdRT = v("to"); render();
+  }
   function pageMasterMediaPay() {
     mdSeed();
     const ym = ui.mdPM || vdYMadd(todayStr().slice(0, 7), -1), list = mdList(), sts = list.map((a) => { const st = mdStmt(a.id, ym); st.s = mdStState(st); st.a = a; return st; });
@@ -7151,7 +7206,7 @@
       '<section class="a-card"><div class="a-card-head a-cal-head"><button type="button" class="a-icon-btn" data-action="md-pm" data-dir="-1" aria-label="이전 달">' + icon("chevLeft") + "</button><h2>" + vdYMtxt(ym) + ' 판매분</h2><button type="button" class="a-icon-btn" data-action="md-pm" data-dir="1" aria-label="다음 달">' + icon("chevRight") + '</button><span class="a-cal-sum">' + esc(fmtFull(vdPayDate(ym))) + " 지급 · 판매 <b>" + tot("n") + "건</b> · RS <b>" + won(tot("rs")) + "</b> · 지급 <b>" + won(tot("pay")) + "</b></span></div>" +
         (shown.length ? '<div class="a-table-wrap"><table class="a-table vs-table"><thead><tr><th>채널</th><th>판매 월</th><th>판매</th><th class="right">판매가 합계</th><th class="right">RS</th><th class="right">차감</th><th class="right">세금</th><th class="right">지급액</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
           shown.map((x) => { const k = x.s.k, at = ' data-id="' + esc(x.id) + '" data-m="' + esc(ym) + '"'; const act = k === "ready" ? btn("확정", "mdp-ok", "a-btn-primary a-btn-sm", at) : k === "confirmed" ? btn("지급 완료", "mdp-pay", "a-btn-primary a-btn-sm", at) + btn("확정 취소", "mdp-undo", "a-btn-ghost a-btn-sm", at) : k === "paid" ? btn("지급 취소", "mdp-unpay", "a-btn-ghost a-btn-sm", at) : ""; return "<tr><td><b>" + esc(mdName(x.a)) + '</b><small class="a-memo">' + (x.a.account ? esc(VX().bankName(x.a.bank) || x.a.bank || "") + " " + esc(x.a.account) + " · " + esc(x.a.holder || "") : "계좌 미등록") + " · " + (x.biz ? "사업자" : "개인") + "</small></td>" + mdStmtCells(x, x.s, act) + "</tr>"; }).join("") + "</tbody></table></div>"
-          : emptyBox("calculator", vdYMtxt(ym) + "에는 링크 판매가 없어요.")) + "</section>" +
+          : emptyBox("calculator", vdYMtxt(ym) + "에는 링크 판매가 없어요.")) + "</section>" + mdRangeCard() +
       '<section class="a-card a-settle-note"><h2>' + icon("shieldCheck", "sm") + " 확정 · 지급</h2><ul><li>달이 끝나면 ‘마감 · 확정 대기’가 돼요. 금액을 확인하고 ‘확정’하면 명세서가 고정되고, 그 뒤 환불은 다음 달 RS에서 빠져요.</li><li>지급(이체)한 뒤 ‘지급 완료’를 누르면 온드미디어 센터에 ‘지급 완료’로 보여요. 개인은 3.3%를 뗀 금액, 사업자는 세금계산서를 받은 뒤 RS 금액을 보내 주세요.</li><li>강사 정산은 RS를 먼저 뺀 금액으로 계산돼요 (강사 정산 · 강사센터에 채널 · RS 표시).</li></ul></section>";
   }
   function mdCsv(list, name) {
@@ -7186,7 +7241,7 @@
     if (!isActive()) return;
     const a = e.target.closest ? e.target.closest("[data-action]") : null; if (!a) return;
     const d = a.dataset, act = d.action;
-    if (!/^(md-|mdp-)/.test(act)) return;
+    if (!/^(md-|mdp-|mdr-)/.test(act)) return;
     switch (act) {
       case "md-copy": mdCopy(d.u); break;
       case "md-copy-all": {
@@ -7207,6 +7262,9 @@
       case "md-set": if (S && S.role === "master") mdSetModal(); break;
       case "md-rp": ui.mdRP = d.k; render(); break;
       case "md-pm": ui.mdPM = vdYMadd(ui.mdPM || vdYMadd(todayStr().slice(0, 7), -1), Number(d.dir)); if (ui.mdPM > todayStr().slice(0, 7)) ui.mdPM = todayStr().slice(0, 7); render(); break;
+      case "md-am": { const cym = todayStr().slice(0, 7); ui.mdAM = vdYMadd(ui.mdAM || cym, Number(d.dir)); if (ui.mdAM > cym) ui.mdAM = cym; render(); break; }
+      case "mdr-pre": { const q = mdRangeOf(d.k); ui.mdRF = q[0]; ui.mdRT = q[1]; render(); break; }
+      case "mdr-csv": if (S && S.role === "master") { const q = mdRange(); mdCsv(mdRangeOrders(q[0], q[1]), "doogoclass-rs-" + q[0] + "_" + q[1] + ".csv"); } break;
       case "md-toggle": {
         const acc = mdOf(d.id); if (!acc || !(S && S.role === "master")) break;
         if (acc.status === "active") confirmModal("계정 중지", esc(mdName(acc)) + " 계정을 중지할까요?<br><small>중지하면 바로 로그인이 막히고, 이 계정 링크로 새로 결제한 주문에는 RS가 붙지 않아요. 이미 쌓인 RS · 정산은 그대로예요.</small>", "중지", true, () => { acc.status = "paused"; commit(mdName(acc) + " 온드미디어 계정을 중지했어요."); });
@@ -7222,7 +7280,7 @@
   document.addEventListener("submit", (e) => {
     if (!isActive()) return;
     // 폼 안에 name="id" 칸이 있으면 f.id 가 그 칸이 돼서 getAttribute 로 읽어요
-    const f = e.target, fid = f && f.getAttribute ? f.getAttribute("id") : "", fn = { "md-form": saveMdForm, "md-set-form": saveMdSet, "md-me-form": saveMdMe, "md-mypw-form": saveMdMyPw }[fid];
+    const f = e.target, fid = f && f.getAttribute ? f.getAttribute("id") : "", fn = { "md-form": saveMdForm, "md-set-form": saveMdSet, "md-me-form": saveMdMe, "md-mypw-form": saveMdMyPw, "mdr-form": saveMdRange }[fid];
     if (!fn) return;
     e.preventDefault();
     if ((fid === "md-form" || fid === "md-set-form") && !(S && S.role === "master")) return;

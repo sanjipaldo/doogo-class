@@ -3150,3 +3150,31 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
   .md-lk-tools .a-field-inline { display: grid; width: 100%; }
   .md-bars { height: 140px; gap: 6px; }
 }
+
+/* 온드미디어 · YouTube 채널 링크 · 월별 보기 · RS 기간 조회 */
+.md-yt { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; margin-top: 4px; font-size: 12.5px; font-weight: 600; color: var(--m-ink); text-decoration: none; }
+td .md-yt { display: flex; width: fit-content; }
+.md-yt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-yt-ic { flex: none; width: 16px; height: 16px; }
+.md-yt:hover span { text-decoration: underline; }
+.md-yt-none { color: var(--m-steel); }
+.md-links-ch { margin: 0 0 6px; }
+.md-links-ch .md-yt { font-size: 14px; }
+.md-am-head h2 { min-width: 120px; text-align: center; }
+.md-am-head .a-icon-btn[disabled] { opacity: .35; pointer-events: none; }
+.md-range { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.md-range-d { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--m-steel); }
+.md-range-d .a-input { width: 170px; }
+.md-range-sep { padding-bottom: 11px; color: var(--m-steel); }
+.md-range-pre { flex-basis: 100%; }
+.md-range-sum { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 18px 0 10px; font-size: 14px; color: var(--m-steel); }
+.md-range-sum b { color: var(--m-ink); }
+.md-range-t tfoot td { border-top: 1px solid var(--m-hairline); background: var(--m-surface); }
+.md-range-os { margin-top: 12px; }
+.md-range-os summary { padding: 8px 0; font-size: 14px; font-weight: 600; cursor: pointer; }
+@media (max-width: 640px) {
+  .md-range-d { flex: 1 1 calc(50% - 6px); }
+  .md-range-d .a-input { width: 100%; }
+  .md-range-sep { display: none; }
+  .md-range-go { flex: 1 1 100%; justify-content: center; }
+}

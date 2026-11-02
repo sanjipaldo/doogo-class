@@ -533,7 +533,7 @@ function mediaDoogomd(get) {
   if (!MD.pwOk(pw)) return { writes: {}, result: { skipped: "MEDIA_INIT_PW 환경 변수가 없어 다음 배포 때 다시 시도해요" }, retry: true };
   const used = new Set(list.map((x) => x && MD.codeOf(x.code)));
   const code = used.has("dgmd26") ? "dgmd" + Date.now().toString(36).slice(-4) : "dgmd26", at = Date.now();
-  const acc = { id: "md-doogomd", loginId: "doogomd", pwHash: MD.hashOf(pw), pwAt: at, code, name: "두고미디어", channel: "두고미디어 YouTube", url: "", subs: "", rate: "", email: "", phone: "", type: "biz", bizName: "주식회사 두고미디어", bizNo: "", bank: "", account: "", holder: "", memo: "첫 온드미디어 계정 (일회성 작업으로 만들었어요 · 구독자 수 · 정산 계좌를 채워 주세요)", status: "active", createdAt: at };
+  const acc = { id: "md-doogomd", loginId: "doogomd", pwHash: MD.hashOf(pw), pwAt: at, code, name: "두고미디어", channel: DOOGOMD_YT.channel, url: DOOGOMD_YT.url, subs: "", rate: "", email: "", phone: "", type: "biz", bizName: "주식회사 두고미디어", bizNo: "", bank: "", account: "", holder: "", memo: "첫 온드미디어 계정 (일회성 작업으로 만들었어요 · 구독자 수 · 정산 계좌를 채워 주세요)", status: "active", createdAt: at };
   return { writes: { meta: Object.assign({}, meta, { media: list.concat([acc]) }) }, result: { created: "doogomd", code } };
 }
 
@@ -551,6 +551,24 @@ function demoStaffStop(get) {
   });
   if (!stopped.length) return { writes: {}, result: { skipped: "중지할 예시 운영자 계정이 없어요" } };
   return { writes: { meta: Object.assign({}, meta, { staff }) }, result: { stopped } };
+}
+
+/* ---------- 온드미디어 doogomd 채널 (사용자 요청 2026-11-02) ----------
+ * doogomd 계정의 YouTube 채널은 ‘돈맛스토리’예요. 채널 주소가 비어 있으면 채우고, 채널 이름이 첫 계정을 만들 때 넣은 기본값(두고미디어 YouTube) 그대로면
+ * ‘돈맛스토리’로 바꿔요. 마스터가 이미 고친 값은 건드리지 않아요 (팀 이름 ‘두고미디어’는 그대로). */
+const DOOGOMD_YT = { url: "https://www.youtube.com/@돈맛스토리", channel: "돈맛스토리" };
+function mediaDoogomdChannel(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !Array.isArray(meta.media)) return { writes: {}, result: { skipped: "온드미디어 계정 없음" } };
+  const i = meta.media.findIndex((x) => x && (x.id === "md-doogomd" || String(x.loginId || "").toLowerCase() === "doogomd"));
+  if (i < 0) return { writes: {}, result: { skipped: "doogomd 계정 없음" } };
+  const a = Object.assign({}, meta.media[i]), done = [];
+  if (!String(a.url || "").trim()) { a.url = DOOGOMD_YT.url; done.push("url"); }
+  const ch = String(a.channel || "").trim();
+  if (!ch || ch === "두고미디어 YouTube") { a.channel = DOOGOMD_YT.channel; done.push("channel"); }
+  if (!done.length) return { writes: {}, result: { skipped: "채널 정보가 이미 있어요" } };
+  const media = meta.media.slice(); media[i] = a;
+  return { writes: { meta: Object.assign({}, meta, { media }) }, result: { updated: done, channel: a.channel, url: a.url } };
 }
 
 const OPS = [
@@ -576,6 +594,7 @@ const OPS = [
   { id: "2026-11-01-store-choi-to-yuna", note: "DOOGO CLASS 초이 → 유나 (스토어 상품 · 배너 · 회원 태그 · 가격표 · 주문 이름 / 두잉고 강사 초이는 그대로)", run: storeChoiToYuna },
   { id: "2026-11-01-demo-staff-stop", note: "예시 운영자 계정(manager · finance — 비밀번호가 아직 예시 그대로일 때만) 중지", run: demoStaffStop },
   { id: "2026-11-01-media-doogomd", note: "온드미디어 첫 계정 doogomd (비밀번호는 Vercel 환경 변수 MEDIA_INIT_PW · 해시로만 저장)", run: mediaDoogomd, when: () => !!String(process.env.MEDIA_INIT_PW || "").trim() },
+  { id: "2026-11-02-media-doogomd-channel", note: "온드미디어 doogomd 채널: YouTube 돈맛스토리 주소 · 채널 이름 (비어 있거나 기본값일 때만)", run: mediaDoogomdChannel },
 ];
 
-module.exports = { OPS, demoStaffStop, mediaDoogomd, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
