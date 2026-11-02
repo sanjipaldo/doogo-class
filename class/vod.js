@@ -3084,6 +3084,12 @@
        두잉고 ‘강사 입점 문의’와 같은 마스터 접수함(서버 문서 inq:<id> · 마스터만 읽어요)에 쌓여요 → 마스터 › DOOGO CLASS › 두고 파트너스 지원
      강사 정산 비율은 대외비라 이 공개 화면에 쓰지 않아요 (상담에서 안내) ---------- */
   const PT_APPLY = "#/vod/partners/apply";
+  const PT_MS = "assets/partners/"; // 두고 파트너스 캐릭터 ‘두디’ (빨간 D · 베어 문 자국) — 기본 · 응원 · 질문 포즈
+  const ptCatRows = (cs) => {
+    const chip = (c) => '<span class="pt-cat">' + (MG_IMG[c.key] ? '<img src="' + tileImg(c.key) + '" alt="" loading="lazy">' : icon(c.icon || "layers", "xs")) + esc(c.label) + "</span>";
+    const row = (list, rev) => { let a = list.slice(); while (a.length && a.length < 10) a = a.concat(list); return '<div class="vd-chiprow pt-catrow' + (rev ? " rev" : "") + '" aria-hidden="true"><div class="vd-chipmq" style="--dur:' + (a.length * 4) + 's">' + a.concat(a).map(chip).join("") + "</div></div>"; };
+    return '<span class="vd-sr">' + cs.map((c) => esc(c.label)).join(", ") + "</span>" + row(cs, false) + row(cs.slice().reverse(), true);
+  };
   const ptCta = (cls, label) => '<a class="vd-btn vd-btn-p ' + (cls || "") + '" href="' + PT_APPLY + '">' + (label || "두고 파트너스 지원하기") + icon("arrowRight", "sm") + "</a>";
   const PT_FLOW = [
     ["지원서 작성", "3분이면 충분해요. 어떤 노하우로 어떤 결과를 냈는지 편하게 적어 주세요.", "pen"],
@@ -3105,15 +3111,22 @@
     const ts = teacherList().slice(0, 4), cs = cats(), ps = listed();
     const phT = (t) => t.ph || insPhoto(t.iid);
     const sec = (id, eb, h, sub, body, cls) => '<section class="pt-sec' + (cls ? " " + cls : "") + '"' + (id ? ' id="' + id + '"' : "") + '><div class="vd-wrap"><div class="pt-sec-h" data-rv><small>' + eb + "</small><h2>" + h + "</h2>" + (sub ? "<p>" + sub + "</p>" : "") + "</div>" + body + "</div></section>";
-    const hero = '<section class="pt-hero"><div class="vd-wrap pt-hero-in">' +
+    const hero = '<section class="pt-hero"><i class="pt-hero-bg" aria-hidden="true"><b></b><b></b></i><div class="vd-wrap pt-hero-in">' +
       '<div class="pt-hero-tx"><span class="pt-eyebrow">' + icon("handshake", "xs") + "DOOGO PARTNERS</span>" +
         '<h1 data-eg>직접 해서 번 노하우,<br><span data-accent>클래스</span>로 만들어 드려요.</h1>' +
         "<p data-rv>기획 · 촬영 · 편집 · 상세페이지 · 판매 · 정산까지.<br>강사님은 노하우만 준비하세요. 나머지는 DOOGO CLASS가 함께해요.</p>" +
-        '<div class="pt-hero-btns" data-rv>' + ptCta("vd-btn-xl") + '<button type="button" class="vd-btn vd-btn-o vd-btn-xl" data-v="jump" data-to="pt-flow">진행 과정 보기</button></div>' +
+        '<div class="pt-hero-btns" data-rv>' + ptCta("vd-btn-xl pt-btn-w") + '<button type="button" class="vd-btn vd-btn-xl pt-btn-line" data-v="jump" data-to="pt-flow">진행 과정 보기</button></div>' +
         '<small class="pt-hero-note" data-rv>' + icon("clock", "xs") + "지원서 작성 3분 · 강의 경험이 없어도 괜찮아요</small></div>" +
-      '<div class="pt-hero-vis" aria-hidden="true"><div class="pt-hv-g pt-hv-n' + ts.length + '">' + ts.map((t, i) => '<figure class="pt-hv" style="--c:' + ACC[(i + 1) % ACC.length] + '"><i class="pt-hv-bg"></i>' + (phT(t) ? '<img src="' + esc(phT(t)) + '" alt="">' : "<em>" + esc((t.name || "D").slice(0, 1)) + "</em>") + "<figcaption><b>" + esc(t.name) + "</b><small>" + esc(t.cats[0] || "") + "</small></figcaption></figure>").join("") + "</div>" +
+      '<div class="pt-hero-vis" aria-hidden="true"><span class="pt-orb"></span><span class="pt-orb pt-orb2"></span>' +
+        '<img class="pt-mascot" src="' + PT_MS + 'mascot-hero.webp" alt="" width="880" height="760" fetchpriority="high">' +
+        '<span class="pt-prop pt-pr1">' + icon("coins", "sm") + '</span><span class="pt-prop pt-pr2">' + icon("play", "sm") + '</span><span class="pt-prop pt-pr3">' + icon("sparkles", "sm") + '</span><span class="pt-prop pt-pr4">' + icon("megaphone", "sm") + '</span>' +
         '<span class="pt-chip pt-chip1">' + icon("video", "xs") + "스튜디오 촬영 지원</span>" + '<span class="pt-chip pt-chip2">' + icon("megaphone", "xs") + "판매 · 홍보는 함께</span>" + '<span class="pt-chip pt-chip3">' + icon("calendar", "xs") + "정산은 강사센터에서</span></div>" +
       "</div></section>";
+    // 강사진: 히어로에 있던 강사 사진을 여기로 — 왼쪽 · 오른쪽 엇갈린 카드 (글은 강사 소개 한 줄 · 없으면 대표 클래스 이름)
+    const vcTx = (t) => t.tag || ((t.ps || [])[0] || {}).title || "";
+    const voices = (ts.length ? '<section class="pt-sec pt-voices"><div class="vd-wrap"><div class="pt-sec-h pt-sec-c" data-rv><small>OUR CREATORS</small><h2>지금 DOOGO CLASS에서<br>강의하고 있어요</h2></div><div class="pt-vc-list">' +
+      ts.map((t, i) => '<a class="pt-vc ' + (i % 2 ? "r" : "l") + '" data-rv="' + (i % 2 ? "r" : "l") + '" href="' + tHref(t.iid) + '" style="--c:' + ACC[(i + 1) % ACC.length] + '"><span class="pt-vc-av">' + (phT(t) ? '<img src="' + esc(phT(t)) + '" alt="" loading="lazy">' : "<em>" + esc((t.name || "D").slice(0, 1)) + "</em>") + '</span><span class="pt-vc-tx"><small>' + esc(t.cats[0] || "") + (t.cats[0] ? " · " : "") + esc(t.name) + " 강사</small><b>" + esc(vcTx(t)) + "</b></span>" + icon("chevRight", "sm") + "</a>").join("") + "</div>" : '<section class="pt-sec pt-voices"><div class="vd-wrap">') +
+      '<div class="pt-cheer"><img class="pt-cheer-img" data-rv="pop" src="' + PT_MS + 'mascot-cheer.webp" alt="" width="420" height="454" loading="lazy"><h2 data-eg>처음이라 막막해도 괜찮아요.<br><span data-accent>두고 파트너스</span>가 끝까지 함께해요.</h2><span class="pt-cheer-pill" data-rv>노하우만 있으면 충분해요</span></div></div></section>';
     const strip = '<section class="pt-strip"><div class="vd-wrap pt-strip-in" data-rv-kids>' + [["pen", "기획부터 함께", "처음이어도 커리큘럼을 같이 잡아요"], ["video", "촬영 · 편집", "스튜디오 · 장비 · 스태프 준비"], ["megaphone", "판매 · 홍보", "상세페이지 · 광고 · 알림까지"], ["calendar", "투명한 정산", "판매 · 정산을 날짜별로 확인"]].map((x) => '<div class="pt-st">' + icon(x[0], "sm") + "<b>" + x[1] + "</b><small>" + x[2] + "</small></div>").join("") + "</div></section>";
     // 왜 DOOGO CLASS? — 화면 모양(목업)은 숫자 없이 그림으로만 (실제 정산 · 판매 숫자처럼 보이지 않게)
     const mkMake = '<div class="pt-mock pt-mk-make"><b>클래스 제작 진행</b><ol>' + [["기획 회의 · 커리큘럼", "done"], ["스튜디오 촬영", "done"], ["편집 · 자막", "done"], ["썸네일 · 상세페이지", "now"], ["오픈", ""]].map((x) => '<li class="' + x[1] + '"><i>' + (x[1] === "done" ? icon("check", "xs") : "") + "</i>" + x[0] + (x[1] === "now" ? "<em>진행 중</em>" : "") + "</li>").join("") + '</ol><div class="pt-mk-bar"><i></i></div></div>';
@@ -3128,13 +3141,15 @@
       feat(2, "03 · 강의실", "수강생이 끝까지<br>따라오게 만들어요.", "구매한 수강생은 두잉고 강의실에서 진도 · 수업 자료 · AI 조교 · 1:1 코칭권으로 끝까지 따라와요. 끝까지 들은 수강생의 후기가 다음 판매로 이어져요.", mkRoom) +
       feat(3, "04 · 정산 · 업데이트", "정산은 투명하게,<br>강의는 늘 최신으로.", "강사센터에서 날짜별 판매 · 정산 예정 · 정산 내역을 언제든 확인해요. 바뀐 내용은 그 부분만 다시 찍어 업데이트하고, 수강 기간이 끝난 수강생은 재수강 할인으로 다시 만나요.", mkPay) + "</div>", "pt-why");
     const who = sec("", "WHO WE LOOK FOR", "이런 분을 찾고 있어요", "", '<div class="pt-who" data-rv-kids>' + [["trophy", "직접 해서 결과를 낸 분", "매출 · 수익 · 성장처럼 숫자로 보여 줄 수 있는 경험이 있어요."], ["users", "알려 주는 게 즐거운 분", "내가 걸어온 길을 처음 시작하는 사람에게 차근차근 알려 줄 수 있어요."], ["refresh", "꾸준히 다듬어 갈 분", "시장이 바뀌면 강의도 바뀌어요. 최신 내용으로 업데이트할 수 있어요."], ["sparkles", "채널이 없어도 괜찮아요", "유튜브 · 블로그 · 인스타가 있으면 좋지만, 없어도 지원할 수 있어요."]].map((x) => '<div class="pt-who-c"><span>' + icon(x[0], "sm") + "</span><b>" + x[1] + "</b><p>" + x[2] + "</p></div>").join("") + "</div>" +
-      '<div class="pt-cats" data-rv><b>이런 분야를 찾고 있어요</b><div>' + cs.map((c) => '<span class="pt-cat">' + (MG_IMG[c.key] ? '<img src="' + tileImg(c.key) + '" alt="" loading="lazy">' : icon(c.icon || "layers", "xs")) + esc(c.label) + "</span>").join("") + '<span class="pt-cat pt-cat-etc">' + icon("plus", "xs") + "그 밖의 분야도 환영해요</span></div></div>", "pt-whos");
+      '<div class="pt-cats" data-rv><b>이런 분야를 찾고 있어요</b>' + ptCatRows(cs) + '<span class="pt-cat pt-cat-etc">' + icon("plus", "xs") + "그 밖의 분야도 환영해요</span></div>", "pt-whos");
     const kinds = [["monitorPlay", "VOD 강의", "6개월 · 12개월 수강권으로 판매해요. 수강 기간이 끝나면 재수강 할인으로 다시 만나요."], ["book", "전자책 · 종이책", "PDF 전자책은 바로 내려받고, 종이책은 택배로 보내요."], bizOn("live") && ["calendar", "LIVE · 오프라인 강의", "실시간 온라인 강의 · 오프라인 특강으로 수강생을 직접 만나요."], ["message", "1:1 코칭권 · TEA TIME", "VOD 수강생에게 1:1 피드백 · 줌 TEA TIME을 더해 함께 판매해요."]].filter(Boolean);
     const types = sec("", "WHAT YOU CAN OPEN", "이런 클래스를 열 수 있어요", "하나로 시작해도 되고, 함께 열면 수강생이 이어서 들어요.", '<div class="pt-kinds pt-kinds-' + kinds.length + '" data-rv-kids>' + kinds.map((x) => '<div class="pt-kind">' + icon(x[0], "sm") + "<b>" + x[1] + "</b><p>" + x[2] + "</p></div>").join("") + "</div>", "pt-types");
     const flow = sec("pt-flow", "HOW IT WORKS", "지원부터 오픈까지, 이렇게 진행돼요", "", '<ol class="pt-flow" data-rv-kids>' + PT_FLOW.map((x, i) => '<li><span class="pt-fl-n">' + String(i + 1).padStart(2, "0") + '</span><span class="pt-fl-ic">' + icon(x[2], "sm") + "</span><b>" + x[0] + "</b><p>" + x[1] + "</p></li>").join("") + "</ol>" + '<div class="pt-flow-cta" data-rv>' + ptCta("vd-btn-xl", "지원서 쓰러 가기") + "</div>", "pt-flows");
-    const faq = sec("pt-faq", "FAQ", "자주 묻는 질문", "", '<div class="pt-faq">' + PT_FAQ.map((x, i) => '<details class="pt-faq-it"' + (i ? "" : " open") + "><summary>" + esc(x[0]) + icon("chevDown", "sm") + "</summary><p>" + esc(x[1]) + "</p></details>").join("") + "</div>", "pt-faqs");
+    const faq = '<section class="pt-faqs" id="pt-faq"><div class="vd-wrap pt-faq-w"><img class="pt-faq-ms" data-rv="pop" src="' + PT_MS + 'mascot-faq.webp" alt="" width="380" height="408" loading="lazy"><h2 class="pt-faq-h" data-rv>자주 묻는 질문</h2>' +
+      '<div class="pt-faq" data-rv-kids>' + PT_FAQ.map((x, i) => '<details class="pt-faq-it"' + (i ? "" : " open") + "><summary><span>Q. " + esc(x[0]) + "</span>" + icon("chevDown", "sm") + '</summary><div class="pt-faq-a"><p>' + esc(x[1]) + "</p></div></details>").join("") + "</div></div></section>";
     const end = '<section class="pt-end"><div class="vd-wrap"><small data-rv>DOOGO PARTNERS</small><h2 data-rv>노하우는 이미 충분해요.<br>이제 <em>클래스</em>로 만들 차례예요.</h2><div class="pt-end-btns" data-rv>' + ptCta("vd-btn-xl") + kkBtn("vd-btn vd-btn-xl pt-end-kk", "카카오톡으로 먼저 물어보기") + "</div></div></section>";
-    return shell("partners", '<div class="pt">' + hero + strip + why + who + types + flow + faq + end + "</div>", "", "vd-pt-page");
+    const flt = '<a class="pt-float" href="' + PT_APPLY + '" aria-label="두고 파트너스 지원하기"><img src="' + PT_MS + 'mascot-hero.webp" alt="" width="48" height="42"><span><small>노하우를 클래스로, 첫걸음</small><b>두고 파트너스 지원하기</b></span>' + icon("arrowRight", "sm") + "</a>";
+    return shell("partners", '<div class="pt">' + hero + strip + voices + why + who + types + flow + faq + end + flt + "</div>", "", "vd-pt-page");
   }
 
   /* 지원서: 기본 정보 → 클래스 → 경험 · 준비 → 채널 · 남길 말 → 동의
@@ -3296,6 +3311,17 @@
     window.scrollTo(0, 0);
     if (window.DGFILE && window.DGFILE.framed) { const el = root.firstElementChild || root; try { el.scrollIntoView({ block: "start" }); } catch (e) { el.scrollIntoView(true); } }
   }
+  // 두고 파트너스: 오른쪽 아래 떠 있는 지원 상자는 첫 화면 · 마지막 안내 · 바닥이 안 보일 때만 · 자주 묻는 질문은 하나만 열려요
+  function wirePt() {
+    if (ui.pto) { ui.pto.disconnect(); ui.pto = null; }
+    root.querySelectorAll(".pt-faq-it").forEach((d) => d.addEventListener("toggle", () => { if (d.open) root.querySelectorAll(".pt-faq-it[open]").forEach((o) => { if (o !== d) o.open = false; }); }));
+    const fl = root.querySelector(".pt-float");
+    if (!fl) return;
+    if (!("IntersectionObserver" in window)) { fl.classList.add("on"); return; }
+    const hide = new Set(), tg = [root.querySelector(".pt-hero"), root.querySelector(".pt-end"), root.querySelector(".vd-foot, footer")].filter(Boolean);
+    ui.pto = new IntersectionObserver((ens) => { ens.forEach((en) => { if (en.isIntersecting) hide.add(en.target); else hide.delete(en.target); }); fl.classList.toggle("on", !hide.size); }, { threshold: 0 });
+    tg.forEach((el) => ui.pto.observe(el));
+  }
   // 상세: 위 정보 상자가 화면 위로 지나가면 아래 결제 막대가 따라 올라와요
   function wireFbar() {
     if (ui.fb) { ui.fb.disconnect(); ui.fb = null; }
@@ -3344,7 +3370,7 @@
     if (document.querySelector("[data-cd]")) ui.cd = setInterval(() => document.querySelectorAll("[data-cd]").forEach((x) => { x.textContent = cdTxt(x.dataset.cd); }), 1000);
     const co = document.querySelector("[data-vd-pay]"); if (co) coPaint(co);
     document.querySelectorAll("[data-vd-auth]").forEach(authReady);
-    syncTabs(); wireRails(); motion(); wireCounts(); wireFbar(); hydrate(root); wireSwipe();
+    syncTabs(); wireRails(); motion(); wireCounts(); wireFbar(); wirePt(); hydrate(root); wireSwipe();
     if (ui.mega) { if (ui.mega === ROUTE.hash && window.innerWidth >= 1024) megaSet(true); else ui.mega = ""; }
   }
   function wireSwipe() {
