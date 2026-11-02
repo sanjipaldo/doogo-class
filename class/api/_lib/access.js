@@ -34,6 +34,17 @@ function parseKey(k) {
 }
 
 const isMaster = (ids) => !!(ids.admin && ids.admin.role === "master");
+/* 강사 정산 유형(개인 3.3% · 사업자): 마스터가 정했으면(vodSettle.typeBy = "master") 강사가 저장해도 그 유형 그대로.
+ * 마스터가 정하지 않았으면 강사가 고른 유형을 받고, 강사가 ‘마스터가 정함’ 표시를 스스로 붙이지는 못해요 */
+function keepSettleType(o, n) {
+  const ov = (o && o.vodSettle) || {};
+  if (ov.typeBy === "master") {
+    n.vodSettle = Object.assign({}, n.vodSettle && typeof n.vodSettle === "object" ? n.vodSettle : {}, { type: ov.type === "biz" ? "biz" : "person", typeBy: "master", typeAt: ov.typeAt || null });
+  } else if (n.vodSettle && typeof n.vodSettle === "object") {
+    delete n.vodSettle.typeBy; delete n.vodSettle.typeAt;
+  }
+  return n;
+}
 /* meta 에서 마스터만 보는 칸 (운영자 · 파트너 계정에는 비밀번호가 들어 있어요 · 온드미디어 계정 · RS 지급 기록) */
 const MASTER_META = ["staff", "affiliates", "affPayouts", "adminLog", "media", "mdPayouts"];
 const adminOf = (ids, iid) => !!(ids.admin && (ids.admin.role === "master" || ids.admin.iid === iid));
@@ -166,7 +177,7 @@ function writer(k, ids, creating) {
       return null;
     case "ins":
       if (creating) return null;
-      if (instructorOf(ids, K.iid)) return { fix: (o, n) => (n == null ? clone(o) : Object.assign(n, { id: K.iid, status: o.status, createdAt: o.createdAt })) };
+      if (instructorOf(ids, K.iid)) return { fix: (o, n) => (n == null ? clone(o) : keepSettleType(o, Object.assign(n, { id: K.iid, status: o.status, createdAt: o.createdAt }))) };
       if (coachOf(ids, K.iid) && coachCan(ids, ["menus"])) return { fix: (o, n) => (n == null ? clone(o) : Object.assign(clone(o), { menu: n.menu })) };
       return null;
     case "content":

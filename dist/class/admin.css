@@ -3178,3 +3178,31 @@ td .md-yt { display: flex; width: fit-content; }
   .md-range-sep { display: none; }
   .md-range-go { flex: 1 1 100%; justify-content: center; }
 }
+
+/* 강사 정산 · 정산 유형 고르기 (마스터 · 명세서 창) */
+.vs-type-m { display: grid; gap: 6px; margin: 12px 0 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--m-hairline); background: #fff; }
+.vs-type-m > b { font-size: 13px; font-weight: 700; color: var(--m-ink); }
+.vs-type-m > span { font-size: 14px; font-weight: 600; color: var(--m-ink); }
+.vs-type-m small { font-size: 12px; line-height: 1.5; }
+.vs-type-seg button { min-height: 40px; padding: 0 10px; font-size: 13.5px; }
+.vs-type.locked .vb-kind-o { opacity: .6; cursor: not-allowed; }
+/* 강사센터 · 이번 달 정산 명세서 알림 */
+.vs-notice { display: flex; align-items: center; gap: 14px; margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--m-hairline); background: #fff; }
+.vs-notice > .icon { flex: none; width: 22px; height: 22px; }
+.vs-notice > div { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.vs-notice b { font-size: 15px; font-weight: 700; color: var(--m-ink-deep); }
+.vs-notice small { font-size: 13px; line-height: 1.5; color: var(--m-steel); }
+.vs-notice small b { font-size: 13px; color: var(--m-ink-deep); }
+.vs-notice .a-btn { flex: none; }
+.vs-notice.new { border-color: var(--m-primary); background: var(--m-primary-soft); }
+.vs-notice.new > .icon { color: var(--m-primary); }
+.vs-notice.ok > .icon { color: #12a150; }
+.vs-notice.wait { background: var(--m-surface); }
+.vs-notice.wait > .icon { color: var(--m-steel); }
+@media (max-width: 640px) {
+  .vs-notice { flex-wrap: wrap; }
+  .vs-notice .a-btn { flex: 1 1 auto; justify-content: center; }
+}
+/* 강사센터 · 관리 영역 스위치: 두잉고 쪽에 있을 때 새 정산 명세서가 있으면 DOOGO CLASS 버튼에 빨간 점 */
+.a-trk-sw button { position: relative; }
+.a-trk-dot { position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--m-primary); box-shadow: 0 0 0 2px #fff; }

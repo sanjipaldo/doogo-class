@@ -393,7 +393,7 @@
     ].filter((x) => !x[3] || on(x[3])).filter((x) => !vod || LIVE_ONLY_PAGES.indexOf(x[0]) < 0).map((x) => (vod && VOD_NAV_LABEL[x[0]] ? [x[0], VOD_NAV_LABEL[x[0]], x[2]] : x.slice(0, 3)));
     if (vod) content.splice(2, 0, ["vodlink", "VOD 강의 연결", "circlePlay"], ["vodlessons", "VOD 강의 · 수업 자료", "paperclip"]);
     if (customPages(MID()).length) content.push(["pages", "추가 메뉴", "star"]);
-    const sales = isCoach() ? [] : [["DOOGO CLASS 판매", [["vod", "VOD 판매 내역", "monitorPlay"], ["vod-live", "무료 LIVE · 온/오프라인 판매", "calendar"], ["vod-settle", "판매 정산", "coins"], ["vod-cal", "정산 달력", "calendar"]]]];
+    const sales = isCoach() ? [] : [["DOOGO CLASS 판매", [["vod", "VOD 판매 내역", "monitorPlay"], ["vod-live", "무료 LIVE · 온/오프라인 판매", "calendar"], ["vod-settle", "판매 정산", "coins", vsNew() || ""], ["vod-cal", "정산 달력", "calendar"]]]];
     const groups = (vod ? [
       ["운영 · DOOGO CLASS", [["", "DOOGO CLASS 대시보드", "grid"], ["vod-students", "VOD 수강생", "users"], ["coaching", "1:1 코칭 답변", "message", n.coaching || ""], ["teatime", "TEA TIME 신청", "calendar", window.VOD ? window.VOD.teasOf(null, iid).filter((o) => o.status === "paid" && (o.tea || {}).st === "req").length || "" : ""]].concat(isCoach() ? [] : [["coaches", "코치 관리", "shieldCheck"]])],
       ["VOD 강의실 꾸미기", content]
@@ -3036,8 +3036,16 @@
   const vdRsTag = (o) => (o && o.rs ? '<small class="vc-rs" title="YouTube 온드미디어 링크로 산 주문 · 판매가에서 RS를 먼저 빼고 정산해요">YouTube ' + esc(o.rs.ch || "온드미디어") + " 링크 · RS " + (Number(o.rs.rate) || 0) + "% − " + won(Math.floor(VX().rsOf(o) * vdKeep(o) / 10) * 10) + "</small>" : "");
   function vdProfPill(key) {
     if (/^ext:/.test(key)) return pill("외부 · 별도 계약", "mute");
-    const pf = vdProf(key);
-    return pf.account ? pill((pf.type === "biz" ? "사업자" : "개인 3.3%") + " · 계좌 등록", "ok") : pill("정산 정보 없음", "warn");
+    const pf = vdProf(key), t = pf.type === "biz" ? "사업자" : "개인 3.3%";
+    return pf.account ? pill(t + " · 계좌 등록", "ok") : pill(t + " · 계좌 없음", "warn");
+  }
+  /* 마스터: 강사 정산 유형 (개인 3.3% 원천징수 / 사업자 세금계산서) — 확정 전 명세서에서 골라요.
+   * 마스터가 고르면 vodSettle.typeBy = "master" 로 남아 강사센터에서는 바꿀 수 없어요 (서버도 지켜요 · access.js). 확정한 명세서는 그때 유형으로 고정 */
+  function vdTypeBox(key, ym, st) {
+    if (!(S && S.role === "master") || /^ext:/.test(key)) return "";
+    const pf = vdProf(key), cur = st.biz ? "biz" : "person", by = pf.typeBy === "master" ? "마스터가 정함" : pf.type ? "강사가 고름" : "기본값 (개인)";
+    if (st.rec && st.rec.snap) return '<div class="vs-type-m"><b>정산 유형</b><span>' + (st.biz ? "사업자 · 세금계산서" : "개인 · 3.3% 원천징수") + ' <small class="a-muted">확정할 때 기준으로 고정됐어요 · 바꾸려면 ‘확정 취소’ 뒤에 바꿔 주세요</small></span></div>';
+    return '<div class="vs-type-m"><b>정산 유형</b><div class="a-seg vs-type-seg">' + [["person", "개인 · 3.3% 원천징수"], ["biz", "사업자 · 부가세 · 세금계산서"]].map((t) => '<button type="button" class="' + (cur === t[0] ? "on" : "") + '" data-action="vda-type" data-k="' + esc(key) + '" data-m="' + esc(ym) + '" data-t="' + t[0] + '"' + (cur === t[0] ? ' aria-pressed="true"' : "") + ">" + t[1] + "</button>").join("") + '</div><small class="a-muted">' + esc(by) + " · 여기서 고르면 강사센터에서는 바꿀 수 없어요 · 고르면 아래 금액이 바로 다시 계산돼요</small></div>";
   }
   function vdSettle() {
     const ym = ui.vdYM || vdYMadd(todayStr().slice(0, 7), -1), rows = vdStmtKeys(ym).map((st) => Object.assign(st, { s: vdStState(st) }));
@@ -3462,7 +3470,7 @@
     const row = (t, v, cls) => '<div class="vs-dl-r' + (cls ? " " + cls : "") + '"><dt>' + t + "</dt><dd>" + v + "</dd></div>";
     const r = st.rec || {};
     openModal(st.name + " · " + vdYMtxt(ym) + " 정산 명세서",
-      '<div class="vs-stmt"><div class="vs-stmt-top">' + pill(s.t, s.c) + "<span>" + (st.biz ? "사업자 · 세금계산서" : "개인 · 사업소득 3.3% 원천징수") + " · 지급일 " + fmtFull(vdPayDate(ym)) + "</span></div>" +
+      '<div class="vs-stmt"><div class="vs-stmt-top">' + pill(s.t, s.c) + "<span>" + (st.biz ? "사업자 · 세금계산서" : "개인 · 사업소득 3.3% 원천징수") + " · 지급일 " + fmtFull(vdPayDate(ym)) + "</span></div>" + vdTypeBox(key, ym, st) +
         '<dl class="vs-dl">' + row("판매", st.n + "건") + row("판매가 합계 (할인 전)", won(st.base)) + row("고객 결제액", won(st.paid)) + (st.base - st.paid > 0 ? row("플랫폼 부담 할인 (쿠폰 · 포인트)", won(st.base - st.paid)) : "") + row("공급가액 (판매가 ÷ 1.1)", won(st.supply)) + (st.rs ? row("온드미디어 RS (YouTube 링크 " + st.rsN + "건 · 판매가 " + won(st.rsBase || 0) + ")", "- " + won(st.rs) + " <small>나누기 전에 먼저 빼요</small>") : "") + "</dl>" +
         '<div class="a-table-wrap"><table class="a-table vs-ch-table"><thead><tr><th>유입 · 상품</th><th class="right">건수</th><th class="right">판매가</th><th class="right">정산액</th></tr></thead><tbody>' +
           (Object.keys(st.ch).length ? Object.keys(st.ch).map((k) => "<tr><td>" + esc(X.CH_TXT[k] || k) + '</td><td class="right num">' + st.ch[k].n + '건</td><td class="right num">' + won(st.ch[k].base) + '</td><td class="right num">' + won(st.ch[k].ins) + "</td></tr>").join("") : '<tr><td colspan="4" class="a-muted">이 달 판매 없음</td></tr>') + "</tbody></table></div>" +
@@ -4207,11 +4215,13 @@
   function saveVsProfile(f) {
     const ins = DB.instructor(IID()), err = document.getElementById("vs-error"), val = (k) => (f[k] ? f[k].value.trim() : "");
     if (!ins) return;
-    const type = (f.querySelector("input[name=type]:checked") || {}).value === "biz" ? "biz" : "person";
+    // 마스터가 정한 정산 유형은 그대로 (화면에서 잠겨 있어요 · 서버도 지켜요)
+    const old = ins.vodSettle || {}, locked = old.typeBy === "master";
+    const type = locked ? (old.type === "biz" ? "biz" : "person") : (f.querySelector("input[name=type]:checked") || {}).value === "biz" ? "biz" : "person";
     if (!val("name") || !val("bank") || !val("account") || !val("holder")) { err.textContent = "이름 · 은행 · 계좌번호 · 예금주를 모두 적어 주세요."; return; }
     if (type === "biz" && !/^\d{3}-?\d{2}-?\d{5}$/.test(val("bizNo"))) { err.textContent = "사업자등록번호 10자리를 확인해 주세요."; return; }
     if (val("email") && !EMAIL_RE.test(val("email"))) { err.textContent = "이메일을 확인해 주세요."; return; }
-    ins.vodSettle = { type, name: val("name"), bizNo: type === "biz" ? val("bizNo") : "", bank: val("bank"), account: val("account"), holder: val("holder"), email: val("email"), at: Date.now() };
+    ins.vodSettle = Object.assign({ type, name: val("name"), bizNo: type === "biz" ? val("bizNo") : "", bank: val("bank"), account: val("account"), holder: val("holder"), email: val("email"), at: Date.now() }, locked ? { typeBy: "master", typeAt: old.typeAt } : {});
     commit("정산 받을 정보를 저장했어요.");
   }
   function vdInvForm(ym) {
@@ -4453,7 +4463,7 @@
     const vod = TRK() === "vod";
     return '<div class="a-trk"><span class="a-trk-l">관리 영역</span><div class="a-trk-sw ' + (vod ? "at-vod" : "at-live") + '" role="tablist" aria-label="관리 영역"><i class="a-trk-k" aria-hidden="true"></i>' +
       '<button type="button" role="tab" aria-selected="' + !vod + '" data-action="trk" data-k="live">두잉고</button>' +
-      '<button type="button" role="tab" aria-selected="' + vod + '" data-action="trk" data-k="vod">DOOGO CLASS</button></div>' +
+      '<button type="button" role="tab" aria-selected="' + vod + '" data-action="trk" data-k="vod">DOOGO CLASS' + (!vod && vsNew() ? '<i class="a-trk-dot" title="새 정산 명세서가 있어요" aria-label="새 정산 명세서"></i>' : "") + "</button></div>" +
       "<small>" + (vod ? "VOD 판매 · 정산 · VOD 수강생 강의실" : "기수 · 수강생 · 과제로 운영하는 프로그램") + "</small></div>";
   }
   function trackOffPage(r) {
@@ -4604,10 +4614,29 @@
   /** 한 줄 요약: 정산액 − 광고비 분담 … = 지급액 */
   const vsPayLine = (st) => (st.rs ? "온드 RS " + won(st.rs) + " 먼저 공제 → " : "") + "정산 " + won(st.ins) + (st.ded ? " − 환불 차감 " + won(st.ded) : "") + (st.adDed ? " − 광고비 분담 " + won(st.adDed) : "") + (st.carry ? " − 지난달 이월 " + won(st.carry) : "") + (st.wh ? " − 원천징수 " + won(st.wh) : "") + (st.vat ? " + 부가세 " + won(st.vat) : "") + " = 지급 " + won(st.pay);
   /** 강사 정산 계산서: 판매가 → 내 비율 → 광고비 50% 공제 → 세금 → 지급액 · 지급일 */
+  /* 강사센터: 지난달 판매분 명세가 확정되면 ‘이번 달 정산 명세서’로 맨 위에 보여요 (지급일이 이번 달 10일이라서)
+   * 판매 정산 메뉴에는 아직 안 본 새 명세서 표시(1) — 판매 정산 화면을 열거나 명세서를 보면 사라져요 (이 브라우저 기억) */
+  const vsSeenKey = (iid) => "dc:vs-seen:" + iid;
+  function vsMarkSeen(iid, ym) { try { const k = vsSeenKey(iid); if ((localStorage.getItem(k) || "") < ym) localStorage.setItem(k, ym); } catch (e) {} }
+  function vsNew() {
+    if (!S || S.role !== "instructor") return 0;
+    const iid = IID(), last = vdYMadd(todayStr().slice(0, 7), -1), r = vdPayout(iid, last);
+    if (!r || !r.snap) return 0;
+    let seen = ""; try { seen = localStorage.getItem(vsSeenKey(iid)) || ""; } catch (e) {}
+    return seen >= last ? 0 : 1;
+  }
+  function vsThisMonth(st) {
+    const s = vdStState(st), payD = fmtFull(vdPayDate(st.ym)), at = ' data-k="' + esc(st.key) + '" data-m="' + esc(st.ym) + '"';
+    if (!(st.n || st.rec || st.adDed || st.carry) || s.k === "live") return "";
+    const view = btn(icon("file", "sm") + "명세서 보기", "vda-stm", "a-btn-primary a-btn-sm", at);
+    if (s.k === "ready") return '<div class="vs-notice wait">' + icon("clock", "sm") + "<div><b>" + esc(vdYMtxt(st.ym)) + " 판매분 정산을 운영팀이 확정하고 있어요</b><small>확정되면 여기에 ‘이번 달 정산 명세서’가 열려요 · " + esc(payD) + " 지급 예정</small></div></div>";
+    if (s.k === "paid") return '<div class="vs-notice ok">' + icon("check", "sm") + "<div><b>이번 달 정산을 지급했어요 · " + won(st.pay) + "</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 정산 명세서</small></div>" + view + "</div>";
+    return '<div class="vs-notice new">' + icon("file", "sm") + "<div><b>이번 달 정산 명세서가 나왔어요</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 · " + esc(payD) + " 지급 예정 · 받을 금액 <b>" + won(st.pay) + "</b>" + (st.biz ? (s.k === "invoiced" ? " · 세금계산서 확인 완료" : " · 세금계산서를 발행한 뒤 ‘세금계산서 발행 완료’를 눌러 주세요") : " · 3.3% 원천징수 뒤 금액") + "</small></div>" + view + (st.biz && (s.k === "confirmed" || s.k === "invreq") ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-ghost a-btn-sm", ' data-m="' + esc(st.ym) + '"') : "") + "</div>";
+  }
   function vsPayCard(st, last) {
     const ss = vdStState(st), X = VX(), payD = vdPayDate(st.ym);
     const li = (t, n, cls, sub) => '<li class="' + (cls || "") + '"><span>' + t + (sub ? "<small>" + sub + "</small>" : "") + '</span><b class="num">' + n + "</b></li>";
-    return '<section class="a-card vs-pay' + (last ? " last" : "") + '"><div class="a-card-head"><h2>' + vdYMtxt(st.ym) + " 판매분</h2>" + pill(ss.t, ss.c) + "</div>" +
+    return '<section class="a-card vs-pay' + (last ? " last" : "") + '"><div class="a-card-head"><h2>' + (last ? "이번 달 명세서 · " : "") + vdYMtxt(st.ym) + " 판매분</h2>" + pill(ss.t, ss.c) + "</div>" +
       '<div class="vs-pay-top"><small>' + (ss.k === "paid" ? "받은 날" : "받는 날") + "</small><b>" + esc(fmtFull(payD)) + '</b><span class="num">' + won(st.pay) + "</span></div>" +
       '<ul class="fin-pnl">' +
         li("판매가 합계", won(st.base), "", st.n + "건") +
@@ -4697,12 +4726,14 @@
     const months = Array.from({ length: 6 }, (_, i) => vdYMadd(ym, -i)).map((m) => { const st = vdStmt(iid, m); st.s = vdStState(st); return st; });
     const paidOut = v.payouts.filter((x) => x.key === iid && (x.st === "paid" || (!x.st && x.at))).reduce((a, x) => a + (Number(x.amount) || (x.snap ? x.snap.pay : 0)), 0);
     const pf = vdProf(iid), lm = months[1];
+    if (lm.rec && lm.rec.snap) vsMarkSeen(iid, last);
     const rate = (t, n, d, cls) => '<div class="vs-rate ' + (cls || "") + '"><b>' + n + "%</b><span>" + t + "</span><small>" + d + "</small></div>";
     const links = mine.filter((p) => p.status !== "hidden");
     return head("판매 정산", "DOOGO CLASS에서 판매한 VOD · 전자책 · LIVE · 오프라인 강의의 정산이에요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.", vdStoreBtn()) +
+      vsThisMonth(lm) +
       '<div class="a-kpis">' +
-        kpi("이번 달 정산 예정", won(Math.max(0, months[0].net)), vdYMtxt(ym) + " 판매 " + months[0].n + "건 · 집계 중", "#/center/vod-settle", "ok") +
-        kpi("지난달 지급액", won(lm.pay), vdYMtxt(last) + " · " + (lm.n || lm.rec ? lm.s.t : "판매 없음"), "#/center/vod-settle", lm.n && lm.s.k !== "paid" ? "info" : "") +
+        kpi("이번 달 받을 금액", won(lm.pay), vdYMtxt(last) + " 판매분 · " + fmtMD(vdPayDate(last)) + " · " + (lm.n || lm.rec ? lm.s.t : "판매 없음"), "#/center/vod-settle", lm.n && lm.s.k !== "paid" ? "info" : "") +
+        kpi("이번 달 판매 (집계 중)", won(Math.max(0, months[0].net)), vdYMtxt(ym) + " 판매 " + months[0].n + "건 · " + fmtMD(vdPayDate(ym)) + " 지급 예정", "#/center/vod-settle", "ok") +
         kpi("누적 지급 완료", won(paidOut), "지금까지 받은 정산", "#/center/vod-settle") +
         kpi("정산 받을 정보", pf.account ? (pf.type === "biz" ? "사업자" : "개인") : "미등록", pf.account ? esc(pf.bank || "") + " · " + (pf.type === "biz" ? "세금계산서 발행" : "3.3% 원천징수") : "계좌를 등록해야 지급돼요", "#/center/vod-settle", pf.account ? "" : "warn") +
       "</div>" +
@@ -4714,7 +4745,8 @@
         months.map((x) => { const at = ' data-k="' + esc(iid) + '" data-m="' + esc(x.ym) + '"'; return "<tr" + ((x.n || x.rec || x.adDed || x.carry) ? "" : ' class="a-dim"') + "><td><b>" + vdYMtxt(x.ym) + '</b><div class="vs-chs">' + vdChTags(x) + '</div></td><td class="num">' + x.n + '건</td><td class="right num">' + won(x.base) + (x.rs ? '<small class="vc-rs">온드 RS − ' + won(x.rs) + "</small>" : "") + '</td><td class="right num">' + won(x.ins) + '</td><td class="right num">' + (x.ded ? "- " + won(x.ded) : "0원") + '</td><td class="right num">' + vdAdCell(x) + '</td><td class="right num">' + (x.biz ? "+ " + won(x.vat) : x.wh ? "- " + won(x.wh) : "0원") + '</td><td class="right num"><b>' + won(x.pay) + "</b>" + vdNextTxt(x) + "</td><td>" + ((x.n || x.rec || x.adDed || x.carry) ? pill(x.s.t, x.s.c) : '<span class="a-muted">-</span>') + '</td><td class="right vs-acts">' + ((x.n || x.rec || x.adDed || x.carry) ? btn("명세서", "vda-stm", "a-btn-ghost a-btn-sm", at) : "") + (x.s.k === "confirmed" && x.biz ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-primary a-btn-sm", ' data-m="' + esc(x.ym) + '"') : "") + "</td></tr>"; }).join("") +
       "</tbody></table></div></section>" +
       '<section class="a-card"><div class="a-card-head"><h2>정산 받을 정보</h2><span class="a-muted">마스터에게만 보여요</span></div><form id="vs-prof-form" class="a-form" novalidate>' +
-        '<div class="vs-type">' + [["person", "개인 (프리랜서)", "사업소득 3.3%를 떼고 지급해요"], ["biz", "사업자", X.taxMode() === "gross" ? "판매가 합계로 세금계산서를 발행해 주세요 · 수수료분은 두고홀딩스가 발행" : X.taxMode() === "net" ? "정산 금액(부가세 포함)으로 세금계산서를 발행해 주세요" : "정산 금액 + 부가세 10% · 세금계산서를 발행해 주세요"]].map((t) => '<label class="vb-kind-o"><input type="radio" name="type" value="' + t[0] + '"' + ((pf.type || "person") === t[0] ? " checked" : "") + "><span><b>" + t[1] + "</b><small>" + t[2] + "</small></span></label>").join("") + "</div>" +
+        '<div class="vs-type' + (pf.typeBy === "master" ? " locked" : "") + '">' + [["person", "개인 (프리랜서)", "사업소득 3.3%를 떼고 지급해요"], ["biz", "사업자", X.taxMode() === "gross" ? "판매가 합계로 세금계산서를 발행해 주세요 · 수수료분은 두고홀딩스가 발행" : X.taxMode() === "net" ? "정산 금액(부가세 포함)으로 세금계산서를 발행해 주세요" : "정산 금액 + 부가세 10% · 세금계산서를 발행해 주세요"]].map((t) => '<label class="vb-kind-o"><input type="radio" name="type" value="' + t[0] + '"' + ((pf.type || "person") === t[0] ? " checked" : "") + (pf.typeBy === "master" ? " disabled" : "") + "><span><b>" + t[1] + "</b><small>" + t[2] + "</small></span></label>").join("") + "</div>" +
+        (pf.typeBy === "master" ? '<p class="a-hint">' + icon("lock", "xs") + " 정산 유형(" + (pf.type === "biz" ? "사업자" : "개인") + ")은 운영팀이 정했어요. 바꾸려면 운영팀에 문의해 주세요.</p>" : "") +
         '<div class="a-form-row"><div class="a-field"><label for="vs-name">이름 · 상호</label><input class="a-input" id="vs-name" name="name" value="' + esc(pf.name || "") + '" maxlength="40"></div><div class="a-field"><label for="vs-biz">사업자등록번호 <small>(사업자만)</small></label><input class="a-input" id="vs-biz" name="bizNo" value="' + esc(pf.bizNo || "") + '" maxlength="12" inputmode="numeric" placeholder="000-00-00000"></div></div>' +
         '<div class="a-form-row"><div class="a-field"><label for="vs-bank">은행</label><input class="a-input" id="vs-bank" name="bank" value="' + esc(pf.bank || "") + '" maxlength="20" placeholder="국민은행"></div><div class="a-field"><label for="vs-acc">계좌번호</label><input class="a-input" id="vs-acc" name="account" value="' + esc(pf.account || "") + '" maxlength="30" inputmode="numeric"></div><div class="a-field"><label for="vs-hold">예금주</label><input class="a-input" id="vs-hold" name="holder" value="' + esc(pf.holder || "") + '" maxlength="30"></div></div>' +
         '<div class="a-field"><label for="vs-mail">정산 · 세금계산서 이메일</label><input class="a-input" id="vs-mail" name="email" type="email" value="' + esc(pf.email || "") + '" maxlength="80"></div>' +
@@ -4989,12 +5021,23 @@
           (v.orders.some((x) => x.grp === o.no && x.status === "paid") ? '<label class="a-check vr-grp"><input type="checkbox" name="withGrp" checked><span>함께 결제한 ' + v.orders.filter((x) => x.grp === o.no && x.status === "paid").map((x) => esc(X.optTxt(x) || x.title) + " (" + won(x.amount) + ")").join(", ") + "도 같이 환불 <small class=\"a-muted\">강의를 환불하면 두잉고 강의실이 닫혀 코칭권을 쓸 수 없어요 · 쓴 횟수만큼 빼고 환불해요</small></span></label>" : "") +
           '<p class="a-error" id="vr-error"></p></form>',
           btn("취소", "modal-close") + '<button class="a-btn a-btn-danger" type="submit" form="vda-ref-form">' + (vdPgReal(o) ? "포트원으로 환불하기" : o.method === "bank" ? "환불 처리 (송금 대기로)" : "환불 완료로 바꾸기") + "</button>", "md"); break; }
-      case "vda-stc": { const st = vdStmt(d.k, d.m); confirmModal("정산 확정", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 정산을 확정할까요?<br><b>지급액 " + won(st.pay) + "</b> (" + (st.biz ? "사업자 · 부가세 포함" : "개인 · 3.3% 원천징수 뒤") + ")<br><small>확정하면 강사센터에 명세서가 열리고, 이후 환불은 다음 달 정산에서 차감돼요.</small>", "정산 확정", false, () => { const snap = Object.assign({}, st); delete snap.rec; const r = vdPayout(d.k, d.m); if (r) Object.assign(r, { st: "confirmed", confirmedAt: Date.now(), snap }); else v.payouts.push({ key: d.k, ym: d.m, st: "confirmed", confirmedAt: Date.now(), snap }); commit(st.name + " " + vdYMtxt(d.m) + " 정산을 확정했어요. 강사센터에 명세서가 보여요."); }); break; }
+      case "vda-stc": { const st = vdStmt(d.k, d.m); confirmModal("정산 확정", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 정산을 확정할까요?<br><b>지급액 " + won(st.pay) + "</b> (" + (st.biz ? "사업자 · 부가세 포함" : "개인 · 3.3% 원천징수 뒤") + ")<br><small>확정하면 강사센터 › 판매 정산에 ‘이번 달 정산 명세서’로 열리고(메뉴에 새 명세서 표시), 이후 환불은 다음 달 정산에서 차감돼요.</small>", "정산 확정", false, () => { const snap = Object.assign({}, st); delete snap.rec; const r = vdPayout(d.k, d.m); if (r) Object.assign(r, { st: "confirmed", confirmedAt: Date.now(), snap }); else v.payouts.push({ key: d.k, ym: d.m, st: "confirmed", confirmedAt: Date.now(), snap }); commit(st.name + " " + vdYMtxt(d.m) + " 정산을 확정했어요. 강사센터에 명세서가 보여요."); }); break; }
       case "vda-sti": { const r = vdPayout(d.k, d.m); if (r) { Object.assign(r, { st: "invoiced", invoiceAt: Date.now() }); commit("세금계산서를 받은 것으로 기록했어요. 이제 지급하면 돼요."); } break; }
       case "vda-pay": { const r = vdPayout(d.k, d.m), st = vdStmt(d.k, d.m); confirmModal("정산 지급 완료", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 <b>" + won(st.pay) + "</b>을 지급했나요?", "지급 완료", false, () => { if (r) Object.assign(r, { st: "paid", at: todayStr(), amount: st.pay }); else v.payouts.push({ key: d.k, ym: d.m, st: "paid", at: todayStr(), amount: st.pay }); commit(st.name + " " + vdYMtxt(d.m) + " VOD 정산을 지급 완료로 바꿨어요."); }); break; }
       case "vda-unpay": { const r = vdPayout(d.k, d.m); if (!r) break; if (r.snap) { r.st = r.invoiceAt ? "invoiced" : "confirmed"; delete r.at; commit("지급 완료를 취소했어요."); } else { v.payouts.splice(v.payouts.indexOf(r), 1); commit("지급 완료를 취소했어요."); } break; }
       case "vda-sto": { const r = vdPayout(d.k, d.m); if (r && r.st !== "paid") confirmModal("정산 확정 취소", "확정을 취소하면 명세서가 다시 ‘집계’ 상태로 돌아가요. 취소할까요?", "확정 취소", true, () => { v.payouts.splice(v.payouts.indexOf(r), 1); commit("정산 확정을 취소했어요."); }); break; }
-      case "vda-stm": vdStmtModal(d.k, d.m); break;
+      case "vda-stm": vdStmtModal(d.k, d.m); if (S && S.role === "instructor") vsMarkSeen(d.k, d.m); break;
+      case "vda-type": {
+        if (!(S && S.role === "master") || /^ext:/.test(d.k)) break;
+        const ins = DB.instructor(d.k); if (!ins) break;
+        const rec = vdPayout(d.k, d.m); if (rec && rec.snap) { toast("확정한 명세서는 유형을 바꿀 수 없어요. ‘확정 취소’ 뒤에 바꿔 주세요.", "warn"); break; }
+        const t = d.t === "biz" ? "biz" : "person";
+        if ((ins.vodSettle || {}).type === t && (ins.vodSettle || {}).typeBy === "master") break;
+        ins.vodSettle = Object.assign({}, ins.vodSettle || {}, { type: t, typeBy: "master", typeAt: Date.now() });
+        commit(vdKeyName(d.k) + " 강사 정산 유형을 ‘" + (t === "biz" ? "사업자 · 세금계산서" : "개인 · 3.3% 원천징수") + "’로 정했어요.");
+        vdStmtModal(d.k, d.m);
+        break;
+      }
       case "vda-print": { const el = document.querySelector(".a-modal .vs-stmt") || document.querySelector(".a-modal-body"), tt = ((document.querySelector(".a-modal-head h2, .a-modal h2") || {}).textContent || "정산 명세서").trim(); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "DOOGO-CLASS-" + tt.replace(/[\\/:*?"<>|\s]+/g, "-") + ".pdf", { width: 760, title: tt }, (msg) => toast(msg)); break; }
       case "vda-stcsv": vdStmtCsv(d.m, d.k); break;
       case "vda-inv": vdInvForm(d.m); break;

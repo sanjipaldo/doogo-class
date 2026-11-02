@@ -987,6 +987,20 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(!Object.keys(w.writes).length, "예시 운영자: 다시 돌려도 그대로", w.result);
   w = OO.demoStaffStop((k) => (k === "meta" ? { other: 1 } : null));
   ok(!Object.keys(w.writes).length, "예시 운영자: 운영자 목록이 없으면 건드리지 않아요", w.result);
+  // 강사 정산 유형: 마스터가 정하면 강사가 바꾸지 못해요 (서버 access.js keepSettleType)
+  {
+    const AC = require("../api/_lib/access");
+    const insW = AC.writer("ins:moon", { admin: { role: "instructor", iid: "moon" } }, false), mW = AC.writer("ins:moon", { admin: { role: "master" } }, false);
+    const old = { id: "moon", status: "active", createdAt: 1, vodSettle: { type: "biz", typeBy: "master", typeAt: 5, bank: "국민", account: "1" } };
+    let out = insW.fix(JSON.parse(JSON.stringify(old)), { id: "moon", status: "active", vodSettle: { type: "person", bank: "신한", account: "2" } });
+    ok(out.vodSettle.type === "biz" && out.vodSettle.typeBy === "master" && out.vodSettle.typeAt === 5 && out.vodSettle.bank === "신한", "정산 유형: 마스터가 정한 사업자는 강사가 개인으로 못 바꿔요 (계좌는 바꿀 수 있어요)", out.vodSettle);
+    out = insW.fix({ id: "moon", status: "active", vodSettle: { type: "person" } }, { id: "moon", status: "active", vodSettle: { type: "biz", typeBy: "master", typeAt: 9 } });
+    ok(out.vodSettle.type === "biz" && !out.vodSettle.typeBy && !out.vodSettle.typeAt, "정산 유형: 마스터가 안 정했으면 강사가 고르고, ‘마스터가 정함’ 표시는 스스로 못 붙여요", out.vodSettle);
+    out = insW.fix(JSON.parse(JSON.stringify(old)), { id: "moon", status: "active", title: "새 이름" });
+    ok(out.vodSettle && out.vodSettle.type === "biz" && out.vodSettle.typeBy === "master", "정산 유형: 강사가 정산 칸을 빼고 저장해도 마스터가 정한 유형은 남아요", out.vodSettle);
+    out = mW.fix(JSON.parse(JSON.stringify(old)), { id: "moon", status: "active", vodSettle: { type: "person", typeBy: "master", typeAt: 7 } });
+    ok(out.vodSettle.type === "person" && out.vodSettle.typeBy === "master", "정산 유형: 마스터는 바꿀 수 있어요", out.vodSettle);
+  }
   // 일회성 작업: doogomd 채널(돈맛스토리) — 비어 있거나 기본값일 때만
   const DM = { media: [{ id: "md-doogomd", loginId: "doogomd", pwHash: "s1$x$y", code: "dgmd26", name: "두고미디어", channel: "두고미디어 YouTube", url: "" }, { id: "md-b", loginId: "other", channel: "다른 채널", url: "" }], other: 1 };
   w = OO.mediaDoogomdChannel((k) => (k === "meta" ? JSON.parse(JSON.stringify(DM)) : null));
