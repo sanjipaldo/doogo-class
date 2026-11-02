@@ -26,13 +26,11 @@ python3 -m http.server 4321 --directory class
 # http://localhost:4321
 ```
 
-배포용 사본은 `dist/class/`에 있습니다. `class/`를 고친 뒤에는 `rm -rf dist/class && cp -r class dist/class`로 맞춰 주세요.
-
 ### 배포 (Vercel)
 
 > Vercel 무료(Hobby) 요금제는 배포 한 번에 서버 함수(저장소 맨 위 `api/*.js`)가 **12개까지**예요. 지금 12개를 다 쓰고 있어서, 새 서버 기능은 새 파일 대신 기존 함수(`admin` · `vod-pay` 등)의 action 으로 붙여요.
 
-Vercel 프로젝트 **doogo-class**는 GitHub 저장소 `sanjipaldo/sanjipaldo`에 연결돼 있고, 루트 디렉터리는 **저장소 맨 위**입니다. 같은 저장소에 다른 작업(두고마켓 등) 브랜치도 있어서, 맨 위의 파일 몇 개가 두고 클래스로 이어 줍니다.
+Vercel 프로젝트 **doogo-class**는 GitHub 저장소 `sanjipaldo/doogo-class`(두고클래스 전용)에 연결돼 있고, 루트 디렉터리는 **저장소 맨 위**입니다. 맨 위의 파일 몇 개가 두고 클래스로 이어 줍니다. 2026-11-02까지는 여러 작업이 함께 있던 `sanjipaldo/sanjipaldo` 저장소의 `claude/keen-ride-j85f6u` 브랜치였고, 이력은 그대로 옮겨 왔어요.
 
 | 파일 (저장소 맨 위) | 하는 일 |
 |---|---|
@@ -50,7 +48,7 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 
 운영 주소: https://doogo-class.vercel.app
 
-운영 주소에 바로 반영되는 브랜치(Production Branch)는 `claude/keen-ride-j85f6u`이고, `class/`가 있는 다른 브랜치는 미리보기 배포(Vercel 로그인 필요)로 올라갑니다. 운영 주소는 로그인 없이 누구나 열 수 있습니다.
+운영 주소에 바로 반영되는 브랜치(Production Branch)는 `main`이고, 다른 브랜치는 미리보기 배포(Vercel 로그인 필요)로 올라갑니다. 운영 주소는 로그인 없이 누구나 열 수 있습니다.
 
 ### 서버 · 데이터베이스
 
