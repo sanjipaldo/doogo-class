@@ -3904,3 +3904,6 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .vd-tl { padding: 0 9px; }
   .vd-ptl { padding: 0 8px; }
 }
+
+/* 약관 개정 예고 중: 바닥 ‘이용약관 · 개인정보처리방침’ 옆 작은 빨간 표시 (legal.js CLASS_LEGAL_NOTICE) */
+.vd-gf-new { display: inline-block; margin-left: 4px; padding: 1px 6px 2px; border-radius: 999px; background: var(--vd-pri); color: #fff; font-size: 10px; font-style: normal; font-weight: 800; line-height: 1.4; vertical-align: 1px; }

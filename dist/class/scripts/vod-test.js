@@ -1185,6 +1185,17 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(md && md[1].form && md[1].form.cat === "부업 · 창업" && md[1].source === "partners", "마스터는 지원서를 칸까지 그대로 받아요", md && md[1]);
     useJar({});
   }
+  {
+    console.log("21) 이용약관 · 개인정보처리방침 2026-11 개정 (개정 예고 → 시행일에 자동 전환)");
+    const src = fs.readFileSync(path.join(ROOT, "legal.js"), "utf8");
+    const load = (iso) => { const w = {}, real = Date.now; Date.now = () => Date.parse(iso); try { new Function("window", src)(w); } finally { Date.now = real; } return w; };
+    const before = load("2026-11-09T14:59:00Z"), after = load("2026-11-09T15:00:00Z"); // 한국 시간 11/9 23:59 · 11/10 0:00
+    ok(Array.isArray(before.CLASS_LEGAL_MISS) && before.CLASS_LEGAL_MISS.length === 0, "고칠 글(예전 문구)을 모두 정확히 한 번씩 찾았어요", before.CLASS_LEGAL_MISS);
+    const bt = before.CLASS_LEGAL.terms[1], at = after.CLASS_LEGAL.terms[1], bp = before.CLASS_LEGAL.privacy[1], ap = after.CLASS_LEGAL.privacy[1];
+    ok(before.CLASS_LEGAL_NOTICE && before.CLASS_LEGAL_NOTICE.from === "2026-11-10" && /^## \[개정 안내\] 2026년 11월 10일부터 이용약관이 바뀝니다/.test(bt) && bt.indexOf("시행일: 2026년 10월 29일") > 0 && bt.indexOf("개정 이용약관 전문") > 0 && /^## \[개정 안내\]/.test(bp), "시행일 전: 개정 안내 + 지금 약관 + 개정 전문 (바닥 ‘개정 예정’ 표시)", bt.slice(0, 80));
+    ok(after.CLASS_LEGAL_NOTICE === null && /^시행일: 2026년 11월 10일/.test(at) && at.indexOf("개정 안내") < 0 && at.indexOf("180일 · 365일 · 3년") < 0 && at.indexOf("(수강권 · 연장권)") < 0 && at.indexOf("연장권을 사면") < 0 && /"재수강"이란/.test(at) && /재수강 할인을 적용할 수 있으며/.test(at) && /구매한 연장권은 구매할 때 안내한 기간 그대로/.test(at) && /카카오 알림톡 · 문자 등으로 알릴 수 있습니다/.test(at) && /이 약관은 2026년 11월 10일부터 시행합니다/.test(at), "시행일부터: 새 약관만 (6개월 · 12개월 · 재수강 · 이미 산 연장권 유지 · 업데이트 안내 · 부칙)", at.slice(0, 80));
+    ok(/^시행일: 2026년 11월 10일/.test(ap) && /두고 파트너스 지원자/.test(ap) && /누리고 주식회사\(솔라피\)/.test(ap) && /구매한 강의의 업데이트 안내/.test(ap) && ap.indexOf("2026년 11월 10일부터 적용되며") > 0 && after.CLASS_LEGAL.refund[1] === before.CLASS_LEGAL.refund[1], "개인정보처리방침: 지원서 항목 · 업데이트 안내 · 발송 위탁 (환불정책은 그대로)", ap.slice(0, 80));
+  }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
