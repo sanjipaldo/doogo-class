@@ -2567,13 +2567,30 @@
     ["hosting", "호스팅 제공자", "예: Vercel Inc."], ["terms", "이용약관 주소", "https://"], ["privacy", "개인정보처리방침 주소", "https://"],
     ["notice", "맨 아래 안내 문구", "예: (주)○○는 통신판매중개자로서 …", true]
   ];
+  /* 분석 · 마케팅 도구 (tags.js) — 넣은 것만 정식 주소에서 불러와요 · 개인정보처리방침 ‘쿠키’ 항목도 이 목록을 따라가요 */
+  const TAG_FIELDS = [
+    ["tagNaver", "네이버 애널리틱스 사이트 ID", "영문 · 숫자 (예: 1a2b3c4d5e6f7)", "analytics.naver.com › 사이트 등록 후 받은 사이트 ID"],
+    ["tagGa4", "Google 애널리틱스 4 측정 ID", "G-XXXXXXXXXX", "analytics.google.com › 관리 › 데이터 스트림 › 측정 ID"],
+    ["tagPixel", "메타 픽셀 ID (페이스북 · 인스타그램 광고)", "숫자 (예: 123456789012345)", "Meta 이벤트 관리자 › 데이터 소스 › 픽셀 ID"],
+    ["tagCf", "Cloudflare 웹 분석 토큰", "32자리 영문 · 숫자", "dash.cloudflare.com › Web Analytics › 사이트 추가 → 안내 코드의 token 값 (도메인은 옮기지 않아도 돼요)"],
+    ["tagKakao", "카카오 JavaScript 키", "32자리 영문 · 숫자", "카카오 디벨로퍼스 › 내 애플리케이션 › 앱 키 › JavaScript 키 — 앱 설정 › 플랫폼 › Web 사이트 도메인에 https://www.doogoclass.com · https://doogoclass.com 등록"]
+  ];
+  function tagCard(s) {
+    const on = window.SiteTags ? window.SiteTags.active(s) : {}, key = { tagNaver: "naver", tagGa4: "ga4", tagPixel: "pixel", tagCf: "cf", tagKakao: "kakao" };
+    const fld = (x) => '<div class="a-field a-span2"><label for="site-' + x[0] + '">' + x[1] + (on[key[x[0]]] ? " " + pill("사용 중", "ok") : "") + '</label><input class="a-input" id="site-' + x[0] + '" name="' + x[0] + '" value="' + esc(s[x[0]] || "") + '" placeholder="' + esc(x[2]) + '" autocomplete="off" spellcheck="false"><p class="a-hint">' + esc(x[3]) + "</p></div>";
+    return '<section class="a-card"><div class="a-card-head"><h2>분석 · 마케팅 도구</h2><span class="a-muted">넣은 도구만 정식 주소(doogoclass.com)에서 불러와요 · 강사센터 · 마스터 화면은 세지 않아요</span></div>' +
+      '<div class="a-site-grid">' + TAG_FIELDS.map(fld).join("") +
+        '<div class="a-field a-span2"><label class="a-check"><input type="checkbox" name="tagVercel"' + (on.vercel ? " checked" : "") + "><span>Vercel 웹 분석 켜기</span></label>" +
+          '<p class="a-hint">Vercel 대시보드 › doogo-class › Analytics 에서 먼저 Enable 을 누른 뒤 켜 주세요 (안 켜고 체크하면 분석 파일을 못 받아요)</p></div></div>' +
+      '<p class="a-hint">' + icon("shieldCheck", "xs") + " 개인정보처리방침의 ‘쿠키 등 자동 수집 장치’ 항목은 켠 도구에 맞춰 바뀌어요. 메타 픽셀 · Google 애널리틱스처럼 광고 · 행태 분석 도구를 켜기 전에 문구를 한 번 검토해 주세요.</p></section>";
+  }
   function pageMasterSite() {
     const s = DB.siteInfo();
     const fld = (x) => '<div class="a-field' + (x[3] ? " a-span2" : "") + '"><label for="site-' + x[0] + '">' + x[1] + '</label><input class="a-input" id="site-' + x[0] + '" name="' + x[0] + '" value="' + esc(s[x[0]] || "") + '" placeholder="' + esc(x[2]) + '" maxlength="' + (x[0] === "notice" ? 300 : 200) + '"></div>';
     return head("첫 화면 · 사업자 정보", "두잉고 첫 화면 맨 아래(바닥)에 보이는 사업자 정보 · 사업제휴 문의예요. 채운 칸만 보이고, 기본 사업자 정보(두고홀딩스)가 들어 있는 칸은 비워 두면 기본값이 보여요.", dgSplitBtn("home", "첫 화면 미리보기")) +
       '<form id="site-form" class="a-site-form" novalidate>' +
         '<section class="a-card"><div class="a-card-head"><h2>사업자 정보</h2><span class="a-muted">전자상거래법에 따라 사이트 바닥에 표시하는 정보예요</span></div>' +
-          '<div class="a-site-grid">' + SITE_FIELDS.map(fld).join("") + "</div></section>" +
+          '<div class="a-site-grid">' + SITE_FIELDS.map(fld).join("") + "</div></section>" + tagCard(s) +
         '<div class="a-site-save"><button type="submit" class="a-btn a-btn-primary">' + icon("check", "sm") + "저장</button></div>" +
       "</form>";
   }
@@ -7686,6 +7703,17 @@
       const next = {};
       SITE_FIELDS.forEach((x) => { next[x[0]] = String(f[x[0]].value || "").replace(/\s+/g, " ").trim().slice(0, x[0] === "notice" ? 300 : 200); });
       ["terms", "privacy"].forEach((k) => { if (next[k] && !/^https?:\/\//i.test(next[k])) next[k] = "https://" + next[k]; });
+      // 분석 · 마케팅 도구: 정해진 모양만 (tags.js 가 스크립트 주소에 넣는 값이라 여기서 한 번, 불러올 때 한 번 더 검사)
+      const RX = (window.SiteTags && window.SiteTags.RX) || {};
+      let bad = "";
+      TAG_FIELDS.forEach((x) => {
+        const el = f.elements.namedItem(x[0]); let v = String((el && el.value) || "").replace(/\s+/g, "");
+        if (x[0] === "tagGa4") v = v.toUpperCase();
+        if (v && !(RX[x[0]] && RX[x[0]].test(v))) bad = bad || x[1];
+        next[x[0]] = v;
+      });
+      const vEl = f.elements.namedItem("tagVercel"); next.tagVercel = !!(vEl && vEl.checked);
+      if (bad) { toast(bad + " 모양을 확인해 주세요.", "warn"); const el = f.elements.namedItem(TAG_FIELDS.find((x) => x[1] === bad)[0]); if (el && el.focus) el.focus(); return; }
       next.group = DB.siteInfo().group; // 두고 그룹사 칸은 바닥에서 뺐지만, 저장해 둔 값은 그대로 둔다
       if (!DB.saveSite(next)) { toast("저장하지 못했어요.", "warn"); return; }
       render(); toast("첫 화면 바닥 정보를 저장했어요.");

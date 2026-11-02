@@ -93,8 +93,10 @@
         if (e.key && e.key.indexOf("moonclass:db") === 0) { DB.load(); go(); }
       });
     }
-    window.addEventListener("hashchange", () => { typing = false; if (waiting) waiting = false; go(); });
+    window.addEventListener("hashchange", () => { typing = false; if (waiting) waiting = false; go(); if (window.SiteTags) window.SiteTags.page(); });
     go();
+    // 분석 · 마케팅 도구 (마스터 › 첫 화면 · 사업자 정보 › 분석 · 마케팅 도구에 넣은 것만 — tags.js)
+    if (window.SiteTags) window.SiteTags.boot();
   }
   // 네이버 카페 링크: 휴대폰에서는 모바일 카페(m.cafe.naver.com), PC 에서는 PC 카페로 연다
   // (PC 주소 그대로 휴대폰에서 열면 글이 PC 화면 틀 안에 작게 보인다)
@@ -145,7 +147,7 @@
 
   const root = document.getElementById("root");
   // 첫 로딩 화면: 흰 바탕 + DOOGO CLASS 글자 로고 + 진행 막대 + ‘로딩중입니다’ (index.html 에 이미 있으면 그대로 — 다시 그리면 깜박인다)
-  const LOGO = '<img class="boot-logo boot-logo-dc" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20">';
+  const LOGO = '<img class="boot-logo boot-logo-dc" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchpriority="high">';
   if (!root.querySelector(".boot-wait")) root.innerHTML = '<div class="boot-wait" role="status" aria-live="polite">' + LOGO + '<span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>';
   DB.remote.connect().then(start, (err) => {
     console.error(err);

@@ -253,7 +253,7 @@ ${CO}(이하 "회사")는 ${SITE}(이하 "서비스")를 운영하면서 「개�
 
 ## 9. 쿠키 등 자동 수집 장치
 - 회사는 로그인 상태를 유지하기 위한 쿠키와, 최근 본 클래스 · 장바구니 · 화면 설정 등 편의 기능을 위한 브라우저 저장소를 사용합니다.
-- 광고나 행태 분석 목적의 제3자 쿠키는 사용하지 않습니다.
+[[분석도구]]
 - 강의 영상은 비메오(Vimeo) 또는 유튜브(Google) 플레이어로 재생되며, 재생할 때에는 해당 서비스의 개인정보 정책이 적용됩니다.
 - 이용자는 브라우저 설정에서 쿠키 저장을 거부할 수 있으나, 이 경우 로그인이 필요한 기능을 이용할 수 없습니다.
 
@@ -360,7 +360,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   // 글 → 화면: "## " 소제목 · "- " 점 목록 · 빈 줄 문단, 주소(https:// · www.)는 새 창 링크
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const link = (s) => esc(s).replace(/\b((?:https?:\/\/|www\.)[^\s)<]+[^\s)<.,])/g, (u) => '<a href="' + (u.indexOf("http") === 0 ? u : "https://" + u) + '" target="_blank" rel="noopener">' + u + "</a>");
+  // [[분석도구]] — 마스터 › 첫 화면 · 사업자 정보 › 분석 · 마케팅 도구에서 켠 도구 목록으로 (tags.js lines(), 아무것도 안 켰으면 ‘제3자 쿠키 사용 안 함’)
+  const TOOLS_DEFAULT = "- 광고나 행태 분석 목적의 제3자 쿠키는 사용하지 않습니다.";
+  const tools = () => { try { return window.SiteTags ? window.SiteTags.lines().join("\n") : TOOLS_DEFAULT; } catch (e) { return TOOLS_DEFAULT; } };
   window.CLASS_LEGAL_HTML = function (text) {
+    text = String(text || "").replace(/^[ \t]*\[\[분석도구\]\][ \t]*$/m, () => tools());
     const out = [];
     let list = null, para = [];
     const flushPara = () => { if (para.length) { out.push("<p>" + para.map(link).join("<br>") + "</p>"); para = []; } };

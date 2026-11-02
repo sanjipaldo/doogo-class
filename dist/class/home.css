@@ -1916,3 +1916,8 @@ a.hm-nav-a { display: inline-flex; align-items: center; text-decoration: none; }
 /* 바닥글 ‘사용법 영상’ 버튼 · 바로가기 */
 .hm-foot-guide { display: inline-flex; align-items: center; gap: 6px; }
 .hm-foot-gd { display: inline-flex; align-items: center; gap: 6px; color: var(--pri) !important; font-weight: 600; }
+
+/* 두잉고 바닥 · 카카오톡 상담 (운영팀 카카오톡 채널 — 새 창, 카카오 SDK 를 켰으면 채널 채팅으로 바로) */
+.hm-foot-cs .hm-foot-cs-kk { margin-top: 6px; background: #fee500; border-color: #fee500; color: #191919; }
+.hm-foot-cs .hm-foot-cs-kk .icon { color: #191919; }
+@media (hover: hover) { .hm-foot-cs .hm-foot-cs-kk:hover { border-color: #f2d900; background: #f9df00; color: #191919; } }

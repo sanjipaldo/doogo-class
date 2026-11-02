@@ -262,7 +262,7 @@
         '<div class="bw-trust"><span class="bw-avs">' + insList.filter((x) => x.photo).slice(0, 4).map((x) => '<i' + (x.photo ? ' style="background-image:url(' + esc(x.photo) + ')"' : "") + ">" + (x.photo ? "" : esc((x.who || "").slice(0, 1))) + "</i>").join("") + '</span><span><b>많은 강사님들이</b> 두잉고를 사용하고 있어요</span></div>' +
       "</div></div>" +
       '<div class="bw-photo" id="bw-photo" aria-label="노트북과 휴대폰으로 두잉고를 보는 수강생 (화면은 실제 강사센터 · 수강생 홈)"><div class="bw-stage" id="bw-stage">' +
-        '<img src="' + IMG + 'bw-photo.webp" alt="" width="982" height="665">' +
+        '<img src="' + IMG + 'bw-photo.webp" alt="" width="982" height="665" fetchpriority="high">' +
         '<video class="bw-bgv" muted loop playsinline autoplay preload="auto" aria-hidden="true" poster="' + IMG + 'bw-photo.webp"><source src="' + IMG + 'bw-photo.mp4" type="video/mp4"><source src="' + IMG + 'bw-photo.webm" type="video/webm"></video>' +
         '<div class="bw-scr bw-lapw" id="bw-lap"><img src="' + IMG + 'bw-admin.webp" alt="" width="1240" height="900"><video class="bw-live" muted loop playsinline autoplay preload="auto" aria-hidden="true"><source src="' + IMG + 'v-admin.mp4" type="video/mp4"><source src="' + IMG + 'v-admin.webm" type="video/webm"></video><i class="bw-glare"></i></div>' +
         '<div class="bw-scr bw-shot" id="bw-ph"><span class="bw-sbar"><b>9:41</b><i></i></span><img src="' + IMG + 'bw-student.webp" alt="" width="780" height="1612"><video class="bw-live" muted loop playsinline autoplay preload="auto" aria-hidden="true"><source src="' + IMG + 'v-home.mp4" type="video/mp4"><source src="' + IMG + 'v-home.webm" type="video/webm"></video><span class="bw-notch"></span><i class="bw-glare"></i></div>' +
@@ -627,6 +627,9 @@
     // 운영 시간: 첫 마디는 굵게, 나머지(점심 · 휴무)는 작게
     const hrs = String(S.hours || "").split(/\s*·\s*(?=점심|주말|공휴|휴무|토|일요)/);
     const legal = (key, label, href) => (url(href) ? ext(href, label) : '<button type="button" data-hm-legal="' + key + '">' + label + "</button>");
+    // 운영팀 카카오톡 채널 (마스터 › 첫 화면 · 사업자 정보 › 운영 상담 카카오톡 채널) — 새 창 · 카카오 SDK 를 켰으면 tags.js 가 채널 채팅으로 바로 열어요
+    const kkUrl = DB.opsKakao ? DB.opsKakao().chat : "";
+    const kk = (label, cls) => (kkUrl ? '<a class="' + cls + '" href="' + esc(kkUrl) + '" target="_blank" rel="noopener" data-kk-ops>' + label + "</a>" : "");
     return '<footer class="hm-foot"><div class="hm-wrap">' +
       '<div class="hm-foot-top">' +
         '<div class="hm-foot-brand">' + brandLock() + "<p>강사님 이름으로 운영하는 강의 플랫폼.<br>강의 소개 랜딩페이지 · 무료강의 전자책 · 수강생 케어 튜토리얼 시스템을 하나로.</p>" +
@@ -634,7 +637,7 @@
         '<nav class="hm-foot-cols" aria-label="바로가기">' +
           '<div class="hm-foot-col"><b>두잉고</b>' + scrollBtn("hm-features", "3가지 기능", "hm-foot-a") + scrollBtn("hm-students", "수강생 화면", "hm-foot-a") + scrollBtn("hm-teachers", "강사센터 둘러보기", "hm-foot-a") + scrollBtn("hm-pricing", "이용료 · 기수 운영", "hm-foot-a") + scrollBtn("hm-classes", "강사진", "hm-foot-a") + "</div>" +
           '<div class="hm-foot-col"><b>바로가기</b>' + applyBtn("강사 입점 문의", "hm-foot-apply") + '<a href="#/center">강사센터 로그인</a><a href="#/login">수강생 로그인</a><a href="#/center/billing">다음 기수 신청</a><a class="hm-foot-gd" href="#/doinggo/guide/ins">' + icon("circlePlay", "xs") + '사용법 영상 · 강사</a><a class="hm-foot-gd" href="#/doinggo/guide/stu">' + icon("circlePlay", "xs") + "사용법 영상 · 수강생</a></div>" +
-          '<div class="hm-foot-col"><b>고객지원</b>' + scrollBtn("hm-faq", "자주 묻는 질문", "hm-foot-a") + legal("terms", "이용약관", S.terms) + legal("privacy", "<strong>개인정보처리방침</strong>", S.privacy) +
+          '<div class="hm-foot-col"><b>고객지원</b>' + scrollBtn("hm-faq", "자주 묻는 질문", "hm-foot-a") + kk("카카오톡 상담", "hm-foot-kk") + legal("terms", "이용약관", S.terms) + legal("privacy", "<strong>개인정보처리방침</strong>", S.privacy) +
             (S.email ? '<a href="mailto:' + esc(S.email) + '">이메일 문의</a>' : "") + "</div>" +
         "</nav>" +
         // 전화가 있으면 고객센터 번호, 없으면 사업제휴 이메일을 크게
@@ -642,7 +645,7 @@
           (S.phone ? '<p class="hm-foot-tel">' + tel(S.phone) + "</p>" : S.email ? '<p class="hm-foot-mail"><a href="mailto:' + esc(S.email) + '">' + icon("mail", "xs") + esc(S.email) + "</a></p>" : '<p class="hm-foot-tel hm-foot-tel-sm">입점 문의로 남겨 주세요</p>') +
           (S.hours ? '<p class="hm-foot-hrs"><span>' + esc(hrs[0]) + "</span>" + (hrs.length > 1 ? "<small>" + esc(hrs.slice(1).join(" · ")) + "</small>" : "") + "</p>" : "<p>입점 문의는 24시간 남길 수 있어요</p>") +
           (S.phone && S.email ? '<p><a href="mailto:' + esc(S.email) + '">' + esc(S.email) + "</a></p>" : "") +
-          applyBtn(icon("handshake", "xs") + "입점 문의 남기기", "hm-foot-cs-btn") + "</div>" +
+          applyBtn(icon("handshake", "xs") + "입점 문의 남기기", "hm-foot-cs-btn") + kk(icon("message", "xs") + "카카오톡 상담", "hm-foot-cs-btn hm-foot-cs-kk") + "</div>" +
       "</div>" +
       '<div class="hm-foot-biz">' + dl(row1) + dl(row2) + (S.notice ? '<p class="hm-foot-notice">' + esc(S.notice) + "</p>" : "") +
         '<div class="hm-foot-bottom"><nav class="hm-foot-legal" aria-label="약관">' + legal("terms", "이용약관", S.terms) + legal("privacy", "<strong>개인정보처리방침</strong>", S.privacy) + legal("oss", "오픈소스 라이선스", "") + "</nav>" +

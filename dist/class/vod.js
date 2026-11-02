@@ -1266,7 +1266,9 @@
   // 약관 주소(/terms · /privacy · /refund)는 스토어 안 legal 화면으로
   const route = () => { const h = ROUTE.hash.replace(/^#\/(?=(terms|privacy|refund)(\/|\?|$))/, "#/vod/legal/").replace(/^#\/vod\/?/, ""), q = h.indexOf("?"); const path = (q >= 0 ? h.slice(0, q) : h).split("/").filter(Boolean), qs = new URLSearchParams(q >= 0 ? h.slice(q + 1) : ""); return { path, qs }; };
   const toast = (msg, kind) => { const t = document.createElement("div"); t.className = "toast" + (kind === "warn" ? " warn" : ""); t.innerHTML = icon(kind === "warn" ? "alert" : "check", "sm") + "<span>" + esc(msg) + "</span>"; const box = document.getElementById("toast-root"); box.appendChild(t); const all = box.querySelectorAll(".toast"); for (let i = 0; i < all.length - 1; i++) all[i].remove(); setTimeout(() => t.remove(), 2600); };
+  // 맨 위(머리글) 로고는 어느 화면에서나 처음 보이는 그림이라 먼저 받아요 (fetchpriority) — 바닥 · 다른 곳은 그대로
   const logoImg = '<img class="vd-logo-img" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">';
+  const logoTop = logoImg.replace("<img ", '<img fetchpriority="high" ');
   // 두잉고 | DOOGO CLASS 바꾸기: 둥근 알약 + 미끄러지는 손잡이 (지난번에 있던 쪽에서 지금 쪽으로 움직여요)
   const SW_KEY = "doinggo:site-sw";
   const SW_DG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.6 14.2c2.4.2 4.2 1.8 4.7 4.8"/></svg>';
@@ -1302,7 +1304,7 @@
   function header(nav) {
     const m = me(), r = route();
     return '<header class="vd-top"><div class="vd-wrap vd-top-in">' +
-      '<a class="vd-logo" href="#/vod" aria-label="DOOGO CLASS 홈">' + logoImg + "</a>" + siteSw("vod") +
+      '<a class="vd-logo" href="#/vod" aria-label="DOOGO CLASS 홈">' + logoTop + "</a>" + siteSw("vod") +
       '<form class="vd-search" data-vd-search role="search"><input name="q" type="search" placeholder="어떤 부업을 배워 볼까요?" value="' + esc(r.path[0] === "search" ? r.qs.get("q") || "" : "") + '" aria-label="클래스 검색" autocomplete="off"><button type="submit" aria-label="검색">' + icon("search", "sm") + "</button></form>" +
       '<div class="vd-top-r">' +
         '<a class="vd-tl vd-ic-pc" href="#/vod/my/classes">' + BOOK + "<span>내 강의실</span></a>" +
@@ -1431,7 +1433,7 @@
   function imgSlide(b, i, clone, href) {
     const pc = b.pc || b.m, m = b.m || "";
     return '<a class="vd-slide img' + (b.fit === "contain" ? " fit" : "") + (i === ui.slide ? " on" : "") + '" href="' + esc(href) + '"' + (b.newTab ? ' target="_blank" rel="noopener"' : "") + ' style="--a:' + esc(b.bg || (b.color || [])[0] || "#111") + '" data-i="' + (clone ? "" : i) + '" tabindex="' + (i === ui.slide ? 0 : -1) + '"' + (clone ? ' aria-hidden="true"' : "") + "><picture>" +
-      (m && m !== pc ? '<source media="(max-width: 639px)" ' + imgAttr(m, "srcset") + ">" : "") + "<img " + imgAttr(pc, "src") + ' alt="' + (clone ? "" : esc(b.alt || String(b.title || "").replace(/\n/g, " "))) + '" draggable="false"></picture></a>';
+      (m && m !== pc ? '<source media="(max-width: 639px)" ' + imgAttr(m, "srcset") + ">" : "") + "<img " + imgAttr(pc, "src") + (!clone && i === ui.slide ? ' fetchpriority="high"' : "") + ' alt="' + (clone ? "" : esc(b.alt || String(b.title || "").replace(/\n/g, " "))) + '" draggable="false"></picture></a>';
   }
   /* 홈 화면 섹션 (마스터 › VOD 전시 · 쿠폰 · 설정 › 홈 화면 섹션에서 고쳐요)
    * mode: auto = 기본 규칙(판매순 · 날짜순) · pin = 고른 강의를 맨 앞에 + 나머지 자동 · only = 고른 강의만 */
@@ -1499,7 +1501,7 @@
         if (b.kind === "img") return imgSlide(b, i, clone, href);
         const st = String(b.sticker || "").split("\n");
         return '<a class="vd-slide' + (b.dark ? " dark" : "") + (i === ui.slide ? " on" : "") + '" href="' + esc(href) + '" style="--a:' + esc((b.color || [])[0] || "#111") + ";--b:" + esc((b.color || [])[1] || (b.color || [])[0] || "#333") + '" data-i="' + (clone ? "" : i) + '" tabindex="' + (i === ui.slide ? 0 : -1) + '"' + (clone ? ' aria-hidden="true"' : "") + '><div class="vd-slide-t">' + (b.eyebrow ? "<small>" + esc(b.eyebrow) + "</small>" : "") + "<b>" + esc(b.title || "").replace(/\n/g, "<br>") + "</b>" + (b.sub ? "<p>" + esc(b.sub) + " " + icon("arrowRight", "xs") + "</p>" : "") + "</div>" +
-          (b.sticker ? '<span class="vd-burst"><b>' + st.map((l, k) => '<span style="--k:' + k + '">' + esc(l) + "</span>").join("") + "</b></span>" : ph ? '<img class="vd-slide-ph" src="' + esc(ph) + '" alt="">' : "") + "</a>"; }).join("") +
+          (b.sticker ? '<span class="vd-burst"><b>' + st.map((l, k) => '<span style="--k:' + k + '">' + esc(l) + "</span>").join("") + "</b></span>" : ph ? '<img class="vd-slide-ph" src="' + esc(ph) + '"' + (!clone && i === ui.slide ? ' fetchpriority="high"' : "") + ' alt="">' : "") + "</a>"; }).join("") +
       '</div></div><div class="vd-wrap vd-hero-ctl"><div class="vd-dots">' + bs.map((b, i) => '<button type="button" class="' + (i === ui.slide ? "on" : "") + '" data-v="slide-to" data-i="' + i + '" aria-label="' + (i + 1) + '번째 배너"></button>').join("") + '</div><button type="button" class="vd-ctl" data-v="pause" aria-label="' + (ui.paused ? "자동 넘김 켜기" : "자동 넘김 멈추기") + '">' + (ui.paused ? icon("play", "xs") : PAUSE) + '</button><span class="vd-hero-cnt"><b>' + (ui.slide + 1) + "</b> / " + bs.length + '</span><button type="button" class="vd-ctl" data-v="slide" data-d="-1" aria-label="이전 배너">' + icon("chevLeft", "sm") + '</button><button type="button" class="vd-ctl" data-v="slide" data-d="1" aria-label="다음 배너">' + icon("chevRight", "sm") + "</button></div></section>" : "";
     const tl = (V().tiles || []).filter((t) => t.on !== false && t.label && tileBiz(t));
     const tiles = '<nav class="vd-tiles" aria-label="카테고리 바로가기" style="--n:' + Math.min(12, Math.max(6, tl.length)) + ";--c:" + Math.max(4, Math.ceil(tl.length / 2)) + '">' + tl.map((t, i) => '<a class="vd-tile" href="' + esc(t.href || "#/vod/c/all") + '" style="--d:' + (i * 0.035).toFixed(3) + 's"><span class="vd-tile-ic">' + (t.img ? "<img " + imgAttr(t.img, "src") + ' alt="" width="56" height="56" draggable="false">' : icon("grid")) + (t.badge ? "<em>" + esc(t.badge) + "</em>" : "") + "</span><b>" + esc(t.label) + "</b></a>").join("") + "</nav>";
