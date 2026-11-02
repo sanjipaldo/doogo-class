@@ -3171,7 +3171,7 @@
     try { sessionStorage.setItem("dc:last", ROUTE.hash); } catch (e) {}
     catchAttr(); touchSeen();
     root.innerHTML = html;
-    document.title = !a ? "두고클래스 DOOGO CLASS | 실전 강사님의 자기계발 VOD 클래스" : a === "legal" ? ((LEGAL_TABS.find((x) => x[0] === b) || LEGAL_TABS[0])[1] + " | 두고클래스 DOOGO CLASS") : (a === "p" && product(b) ? product(b).title + " | " : "") + "DOOGO CLASS — 돈 되는 클래스"; // 대표 주소 = index.html <title> (SEO)
+    document.title = !a ? "배움이 기회가 되는 곳, 두고클래스 | 온라인 클래스" : a === "legal" ? ((LEGAL_TABS.find((x) => x[0] === b) || LEGAL_TABS[0])[1] + " | 두고클래스 DOOGO CLASS") : (a === "p" && product(b) ? product(b).title + " | " : "") + "DOOGO CLASS — 돈 되는 클래스"; // 대표 주소 = index.html <title> (SEO)
     window.applyStudentTheme && window.applyStudentTheme(null);
     if (!a && !ui.paused && liveBanners().length > 1) ui.timer = setInterval(() => slide(1), 5000);
     if (document.querySelector("[data-cd]")) ui.cd = setInterval(() => document.querySelectorAll("[data-cd]").forEach((x) => { x.textContent = cdTxt(x.dataset.cd); }), 1000);
