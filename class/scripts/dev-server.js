@@ -28,6 +28,8 @@ http.createServer(async (req, res) => {
     req.query = Object.fromEntries(u.searchParams.entries());
     return h(req, res);
   }
+  // 사이트맵: 배포(app/sitemap.xml/route.js)처럼 고정 주소 + 보이는 클래스 · 공개한 강사 소개 · 무료강의 (3단계)
+  if (u.pathname === "/sitemap.xml") return require("../api/_lib/pagemeta").sitemap().then((x) => { res.setHeader("Content-Type", "application/xml; charset=utf-8"); res.end(x); });
   let p = decodeURIComponent(u.pathname);
   if (p.endsWith("/")) p += "index.html";
   // vercel.json 처럼: 점(.)이 없는 경로(/vod/p/v5 · /doinggo · /terms)는 화면(index.html)으로 — 깨끗한 주소 시험용
@@ -38,8 +40,8 @@ http.createServer(async (req, res) => {
     if (err) { res.statusCode = 404; return res.end("not found"); }
     if (p === "/index.html") buf = Buffer.from(require("./index-abs")(buf.toString("utf8"))); // 배포(site.js)와 같게
     res.setHeader("Content-Type", TYPES[path.extname(file)] || "application/octet-stream");
-    // 클래스 상세 /vod/p/<클래스> · 강사 소개 /p/<강사> · 무료강의 /free/<강사>: 배포(Next.js app/…/route.js)처럼 미리보기 정보를 넣어요 (3단계)
-    if (p === "/index.html" && /^\/(vod\/p|p|free)\//.test(u.pathname)) return require("../api/_lib/pagemeta").render(u.pathname, buf.toString("utf8")).then((h) => res.end(h));
+    // 클래스 상세 /vod/p/<클래스> · 강사 소개 /p/<강사> · 무료강의 /free/<강사> · 스토어 홈 / · /doinggo · 약관: 배포(Next.js app/…/route.js)처럼 미리보기 정보를 넣어요 (3단계)
+    if (p === "/index.html" && /^\/((vod\/p|p|free)\/|(doinggo|terms|privacy|refund)?\/?$)/.test(u.pathname)) return require("../api/_lib/pagemeta").render(u.pathname, buf.toString("utf8")).then((h) => res.end(h));
     res.end(buf);
   });
 }).listen(PORT, () => console.log("doogo class dev server → http://localhost:" + PORT + " (" + (process.env.TURSO_DATABASE_URL ? "Turso" : "SQLite " + process.env.CLASS_SQLITE) + ")"));

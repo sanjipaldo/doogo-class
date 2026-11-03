@@ -23,14 +23,15 @@ const INCLUDE = ["class/data.js", "class/coach-perms.js", "class/shared/*.js", "
 async function traceApi() {
   const { nodeFileTrace } = require("next/dist/compiled/@vercel/nft");
   const dir = path.join(__dirname, "class", "api");
-  const files = fs.readdirSync(dir).filter((f) => /^[a-z-]+\.js$/.test(f)).map((f) => path.join("class", "api", f)).concat([path.join("class", "api", "_lib", "pagemeta.js")]); // 3단계: 클래스 상세 미리보기
+  const files = fs.readdirSync(dir).filter((f) => /^[a-z-]+\.js$/.test(f)).map((f) => path.join("class", "api", f)).concat([path.join("class", "api", "_lib", "pagemeta.js")]); // 3단계: 미리보기 페이지 · 사이트맵
   const { fileList } = await nodeFileTrace(files, { base: __dirname, processCwd: __dirname });
   return [...fileList].filter((f) => !/^node_modules\/(next|react|react-dom|scheduler)\//.test(f)).sort();
 }
 
 module.exports = async (phase) => {
   const traced = phase === PHASE_PRODUCTION_BUILD ? await traceApi() : [];
-  const PAGE = traced.concat(INCLUDE).map((f) => "./" + f).concat(["./public/index.html", "./public/og-images.json"]);
+  // 3단계 미리보기 페이지 · 사이트맵: 서버 코드 + 약관 글(legal.js) · 고정 주소 목록(sitemap.xml) + 화면 틀 index.html · 공유 사진 목록(빌드 때 public/ 으로)
+  const PAGE = traced.concat(INCLUDE, ["class/legal.js", "class/sitemap.xml"]).map((f) => "./" + f).concat(["./public/index.html", "./public/og-images.json"]);
   return {
     poweredByHeader: false,
     reactStrictMode: true,
@@ -39,8 +40,9 @@ module.exports = async (phase) => {
     outputFileTracingRoot: __dirname,
     outputFileTracingIncludes: {
       "/api/*": traced.concat(INCLUDE).map((f) => "./" + f),
-      // 3단계: 공유 미리보기 페이지 (app/vod/p · app/p · app/free) — 서버 코드 + 화면 틀 index.html · 공유 사진 목록(빌드 때 public/ 으로)
-      "/vod/p/**": PAGE, "/p/**": PAGE, "/free/**": PAGE
+      // 3단계: 미리보기 페이지 (app/route.js 스토어 홈 · app/vod/p · app/p · app/free · app/doinggo · 약관 3개) · 사이트맵 (app/sitemap.xml)
+      // 키는 ‘함수 이름에 이 글자가 들어 있으면’(contains) 이라서 "/" 는 모든 함수에 들어가요 — 스토어 홈(/)만 따로 고를 키가 없어서예요 (API 함수에는 작은 글 파일 몇 개가 더 들어갈 뿐)
+      "/": PAGE
     },
     async headers() {
       return [

@@ -69,6 +69,17 @@ module.exports = {
     }
     const hP = await raw("/p/no-such-teacher");
     await run.check(hP.indexOf("<title>" + T0 + "</title>") >= 0, "없는 강사 소개는 예전 기본 미리보기 그대로");
+    // 1-3) 두잉고 소개 · 약관 (3단계): 서버가 넣은 제목 = 화면 제목 · 주소마다 대표 주소 (예전엔 모두 스토어 홈 제목 · / 로 겹쳤어요)
+    for (const u of ["/doinggo", "/terms", "/privacy", "/refund"]) {
+      const h = await raw(u), t = dec((h.match(/<title>([^<]*)<\/title>/) || [])[1] || ""), cn = (h.match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || "";
+      await L.open(page, base, u);
+      const shown = await page.evaluate(() => document.title);
+      await run.check(t !== T0 && t === shown && cn === "https://www.doogoclass.com" + u, "검색 · 공유: " + u + " — 서버가 넣은 제목이 화면 제목과 같고 대표 주소가 그 주소예요", { server: t, screen: shown, canonical: cn });
+    }
+    // 1-4) 스토어 홈 (3단계): 제목은 그대로 · 로봇용 안내 글에 보이는 클래스 링크 / 사이트맵에 클래스 · 강사 소개 주소
+    const hHome = await raw("/"), sm = await (await fetch(base + "/sitemap.xml")).text();
+    await run.check(detail.slice(0, 3).every((p) => hHome.indexOf('href="https://www.doogoclass.com/vod/p/' + encodeURIComponent(p.id) + '"') >= 0) && (!hidden || hHome.indexOf("/vod/p/" + encodeURIComponent(hidden.id) + '"') < 0), "스토어 홈 / — 로봇용 안내 글에 보이는 클래스 링크 (숨긴 강사 클래스는 빼요)", detail.map((p) => p.id));
+    await run.check(/^<\?xml/.test(sm) && sm.indexOf("<loc>https://www.doogoclass.com/doinggo</loc>") >= 0 && detail.slice(0, 3).every((p) => sm.indexOf("<loc>https://www.doogoclass.com/vod/p/" + encodeURIComponent(p.id) + "</loc>") >= 0) && sm.indexOf("<loc>https://www.doogoclass.com/p/" + info.instructor.iid + "</loc>") >= 0 && (!hidden || sm.indexOf("/vod/p/" + encodeURIComponent(hidden.id) + "</loc>") < 0), "사이트맵 — 고정 주소 + 보이는 클래스 · 공개한 강사 소개 주소", { n: (sm.match(/<loc>/g) || []).length });
     // 2) 예전 #주소 링크 → 깨끗한 주소로 바뀌고 같은 화면
     const old = [["/#/doinggo", "/doinggo", "home"], ["/about", "/doinggo", "home"], ["/#/center/login", "/center/login", "admin"], ["/#/terms", "/terms", "vod"]].concat(detail.slice(0, 1).map((p) => ["/#/vod/p/" + p.id, "/vod/p/" + p.id, "vod"]));
     for (const [from, to, m] of old) {

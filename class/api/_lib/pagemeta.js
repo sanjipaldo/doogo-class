@@ -3,19 +3,26 @@
  *   /vod/p/<클래스>   클래스 상세 — 클래스 제목 · 한 줄 소개 · 사진 · 가격(결제와 같은 규칙)
  *   /p/<강사>         강사 소개 — 강의 이름 · 헤드라인 · 강사 사진
  *   /free/<강사>      무료강의 — 강의 제목 · 일시 · 포스터(썸네일)
+ *   /                 스토어 홈 — 제목 · 설명은 index.html 그대로, 로봇용 안내 글에 지금 보이는 클래스 목록(상세 주소 링크)
+ *   /doinggo          두잉고 소개 — 두잉고 제목 · 설명 · 소개 배너(og-doinggo.jpg) · 대표 주소
+ *   /terms · /privacy · /refund  약관 — 화면과 같은 제목 · 대표 주소 · 시행일 · 목차 (바뀌는 표 · 분석 도구 목록은 화면에서만)
+ *   /sitemap.xml      검색 로봇용 주소 목록 — class/sitemap.xml 에 보이는 클래스 · 공개한 강사 소개 · 무료강의 주소를 더해요
  *  · 화면(그리는 것)은 그대로예요 — 들어온 뒤에는 예전과 같은 화면(vod.js · landing.js)이 그려요. 바뀌는 건 <head> 의 미리보기 정보와
  *    자바스크립트를 못 읽는 로봇용 안내 글(.seo-static)뿐이에요.
  *  · 보이지 않는 페이지(판매 중이 아님 · 숨긴 강사 · 비공개 페이지 · 이용 중지 강사)나 오류가 나면 예전 index.html 그대로 보내요.
  *  · 공유 사진은 JPG · PNG · GIF 만 써요 (카카오톡이 webp 를 못 읽어요) — webp 사진은 빌드 때 만든 JPG(public/og-images.json)로, 없으면 기본 공유 사진.
- *  · 끄기: 환경 변수 DC_SSR_OFF 에 vod-detail · landing · free 를 넣고 다시 배포하면 그 주소는 예전처럼 index.html 그대로 (SWITCHES) */
+ *  · 끄기: 환경 변수 DC_SSR_OFF 에 vod-detail · landing · free · store-home · doinggo · legal · sitemap 을 넣고 다시 배포하면
+ *    그 주소는 예전처럼 index.html(사이트맵은 class/sitemap.xml) 그대로 (SWITCHES) */
 "use strict";
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 const store = require("./store");
 const { pricer } = require("./vodprice");
 
 const ORIGIN = "https://www.doogoclass.com";
-const SWITCHES = ["vod-detail", "landing", "free"];
+const SWITCHES = ["vod-detail", "landing", "free", "store-home", "doinggo", "legal", "sitemap"];
+const CLASS_DIR = path.join(__dirname, "..", ".."); // class/
 const off = (k) => String(process.env.DC_SSR_OFF || "").split(/[\s,]+/).indexOf(k) >= 0;
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -32,7 +39,7 @@ let ogMap0 = null;
 /** 빌드 때 webp → JPG 로 바꿔 둔 사진 목록 { "assets/…/x.webp": "assets/…/x.og.jpg" } (class/scripts/site.js public) */
 function ogMap() {
   if (ogMap0) return ogMap0;
-  try { ogMap0 = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "..", "public", "og-images.json"), "utf8")) || {}; } catch (e) { ogMap0 = {}; }
+  try { ogMap0 = JSON.parse(fs.readFileSync(path.join(CLASS_DIR, "..", "public", "og-images.json"), "utf8")) || {}; } catch (e) { ogMap0 = {}; }
   return ogMap0;
 }
 const extOf = (u) => ((/\.([a-z0-9]+)$/i.exec(String(u).split(/[?#]/)[0]) || [])[1] || "").toLowerCase();
@@ -68,8 +75,8 @@ function inject(html, o) {
     set(/(<meta property="og:image" content=")[^"]*(")/, o.img);
     set(/(<meta property="og:image:secure_url" content=")[^"]*(")/, o.img);
     set(/(<meta name="twitter:image" content=")[^"]*(")/, o.img);
-    // 크기 · 형식은 기본 공유 사진(1200×630 jpg) 것이라 빼요
-    out = out.replace(/\n\s*<meta property="og:image:(type|width|height)" content="[^"]*" \/>/g, "");
+    // 크기 · 형식은 기본 공유 사진(1200×630 jpg) 것이라 빼요 (같은 크기 · 형식의 사진이면 그대로 — o.sameSize)
+    if (!o.sameSize) out = out.replace(/\n\s*<meta property="og:image:(type|width|height)" content="[^"]*" \/>/g, "");
   }
   if (o.ld) {
     const ldTag = '<script type="application/ld+json">' + JSON.stringify(o.ld).replace(/</g, "\\u003c") + "</script>";
@@ -121,10 +128,11 @@ function vodDetail(html, vod, id, now, map) {
 
 /* ---------- 강사 소개 /p/<강사> · 무료강의 /free/<강사> ---------- */
 /** 강사 문서 · 강의 콘텐츠 문서 → 화면 db.js 와 같은 기본값 규칙(shared/data-rules.js landingOf · freeOf) */
-function rulesFor(ins, c) {
+function rulesFor(ins, c) { return rulesForAll([ins], { [ins.id]: c }); }
+function rulesForAll(insList, contents) {
   const DR = require("../../shared/data-rules");
   const seed = require("./seed").loadSeed();
-  const db = { instructors: [ins], content: { [ins.id]: c } };
+  const db = { instructors: insList, content: contents };
   return DR.make({ db: () => db, setDb: () => {}, seed: () => seed, save: () => true, remote: () => true, storeGet: (k, fb) => fb, storeSet: () => true });
 }
 /** "2026-11-17T19:30" (한국 시간 그대로 적힌 값) → "11월 17일 (화) 19:30" */
@@ -172,10 +180,117 @@ function freePage(html, ins, c, map) {
   return inject(html, { docTitle: title, title, desc, url, img, ld, body });
 }
 
+/* ---------- 스토어 홈 / ---------- */
+/** 스토어 첫 화면: 제목 · 설명 · 사진은 index.html 그대로, 로봇용 안내 글 끝에 지금 보이는 클래스 목록(상세 주소 링크)을 더해요 (보일 클래스가 없으면 null) */
+function storeHome(html, vod) {
+  vod = vod || {};
+  const list = (vod.products || []).filter((p) => shown(vod, p));
+  if (!list.length) return null;
+  const items = list.slice(0, 80).map((p) => '<li><a href="' + ORIGIN + "/vod/p/" + encodeURIComponent(p.id) + '">' + esc(flat(p.title)) + "</a> · " + esc(TYPE_TXT[p.type] || TYPE_TXT.vod) + (flat(p.creator) ? " · " + esc(flat(p.creator)) : "") + (p.status === "soon" ? " · 오픈 예정" : "") + "</li>").join("");
+  let done = false;
+  const out = String(html).replace(/(<div class="seo-static">[\s\S]*?)(\n\s*<\/main>)/, (m, a, b) => { done = true; return a + "\n        <h2>지금 만날 수 있는 클래스</h2>\n        <ul>" + items + "</ul>" + b; });
+  return done ? out : null;
+}
+
+/* ---------- 두잉고 소개 /doinggo ---------- */
+// 제목은 화면 home.js 와 같게 · 글은 두잉고 첫 화면(hero) 문구에서 (화면 문구를 크게 바꾸면 여기도 같이)
+const DG = {
+  title: "두잉고 | 강의는 강사님이, 운영은 두잉고가",
+  desc: "강의 소개 페이지 · 무료강의 전자책 · 수강생 케어 튜토리얼까지, 강사님 이름으로 된 강의 플랫폼 하나로 운영하세요. 수강생은 무료 · 수강생 수 무제한 · 기수 무제한 운영.",
+  img: ORIGIN + "/assets/home/og-doinggo.jpg", // 1200×630 jpg (기본 공유 사진과 같은 크기 · 형식)
+  points: ["강의 운영 — 강의 소개부터 주차별 강의 · 자료 · 공지까지 한곳에서 체계적으로 운영해요.", "수강생 관리 — 수강 승인, 진도, 과제 검수와 피드백까지 수강생을 더 가까이에서 챙겨요.", "AI 학습 지원 — 24시간 AI 조교가 과제 · 서류 · 일정 질문에 바로 답해요."]
+};
+function doinggoPage(html) {
+  const url = ORIGIN + "/doinggo";
+  const body = "        <h1>강의는 강사님이, 운영은 두잉고가</h1>\n" + para(DG.desc) + "        <h2>두잉고로 하는 일</h2>" + li(DG.points) + "\n" +
+    '        <p><a href="' + url + '">두잉고 소개</a> · <a href="' + ORIGIN + '/login">두잉고 수강생 로그인</a> · <a href="' + ORIGIN + '/center">강사센터</a> · <a href="' + ORIGIN + '/">두고클래스</a></p>\n';
+  return inject(html, { docTitle: DG.title, title: DG.title, desc: DG.desc, url, img: DG.img, sameSize: true, body });
+}
+
+/* ---------- 약관 /terms · /privacy · /refund ---------- */
+const LEGAL = { terms: "이용약관", privacy: "개인정보처리방침", refund: "환불정책" }; // 화면 vod.js LEGAL_TABS 와 같은 이름 · 주소
+const LEGAL_DESC = {
+  terms: "두고클래스(주식회사 두고홀딩스) 이용약관 — 회원 가입, 클래스 구매 · 수강권, 강사 · 두잉고 이용 조건을 안내해요.",
+  privacy: "두고클래스(주식회사 두고홀딩스) 개인정보처리방침 — 처리하는 개인정보와 목적, 보유 기간, 위탁, 정보주체의 권리를 안내해요.",
+  refund: "두고클래스(주식회사 두고홀딩스) 환불정책 — 7일 청약철회와 상품별 환불 기준, 쿠폰 · 포인트 처리를 안내해요."
+};
+let legal0 = null;
+/** 약관 글(class/legal.js · 화면과 같은 글) — data.js 처럼 글만 담은 파일이라 빈 window 에서 읽어요.
+ *  legal.js 는 읽는 날(한국 날짜)에 따라 개정 글로 바뀌어서, 날짜가 바뀌면 다시 읽어요 */
+function legalText() {
+  const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  if (legal0 && legal0.day === day) return legal0.L;
+  const sb = {}; sb.window = sb;
+  vm.runInNewContext(fs.readFileSync(path.join(CLASS_DIR, "legal.js"), "utf8"), sb, { filename: "legal.js", timeout: 2000 });
+  legal0 = { day, L: sb.CLASS_LEGAL || {} };
+  return legal0.L;
+}
+/** 약관 페이지: 화면과 같은 제목 · 대표 주소 · 시행일 · 목차 — 마스터 설정으로 바뀌는 환불 표 · 분석 도구 목록은 넣지 않아요 (글이 없으면 null) */
+function legalPage(html, k, L) {
+  if (!LEGAL[k]) return null;
+  const doc = (L || legalText())[k];
+  if (!Array.isArray(doc) || !doc[1]) return null;
+  const name = LEGAL[k], url = ORIGIN + "/" + k, lines = String(doc[1]).split("\n");
+  // 개정 안내 기간에는 글 맨 앞이 개정 안내(공지일 · 새 시행일)예요 — 화면도 이때는 시행일 칸을 비워요
+  const m = /^시행일:\s*(.+)$/.exec(flat(lines[0])), notice = !m && /^공지일:/.test(flat(lines[1])) ? "개정 안내 · " + flat(lines[1]) : "";
+  const heads = lines.filter((x) => x.indexOf("## ") === 0).map((x) => flat(x.slice(3).replace(/━+/g, ""))).filter(Boolean);
+  const title = name + " | 두고클래스 DOOGO CLASS"; // 화면 vod.js 와 같은 제목
+  const desc = LEGAL_DESC[k] + (m ? " 시행일 " + flat(m[1]) + "." : notice ? " " + notice : "");
+  const body = "        <h1>" + esc(name) + "</h1>\n" + (m ? "        <p>시행일: " + esc(flat(m[1])) + "</p>\n" : "") + para(notice) + para(LEGAL_DESC[k]) +
+    (heads.length ? "        <h2>목차</h2><ul>" + heads.slice(0, 80).map((h) => "<li>" + esc(h) + "</li>").join("") + "</ul>\n" : "") +
+    "        <p>" + Object.keys(LEGAL).map((x) => '<a href="' + ORIGIN + "/" + x + '">' + LEGAL[x] + "</a>").join(" · ") + ' · <a href="' + ORIGIN + '/">두고클래스</a></p>\n';
+  return inject(html, { docTitle: title, title, desc, url, body });
+}
+
+/* ---------- 사이트맵 /sitemap.xml ---------- */
+/** 고정 주소 목록(class/sitemap.xml) + 보이는 클래스 · 공개한 강사 소개 · 무료강의 주소 (화면에 보이는 것과 같은 기준) */
+function sitemapXml(base, vod, insDocs, contents) {
+  const urls = [], seen = new Set(String(base).match(/<loc>[^<]*<\/loc>/g) || []);
+  const add = (u, freq, pri) => { const loc = "<loc>" + esc(u) + "</loc>"; if (seen.has(loc)) return; seen.add(loc); urls.push("  <url>\n    " + loc + "\n    <changefreq>" + freq + "</changefreq>\n    <priority>" + pri + "</priority>\n  </url>"); };
+  vod = vod || {};
+  (vod.products || []).filter((p) => shown(vod, p)).forEach((p) => add(ORIGIN + "/vod/p/" + encodeURIComponent(p.id), "weekly", "0.8"));
+  const act = (insDocs || []).filter((x) => x && x.id && x.status === "active" && /^[a-z0-9_-]{1,40}$/i.test(x.id) && contents && contents[x.id] && contents[x.id].brand);
+  if (act.length) {
+    const X = rulesForAll(act, contents);
+    act.forEach((x) => { const L = X.landingOf(x.id); if (L && L.published) add(ORIGIN + "/p/" + encodeURIComponent(x.id), "weekly", "0.7"); });
+    act.forEach((x) => { const F = X.freeOf(x.id); if (F && F.published) add(ORIGIN + "/free/" + encodeURIComponent(x.id), "weekly", "0.7"); });
+  }
+  return urls.length ? String(base).replace(/\s*<\/urlset>\s*$/, "\n" + urls.join("\n") + "\n</urlset>\n") : String(base);
+}
+/** 고정 주소 목록 (class/sitemap.xml — 로컬 개발 서버 · 오류 · 끄기 때도 이것) */
+const sitemapBase = () => fs.readFileSync(path.join(CLASS_DIR, "sitemap.xml"), "utf8");
+async function sitemap() {
+  const base = sitemapBase();
+  if (off("sitemap")) return base;
+  try {
+    const meta = ((await store.getDoc("meta")) || {}).v || {};
+    const rows = await store.listDocs({ prefixes: ["ins:%", "content:%"] });
+    const ins = [], contents = {};
+    rows.forEach((r) => { if (!r || !r.v) return; if (r.k.indexOf("ins:") === 0) ins.push(r.v); else contents[r.k.slice(8)] = r.v; });
+    return sitemapXml(base, meta.vod, ins, contents);
+  } catch (e) {
+    console.error("[sitemap]", e && e.message);
+    return base;
+  }
+}
+
 /** 주소 → 미리보기 정보를 넣은 html (해당 없음 · 꺼짐 · 오류면 받은 html 그대로) */
 async function render(pathname, html) {
   try {
-    const m = /^\/(vod\/p|p|free)\/([^/?#]+)\/?$/.exec(String(pathname || ""));
+    const p = String(pathname || "");
+    // 스토어 홈 · 두잉고 소개 · 약관 (끝 빗금 하나는 같은 주소로)
+    const one = /^\/(doinggo|terms|privacy|refund)?\/?$/.exec(p);
+    if (one) {
+      const k = one[1] || "";
+      if (!k) {
+        if (off("store-home")) return html;
+        const meta = ((await store.getDoc("meta")) || {}).v || {};
+        return storeHome(html, meta.vod) || html;
+      }
+      if (k === "doinggo") return off("doinggo") ? html : doinggoPage(html) || html;
+      return off("legal") ? html : legalPage(html, k) || html;
+    }
+    const m = /^\/(vod\/p|p|free)\/([^/?#]+)\/?$/.exec(p);
     if (!m) return html;
     const kind = m[1] === "vod/p" ? "vod-detail" : m[1] === "p" ? "landing" : "free";
     if (off(kind)) return html;
@@ -194,4 +309,4 @@ async function render(pathname, html) {
   }
 }
 
-module.exports = { render, vodDetail, landingPage, freePage, shown, imageOf, whenTxt, joinUniq, SWITCHES, ORIGIN };
+module.exports = { render, vodDetail, landingPage, freePage, storeHome, doinggoPage, legalPage, legalText, sitemap, sitemapXml, sitemapBase, shown, imageOf, whenTxt, joinUniq, SWITCHES, LEGAL, ORIGIN };

@@ -12,6 +12,8 @@ const REPO = path.join(ROOT, "..");
 const OUT = !process.argv[2] ? path.join(ROOT, ".site") : process.argv[2] === "public" ? path.join(REPO, "public") : null;
 if (!OUT) { console.error("[site] 받는 곳은 비워 두거나 'public' 만 돼요"); process.exit(1); }
 const SKIP = new Set(["api", "scripts", "README.md", "vercel.json", "node_modules"]);
+// Next.js 빌드(public)에서는 사이트맵을 서버가 만들어요 (app/sitemap.xml/route.js — 같은 주소의 파일이 public/ 에 있으면 Next.js 가 막아요)
+if (process.argv[2] === "public") SKIP.add("sitemap.xml");
 
 fs.rmSync(OUT, { recursive: true, force: true });
 let n = 0;

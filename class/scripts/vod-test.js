@@ -1665,12 +1665,87 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     process.env.DC_SSR_OFF = "vod-detail, landing free";
     const offs = [await PM.render("/vod/p/a1", html), await PM.render("/p/moon", html), await PM.render("/free/moon", html)];
     delete process.env.DC_SSR_OFF;
-    ok(offs.every((x) => x === html) && (await PM.render("/vod/c/all", html)) === html && (await PM.render("/vod/p/%E0%A4%A", html)) === html && (await PM.render("/p/../x", html)) === html && (await PM.render("/free/a%2Fb", html)) === html && PM.SWITCHES.join() === "vod-detail,landing,free",
+    ok(offs.every((x) => x === html) && (await PM.render("/vod/c/all", html)) === html && (await PM.render("/vod/p/%E0%A4%A", html)) === html && (await PM.render("/p/../x", html)) === html && (await PM.render("/free/a%2Fb", html)) === html && PM.SWITCHES.slice(0, 3).join() === "vod-detail,landing,free",
       "끄기(DC_SSR_OFF=vod-detail · landing · free) · 다른 주소 · 이상한 주소 → 예전 index.html 그대로");
     const rt = fs.readFileSync(path.join(ROOT, "..", "nextlib/page-route.js"), "utf8"), ds = fs.readFileSync(path.join(ROOT, "scripts/dev-server.js"), "utf8"), nc28 = fs.readFileSync(path.join(ROOT, "..", "next.config.js"), "utf8"), st28 = fs.readFileSync(path.join(ROOT, "scripts/site.js"), "utf8");
     const routes28 = ["vod/p", "p", "free"].map((d) => fs.readFileSync(path.join(ROOT, "..", "app", d, "[id]", "route.js"), "utf8"));
-    ok(/legacyLib\("api\/_lib\/pagemeta\.js"\)\.render\(url\.pathname, tpl\)/.test(rt) && /s-maxage=60/.test(rt) && /fetch\(new URL\("\/index\.html", url\)\)/.test(rt) && routes28.every((r) => /export const GET = pageGET;/.test(r) && /force-dynamic/.test(r)) && /pagemeta"\)\.render\(u\.pathname/.test(ds) && /\(vod\\\/p\|p\|free\)/.test(ds) && /"\/vod\/p\/\*\*": PAGE, "\/p\/\*\*": PAGE, "\/free\/\*\*": PAGE/.test(nc28) && /\.\/public\/og-images\.json/.test(nc28) && /og-images\.json/.test(st28),
+    ok(/legacyLib\("api\/_lib\/pagemeta\.js"\)\.render\(url\.pathname, tpl\)/.test(rt) && /s-maxage=60/.test(rt) && /fetch\(new URL\("\/index\.html", url\)\)/.test(rt) && routes28.every((r) => /export const GET = pageGET;/.test(r) && /force-dynamic/.test(r)) && /pagemeta"\)\.render\(u\.pathname/.test(ds) && /\(vod\\\/p\|p\|free\)/.test(ds) && /"\/": PAGE/.test(nc28) && /\.\/public\/og-images\.json/.test(nc28) && /og-images\.json/.test(st28),
       "배포(Next.js app/vod/p · app/p · app/free) · 로컬 개발 서버 모두 같은 규칙 · 1분 캐시 · 오류면 정적 index.html · 배포 함수에 index.html · 공유 사진 목록");
+  }
+
+  {
+    console.log("29) 스토어 홈 · 두잉고 소개 · 약관 · 사이트맵 (검색 · 공유 — Next.js 전환 3단계)");
+    // 배포 함수에는 약관 글 · 고정 주소 목록도 같이 들어가요 (next.config.js PAGE) — 시험 복사본에도 똑같이
+    fs.cpSync(path.join(ROOT, "legal.js"), path.join(TMP, "class/legal.js")); fs.cpSync(path.join(ROOT, "sitemap.xml"), path.join(TMP, "class/sitemap.xml"));
+    const PM = require(path.join(TMP, "class/api/_lib/pagemeta.js"));
+    const html = require(path.join(ROOT, "scripts/index-abs.js"))(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"));
+    const T0 = html.match(/<title>([^<]*)<\/title>/)[1], noMain = (h) => h.slice(h.indexOf("<body>")).replace(/<div class="seo-static">[\s\S]*?<\/main>/, ""), app0 = noMain(html);
+    const vod = { insOff: ["moon"], products: [
+      { id: "a1", type: "vod", status: "on", title: "AI 굿즈 <만들기>", creator: "유나", iid: "choi" },
+      { id: "m1", type: "vod", status: "on", title: "숨긴 강사 강의", iid: "moon" },
+      { id: "m2", type: "book", status: "on", title: "숨긴 강사 책 (보여요)", iid: "moon", showOff: true },
+      { id: "s1", type: "zz", status: "soon", title: "오픈 예정", iid: "choi" },
+      { id: "x1", type: "vod", status: "off", title: "판매 끝", iid: "choi" }
+    ] };
+    // 스토어 홈: 제목 · 설명 · 대표 주소 · 사진은 그대로, 로봇용 글 끝에 보이는 클래스 목록
+    const hh = PM.storeHome(html, vod);
+    const links29 = (hh.match(/<li><a href="https:\/\/www\.doogoclass\.com\/vod\/p\/([^"]+)">/g) || []).map((x) => x.replace(/.*\/vod\/p\/|">$/g, ""));
+    ok(hh && hh.slice(0, hh.indexOf("<body>")) === html.slice(0, html.indexOf("<body>")) && links29.join() === "a1,m2,s1" && hh.indexOf("AI 굿즈 &lt;만들기&gt;</a> · VOD 클래스 · 유나") >= 0 && hh.indexOf("오픈 예정</a> · VOD 클래스 · 오픈 예정") >= 0 && hh.indexOf(html.slice(html.indexOf('<div class="seo-static">'), html.indexOf("</main>")).trim().slice(0, 400)) >= 0,
+      "스토어 홈 /: <head>(제목 · 설명 · 사진) 그대로 · 예전 안내 글 뒤에 보이는 클래스만(숨긴 강사 · 판매 끝 빼고 · 따로 보이게 한 책 · 오픈 예정) 링크 · 글자 이스케이프");
+    ok(noMain(hh) === app0 && PM.storeHome(html, { products: [vod.products[4]] }) === null && PM.storeHome(html, null) === null,
+      "화면 쪽은 예전과 똑같아요 · 보일 클래스가 없으면 예전 index.html 그대로");
+    // 두잉고 소개: 화면(home.js)과 같은 제목 · 두잉고 소개 배너(1200×630 jpg — 크기 칸 유지) · 대표 주소
+    const hd = PM.doinggoPage(html), dgT = (fs.readFileSync(path.join(ROOT, "home.js"), "utf8").match(/document\.title = "(두잉고 \| [^"]+)"; \/\/ index\.html/) || [])[1];
+    ok(dgT && hd.indexOf("<title>" + dgT + "</title>") >= 0 && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/doinggo" \/>/.test(hd) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doinggo\.jpg"/.test(hd) && /og:image:width" content="1200"/.test(hd) && fs.existsSync(path.join(ROOT, "assets/home/og-doinggo.jpg")) && noMain(hd) === app0 && /<h1>강의는 강사님이, 운영은 두잉고가<\/h1>/.test(hd),
+      "두잉고 소개 /doinggo: 화면과 같은 제목 · 대표 주소 /doinggo(예전엔 / 로 겹침) · 두잉고 소개 배너 · 로봇용 소개 글 · 화면 쪽 그대로");
+    // 약관: 화면(vod.js LEGAL_TABS)과 같은 이름 · 제목 · 주소 · 시행일 · 목차 — 마스터 설정으로 바뀌는 표 · 분석 도구 목록 자리는 넣지 않아요
+    const vj29 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), tabs = (vj29.match(/const LEGAL_TABS = (\[\[[^;]+\]\]);/) || [])[1], L29 = PM.legalText();
+    const tabOk = tabs && JSON.parse(tabs).every((x) => PM.LEGAL[x[0]] === x[1]) && Object.keys(PM.LEGAL).length === 3 && /\[1\] \+ " \| 두고클래스 DOOGO CLASS"\)/.test(vj29);
+    const lp = ["terms", "privacy", "refund"].map((k) => [k, PM.legalPage(html, k, L29)]);
+    ok(tabOk && lp.every(([k, h]) => h && h.indexOf("<title>" + PM.LEGAL[k] + " | 두고클래스 DOOGO CLASS</title>") >= 0 && h.indexOf('<link rel="canonical" href="https://www.doogoclass.com/' + k + '" />') >= 0 && h.indexOf('<meta property="og:url" content="https://www.doogoclass.com/' + k + '" />') >= 0 && noMain(h) === app0),
+      "약관 /terms · /privacy · /refund: 화면과 같은 이름 · 제목 · 탭마다 대표 주소(예전엔 / 로 겹침) · 화면 쪽 그대로");
+    const heads29 = (k) => L29[k][1].split("\n").filter((x) => x.indexOf("## ") === 0).length, body29 = (h) => h.slice(h.indexOf("<main>"), h.indexOf("</main>"));
+    ok(lp.every(([k, h]) => (body29(h).match(/<li>/g) || []).length === heads29(k) && body29(h).indexOf("[[") < 0 && body29(h).indexOf("━") < 0) && /<p>시행일: 2026년 10월 29일<\/p>/.test(lp[2][1]) && /환불정책 — 7일 청약철회/.test(lp[2][1]),
+      "약관 목차 = 글의 소제목 전부(개정 안내 기간에는 지금 글 · 개정 글 순서 그대로) · 시행일 · 바뀌는 표 · 분석 도구 자리(\[\[…\]\])는 없어요");
+    const Lx = { terms: ["이용약관", "## 제1조 (목적)\n이 약관은 …"], privacy: ["개인정보처리방침", ""] };
+    ok(/<h2>목차<\/h2><ul><li>제1조 \(목적\)<\/li><\/ul>/.test(PM.legalPage(html, "terms", Lx)) && PM.legalPage(html, "privacy", Lx) === null && PM.legalPage(html, "refund", Lx) === null && PM.legalPage(html, "oss", L29) === null,
+      "약관 글이 비었거나 없는 탭 · 다른 이름(oss) → 예전 index.html 그대로");
+    // 주소 → 규칙 (끝 빗금 하나 · 아래 주소는 예전 그대로) · 끄기 스위치
+    const r29 = {};
+    for (const u of ["/doinggo", "/doinggo/", "/terms", "/privacy/", "/refund", "/doinggo/guide", "/terms/x", "/vod/legal/terms", "/termsx"]) r29[u] = await PM.render(u, html);
+    ok(r29["/doinggo"] === hd && r29["/doinggo/"] === hd && r29["/terms"] === lp[0][1] && r29["/privacy/"] === lp[1][1] && r29["/refund"] === lp[2][1] && ["/doinggo/guide", "/terms/x", "/vod/legal/terms", "/termsx"].every((u) => r29[u] === html),
+      "주소 → 규칙: /doinggo · /terms · /privacy · /refund (끝 빗금 하나 같은 주소) · 사용법 영상 /doinggo/guide · 다른 주소는 예전 그대로");
+    process.env.DC_SSR_OFF = "store-home doinggo,legal";
+    const off29 = [await PM.render("/", html), await PM.render("/doinggo", html), await PM.render("/terms", html)];
+    delete process.env.DC_SSR_OFF;
+    const home29 = await PM.render("/", html);
+    ok(off29.every((x) => x === html) && typeof home29 === "string" && home29.slice(0, home29.indexOf("<body>")) === html.slice(0, html.indexOf("<body>")) && PM.SWITCHES.join() === "vod-detail,landing,free,store-home,doinggo,legal,sitemap",
+      "끄기(DC_SSR_OFF=store-home · doinggo · legal) → 예전 index.html 그대로 · 스토어 홈 / 는 DB 에서 읽어도 <head> 는 그대로");
+    // 사이트맵: 고정 주소 + 보이는 클래스 · 공개한 강사 소개 · 무료강의 (화면과 같은 기준)
+    const SD29 = require(path.join(TMP, "class/api/_lib/seed.js")).seedDocs(), base29 = PM.sitemapBase();
+    const ins29 = Object.keys(SD29).filter((k) => k.indexOf("ins:") === 0).map((k) => SD29[k]), cs29 = {};
+    Object.keys(SD29).filter((k) => k.indexOf("content:") === 0).forEach((k) => { cs29[k.slice(8)] = JSON.parse(JSON.stringify(SD29[k])); });
+    const one29 = ins29[0].id, two29 = ins29[1].id;
+    cs29[one29].landing = Object.assign({}, cs29[one29].landing, { published: true }); cs29[one29].freeClass = Object.assign({}, cs29[one29].freeClass, { published: false });
+    cs29[two29].landing = Object.assign({}, cs29[two29].landing, { published: true });
+    const ins29b = ins29.map((x) => (x.id === two29 ? Object.assign({}, x, { status: "paused" }) : x)).concat([{ id: "bad/id", status: "active" }, { id: "nocontent", status: "active" }]);
+    const sm = PM.sitemapXml(base29, vod, ins29b, cs29), locs = (sm.match(/<loc>[^<]*<\/loc>/g) || []).map((x) => x.slice(5, -6));
+    const baseLocs = (base29.match(/<loc>[^<]*<\/loc>/g) || []).map((x) => x.slice(5, -6));
+    ok(baseLocs.length >= 5 && baseLocs.every((u) => locs.indexOf(u) >= 0) && ["a1", "m2", "s1"].every((id) => locs.indexOf("https://www.doogoclass.com/vod/p/" + id) >= 0) && ["m1", "x1"].every((id) => locs.indexOf("https://www.doogoclass.com/vod/p/" + id) < 0) && new Set(locs).size === locs.length && /^<\?xml[\s\S]*<\/urlset>\n$/.test(sm),
+      "사이트맵: 고정 주소 그대로 + 보이는 클래스만(숨긴 강사 · 판매 끝 빼고) · 같은 주소 한 번 · 올바른 모양");
+    ok(locs.indexOf("https://www.doogoclass.com/p/" + one29) >= 0 && locs.indexOf("https://www.doogoclass.com/free/" + one29) < 0 && locs.indexOf("https://www.doogoclass.com/p/" + two29) < 0 && !locs.some((u) => /bad|nocontent/.test(u)) && PM.sitemapXml(base29, null, [], {}) === base29,
+      "사이트맵: 공개한 강사 소개만 · 비공개 무료강의 · 이용 중지 강사 · 이상한 아이디 · 내용 없는 강사는 빼요 · 더할 게 없으면 고정 목록 그대로");
+    process.env.DC_SSR_OFF = "sitemap";
+    const smOff = await PM.sitemap();
+    delete process.env.DC_SSR_OFF;
+    const smDb = await PM.sitemap();
+    ok(smOff === base29 && smDb.indexOf(base29.replace(/\s*<\/urlset>\s*$/, "")) === 0 && /<\/urlset>\n?$/.test(smDb),
+      "사이트맵 끄기(DC_SSR_OFF=sitemap) → 고정 목록 · DB 에서 읽어도 고정 주소가 맨 앞에 그대로");
+    // 배포: app/ 주소 파일 · 함수에 들어가는 파일 · 빌드 때 public/ 으로 사이트맵을 복사하지 않기 · 로컬 개발 서버도 같은 규칙
+    const rd = (f) => fs.readFileSync(path.join(ROOT, "..", f), "utf8");
+    const pages29 = ["app/route.js", "app/doinggo/route.js", "app/terms/route.js", "app/privacy/route.js", "app/refund/route.js"].map(rd), smr = rd("app/sitemap.xml/route.js"), rt29 = rd("nextlib/page-route.js"), nc29 = rd("next.config.js"), st29 = fs.readFileSync(path.join(ROOT, "scripts/site.js"), "utf8"), ds29 = fs.readFileSync(path.join(ROOT, "scripts/dev-server.js"), "utf8");
+    ok(pages29.every((r) => /export const GET = pageGET;/.test(r) && /force-dynamic/.test(r)) && /export const GET = sitemapGET;/.test(smr) && /legacyLib\("api\/_lib\/pagemeta\.js"\)\.sitemap\(\)/.test(rt29) && /s-maxage=3600/.test(rt29) && /"class\/legal\.js", "class\/sitemap\.xml"/.test(nc29) && /"\/": PAGE/.test(nc29) && /SKIP\.add\("sitemap\.xml"\)/.test(st29) && /\(doinggo\|terms\|privacy\|refund\)\?\\\/\?\$/.test(ds29) && /pagemeta"\)\.sitemap\(\)/.test(ds29),
+      "배포(app/route.js 스토어 홈 · app/doinggo · 약관 3개 · app/sitemap.xml) · 함수에 약관 글 · 고정 주소 목록 · public/ 에는 사이트맵 복사 안 함 · 로컬 개발 서버도 같은 규칙");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
