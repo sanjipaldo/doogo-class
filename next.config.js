@@ -16,8 +16,8 @@ const SECURITY = [
   { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" }
 ];
 
-// 예전 vercel.json functions.includeFiles — 서버 코드가 파일 이름을 만들어서 읽는 것 (처음 데이터 · AI 조교 자료)
-const INCLUDE = ["class/data.js", "class/db.js", "class/coach-perms.js", "class/shared/*.js", "class/api/_lib/tutor/*.md", "class/api/_lib/tutor/*.json", "class/api/_lib/tutor/*/*.md", "class/api/_lib/tutor/*/*/*.md"];
+// 서버 코드가 파일 이름을 만들어서 읽는 것 (처음 데이터 data.js · AI 조교 자료) + 공용 규칙 — 화면 파일 db.js 는 서버가 이제 쓰지 않아요 (2단계)
+const INCLUDE = ["class/data.js", "class/coach-perms.js", "class/shared/*.js", "class/api/_lib/tutor/*.md", "class/api/_lib/tutor/*.json", "class/api/_lib/tutor/*/*.md", "class/api/_lib/tutor/*/*/*.md"];
 
 /** 서버 코드(class/api/*.js)가 require 하는 파일 — 예전 Vercel 서버 함수와 같은 방법(nft)으로 찾아요 */
 async function traceApi() {

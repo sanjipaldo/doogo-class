@@ -1443,7 +1443,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(OO.OPS.findIndex((x) => x.id === "2026-11-03-moon-cohort-dates") > OO.OPS.findIndex((x) => x.id === "2026-10-31-moon-4th-cohort"), "일회성(문대표 기수): 4기 작업 뒤에 돌아요");
     { // 주차별 강의일 바꾸기 (db.js)
       const vm2 = require("vm"), ls2 = new Map(), sb2 = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls2.has(k) ? ls2.get(k) : null), setItem: (k, v) => ls2.set(k, String(v)), removeItem: (k) => ls2.delete(k), key: () => null, length: 0 } };
-      sb2.window = sb2; vm2.createContext(sb2); ["shared/dates.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm2.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb2, { filename: f })); sb2.DB.load();
+      sb2.window = sb2; vm2.createContext(sb2); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm2.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb2, { filename: f })); sb2.DB.load();
       const D2 = sb2.DB, g2 = { id: "x2", instructorId: "moon", startDate: "2026-08-29", classDow: 6, classDates: { 5: "2026-09-23" } }, g0 = Object.assign({}, g2, { classDates: undefined });
       ok(D2.classDate(g2, 4) === "2026-09-19" && D2.classDate(g2, 5) === "2026-09-23" && D2.baseClassDate(g2, 5) === "2026-09-26" && D2.weekOpen(g2, 5) === "2026-09-23" && D2.weekDeadline(g2, 5) === "2026-10-02" && D2.cohortEnd(g2) === "2026-10-02" && D2.classDate(g0, 5) === "2026-09-26" && D2.weekOpen(g0, 5) === "2026-09-26",
         "주차별 강의일: 5주차만 9/23(수) — 그 날 주차가 열리고 과제 마감은 그대로 · 바꾸지 않은 기수는 예전처럼");
@@ -1463,7 +1463,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/DB_ROLE === "staging"/.test(dbb) && /__staging-db__/.test(dbb) && /process\.exit\(1\)/.test(dbb), "빌드: 시험용 미리보기(DB_ROLE=staging)는 시험용 표시가 있는 DB에서만 바꾸고, 표시 없는 DB면 멈춰요");
     // 문대표 전용 색(뉴질랜드)은 강사센터 · 코치센터에도
     const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
-    ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>(\s*<script src="shared\/[a-z-]+\.js"><\/script>)*\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),
+    ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc + fs.readFileSync(path.join(ROOT, "shared/data-rules.js"), "utf8")) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>(\s*<script src="shared\/[a-z-]+\.js"><\/script>)*\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),
       "문대표 강사센터 · 코치센터: 강의실 전용 색(뉴질랜드 네이비)으로 · 화면이 권한표(coach-perms.js)를 db.js 보다 먼저 읽어요");
     ok(deployIncludes().indexOf("coach-perms.js") >= 0, "배포 함수에 권한표(coach-perms.js)가 실려요");
     useJar({});
@@ -1473,7 +1473,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const AC = require(path.join(TMP, "class/api/_lib/access.js")), st23 = require(path.join(TMP, "class/api/_lib/store.js"));
     // 화면(db.js): 열린 영역 · LIVE 강사 목록
     const vm = require("vm"), ls = new Map(), sb = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k), key: () => null, length: 0 } };
-    sb.window = sb; vm.createContext(sb); ["shared/dates.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb, { filename: f })); sb.DB.load();
+    sb.window = sb; vm.createContext(sb); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb, { filename: f })); sb.DB.load();
     const T = sb.DB.tracksOf;
     ok(JSON.stringify(T({})) === '{"live":true,"vod":true}' && JSON.stringify(T({ tracks: { live: false, vod: true } })) === '{"live":false,"vod":true}' && JSON.stringify(T({ tracks: { live: true, vod: false } })) === '{"live":true,"vod":false}' && JSON.stringify(T(null)) === '{"live":true,"vod":true}',
       "열린 영역: 예전 강사(칸 없음)는 둘 다 · VOD 강사는 DOOGO CLASS만 · LIVE 강사는 두잉고만");
@@ -1539,11 +1539,11 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const vm24 = require("vm"), sbx = {}; sbx.window = sbx; vm24.createContext(sbx); ["shared/dates.js", "shared/schedule.js"].forEach((f) => vm24.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sbx, { filename: f }));
     ok(sbx.DCS && sbx.DCS.schedule && sbx.DCS.schedule.classDate(c2, 5) === "2026-09-23" && sbx.DCS.dates.addDays("2026-12-31", 1) === "2027-01-01", "브라우저(<script>)로 읽어도 같은 계산 (window.DCS)");
     const dbsrc24 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), idx24 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-    ok(!/const weekOpen = \(co, no\) =>|function baseClassDate|const dateOver =|function parseDate\(/.test(dbsrc24) && /SCH\.cohortEnd\(co, cohortWeeks\(co\)\)/.test(dbsrc24) && /<script src="shared\/dates\.js"><\/script>\s*<script src="shared\/schedule\.js"><\/script>(\s*<script src="shared\/[a-z-]+\.js"><\/script>)*\s*<script src="db\.js">/.test(idx24),
+    ok(!/const weekOpen = \(co, no\) =>|function baseClassDate|const dateOver =|function parseDate\(/.test(dbsrc24) && /SCH\.cohortEnd\(co, cohortWeeks\(co\)\)/.test(dbsrc24) && /<script src="shared\/dates\.js"><\/script>(\s*<script src="shared\/[a-z-]+\.js"><\/script>)*\s*<script src="db\.js">/.test(idx24) && idx24.indexOf("shared/schedule.js") < idx24.indexOf('src="db.js"'),
       "db.js 는 일정 계산을 공용 모듈에 맡기고 · 화면은 공용 모듈을 db.js 보다 먼저 읽어요");
     const sd24 = require(path.join(TMP, "class/api/_lib/seed.js"));
-    ok(sd24.CLIENT_FILES.indexOf("shared/schedule.js") >= 0 && sd24.CLIENT_FILES.indexOf("shared/schedule.js") < sd24.CLIENT_FILES.indexOf("db.js") && deployIncludes().indexOf("shared/*.js") >= 0 && Object.keys(sd24.seedDocs()).length > 10,
-      "서버(처음 데이터 · 정리)도 공용 모듈을 먼저 읽고 · 배포 함수에 shared/ 가 실려요");
+    ok(sd24.CLIENT_FILES.join() === "data.js" && deployIncludes().indexOf("shared/*.js") >= 0 && Object.keys(sd24.seedDocs()).length > 10,
+      "서버(처음 데이터 · 정리)는 처음 데이터 파일(data.js)만 읽고 규칙은 공용 모듈 · 배포 함수에 shared/ 가 실려요");
   }
 
   {
@@ -1594,6 +1594,26 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const vs26 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), as26 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ms26 = fs.readFileSync(path.join(ROOT, "api/_lib/media.js"), "utf8"), ix26 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
     ok(/const ST = window\.DCS\.settle;/.test(vs26) && !/Math\.floor\(insBase\(o\) \* shareVal/.test(vs26) && /window\.DCS\.settle\.payout\(net, biz, mode, base0\)/.test(as26) && !/Math\.floor\(sup \* 0\.033/.test(as26) && /require\("\.\.\/\.\.\/shared\/settle"\)/.test(ms26) && /<script src="shared\/settle\.js"><\/script>[\s\S]*<script src="vod\.js">/.test(ix26),
       "정산 규칙은 한 곳(shared/settle.js): 화면 · 강사 정산 명세서 · 서버 RS 모두 그 모듈을 써요");
+  }
+
+  {
+    console.log("27) 공용 모듈: 처음 데이터 · 데이터 정리 (서버가 화면 파일 db.js 를 돌리지 않아요 · Next.js 전환 2단계)");
+    const DR = require(path.join(ROOT, "shared/data-rules.js")), sd27 = require(path.join(TMP, "class/api/_lib/seed.js"));
+    const seedSrc = fs.readFileSync(path.join(ROOT, "api/_lib/seed.js"), "utf8"), dbSrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), idx27 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    ok(typeof DR.make === "function" && typeof window === "undefined" && !/"db\.js"/.test(seedSrc) && /require\("\.\.\/\.\.\/shared\/data-rules"\)/.test(seedSrc) && deployIncludes().indexOf("db.js") < 0,
+      "서버는 db.js 없이 공용 모듈(require)로 처음 데이터 · 정리 — 배포 함수에 db.js 를 싣지 않아요");
+    ok(!/function loadFixups\(\)|const THEMES = \{|function template\(brand\)|function menuConfig\(insId\)/.test(dbSrc) && /window\.DCS\.data\.make\(/.test(dbSrc) && /return DR\.loadLocal\(store\.get\(KEY_DB, null\)\)/.test(dbSrc) && /<script src="shared\/dates\.js"><\/script>\s*<script src="shared\/data-rules\.js"><\/script>[\s\S]*<script src="db\.js">/.test(idx27),
+      "db.js 는 규칙을 갖지 않고 공용 모듈을 써요 (불러오기 순서도 공용 loadLocal) · 화면은 db.js 보다 먼저 읽어요");
+    // 처음 데이터: 강사 · 콘텐츠 · 기수 · 수강생 · 진도 문서 — 정리를 돌려도 바뀌는 것 없음
+    const sd = sd27.seedDocs(), docs = Object.keys(sd).map((k) => ({ k, v: sd[k] }));
+    ok(sd.meta && sd.meta.version === 3 && sd["ins:moon"] && sd["content:moon"] && Object.keys(sd).some((k) => /^stu:moon:/.test(k)) && Object.keys(sd).some((k) => /^prog:/.test(k)) && !Object.keys(sd27.migrateDocs(docs)).length,
+      "처음 데이터 → 정리해도 바뀌는 것 없음", Object.keys(sd).slice(0, 8));
+    // 한 번만 하는 정리: 표시(flag)가 없으면 다시 돌아 표시를 남겨요 · 없어진 색은 라임으로
+    const d2 = JSON.parse(JSON.stringify(docs)); const m2 = d2.find((x) => x.k === "meta"); delete m2.v.flags.nzTheme; const cm = d2.find((x) => x.k === "content:moon"); cm.v.brand.theme = "clickhouse";
+    const ch = sd27.migrateDocs(d2);
+    ok(ch.meta && ch.meta.flags.nzTheme === true && ch["content:moon"] === undefined, "표시가 빠진 정리는 다시 돌아 표시를 남기고 · 이미 있는 값(색)은 바꾸지 않아요 (빠진 칸만 채움)", Object.keys(ch));
+    let threw = ""; try { sd27.migrateDocs([{ k: "meta", v: { version: 2 } }]); } catch (e) { threw = e.message; }
+    ok(/데이터 형식이 예상과 달라/.test(threw), "데이터 모양이 다르면 정리를 건너뛰어요 (예전과 같음)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

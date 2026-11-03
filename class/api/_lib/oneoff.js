@@ -179,7 +179,7 @@ function billingVatIncluded(get, keys) {
  * 2) AI봇 이름이 예전 기본값('24시 OOO AI봇')이면 'OOO AI 조교'로
  * 3) 공지 · FAQ · 시작 가이드 · 강의 소개 페이지의 예전 기본 문구 가운데 메뉴 이름이 들어간 문장만 새 이름으로 (문장이 그대로 남아 있을 때만)
  * 4) 홈 ‘빠른 이동’ 기본 4칸 이름 (예전 기본 이름일 때만)
- * (db.js 의 RENAME_PHRASES · QL_RENAME · OLD_MENU_LABELS 와 같은 목록) */
+ * (shared/data-rules.js 의 RENAME_PHRASES · QL_RENAME · OLD_MENU_LABELS 와 같은 목록 — 예전 db.js) */
 const OLD_MENU_LABELS = { home: "홈", curriculum: "커리큘럼", missions: "과제 제출하기", schedule: "강의 일정", notices: "공지사항", qna: "Q&A", docs: "서류 준비 가이드", bot: "AI봇", library: "유료강의 자료실", motivation: "동기부여", channels: "1:1 소통채널", partners: "제휴채널", certificate: "수료증" };
 const RENAME_PHRASES = [
   [/다시보기는 커리큘럼 메뉴에 올라갑니다/g, "다시보기는 ‘라이브 다시보기’ 메뉴에 올라갑니다"],

@@ -294,14 +294,16 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 | 파일 | 규칙 | 쓰는 곳 |
 | --- | --- | --- |
 | `shared/dates.js` | 날짜 글자("YYYY-MM-DD") 더하기 · 빼기 | db.js · schedule.js |
-| `shared/schedule.js` | 주차 강의일 · 주차 열림 · 과제 마감 · 기수 끝 · 상태 · 이번 주차 · ‘N주차 무슨 요일’ 일정 | db.js (`DB.classDate` · `DB.weekOpen` · `DB.currentWeek` …) · 서버(처음 데이터 · 정리) |
+| `shared/data-rules.js` | 강사별 화면 색 · 수강생 메뉴(LIVE · VOD) · 새 강사 기본 콘텐츠 · 자주 찾는 페이지 기본 목록 · 과제 종류 · **처음 데이터 · 빠진 기본값 채우기(한 번만 하는 정리 포함) · 불러오기 순서** | db.js (`DB.THEMES` · `DB.template` · `DB.menuConfig` · `DB.load` …) · 서버 `api/_lib/seed.js` (처음 데이터 · 배포 때 기본값 채우기) |
+| `shared/schedule.js` | 주차 강의일 · 주차 열림 · 과제 마감 · 기수 끝 · 상태 · 이번 주차 · ‘N주차 무슨 요일’ 일정 | db.js (`DB.classDate` · `DB.weekOpen` · `DB.currentWeek` …) |
 | `shared/price.js` | 판매가 · 할인 마감 · 무료 LIVE 뒤 얼리버드 · 수강권(6 · 12개월) · 코칭권 · TEA TIME · 재수강 할인 · 쿠폰 · 종이책 배송비 | vod.js (화면 가격) · `api/_lib/vodprice.js` (결제 금액) |
 | `shared/settle.js` | PG 수수료 · 온드미디어 RS(규칙 · 비율 · 코드) · 강사 정산액 · 환불 비율 · 명세서 지급액(사업자 · 개인 3.3%) | vod.js · admin.js (강사 정산 명세서) · `api/_lib/media.js` |
 
 - 시간대는 쓰는 쪽이 넘겨요: 화면은 이 기기 시간대(예전 그대로), 서버(결제 금액)는 한국 시간 — `price.make(ctx)`.
-- 옮길 때 예전 코드와 결과를 비교했어요: 일정 362,880건 · 가격 서버 20,602건 · 화면 22,543건 · 정산 120,000건 모두 같음 (한국 · 뉴질랜드 시간대). 화면 변화 없음.
-- 순서: `index.html` 에서 `shared/*.js` 를 `db.js` · `vod.js` 보다 먼저 읽어요. 서버가 돌리는 화면 파일 목록은 `api/_lib/seed.js` `CLIENT_FILES`, 배포 함수에 싣는 목록은 `next.config.js` `INCLUDE`(`class/shared/*.js`).
-- 남은 것(2단계 다음 묶음): 처음 데이터 · 데이터 정리(`db.js` load · `data.js`)를 서버가 화면 파일을 돌리지 않고 쓰도록.
+- 옮길 때 예전 코드와 결과를 비교했어요: 일정 362,880건 · 가격 서버 20,602건 · 화면 22,543건 · 정산 120,000건 모두 같음 (한국 · 뉴질랜드 시간대) · 처음 데이터 · 정리는 서버 29가지 데이터 상태(시험용 DB 실제 문서 포함) · 화면 저장소 29가지 × 브라우저/서버 모두 같음. 화면 변화 없음.
+- **서버는 화면 파일 db.js 를 더 이상 돌리지 않아요.** 처음 데이터 파일(data.js)만 읽고 규칙은 `shared/data-rules.js` 를 `require` 해요 (배포 함수에도 db.js 를 싣지 않아요). 규칙 코드는 db.js 에 있던 그대로 옮겼어요 — 지금 데이터 · 저장 · 저장소는 쓰는 쪽이 `make(ctx)` 로 넘겨요.
+- 순서: `index.html` 에서 `shared/*.js` 를 `db.js` · `vod.js` 보다 먼저 읽어요 (`data-rules.js` 는 `dates.js` 다음). 서버가 읽는 화면 쪽 파일은 `api/_lib/seed.js` `CLIENT_FILES`(data.js 하나), 배포 함수에 싣는 목록은 `next.config.js` `INCLUDE`(`class/shared/*.js`).
+- 데이터 정리를 고칠 때: 새 기본값 · 한 번만 하는 정리는 `shared/data-rules.js` loadFixups 에 (브라우저 · 서버 모두 적용), 운영 데이터를 바꾸는 요청은 지금처럼 `api/_lib/oneoff.js` 일회성 작업으로.
 
 ## Next.js 틀 (Next.js 전환 1단계 · 2026-11-03)
 

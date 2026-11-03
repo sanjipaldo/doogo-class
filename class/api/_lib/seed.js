@@ -1,32 +1,34 @@
-/* 처음 데이터와 데이터 정리(마이그레이션) — 브라우저와 똑같은 data.js · db.js 를 그대로 돌려서 만든다.
- * (db.js 의 load() 가 하는 기본값 채우기·정리를 서버에서도 그대로 쓰기 위해) */
+/* 처음 데이터와 데이터 정리(마이그레이션) — 화면 db.js 와 같은 규칙(공용 모듈 shared/data-rules.js)으로 만든다.
+ * (Next.js 전환 2단계 · 2026-11: 예전에는 화면 파일 db.js 를 서버에서 통째로 돌렸어요. 이제 규칙만 공용 모듈에 두고 서버는 그것만 써요.
+ *  처음 데이터 data.js 는 데이터 파일이라 그대로 읽어요) */
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
+const DR = require("../../shared/data-rules");
 
 const ROOT = path.join(__dirname, "..", "..");
 const COLLS = ["instructors", "content", "cohorts", "students"];
-// 서버에서 돌리는 화면 파일 (이 순서대로) — db.js 가 쓰는 공용 모듈(shared/ · Next.js 전환 2단계)을 먼저
-const CLIENT_FILES = ["shared/dates.js", "shared/schedule.js", "data.js", "db.js"];
+const KEY_DB = "moonclass:db:v2", KEY_PROGRESS = DR.KEY_PROGRESS;
+// 서버가 읽는 화면 쪽 파일: 처음 데이터(data.js)만 — 규칙은 공용 모듈 (배포 함수에 함께 싣는 목록은 next.config.js INCLUDE)
+const CLIENT_FILES = ["data.js"];
 
-/** db.js 를 가짜 localStorage 위에서 실행 → { DB, ls } */
-function runDbJs(initial) {
+/** 처음 데이터 (data.js 의 CLASS_SEED) — 부를 때마다 새로 읽어요 (규칙이 처음 데이터를 고쳐 써도 다음에 영향 없게) */
+function loadSeed() {
+  const sb = {}; sb.window = sb;
+  vm.runInNewContext(fs.readFileSync(path.join(ROOT, "data.js"), "utf8"), sb, { filename: "data.js" });
+  return sb.CLASS_SEED;
+}
+/** 화면 db.js 의 load() 와 같은 순서로 규칙을 돌려요 (서버 데이터 모드가 아닌 · 브라우저가 아닌 곳) — 저장소는 메모리 → { data, ls } */
+function runRules(initial) {
   const ls = new Map(Object.entries(initial || {}));
-  const localStorage = {
-    getItem: (k) => (ls.has(k) ? ls.get(k) : null),
-    setItem: (k, v) => { ls.set(k, String(v)); },
-    removeItem: (k) => { ls.delete(k); },
-    key: (i) => Array.from(ls.keys())[i] || null,
-    get length() { return ls.size; }
-  };
-  const sandbox = { console, Date, Math, JSON, Intl, localStorage };
-  sandbox.window = sandbox;
-  vm.createContext(sandbox);
-  CLIENT_FILES.forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sandbox, { filename: f }));
-  // vm 안의 Object.keys(localStorage) 는 가짜 객체의 키를 못 보므로 store.keys 를 바꿔 준다
-  sandbox.DB.store.keys = () => Array.from(ls.keys());
-  return { DB: sandbox.DB, ls };
+  const get = (k, fb) => { try { const v = ls.has(k) ? ls.get(k) : null; return v ? JSON.parse(v) : fb; } catch (e) { return fb; } };
+  const set = (k, v) => { try { ls.set(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+  const seed = loadSeed();
+  let db = null;
+  const X = DR.make({ db: () => db, setDb: (v) => { db = v; }, seed: () => seed, save: () => set(KEY_DB, db), remote: () => false, storeGet: get, storeSet: set });
+  X.loadLocal(get(KEY_DB, null));
+  return { data: db, ls };
 }
 
 /** 데이터 한 덩어리 → 문서들 { 키: 값 } */
@@ -64,11 +66,10 @@ function assemble(docs) {
 
 /** 처음 상태 (체험 데이터) */
 function seedDocs() {
-  const { DB, ls } = runDbJs({});
-  DB.load();
+  const { data, ls } = runRules({});
   const progress = {};
-  ls.forEach((v, k) => { if (k.indexOf("moonclass:progress:") === 0) progress[k.slice(19)] = JSON.parse(v); });
-  return split(JSON.parse(JSON.stringify(DB.data)), progress);
+  ls.forEach((v, k) => { if (k.indexOf(KEY_PROGRESS) === 0) progress[k.slice(KEY_PROGRESS.length)] = JSON.parse(v); });
+  return split(JSON.parse(JSON.stringify(data)), progress);
 }
 
 /** 빠진 칸만 채운다 — 이미 있는 값은 절대 바꾸거나 지우지 않는다.
@@ -95,13 +96,12 @@ function fillMissing(before, after) {
 function migrateDocs(docs) {
   const { db, progress } = assemble(docs);
   if (db.version !== 3 || !db.instructors.length) throw new Error("데이터 형식이 예상과 달라 정리를 건너뜁니다");
-  const init = { "moonclass:db:v2": JSON.stringify(db) };
-  Object.keys(progress).forEach((sid) => { init["moonclass:progress:" + sid] = JSON.stringify(progress[sid]); });
-  const { DB, ls } = runDbJs(init);
-  DB.load();
-  const after = JSON.parse(JSON.stringify(DB.data));
+  const init = { [KEY_DB]: JSON.stringify(db) };
+  Object.keys(progress).forEach((sid) => { init[KEY_PROGRESS + sid] = JSON.stringify(progress[sid]); });
+  const { data, ls } = runRules(init);
+  const after = JSON.parse(JSON.stringify(data));
   const prog = {};
-  ls.forEach((v, k) => { if (k.indexOf("moonclass:progress:") === 0) prog[k.slice(19)] = JSON.parse(v); });
+  ls.forEach((v, k) => { if (k.indexOf(KEY_PROGRESS) === 0) prog[k.slice(KEY_PROGRESS.length)] = JSON.parse(v); });
   const next = split(after, prog);
   const changed = {};
   docs.forEach(({ k, v }) => {
