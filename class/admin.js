@@ -588,7 +588,8 @@
     return '<div class="a-weeks">' + c.weeks.map((w) => {
       const open = DB.weekOpen(co, w.no), dl = DB.weekDeadline(co, w.no);
       const st = t > dl ? "past" : t >= open ? "now" : "next";
-      return '<div class="a-week ' + st + '"><b>' + w.no + "주차</b><span>" + fmtMD(open) + " ~ " + fmtMD(dl) + "</span><small>" + esc(w.title) + "</small></div>";
+      const moved = co.classDates && co.classDates[w.no] ? '<em class="a-week-mv">강의 ' + esc(mdDow(DB.classDate(co, w.no))) + "</em>" : "";
+      return '<div class="a-week ' + st + '"><b>' + w.no + "주차" + moved + "</b><span>" + fmtMD(open) + " ~ " + fmtMD(dl) + "</span><small>" + esc(w.title) + "</small></div>";
     }).join("") + "</div>";
   }
   function progressTable(rows, c) {
@@ -762,6 +763,7 @@
           '<div class="a-form-row"><div class="a-field"><label for="pl-dow">매주 강의 요일</label><select class="a-input" id="pl-dow" name="pl-dow"><option value="">1주차 강의일과 같은 요일</option>' + DOW.map((d, i) => '<option value="' + i + '"' + (co.classDow !== undefined && co.classDow !== null && co.classDow !== "" && Number(co.classDow) === i ? " selected" : "") + ">매주 " + d + "요일</option>").join("") + "</select></div>" +
             '<div class="a-field"><label for="pl-time">강의 시간</label><input class="a-input" id="pl-time" name="pl-time" type="time" value="' + esc(co.classTime || brand.liveTime || "") + '"></div></div>' +
           '<p class="a-muted p-small pl-hint">1주차 강의일부터 일주일씩 주차가 열리고, 진행 주차는 커리큘럼 앞에서부터 그만큼만 진행해요. 매주 강의 요일을 고르면 그 주의 그 요일이 강의일이에요.</p>' +
+          '<details class="pl-wds"' + (co.classDates && Object.keys(co.classDates).length ? " open" : "") + '><summary>' + icon("calendar", "xs") + ' 주차별 강의일 바꾸기 <small>그 주차만 다른 날(예: 5주차는 수요일)에 강의할 때 · 비우면 매주 강의 요일대로</small></summary><div id="pl-wds">' + planWdHtml(iid, planDraftOf(co, [])) + "</div></details>" +
           '<div class="a-field"><label for="pl-url">강의 입장 링크 <small>(줌 등 · 비우면 기본 정보의 링크)</small></label><input class="a-input" id="pl-url" name="pl-url" type="url" value="' + esc(co.classUrl || "") + '" placeholder="https://zoom.us/j/…"></div>' +
           '<label class="a-check"><input type="checkbox" name="pl-rec"' + (co.recruiting ? " checked" : "") + "><span>수강생 로그인 화면에서 이 기수로 수강 신청 받기</span></label>" +
           '<h3 class="pl-h">' + icon("calendar", "sm") + " 이 기수 특별 일정 <small>무료 강의 · 오프라인 강의 · 챌린지 · 라이브 등</small></h3>" +
@@ -776,17 +778,29 @@
     const cu = DB.curriculum(iid, curId), max = cu ? cu.weeks.length : 0, v = Number(sel) > 0 && Number(sel) < max ? Number(sel) : max;
     return Array.from({ length: max }, (_, i) => i + 1).map((k) => '<option value="' + k + '"' + (k === v ? " selected" : "") + ">" + k + "주" + (k === max ? " (전체)" : "") + "</option>").join("");
   }
-  const planDraftOf = (co, evs) => ({ co: { id: co.id, name: co.name, startDate: co.startDate, curriculumId: co.curriculumId || "main", weeks: Number(co.weeks) || 0, classDow: co.classDow == null ? "" : String(co.classDow), classTime: co.classTime || "", classUrl: co.classUrl || "", recruiting: !!co.recruiting }, evs: (evs || []).map((e) => ({ id: e.id, type: e.type, date: e.date, time: e.time || "", title: e.title || "", place: e.url || e.place || "" })) });
+  /** 설계 창 값으로 만든 임시 기수 (미리보기 · 주차별 강의일 계산용) */
+  const planFake = (iid, c, withDates) => ({ id: "_plan", instructorId: iid, startDate: c.startDate, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime, classDates: withDates === false ? undefined : c.classDates });
+  /** 주차별 강의일 칸 (2주차부터 — 1주차는 ‘1주차 강의일’) */
+  function planWdHtml(iid, d) {
+    const c = d.co;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(c.startDate || "")) return '<p class="a-muted p-small">1주차 강의일을 먼저 골라 주세요.</p>';
+    const base = planFake(iid, c, false), wk = DB.weeksOf(base).filter((w) => w.no > 1);
+    if (!wk.length) return '<p class="a-muted p-small">2주차부터 바꿀 수 있어요.</p>';
+    return '<div class="pl-wd-list">' + wk.map((w) => { const v = (c.classDates || {})[w.no] || ""; return '<label class="pl-wd"><span><b>' + w.no + "주차</b><small>기본 " + mdDow(DB.baseClassDate(base, w.no)) + '</small></span><input class="a-input a-sm" type="date" name="pl-wd-' + w.no + '" value="' + esc(v) + '" aria-label="' + w.no + '주차 강의일"></label>'; }).join("") + "</div>";
+  }
+  const planWdSig = (c) => [c.startDate, c.curriculumId, c.weeks, c.classDow].join("|");
+  const planDraftOf = (co, evs) => ({ co: { id: co.id, name: co.name, startDate: co.startDate, curriculumId: co.curriculumId || "main", weeks: Number(co.weeks) || 0, classDow: co.classDow == null ? "" : String(co.classDow), classTime: co.classTime || "", classUrl: co.classUrl || "", recruiting: !!co.recruiting, classDates: Object.assign({}, co.classDates || {}) }, evs: (evs || []).map((e) => ({ id: e.id, type: e.type, date: e.date, time: e.time || "", title: e.title || "", place: e.url || e.place || "" })) });
   function planRead(f) {
     const g = (n) => { const x = f.elements.namedItem(n); return x ? String(x.value || "").trim() : ""; };
-    return { co: { id: f.dataset.id, name: g("pl-name"), startDate: g("pl-start"), curriculumId: g("pl-cur") || "main", weeks: Number(g("pl-weeks")) || 0, classDow: g("pl-dow"), classTime: g("pl-time"), classUrl: g("pl-url"), recruiting: !!(f.elements.namedItem("pl-rec") || {}).checked },
+    const cd = {}; Array.from(f.querySelectorAll('[name^="pl-wd-"]')).forEach((x) => { const v = String(x.value || "").trim(); if (v) cd[x.name.slice(6)] = v; });
+    return { co: { id: f.dataset.id, name: g("pl-name"), startDate: g("pl-start"), curriculumId: g("pl-cur") || "main", weeks: Number(g("pl-weeks")) || 0, classDow: g("pl-dow"), classTime: g("pl-time"), classUrl: g("pl-url"), recruiting: !!(f.elements.namedItem("pl-rec") || {}).checked, classDates: cd },
       evs: Array.from(f.querySelectorAll(".pl-ev")).map((r) => { const v = (n) => String((r.querySelector('[name="' + n + '"]') || {}).value || "").trim(); return { id: r.dataset.id || "", type: v("ev-type"), date: v("ev-date"), time: v("ev-time"), title: v("ev-title"), place: v("ev-place") }; }) };
   }
   /** 저장 전 미리보기 — 주차 강의 · 과제 마감 · 모든 기수 반복 일정 + 이 기수 특별 일정을 날짜순으로 */
   function planPreviewHtml(iid, d) {
     const c = d.co;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.startDate || "")) return '<p class="a-muted">1주차 강의일을 고르면 일정이 보여요.</p>';
-    const fake = { id: "_plan", instructorId: iid, startDate: c.startDate, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime };
+    const fake = planFake(iid, c);
     const L = (t) => DB.evLabel(iid, t), wk = DB.weeksOf(fake), first = DB.classDate(fake, 1), lastD = DB.classDate(fake, wk.length);
     const list = DB.events(iid, fake).concat(d.evs.filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date)).map((e) => ({ date: e.date, time: e.time, type: e.type, title: e.title || L(e.type), place: e.place, special: true })))
       .sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99")));
@@ -800,6 +814,8 @@
     const iid = f.dataset.iid, d = planRead(f), ws = f.elements.namedItem("pl-weeks");
     // 커리큘럼을 바꾸면 진행 주차 칸도 그 커리큘럼 길이에 맞게
     if (ws && ws.dataset.cur !== d.co.curriculumId) { const keep = ws.selectedIndex === ws.options.length - 1 ? 0 : Number(ws.value); ws.innerHTML = planWeekOpts(iid, d.co.curriculumId, keep); ws.dataset.cur = d.co.curriculumId; d.co.weeks = Number(ws.value) || 0; }
+    const wb = document.getElementById("pl-wds"), sig = planWdSig(d.co);
+    if (wb && wb.dataset.sig !== sig) { if (wb.dataset.sig) wb.innerHTML = planWdHtml(iid, d); wb.dataset.sig = sig; }
     box.innerHTML = planPreviewHtml(iid, d);
   }
   function savePlan(f) {
@@ -813,7 +829,16 @@
     if (bad) { err.textContent = "‘" + (bad.title || DB.evLabel(iid, bad.type)) + "’ 일정의 날짜를 골라 주세요."; return; }
     if (!c.id && DB.cohortsOf(iid).some((x) => x.name === c.name)) { err.textContent = "같은 이름의 기수가 이미 있어요."; return; }
     const cu = DB.curriculum(iid, c.curriculumId), full = cu ? cu.weeks.length : 0;
-    const fields = { name: c.name, startDate: c.startDate, recruiting: c.recruiting, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks > 0 && c.weeks < full ? c.weeks : undefined, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime || undefined, classUrl: c.classUrl || undefined };
+    // 주차별 강의일: 진행 주차 안 · 2주차부터 · 1주차 강의일 뒤 · 기본과 다른 날만 남겨요
+    const base = planFake(iid, c, false), wkN = DB.weeksOf(base).length, cd = {};
+    for (const no of Object.keys(c.classDates || {})) {
+      const n = Number(no), v = c.classDates[no];
+      if (!(n >= 2 && n <= wkN)) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { err.textContent = n + "주차 강의일을 다시 골라 주세요."; return; }
+      if (v <= c.startDate) { err.textContent = n + "주차 강의일은 1주차 강의일(" + mdDow(c.startDate) + ") 뒤여야 해요."; return; }
+      if (v !== DB.baseClassDate(base, n)) cd[n] = v;
+    }
+    const fields = { name: c.name, startDate: c.startDate, recruiting: c.recruiting, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks > 0 && c.weeks < full ? c.weeks : undefined, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime || undefined, classUrl: c.classUrl || undefined, classDates: Object.keys(cd).length ? cd : undefined };
     let co = c.id ? DB.cohort(c.id) : null;
     if (c.id && !co) { err.textContent = "기수를 찾지 못했어요. 새로고침해 주세요."; return; }
     if (!co) { if (!planMaster()) return; co = { id: DB.uid("c"), instructorId: iid }; DB.data.cohorts.push(co); }

@@ -638,6 +638,67 @@ function demoPartnerClear(get, keys) {
   return { writes: { meta: Object.assign({}, meta, { affiliates: keep }, po ? { affPayouts: po } : {}) }, result };
 }
 
+/* ---------- 문대표 기수 일정 다시 맞추기 (대표님 요청 2026-11-03) ----------
+ * 실제 일정대로 기수 3개로: 1기 1/24(토)~2/21(토) 5주 · 2기 8/29(토)~9/19(토) + 5주차 9/23(수) · 3기 11/21(토)~12/12(토) 4주 압축 과정
+ *   + 3기 특별 일정: 5주차 보너스 강의 12/15(화) · 챌린지 1~4회차 11/25 · 12/2 · 12/9 · 12/16(수)
+ * 지금 ‘4기’(11/21 모집 중 · c4)를 ‘3기’로 이름만 바꾸고(신청 · 이용료 기록이 그대로 이어져요), 예전 예시 일정이던 ‘3기’(10/1 · c3)는 지워요.
+ * 예전 3기에 있던 체험 수강생(demo)은 새 3기로 옮겨요. 체험이 아닌 수강생이나 이용료 기록이 있으면 지우지 않고 ‘예전 3기’로 이름만 바꿔 결과에 적어요.
+ * 강의 시간은 기수에 정해 둔 그대로(1 · 2기 20:00 · 3기 12:00), 특별 일정 시간은 비워 둬요(설계 · 수정에서 넣어요).
+ * 챌린지 · 보너스 강의는 이 기수 날짜로만: 처음 예시로 들어간 ‘모든 기수 반복’ 챌린지 · 보너스 강의 4개(e5 · b1 · b2 · b3, 예시 문구 그대로일 때만)는 지워요.
+ * 강사 소개 페이지의 ‘4기 수강 신청하기’ 버튼 문구는 ‘3기 수강 신청하기’로 (그 문구 그대로일 때만). 다른 곳에 남은 ‘4기’ 글자는 바꾸지 않고 위치만 결과에 적어요 */
+const MOON_PLAN = {
+  c1: { name: "1기", startDate: "2026-01-24", classDow: 6, recruiting: false },
+  c2: { name: "2기", startDate: "2026-08-29", classDow: 6, recruiting: false, classDates: { 5: "2026-09-23" } },
+  c4: { name: "3기", startDate: "2026-11-21", classDow: 6, recruiting: true, curriculumId: "cur-4w", weeks: 4 },
+  evs: [["e-m3-bonus", "bonus", "5주차 보너스 강의", "2026-12-15"], ["e-m3-ch1", "challenge", "챌린지 1회차", "2026-11-25"], ["e-m3-ch2", "challenge", "챌린지 2회차", "2026-12-02"], ["e-m3-ch3", "challenge", "챌린지 3회차", "2026-12-09"], ["e-m3-ch4", "challenge", "챌린지 4회차", "2026-12-16"]]
+};
+function moonCohortDates(get, keys) {
+  const ck = "cohorts:moon", list = get(ck), c = get("content:moon");
+  if (!Array.isArray(list) || !isObj(c)) return { writes: {}, result: { skipped: "문대표 기수 · 콘텐츠 없음" } };
+  const find = (id, name) => list.find((x) => isObj(x) && x.id === id) || list.find((x) => isObj(x) && x.name === name);
+  const c1 = find("c1", "1기"), c2 = find("c2", "2기"), c4 = find("c4", "4기") || list.find((x) => isObj(x) && x.startDate === "2026-11-21");
+  const c3 = list.find((x) => isObj(x) && x !== c4 && (x.id === "c3" || x.name === "3기"));
+  if (!c1 || !c2 || !c4) return { writes: {}, result: { skipped: "1기 · 2기 · 11/21 기수를 찾지 못했어요", ids: list.map((x) => x && x.id) } };
+  const writes = {}, result = { cohorts: [], moved: [], removed: "", events: [], seedAll: [], bills: [], cta: [], left4: [] };
+  const fix = (co, p) => { const n = Object.assign({}, co, p); if (!p.classDates) delete n.classDates; result.cohorts.push((co.name || co.id) + " → " + n.name + " " + n.startDate); return n; };
+  const n1 = fix(c1, MOON_PLAN.c1), n2 = fix(c2, MOON_PLAN.c2), n4 = fix(c4, MOON_PLAN.c4);
+  // 예전 3기: 체험 수강생은 새 3기로, 다른 수강생 · 이용료 기록이 있으면 남기고 이름만
+  let keep3 = null;
+  if (c3) {
+    const stus = keys("stu:moon:").map((k) => [k, get(k)]).filter((x) => isObj(x[1]) && x[1].cohortId === c3.id);
+    const real = stus.filter((x) => !x[1].demo), bills = keys("bill:moon:").filter((k) => isObj(get(k)) && get(k).cohortId === c3.id && !get(k).demo);
+    stus.filter((x) => x[1].demo).forEach((x) => { writes[x[0]] = Object.assign({}, x[1], { cohortId: c4.id }); result.moved.push(x[1].id + " → " + n4.name); });
+    if (real.length || bills.length) { keep3 = Object.assign({}, c3, { name: "예전 3기", recruiting: false }); result.removed = "남김 (수강생 " + real.length + "명 · 이용료 " + bills.length + "건) · 이름만 ‘예전 3기’"; }
+    else result.removed = c3.name + " (" + c3.id + " · " + c3.startDate + ") 지움";
+  }
+  writes[ck] = list.map((x) => (x === c1 ? n1 : x === c2 ? n2 : x === c4 ? n4 : x === c3 ? keep3 : x)).filter(Boolean);
+  // 특별 일정: 예전 3기(지울 때) 것은 빼고, 새 3기에 보너스 강의 · 챌린지 (같은 id가 있으면 그대로)
+  const SEED_ALL = { e5: "첫 상품 등록 7일 챌린지 강의", b1: "보너스 강의 · 해외 도매몰 실전 발주 따라하기", b2: "광고 ROAS 3일 챌린지 강의", b3: "보너스 강의 · 상세페이지 첨삭 모음" };
+  const sched = (Array.isArray(c.schedule) ? c.schedule : []).filter((e) => {
+    if (!isObj(e)) return true;
+    if (c3 && !keep3 && e.scope === "cohort" && e.cohortId === c3.id) return false;
+    if (e.scope !== "cohort" && SEED_ALL[e.id] && SEED_ALL[e.id] === e.title) { result.seedAll.push(e.title); return false; }
+    return true;
+  });
+  MOON_PLAN.evs.forEach(([id, type, title, date]) => {
+    if (sched.some((e) => isObj(e) && (e.id === id || (e.scope === "cohort" && e.cohortId === c4.id && e.type === type && e.date === date)))) return;
+    sched.push({ id, type, title, time: "", scope: "cohort", cohortId: c4.id, date }); result.events.push(date + " " + title);
+  });
+  const nc = Object.assign({}, c, { schedule: sched });
+  // 강사 소개 페이지 신청 버튼 문구
+  if (isObj(c.landing)) {
+    const L = clone(c.landing);
+    ["hero", "pricing"].forEach((k) => { if (isObj(L[k]) && L[k].ctaLabel === "4기 수강 신청하기") { L[k].ctaLabel = "3기 수강 신청하기"; result.cta.push(k); } });
+    nc.landing = L;
+  }
+  // 바꾸지 않은 ‘4기’ 글자 위치 (대표님이 확인)
+  (function walk(v, path) { if (typeof v === "string") { if (v.indexOf("4기") >= 0 && result.left4.length < 12) result.left4.push(path); } else if (v && typeof v === "object") Object.keys(v).forEach((k) => walk(v[k], path ? path + "." + k : k)); })(nc, "");
+  writes["content:moon"] = nc;
+  // 기수 이용료 기록: 11/21 기수 이름 4기 → 3기
+  keys("bill:moon:").forEach((k) => { const b = get(k); if (isObj(b) && b.cohortId === c4.id && b.cohortName === "4기") { writes[k] = Object.assign({}, b, { cohortName: "3기" }); result.bills.push(k.split(":")[2]); } });
+  return { writes, result };
+}
+
 /* ---------- 정식 운영: 테스트 데이터 정리 (사용자 요청 2026-11-03) ----------
  * 정식 오픈 전에 만들어 둔 테스트용 계정 · 기록을 지우고, 대표님이 직접 확인할 체험 계정은 하나씩만 남겨요.
  *  남겨요: 강사(실제 강사 그대로) · 수강생 체험 계정 이수진(s1 · 2186) · 코치 체험 계정(문대표 강의 김하나 1004) ·
@@ -742,6 +803,7 @@ const OPS = [
   { id: "2026-11-03-demo-inquiries-clear", note: "강사 입점 문의: 예시(테스트) 문의 3건 지우기 — 예시 id · 예시 파트너 추천 · @example.com 이메일만 (실제 문의는 그대로)", run: demoInqClear },
   { id: "2026-11-03-demo-partner-clear", note: "두고 파트너스: 예시(테스트) 파트너 계정과 그 RS 지급 기록만 지우기 (실제 파트너는 그대로)", run: demoPartnerClear },
   { id: "2026-11-03-launch-test-clean", note: "정식 운영: 테스트 데이터 정리 — 0000 테스트 수강생 · 예시 VOD 회원 기록 · 중복 체험단 · 010-0000-0000 테스트 회원 · 테스트 코치 · 예시 운영자 지우기 (체험 계정은 하나씩 남김)", run: launchTestClean },
+  { id: "2026-11-03-moon-cohort-dates", note: "문대표 기수 일정: 1기 1/24~2/21 · 2기 8/29~9/23(5주차 수) · 지금 4기(11/21)를 3기로 + 5주차 보너스 강의 12/15(화) · 챌린지 4회(11/25 · 12/2 · 12/9 · 12/16) · 예시였던 예전 3기(10/1) 지우기", run: moonCohortDates },
 ];
 
-module.exports = { OPS, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

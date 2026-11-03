@@ -1410,6 +1410,41 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     Object.keys(w.writes).forEach((k) => { if (w.writes[k] === null) delete TC[k]; else TC[k] = w.writes[k]; });
     w = OO.launchTestClean(tcGet, tcKeys);
     ok(!Object.keys(w.writes).length && OO.OPS.some((x) => x.id === "2026-11-03-launch-test-clean" && x.run === OO.launchTestClean), "일회성(테스트 정리): 다시 돌려도 그대로 · 작업 목록에 있어요", w.writes);
+    // 문대표 기수 일정 다시 맞추기 (일회성 작업)
+    const MC = {
+      "cohorts:moon": [{ id: "c1", instructorId: "moon", name: "1기", startDate: "2026-08-06", classDow: 4, classTime: "20:00" }, { id: "c2", instructorId: "moon", name: "2기", startDate: "2026-09-03", classDow: 4, classTime: "20:00" },
+        { id: "c3", instructorId: "moon", name: "3기", startDate: "2026-10-01", classDow: 4, classTime: "20:00" }, { id: "c4", instructorId: "moon", name: "4기", startDate: "2026-11-21", recruiting: true, curriculumId: "cur-4w", weeks: 4, classDow: 6, classTime: "12:00" }],
+      "content:moon": { other: 1, landing: { hero: { ctaLabel: "4기 수강 신청하기" }, pricing: { ctaLabel: "지금 신청" } }, faq: [{ q: "4기는 언제?" }], schedule: [{ id: "n3", type: "notice", title: "공지", scope: "cohort", cohortId: "c3", date: "2026-10-03" }, { id: "e5", type: "challenge", title: "첫 상품 등록 7일 챌린지 강의", scope: "all", week: 2, dow: 5 }, { id: "b1", type: "bonus", title: "내가 고친 보너스", scope: "all", week: 2, dow: 6 }, { id: "q1", type: "qna", title: "주간 Q&A", scope: "all", week: 1, dow: 2 }] },
+      "stu:moon:s1": { id: "s1", instructorId: "moon", cohortId: "c3", name: "이수진", demo: true }, "stu:moon:s9": { id: "s9", instructorId: "moon", cohortId: "c4", name: "정상" },
+      "bill:moon:b4": { id: "b4", cohortId: "c4", cohortName: "4기" }, "bill:moon:b3": { id: "b3", cohortId: "c3", cohortName: "3기", demo: true }
+    };
+    const mcGet = (k) => (MC[k] ? JSON.parse(JSON.stringify(MC[k])) : undefined), mcKeys = (pre) => Object.keys(MC).filter((k) => k.indexOf(pre) === 0).sort();
+    w = OO.moonCohortDates(mcGet, mcKeys);
+    const mco = w.writes["cohorts:moon"], m1 = mco.find((c) => c.id === "c1"), m2 = mco.find((c) => c.id === "c2"), m4 = mco.find((c) => c.id === "c4");
+    ok(mco.length === 3 && !mco.some((c) => c.id === "c3") && m1.startDate === "2026-01-24" && m1.classDow === 6 && m1.classTime === "20:00" && m2.startDate === "2026-08-29" && m2.classDates[5] === "2026-09-23" && m4.name === "3기" && m4.startDate === "2026-11-21" && m4.curriculumId === "cur-4w" && m4.weeks === 4 && m4.recruiting === true && m4.classTime === "12:00",
+      "일회성(문대표 기수): 1기 1/24(토) · 2기 8/29(토)+5주차 9/23(수) · 4기(11/21)를 3기로 · 예전 예시 3기(10/1) 지움 (강의 시간은 그대로)", mco);
+    const msc = w.writes["content:moon"].schedule;
+    ok(w.writes["stu:moon:s1"].cohortId === "c4" && !w.writes["stu:moon:s9"] && w.writes["bill:moon:b4"].cohortName === "3기" && !w.writes["bill:moon:b3"] &&
+      !msc.some((e) => e.id === "n3" || e.id === "e5") && msc.some((e) => e.id === "b1") && msc.some((e) => e.id === "q1") &&
+      ["2026-11-25", "2026-12-02", "2026-12-09", "2026-12-16"].every((d) => msc.some((e) => e.type === "challenge" && e.cohortId === "c4" && e.date === d)) && msc.some((e) => e.type === "bonus" && e.cohortId === "c4" && e.date === "2026-12-15" && e.title === "5주차 보너스 강의"),
+      "일회성(문대표 기수): 체험 수강생 → 새 3기 · 이용료 기록 이름 3기 · 챌린지 4회(수) · 5주차 보너스 강의 12/15(화) · 예시 반복 챌린지만 지우고 고친 일정 · Q&A는 그대로", msc);
+    ok(w.writes["content:moon"].landing.hero.ctaLabel === "3기 수강 신청하기" && w.writes["content:moon"].landing.pricing.ctaLabel === "지금 신청" && w.writes["content:moon"].other === 1 && w.result.left4.join() === "faq.0.q",
+      "일회성(문대표 기수): 신청 버튼 ‘4기’ → ‘3기’ (그 문구일 때만) · 다른 ‘4기’ 글자는 위치만 알려요", w.result);
+    MC["stu:moon:s8"] = { id: "s8", instructorId: "moon", cohortId: "c3", name: "실제" };
+    w = OO.moonCohortDates(mcGet, mcKeys);
+    ok(w.writes["cohorts:moon"].some((c) => c.id === "c3" && c.name === "예전 3기" && !c.recruiting) && w.writes["content:moon"].schedule.some((e) => e.id === "n3"), "일회성(문대표 기수): 예전 3기에 실제 수강생이 있으면 지우지 않고 ‘예전 3기’로 이름만", w.result.removed);
+    ok(OO.OPS.findIndex((x) => x.id === "2026-11-03-moon-cohort-dates") > OO.OPS.findIndex((x) => x.id === "2026-10-31-moon-4th-cohort"), "일회성(문대표 기수): 4기 작업 뒤에 돌아요");
+    { // 주차별 강의일 바꾸기 (db.js)
+      const vm2 = require("vm"), ls2 = new Map(), sb2 = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls2.has(k) ? ls2.get(k) : null), setItem: (k, v) => ls2.set(k, String(v)), removeItem: (k) => ls2.delete(k), key: () => null, length: 0 } };
+      sb2.window = sb2; vm2.createContext(sb2); ["data.js", "coach-perms.js", "db.js"].forEach((f) => vm2.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb2, { filename: f })); sb2.DB.load();
+      const D2 = sb2.DB, g2 = { id: "x2", instructorId: "moon", startDate: "2026-08-29", classDow: 6, classDates: { 5: "2026-09-23" } }, g0 = Object.assign({}, g2, { classDates: undefined });
+      ok(D2.classDate(g2, 4) === "2026-09-19" && D2.classDate(g2, 5) === "2026-09-23" && D2.baseClassDate(g2, 5) === "2026-09-26" && D2.weekOpen(g2, 5) === "2026-09-23" && D2.weekDeadline(g2, 5) === "2026-10-02" && D2.cohortEnd(g2) === "2026-10-02" && D2.classDate(g0, 5) === "2026-09-26" && D2.weekOpen(g0, 5) === "2026-09-26",
+        "주차별 강의일: 5주차만 9/23(수) — 그 날 주차가 열리고 과제 마감은 그대로 · 바꾸지 않은 기수는 예전처럼");
+      const evs2 = D2.events("moon", g2).filter((e) => e.type === "open").map((e) => e.date);
+      ok(evs2.join() === "2026-08-29,2026-09-05,2026-09-12,2026-09-19,2026-09-23", "주차별 강의일: 수업 캘린더 강의 날짜도 8/29 · 9/5 · 9/12 · 9/19 · 9/23", evs2);
+      const ad22 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
+      ok(/name="pl-wd-/.test(ad22) && /classDates: Object\.keys\(cd\)\.length \? cd : undefined/.test(ad22), "마스터 기수 설계 창: 주차별 강의일 칸 · 기본과 다른 날만 저장");
+    }
     // 정산: 체험 계정 주문(demo)은 정산에서 빼요 · 자동 로그아웃
     const ad24 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mj24 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8");
     ok(/const os = VD\(\)\.orders\.filter\(\(o\) => !o\.demo/.test(ad24) && /if \(o\.demo\) return;/.test(ad24), "정산: 체험 계정 0원 주문은 강사 정산 건수에 넣지 않아요");
