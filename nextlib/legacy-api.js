@@ -29,3 +29,11 @@ export function legacyApi(name) {
     return loaded[name](req, res);
   };
 }
+
+/** 저장소 맨 위 경로 (class/ · public/ 이 있는 곳) */
+export function repoRoot() { return (root = root || findRoot()); }
+/** class/ 아래 서버 모듈을 그대로 불러요 (예: "api/_lib/pagemeta.js") — 묶지 않고 Node 가 바로 */
+export function legacyLib(rel) {
+  if (!/^[a-z0-9_\-/.]+\.js$/i.test(rel) || rel.indexOf("..") >= 0) throw new Error("[lib] 경로가 이상해요: " + rel);
+  return createRequire(path.join(repoRoot(), "package.json"))("./class/" + rel);
+}

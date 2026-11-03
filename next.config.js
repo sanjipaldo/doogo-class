@@ -23,7 +23,7 @@ const INCLUDE = ["class/data.js", "class/coach-perms.js", "class/shared/*.js", "
 async function traceApi() {
   const { nodeFileTrace } = require("next/dist/compiled/@vercel/nft");
   const dir = path.join(__dirname, "class", "api");
-  const files = fs.readdirSync(dir).filter((f) => /^[a-z-]+\.js$/.test(f)).map((f) => path.join("class", "api", f));
+  const files = fs.readdirSync(dir).filter((f) => /^[a-z-]+\.js$/.test(f)).map((f) => path.join("class", "api", f)).concat([path.join("class", "api", "_lib", "pagemeta.js")]); // 3단계: 클래스 상세 미리보기
   const { fileList } = await nodeFileTrace(files, { base: __dirname, processCwd: __dirname });
   return [...fileList].filter((f) => !/^node_modules\/(next|react|react-dom|scheduler)\//.test(f)).sort();
 }
@@ -36,7 +36,11 @@ module.exports = async (phase) => {
     // 예전처럼 /vod/ 같은 끝 빗금을 다른 주소로 넘기지 않아요 (화면이 알아서 읽어요)
     skipTrailingSlashRedirect: true,
     outputFileTracingRoot: __dirname,
-    outputFileTracingIncludes: { "/api/*": traced.concat(INCLUDE).map((f) => "./" + f) },
+    outputFileTracingIncludes: {
+      "/api/*": traced.concat(INCLUDE).map((f) => "./" + f),
+      // 3단계: 클래스 상세 /vod/p/<클래스> (app/vod/p/[id]/route.js) — 서버 코드 + 화면 틀 index.html(빌드 때 public/ 으로 복사)
+      "/vod/p/**": traced.concat(INCLUDE).map((f) => "./" + f).concat(["./public/index.html"])
+    },
     async headers() {
       return [
         { source: "/:path*", headers: SECURITY },

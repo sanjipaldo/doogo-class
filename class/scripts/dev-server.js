@@ -38,6 +38,8 @@ http.createServer(async (req, res) => {
     if (err) { res.statusCode = 404; return res.end("not found"); }
     if (p === "/index.html") buf = Buffer.from(require("./index-abs")(buf.toString("utf8"))); // 배포(site.js)와 같게
     res.setHeader("Content-Type", TYPES[path.extname(file)] || "application/octet-stream");
+    // 클래스 상세 /vod/p/<클래스>: 배포(Next.js app/vod/p/[id]/route.js)처럼 그 클래스 미리보기 정보를 넣어요 (3단계)
+    if (p === "/index.html" && /^\/vod\/p\//.test(u.pathname)) return require("../api/_lib/pagemeta").render(u.pathname, buf.toString("utf8")).then((h) => res.end(h));
     res.end(buf);
   });
 }).listen(PORT, () => console.log("doogo class dev server → http://localhost:" + PORT + " (" + (process.env.TURSO_DATABASE_URL ? "Turso" : "SQLite " + process.env.CLASS_SQLITE) + ")"));

@@ -48,6 +48,17 @@ module.exports = {
       await run.check((await mode()) === "vod" && t.indexOf(p.title.slice(0, 12)) >= 0, "상품 상세 /vod/p/" + p.id + " (" + p.type + ")", { mode: await mode(), title: p.title }, page);
     }
     await run.check(detail.length >= 3, "상품 상세를 3종류 이상 확인했어요", detail.map((p) => p.id + ":" + p.type));
+    // 1-1) 클래스 상세 미리보기 정보 (3단계): 자바스크립트를 안 돌리는 카카오톡 · 검색 로봇이 받는 html 에 그 클래스 제목 · 주소
+    const raw = async (u) => (await fetch(base + u)).text();
+    const T0 = (await raw("/")).match(/<title>([^<]*)<\/title>/)[1];
+    for (const p of detail.slice(0, 3)) {
+      const h = await raw("/vod/p/" + p.id + "?rs=e2e");
+      const t = (h.match(/<title>([^<]*)<\/title>/) || [])[1] || "", og = (h.match(/<meta property="og:url" content="([^"]*)"/) || [])[1] || "";
+      await run.check(t.indexOf(p.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").slice(0, 10)) === 0 && /\| DOOGO CLASS — 돈 되는 클래스$/.test(t) && og === "https://www.doogoclass.com/vod/p/" + encodeURIComponent(p.id), "공유 미리보기: /vod/p/" + p.id + " 에 그 클래스 제목 · 주소", { t, og });
+    }
+    const hidden = (vod.products || []).find((p) => p && p.status === "on" && p.title && off.indexOf(p.iid) >= 0 && !p.showOff);
+    const hNo = await raw("/vod/p/no-such-class"), hHid = hidden ? await raw("/vod/p/" + hidden.id) : "";
+    await run.check(hNo.indexOf("<title>" + T0 + "</title>") >= 0 && (!hidden || hHid.indexOf("<title>" + T0 + "</title>") >= 0), "없는 클래스 · 숨긴 강사 클래스는 예전 기본 미리보기 그대로", { hidden: hidden && hidden.id });
     // 2) 예전 #주소 링크 → 깨끗한 주소로 바뀌고 같은 화면
     const old = [["/#/doinggo", "/doinggo", "home"], ["/about", "/doinggo", "home"], ["/#/center/login", "/center/login", "admin"], ["/#/terms", "/terms", "vod"]].concat(detail.slice(0, 1).map((p) => ["/#/vod/p/" + p.id, "/vod/p/" + p.id, "vod"]));
     for (const [from, to, m] of old) {

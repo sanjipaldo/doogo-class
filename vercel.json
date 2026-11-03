@@ -3,5 +3,5 @@
   "framework": "nextjs",
   "installCommand": "npm ci --no-audit --no-fund",
   "buildCommand": "node class/scripts/db-build.js && node class/scripts/site.js public && next build",
-  "ignoreCommand": "test -f class/scripts/db-build.js || exit 0; git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- class pages nextlib next.config.js vercel.json .vercelignore package.json package-lock.json"
+  "ignoreCommand": "test -f class/scripts/db-build.js || exit 0; git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- class app pages nextlib next.config.js vercel.json .vercelignore package.json package-lock.json"
 }
