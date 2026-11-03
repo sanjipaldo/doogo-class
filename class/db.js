@@ -27,12 +27,10 @@
 
   /* ---------------- 날짜 ---------------- */
   const DOW = ["일", "월", "화", "수", "목", "금", "토"];
-  const pad = (n) => String(n).padStart(2, "0");
-  const toStr = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  // 날짜 · 일정 계산은 화면과 서버가 같이 쓰는 공용 모듈(shared/dates.js · shared/schedule.js)에 있어요 (Next.js 전환 2단계)
+  const DCS = window.DCS || {}, SCH = DCS.schedule;
+  const { pad, toStr, parseDate, addDays, diffDays } = DCS.dates;
   const todayStr = () => toStr(new Date());
-  function parseDate(s) { const [y, m, d] = String(s).split("-").map(Number); return new Date(y, (m || 1) - 1, d || 1); }
-  const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return toStr(d); };
-  const diffDays = (a, b) => Math.round((parseDate(a) - parseDate(b)) / 86400000);
   const fmtMD = (s) => { const d = parseDate(s); return (d.getMonth() + 1) + "/" + d.getDate() + " (" + DOW[d.getDay()] + ")"; };
   const fmtFull = (s) => { const d = parseDate(s); return d.getFullYear() + "." + pad(d.getMonth() + 1) + "." + pad(d.getDate()); };
   const fmtKo = (s) => { const d = parseDate(s); return (d.getMonth() + 1) + "월 " + d.getDate() + "일 (" + DOW[d.getDay()] + ")"; };
@@ -1217,34 +1215,12 @@
   const cohortWeeks = (co) => weeksOf(co).length;
   /* 주차별 강의일 바꾸기 (2026-11): co.classDates = { "5": "2026-09-23" } — 그 주차만 다른 날(예: 5주차는 수요일)에 강의해요.
    * 바꾼 날이 원래 주차 시작보다 빠르면 그 날 주차가 열리고, 과제 마감은 원래 마감과 바꾼 날 중 늦은 날이에요 */
-  const ISO_D = /^\d{4}-\d{2}-\d{2}$/;
-  const dateOver = (co, no) => { const m = co && co.classDates, v = m && typeof m === "object" ? m[String(no)] : null; return typeof v === "string" && ISO_D.test(v) ? v : null; };
-  const baseOpen = (co, no) => addDays(co.startDate, (no - 1) * 7);
-  // 매주 강의 요일만으로 정한 강의일 (주차별로 바꾼 날은 빼고)
-  function baseClassDate(co, no) {
-    const open = baseOpen(co, no);
-    const hasDow = co.classDow !== undefined && co.classDow !== null && co.classDow !== "";
-    return hasDow ? addDays(open, ((Number(co.classDow) - parseDate(open).getDay()) + 7) % 7) : open;
-  }
-  const weekOpen = (co, no) => { const o = baseOpen(co, no), v = dateOver(co, no); return v && v < o ? v : o; };
-  const weekDeadline = (co, no) => { const d = addDays(co.startDate, (no - 1) * 7 + 6), v = dateOver(co, no); return v && v > d ? v : d; };
-  // 주차 강의 날짜: 주차별로 바꾼 날 → 기수에 ‘매주 무슨 요일’을 정했으면 그 주의 그 요일 → 주차 시작일
-  function classDate(co, no) { return dateOver(co, no) || baseClassDate(co, no); }
-  const cohortEnd = (co) => { const n = Math.max(1, cohortWeeks(co)), e = addDays(co.startDate, n * 7 - 1), d = weekDeadline(co, n); return d > e ? d : e; };
-  function cohortStatus(co) {
-    const t = todayStr();
-    if (t < co.startDate) return "upcoming";
-    if (t > cohortEnd(co)) return "ended";
-    return "running";
-  }
+  // 계산은 shared/schedule.js (화면 · 서버 공용) — 주차 수만 여기서 커리큘럼으로 정해 넘겨요
+  const { baseClassDate, weekOpen, weekDeadline, classDate } = SCH;
+  const cohortEnd = (co) => SCH.cohortEnd(co, cohortWeeks(co));
+  const cohortStatus = (co) => SCH.cohortStatus(co, cohortWeeks(co), todayStr());
   const STATUS_LABEL = { upcoming: "모집 중", running: "진행 중", ended: "종료" };
-  function currentWeek(co) {
-    const d = diffDays(todayStr(), co.startDate);
-    if (d < 0) return 0;
-    const n = Math.min(cohortWeeks(co), Math.floor(d / 7) + 1), t = todayStr();
-    // 주차별 강의일을 앞당긴 주차는 그 날부터 ‘이번 주차’
-    return n < cohortWeeks(co) && weekOpen(co, n + 1) <= t ? n + 1 : n;
-  }
+  const currentWeek = (co) => SCH.currentWeek(co, cohortWeeks(co), todayStr());
   /* ---------------- 성장 레벨 (주차가 지날 때마다 한 단계씩) ---------------- */
   const LEVEL_SET = [
     { key: "seed", name: "씨앗", icon: "lvSeed" }, { key: "leaf", name: "풀잎", icon: "lvLeaf" }, { key: "branch", name: "가지", icon: "lvBranch" },
@@ -1315,11 +1291,7 @@
     c.schedule.forEach((e) => {
       let date = null;
       if (e.scope === "cohort") { if (e.cohortId === co.id) date = e.date; }
-      else if ((Number(e.week) || 1) <= cohortWeeks(co)) {
-        const open = weekOpen(co, Number(e.week) || 1);
-        const d = parseDate(open).getDay();
-        date = addDays(open, ((Number(e.dow) - d) + 7) % 7);
-      }
+      else if ((Number(e.week) || 1) <= cohortWeeks(co)) date = SCH.weekDow(co, e.week, e.dow);
       if (date) out.push({ date, time: e.time || "", type: e.type, week: e.scope === "cohort" ? null : Number(e.week), title: e.title, url: e.url || "", place: e.place || "", id: e.id });
     });
     return out.sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99")));

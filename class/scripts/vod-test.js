@@ -13,7 +13,7 @@ function deployIncludes() {
   return fs.existsSync(nc) ? (require(nc).INCLUDE || []).filter((g) => /^class\//.test(g)).map((g) => g.slice(6)) : [];
 }
 fs.cpSync(path.join(ROOT, "api"), path.join(TMP, "class/api"), { recursive: true });
-fs.cpSync(path.join(ROOT, "data.js"), path.join(TMP, "class/data.js")); fs.cpSync(path.join(ROOT, "db.js"), path.join(TMP, "class/db.js")); fs.cpSync(path.join(ROOT, "coach-perms.js"), path.join(TMP, "class/coach-perms.js"));
+fs.cpSync(path.join(ROOT, "data.js"), path.join(TMP, "class/data.js")); fs.cpSync(path.join(ROOT, "db.js"), path.join(TMP, "class/db.js")); fs.cpSync(path.join(ROOT, "coach-perms.js"), path.join(TMP, "class/coach-perms.js")); fs.cpSync(path.join(ROOT, "shared"), path.join(TMP, "class/shared"), { recursive: true });
 fs.symlinkSync(path.join(ROOT, "..", "node_modules"), path.join(TMP, "node_modules"), "dir"); // 공식 SDK (저장소 맨 위 npm install)
 const WH = crypto.randomBytes(24).toString("base64");
 Object.assign(process.env, { CLASS_SQLITE: path.join(TMP, "t.db"), SESSION_SECRET: "test-session", VOD_SERVER_AUTH: "1", PORTONE_STORE_ID: "store-test", PORTONE_API_SECRET: "ps-test", PORTONE_CHANNEL_CARD: "channel-key-card", PORTONE_CHANNEL_KAKAOPAY: "channel-key-kp", PORTONE_WEBHOOK_SECRET: "whsec_" + WH, KAKAO_REST_KEY: "rest-test", KAKAO_CLIENT_SECRET: "cs-test", KAKAO_REDIRECT_URI: "https://www.doogoclass.com/api/vod-kakao", KAKAO_ADMIN_KEY: "admin-test" });
@@ -1443,7 +1443,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(OO.OPS.findIndex((x) => x.id === "2026-11-03-moon-cohort-dates") > OO.OPS.findIndex((x) => x.id === "2026-10-31-moon-4th-cohort"), "일회성(문대표 기수): 4기 작업 뒤에 돌아요");
     { // 주차별 강의일 바꾸기 (db.js)
       const vm2 = require("vm"), ls2 = new Map(), sb2 = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls2.has(k) ? ls2.get(k) : null), setItem: (k, v) => ls2.set(k, String(v)), removeItem: (k) => ls2.delete(k), key: () => null, length: 0 } };
-      sb2.window = sb2; vm2.createContext(sb2); ["data.js", "coach-perms.js", "db.js"].forEach((f) => vm2.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb2, { filename: f })); sb2.DB.load();
+      sb2.window = sb2; vm2.createContext(sb2); ["shared/dates.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm2.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb2, { filename: f })); sb2.DB.load();
       const D2 = sb2.DB, g2 = { id: "x2", instructorId: "moon", startDate: "2026-08-29", classDow: 6, classDates: { 5: "2026-09-23" } }, g0 = Object.assign({}, g2, { classDates: undefined });
       ok(D2.classDate(g2, 4) === "2026-09-19" && D2.classDate(g2, 5) === "2026-09-23" && D2.baseClassDate(g2, 5) === "2026-09-26" && D2.weekOpen(g2, 5) === "2026-09-23" && D2.weekDeadline(g2, 5) === "2026-10-02" && D2.cohortEnd(g2) === "2026-10-02" && D2.classDate(g0, 5) === "2026-09-26" && D2.weekOpen(g0, 5) === "2026-09-26",
         "주차별 강의일: 5주차만 9/23(수) — 그 날 주차가 열리고 과제 마감은 그대로 · 바꾸지 않은 기수는 예전처럼");
@@ -1463,7 +1463,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/DB_ROLE === "staging"/.test(dbb) && /__staging-db__/.test(dbb) && /process\.exit\(1\)/.test(dbb), "빌드: 시험용 미리보기(DB_ROLE=staging)는 시험용 표시가 있는 DB에서만 바꾸고, 표시 없는 DB면 멈춰요");
     // 문대표 전용 색(뉴질랜드)은 강사센터 · 코치센터에도
     const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
-    ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),
+    ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>(\s*<script src="shared\/[a-z-]+\.js"><\/script>)*\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),
       "문대표 강사센터 · 코치센터: 강의실 전용 색(뉴질랜드 네이비)으로 · 화면이 권한표(coach-perms.js)를 db.js 보다 먼저 읽어요");
     ok(deployIncludes().indexOf("coach-perms.js") >= 0, "배포 함수에 권한표(coach-perms.js)가 실려요");
     useJar({});
@@ -1473,7 +1473,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const AC = require(path.join(TMP, "class/api/_lib/access.js")), st23 = require(path.join(TMP, "class/api/_lib/store.js"));
     // 화면(db.js): 열린 영역 · LIVE 강사 목록
     const vm = require("vm"), ls = new Map(), sb = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k), key: () => null, length: 0 } };
-    sb.window = sb; vm.createContext(sb); ["data.js", "coach-perms.js", "db.js"].forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb, { filename: f })); sb.DB.load();
+    sb.window = sb; vm.createContext(sb); ["shared/dates.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb, { filename: f })); sb.DB.load();
     const T = sb.DB.tracksOf;
     ok(JSON.stringify(T({})) === '{"live":true,"vod":true}' && JSON.stringify(T({ tracks: { live: false, vod: true } })) === '{"live":false,"vod":true}' && JSON.stringify(T({ tracks: { live: true, vod: false } })) === '{"live":true,"vod":false}' && JSON.stringify(T(null)) === '{"live":true,"vod":true}',
       "열린 영역: 예전 강사(칸 없음)는 둘 다 · VOD 강사는 DOOGO CLASS만 · LIVE 강사는 두잉고만");
@@ -1521,6 +1521,29 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
     ok(/case "inq-open-track"/.test(adsrc) && /function vodInsForm/.test(adsrc) && /tracks: \{ live: false, vod: true \}/.test(adsrc) && /tracks: \{ live: true, vod: false \}/.test(adsrc) && /inqIsVod\(x\)\) vodInsForm/.test(adsrc),
       "마스터: 두고 파트너스 지원 → VOD 강사 등록 창(DOOGO CLASS만) · 두잉고 문의 → LIVE 플랫폼(두잉고만) · 기존 강사 신청 → 열어 주기");
+  }
+
+  {
+    console.log("24) 공용 모듈: 일정 계산 (Next.js 전환 2단계 · 화면 · 서버 같은 계산)");
+    const SCH = require(path.join(ROOT, "shared/schedule.js")), DT = require(path.join(ROOT, "shared/dates.js"));
+    // 문대표 2기: 8/29(토) 시작 · 5주차만 9/23(수)
+    const c2 = { startDate: "2026-08-29", classDow: 6, classDates: { 5: "2026-09-23" } };
+    ok(SCH.classDate(c2, 1) === "2026-08-29" && SCH.classDate(c2, 4) === "2026-09-19" && SCH.classDate(c2, 5) === "2026-09-23" && SCH.weekOpen(c2, 5) === "2026-09-23" && SCH.weekDeadline(c2, 5) === "2026-10-02" && SCH.cohortEnd(c2, 5) === "2026-10-02",
+      "2기: 1주차 8/29(토) · 4주차 9/19 · 5주차 9/23(수)에 열림 · 마감 10/2 · 기수 끝 10/2", [SCH.classDate(c2, 5), SCH.weekOpen(c2, 5), SCH.weekDeadline(c2, 5), SCH.cohortEnd(c2, 5)]);
+    ok(SCH.currentWeek(c2, 5, "2026-09-22") === 4 && SCH.currentWeek(c2, 5, "2026-09-23") === 5 && SCH.currentWeek(c2, 5, "2026-08-28") === 0 && SCH.cohortStatus(c2, 5, "2026-08-28") === "upcoming" && SCH.cohortStatus(c2, 5, "2026-10-02") === "running" && SCH.cohortStatus(c2, 5, "2026-10-03") === "ended",
+      "이번 주차: 9/22 4주차 → 9/23(앞당긴 5주차 강의일) 5주차 · 시작 전 0 · 상태 모집 중 → 진행 중 → 10/3 종료");
+    ok(SCH.classDate({ startDate: "2026-11-21" }, 2) === "2026-11-28" && SCH.baseClassDate({ startDate: "2026-11-18", classDow: "" }, 1) === "2026-11-18" && SCH.classDate({ startDate: "2026-11-18", classDow: 6 }, 1) === "2026-11-21" && SCH.dateOver({ startDate: "2026-11-21", classDates: { 2: "bad" } }, 2) === null && SCH.weekDow({ startDate: "2026-11-21" }, 2, 3) === "2026-12-02",
+      "요일을 안 정하면 주차 시작일 · 정하면 그 주의 그 요일 · 이상한 날짜는 무시 · 모든 기수 일정 ‘2주차 수요일’ = 12/2");
+    ok(DT.addDays("2026-12-31", 1) === "2027-01-01" && DT.diffDays("2026-03-01", "2026-02-28") === 1 && DT.addDays("2024-02-28", 1) === "2024-02-29", "날짜 더하기 · 빼기 (해 넘김 · 윤년)");
+    // 브라우저처럼 <script> 로 읽어도 같은 함수 (window.DCS.schedule) · db.js 는 계산을 따로 갖지 않고 공용 모듈을 써요
+    const vm24 = require("vm"), sbx = {}; sbx.window = sbx; vm24.createContext(sbx); ["shared/dates.js", "shared/schedule.js"].forEach((f) => vm24.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sbx, { filename: f }));
+    ok(sbx.DCS && sbx.DCS.schedule && sbx.DCS.schedule.classDate(c2, 5) === "2026-09-23" && sbx.DCS.dates.addDays("2026-12-31", 1) === "2027-01-01", "브라우저(<script>)로 읽어도 같은 계산 (window.DCS)");
+    const dbsrc24 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), idx24 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    ok(!/const weekOpen = \(co, no\) =>|function baseClassDate|const dateOver =|function parseDate\(/.test(dbsrc24) && /SCH\.cohortEnd\(co, cohortWeeks\(co\)\)/.test(dbsrc24) && /<script src="shared\/dates\.js"><\/script>\s*<script src="shared\/schedule\.js"><\/script>\s*<script src="db\.js">/.test(idx24),
+      "db.js 는 일정 계산을 공용 모듈에 맡기고 · 화면은 공용 모듈을 db.js 보다 먼저 읽어요");
+    const sd24 = require(path.join(TMP, "class/api/_lib/seed.js"));
+    ok(sd24.CLIENT_FILES.indexOf("shared/schedule.js") >= 0 && sd24.CLIENT_FILES.indexOf("shared/schedule.js") < sd24.CLIENT_FILES.indexOf("db.js") && deployIncludes().indexOf("shared/*.js") >= 0 && Object.keys(sd24.seedDocs()).length > 10,
+      "서버(처음 데이터 · 정리)도 공용 모듈을 먼저 읽고 · 배포 함수에 shared/ 가 실려요");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

@@ -17,7 +17,7 @@ const SECURITY = [
 ];
 
 // 예전 vercel.json functions.includeFiles — 서버 코드가 파일 이름을 만들어서 읽는 것 (처음 데이터 · AI 조교 자료)
-const INCLUDE = ["class/data.js", "class/db.js", "class/coach-perms.js", "class/api/_lib/tutor/*.md", "class/api/_lib/tutor/*.json", "class/api/_lib/tutor/*/*.md", "class/api/_lib/tutor/*/*/*.md"];
+const INCLUDE = ["class/data.js", "class/db.js", "class/coach-perms.js", "class/shared/*.js", "class/api/_lib/tutor/*.md", "class/api/_lib/tutor/*.json", "class/api/_lib/tutor/*/*.md", "class/api/_lib/tutor/*/*/*.md"];
 
 /** 서버 코드(class/api/*.js)가 require 하는 파일 — 예전 Vercel 서버 함수와 같은 방법(nft)으로 찾아요 */
 async function traceApi() {

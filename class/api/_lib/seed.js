@@ -7,6 +7,8 @@ const vm = require("vm");
 
 const ROOT = path.join(__dirname, "..", "..");
 const COLLS = ["instructors", "content", "cohorts", "students"];
+// 서버에서 돌리는 화면 파일 (이 순서대로) — db.js 가 쓰는 공용 모듈(shared/ · Next.js 전환 2단계)을 먼저
+const CLIENT_FILES = ["shared/dates.js", "shared/schedule.js", "data.js", "db.js"];
 
 /** db.js 를 가짜 localStorage 위에서 실행 → { DB, ls } */
 function runDbJs(initial) {
@@ -21,7 +23,7 @@ function runDbJs(initial) {
   const sandbox = { console, Date, Math, JSON, Intl, localStorage };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  ["data.js", "db.js"].forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sandbox, { filename: f }));
+  CLIENT_FILES.forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sandbox, { filename: f }));
   // vm 안의 Object.keys(localStorage) 는 가짜 객체의 키를 못 보므로 store.keys 를 바꿔 준다
   sandbox.DB.store.keys = () => Array.from(ls.keys());
   return { DB: sandbox.DB, ls };
@@ -110,4 +112,4 @@ function migrateDocs(docs) {
   return changed;
 }
 
-module.exports = { seedDocs, migrateDocs, fillMissing, split, assemble };
+module.exports = { seedDocs, migrateDocs, fillMissing, split, assemble, CLIENT_FILES };
