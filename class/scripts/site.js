@@ -31,3 +31,26 @@ const VER = (process.env.VERCEL_GIT_COMMIT_SHA || Date.now().toString(36)).slice
 const ver = (html) => html.replace(/(\s(?:src|href)="\/[^"?#]+\.(?:js|css))"/g, "$1?v=" + VER + '"');
 fs.writeFileSync(IDX, ver(require("./index-abs")(fs.readFileSync(IDX, "utf8"))));
 console.log("[site] 화면 파일 " + n + "개 → " + path.relative(REPO, OUT));
+
+/* 공유 미리보기 사진 (Next.js 전환 3단계): 카카오톡은 webp 를 못 읽어서, 강사 사진 · 클래스 사진 · 책 표지 폴더의 webp 를
+ * 같은 자리에 JPG(<이름>.og.jpg · 가로 최대 1200)로 만들어 두고 목록을 public/og-images.json 에 남겨요 (api/_lib/pagemeta.js 가 읽어요).
+ * Next.js 빌드(public)에서만 · 바꾸는 도구(sharp)가 없거나 실패하면 그 사진은 기본 공유 사진으로 (빌드는 멈추지 않아요) */
+if (process.argv[2] === "public") (async () => {
+  const DIRS = ["assets/home", "assets/vod", "assets/landing"], map = {};
+  let sharp = null;
+  try { sharp = require("sharp"); } catch (e) { console.warn("[site] 공유 사진 JPG 만들기 건너뜀 (sharp 없음)"); }
+  const list = [];
+  DIRS.forEach((d) => (function walk(dir) {
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir, { withFileTypes: true }).forEach((e) => { const f = path.join(dir, e.name); if (e.isDirectory()) walk(f); else if (/\.webp$/i.test(e.name)) list.push(f); });
+  })(path.join(OUT, d)));
+  for (const f of sharp ? list : []) {
+    const rel = path.relative(OUT, f).split(path.sep).join("/"), outRel = rel.replace(/\.webp$/i, ".og.jpg");
+    try {
+      await sharp(f).resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true }).flatten({ background: "#ffffff" }).jpeg({ quality: 82, mozjpeg: true }).toFile(path.join(OUT, outRel));
+      map[rel] = outRel;
+    } catch (e) { console.warn("[site] 공유 사진 JPG 실패: " + rel + " — " + (e && e.message)); }
+  }
+  fs.writeFileSync(path.join(OUT, "og-images.json"), JSON.stringify(map));
+  console.log("[site] 공유 사진 JPG " + Object.keys(map).length + "개 → public/og-images.json");
+})().catch((e) => { console.warn("[site] 공유 사진 JPG 건너뜀: " + (e && e.message)); });

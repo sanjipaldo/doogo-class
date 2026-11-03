@@ -112,4 +112,4 @@ function migrateDocs(docs) {
   return changed;
 }
 
-module.exports = { seedDocs, migrateDocs, fillMissing, split, assemble, CLIENT_FILES };
+module.exports = { seedDocs, migrateDocs, fillMissing, split, assemble, loadSeed, CLIENT_FILES };

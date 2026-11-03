@@ -2,6 +2,7 @@
  * 예전에는 서버가 화면 파일 db.js 를 통째로 돌려서 처음 데이터를 만들고 빠진 기본값을 채웠어요. 이제 그 규칙만 여기 두고
  * 화면도 서버도 이 파일을 불러요 (규칙 코드는 db.js 에 있던 그대로 옮겼어요).
  *   · 강사별 화면 색 · 수강생 메뉴(LIVE · VOD) · 새 강사 기본 콘텐츠 · 자주 찾는 페이지 기본 목록 · 과제 종류
+ *   · 강사 소개 페이지 · 무료강의 페이지 기본값(landingOf · freeOf — 3단계: 서버 공유 미리보기도 같은 규칙)
  *   · 처음 데이터(fromSeed) · 예전 데이터 고치기(migrate2to3) · 빠진 기본값 채우기(loadFixups — 한 번만 하는 정리들 포함)
  * make(ctx) — 지금 값은 쓰는 쪽이 넘겨줘요:
  *   db() · setDb(v)      지금 데이터 (db.js: 브라우저 · 서버에서 받은 데이터 / 서버: 정리할 문서들을 합친 것)
@@ -18,6 +19,7 @@
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const uid = (p) => (p || "id") + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const todayStr = () => D.toStr(new Date());
+  const addDays = D.addDays;
   const KEY_PROGRESS = "moonclass:progress:";
   function emptyProgress() { return { submissions: {}, watched: {}, docs: {}, questions: [], chat: [], notes: {}, journal: {}, readNotices: {}, guide: {} }; }
 
@@ -27,6 +29,7 @@
     const R = { get on() { return ctx.remote(); } };
     const store = { get: (k, fb) => ctx.storeGet(k, fb), set: (k, v) => ctx.storeSet(k, v) };
     const instructor = (id) => ctx.db().instructors.find((x) => x.id === id) || null;
+    const content = (id) => ctx.db().content[id] || null;
 
     /* ---------------- 수강생 화면 색상 (강사별) ---------------- */
     // 대표색 + 그 위에 올라가는 글자색. 로그인 왼쪽 패널 배경(bg)도 같은 계열로 맞춘다.
@@ -696,6 +699,114 @@
       return db;
     }
 
+    /* ---------------- 강사 소개 페이지 (#/p/<강사>) ----------------
+     * 어떤 강사가 어떤 강의를 하는지 궁금하게 만드는 페이지. ‘신청하기’는 모두 applyUrl(오픈채팅 · 신청 폼) 하나로 새 창.
+     * 예전 커리큘럼 · 수강 안내(가격 카드 + 수업 캘린더) 칸은 없앴고, 저장돼 있어도 보이지 않아요 */
+    const LANDING_SECTIONS = [
+      { key: "hero", label: "첫 화면 (헤드라인)" }, { key: "video", label: "강사 영상 (유튜브)" }, { key: "about", label: "강사 소개" }, { key: "stats", label: "숫자로 보는 강사" },
+      { key: "points", label: "배우는 것 · 추천 대상" }, { key: "platform", label: "수강생 전용 플랫폼" },
+      { key: "reviews", label: "수강 후기" }, { key: "faq", label: "자주 묻는 질문" }, { key: "cta", label: "마지막 신청 안내" }
+    ];
+    /** 저장된 랜딩 내용 + 비어 있는 칸은 강의 정보로 채운 기본값 */
+    function landingOf(insId) {
+      const c = content(insId), ins = instructor(insId);
+      if (!c || !ins) return null;
+      const b = c.brand, L = clone(c.landing || {});
+      const def = {
+        published: true, applyUrl: "",
+        order: LANDING_SECTIONS.map((x) => x.key), off: {},
+        hero: { eyebrow: b.loginEyebrow || "DOINGGO", title: b.loginHeadline || b.courseTitle, sub: b.loginSub || b.tagline || "", ctaLabel: "수강 신청하기", ctaUrl: "", image: "" },
+        stats: [],
+        about: { title: "강사 소개", name: b.instructor || ins.displayName, role: b.courseTitle, body: "", photo: "", career: [], video: "", videoTitle: "" },
+        points: { title: "이 강의에서 얻어 가는 것", items: [
+          { title: "매주 하나씩, 실습 과제", desc: "강의를 듣고 끝나는 게 아니라 매주 과제를 직접 해내며 결과를 만들어요." },
+          { title: "제출 즉시 자동 검수", desc: "과제를 올리면 바로 확인 결과가 나오고, 강사가 한 번 더 봐 드려요." },
+          { title: "라이브 Q&A", desc: "막히는 부분은 정해진 시간에 강사에게 직접 물어볼 수 있어요." },
+          { title: "수료증 발급", desc: "필수 과제를 모두 마치면 이름이 새겨진 수료증을 드려요." }
+        ], forWho: [] },
+        curriculum: { title: "커리큘럼", sub: "주차별로 강의를 듣고 과제를 해내면 끝까지 갈 수 있어요." },
+        platform: { title: "결제하면 바로 열리는 수강생 전용 학습 공간", sub: "강의 영상, 과제 제출, 일정, 자료함, AI 조교까지 한 곳에서 이어서 공부해요." },
+        reviews: { title: "먼저 들은 수강생 이야기", items: [] },
+        pricing: { title: "수강 안내", price: "", original: "", period: "", includes: [], ctaLabel: "수강 신청하기", ctaUrl: "", note: "" },
+        faq: { title: "자주 묻는 질문", items: [] },
+        cta: { title: "지금 시작하면, 몇 주 뒤의 내가 달라져 있어요", sub: b.courseTitle, label: "수강 신청하기", url: "" },
+        contact: { kakao: b.kakaoChannel || "", youtube: b.youtubeChannel || "", instagram: "", email: "", phone: "", company: "" }
+      };
+      const out = Object.assign({}, def, L);
+      ["hero", "about", "points", "curriculum", "platform", "reviews", "pricing", "faq", "cta", "contact"].forEach((k) => { out[k] = Object.assign({}, def[k], L[k] || {}); });
+      out.off = Object.assign({}, L.off || {});
+      out.order = (L.order || []).filter((k) => LANDING_SECTIONS.some((x) => x.key === k));
+      // 새로 생긴 ‘강사 영상’은 저장된 순서가 있어도 첫 화면 바로 아래로
+      if (out.order.length && out.order.indexOf("video") === -1) { const h = out.order.indexOf("hero"); out.order.splice(h < 0 ? 0 : h + 1, 0, "video"); }
+      LANDING_SECTIONS.forEach((x) => { if (out.order.indexOf(x.key) === -1) out.order.push(x.key); });
+      return out;
+    }
+
+    /* ---------------- 무료강의 페이지 (doogo.site 형식: 카운트다운 · 사전 질문 · 선물 전자책 · 오픈채팅 · 강의 안내) ---------------- */
+    const FREE_SECTIONS = [
+      { key: "countdown", label: "강의 일정 · 카운트다운" }, { key: "intro", label: "대표 영상 (첫 화면 바로 아래 크게)" }, { key: "videos", label: "YouTube 영상 (좌 · 가운데 · 우)" }, { key: "question", label: "사전 미션 · 질문 남기기 버튼" },
+      { key: "gifts", label: "선물 전자책 (공개일에 자동으로 열림)" }, { key: "bonus", label: "참여자 전원 증정 혜택 (01~08)" }, { key: "kakao", label: "카카오톡 오픈채팅" },
+      { key: "live", label: "진행 예정 강의 (썸네일 · 신청 링크)" }, { key: "faq", label: "자주 묻는 질문" }
+    ];
+    /** 아직 무료강의 페이지를 만들지 않은 강사: 문대표 페이지와 같은 구성(선물 전자책 3권 · 질문 · 진행 예정 강의)으로 시작.
+     *  날짜는 오늘 기준으로 잡히고, 강사센터 ‘무료강의 페이지’에서 한 번 저장하면 그때부터 강사 것으로 고정된다 */
+    function freeStarter(c, ins) {
+      const inst = c.brand.instructor || ins.displayName;
+      const seed = (((SEED().content || {}).moon || {}).freeClass || {}).gifts || {};
+      const color = (i, d) => ((seed.items || [])[i] || {}).color || d;
+      return {
+        published: true,
+        hero: { badge: "무료강의 신청자 전용 선물 제공", instructor: inst, sub: "강의 시작 전, 신청자에게만 실전 자료 3권을 순서대로 열어드립니다.", note: "본 강의는 교육 목적이며 결과는 실행 환경과 노력에 따라 달라질 수 있습니다." },
+        gifts: { kicker: "BEFORE THE CLASS", title: "강의 전, 선물 전자책 3권", desc: "공개일이 되면 잠금이 자동으로 풀리고, 표지를 누르면 전자책이 열려요.", items: [
+          { title: inst + "의 시작 가이드", desc: "강의 전에 알아 두면 좋은 기본 개념과 준비할 것을 정리했습니다.", openAt: todayStr() + "T09:00", forceOpen: true, url: "", color: color(0, "blue") },
+          { title: "[전자책] 실전 체크리스트", desc: "처음 시작할 때 놓치기 쉬운 단계를 순서대로 확인할 수 있게 정리했습니다.", openAt: addDays(todayStr(), 7) + "T19:30", url: "", color: color(1, "cyan") },
+          { title: "[전자책 & VOD] 핵심 요약편", desc: "무료강의에서 다룰 핵심 내용을 한 권으로 미리 만나 보세요.", openAt: addDays(todayStr(), 13) + "T19:30", url: "", color: color(2, "ice") }
+        ] },
+        live: { desc: "무료강의 신청을 완료하고, " + inst + "의 실전 노하우를 라이브로 확인하세요.", summary: "처음 시작하는 분도 따라올 수 있도록 실제 사례와 함께 순서대로 알려드립니다.",
+          points: ["처음 시작하는 분도 이해할 수 있는 전체 흐름", "실제 사례로 보는 실전 노하우", "강의가 끝나고 바로 실행할 수 있는 체크리스트"] }
+      };
+    }
+    function freeOf(insId) {
+      const c = content(insId), ins = instructor(insId);
+      if (!c || !ins) return null;
+      const b = c.brand, F = clone(c.freeClass || (insId !== "moon" ? freeStarter(c, ins) : {}));
+      const live = addDays(todayStr(), 14) + "T19:30";
+      const def = {
+        published: false,
+        order: FREE_SECTIONS.map((x) => x.key), off: {},
+        hero: { badge: "무료강의 신청자 전용 선물 제공", instructor: b.instructor || ins.displayName, title: (b.loginHeadline || b.courseTitle || "").replace(/\n/g, "\n"), sub: "강의 시작 전, 신청자에게만 실전 자료를 순서대로 열어드립니다.", note: "본 강의는 교육 목적이며 결과는 실행 환경과 노력에 따라 달라질 수 있습니다." },
+        liveAt: live,
+        question: { badge: "강의 전 필수 · 1분 소요", title: (b.instructor || "강사") + "에게 직접 묻고 싶은 게 있으신가요?", desc: "강의 전에 궁금한 내용을 미리 정리해 보세요. 지금 남겨두시면 내 상황에 맞는 질문을 놓치지 않을 수 있어요.", promise: "지금 남겨 주시면 무료강의 때 그 질문을 토대로 최대한 답변해 드릴 수 있도록 하겠습니다.", label: "내 질문 남기러 가기", url: "", note: "질문을 남긴 뒤 무료강의 신청 페이지로 이동할 수 있어요" },
+        gifts: { kicker: "BEFORE THE CLASS", title: "강의 전, 선물 전자책", desc: "공개일이 되면 잠금이 자동으로 풀리고, 표지를 누르면 전자책이 열려요.", items: [] },
+        videos: { kicker: "WATCH BEFORE THE CLASS", title: "강의 전에, " + (b.instructor || "강사") + "의 실전 이야기를 먼저 만나보세요", desc: "좌우 영상을 넘기면 다양한 인터뷰와 실제 운영 이야기를 볼 수 있어요.", items: [] },
+        intro: { kicker: "WATCH FIRST", title: "영상으로 먼저 만나보세요", desc: "", youtube: "", caption: "눌러서 바로 재생 · 소리를 켜고 들어 보세요" },
+        bonus: { kicker: "FOR EVERYONE", title: "무료강의 참여자 *전원 증정* 혜택", desc: "강의에 참여하시면 아래 자료를 전부 받아 가실 수 있어요.", badge: "🎁 톡방 참여자 전원 공개 예정 🎁", items: [], note: "위 자료는 무료강의 당일, 톡방 참여자 전원에게 공개됩니다." },
+        about: { title: "강사 소개", name: b.instructor || ins.displayName, role: b.courseTitle, body: "", photo: "", career: [] },
+        faq: { kicker: "FAQ", title: "자주 묻는 질문", items: [
+          { q: "무료강의는 어디서 듣나요?", a: "‘진행 예정 강의’의 신청 버튼으로 신청하면, 강의 날짜에 맞춰 라이브 입장 안내를 보내 드려요." },
+          { q: "선물 전자책은 어떻게 받나요?", a: "이 페이지에서 공개일이 되면 잠금이 자동으로 풀려요. 표지를 누르면 전자책이 열려요." },
+          { q: "처음인데 들어도 될까요?", a: "네. 처음 시작하는 분도 따라올 수 있게 순서대로 설명해 드려요." },
+          { q: "궁금한 점은 어디에 물어보나요?", a: "‘질문 남기기’로 미리 남기시거나 카카오톡 오픈채팅방에서 편하게 물어보세요." }
+        ] },
+        apply: { badge: "지금 신청하면 선물이 열려요", title: "무료강의, 지금 신청하세요", desc: "신청한 분께만 강의 링크와 선물 전자책을 보내 드려요.", price: "", original: "", includes: [], label: "무료강의 신청하기", url: "", note: "비우면 ‘진행 예정 강의’의 신청 링크로 연결돼요." },
+        kakao: { badge: "💬 궁금한 점이 있으신가요?", title: "궁금한 점은 카카오톡 오픈채팅방에서 편하게 물어보세요", desc: "강의 전 궁금한 내용이나 미리 확인하고 싶은 부분이 있다면 자유롭게 남겨주세요.\n확인 후 하나씩 답변드리겠습니다.", label: "카카오톡 오픈채팅방 입장하기", url: b.kakaoChannel || "", note: "간단한 질문도 괜찮습니다 │ 편하게 참여해주세요" },
+        live: { kicker: "UPCOMING LIVE CLASS", title: "진행 예정인 강의", desc: "무료강의 신청을 완료하고, 실제 노하우를 라이브로 확인하세요.", tag: "무료 LIVE 강의", platform: "", platformLogo: "", image: "", liveTitle: "", summary: "", points: [], label: "무료강의 신청하기", url: "", note: "신청 페이지는 새 창에서 열립니다." },
+        company: ""
+      };
+      const out = Object.assign({}, def, F);
+      ["hero", "question", "gifts", "videos", "intro", "bonus", "kakao", "about", "live", "faq", "apply"].forEach((k) => { out[k] = Object.assign({}, def[k], F[k] || {}); });
+      out.off = Object.assign({}, F.off || def.off);
+      // 강사 소개는 ‘강의 소개 페이지’에 적어 둔 내용을 기본으로 가져온다
+      if (!F.about && c.landing && c.landing.about) out.about = Object.assign({}, def.about, c.landing.about);
+      out.order = (F.order || []).filter((k) => FREE_SECTIONS.some((x) => x.key === k));
+      // 예전에 순서를 저장해 둔 페이지: 새 ‘대표 영상’ 칸은 맨 위(카운트다운 바로 다음)에 넣어요
+      if (out.order.length && out.order.indexOf("intro") === -1) { const c0 = out.order.indexOf("countdown"); out.order.splice(c0 < 0 ? 0 : c0 + 1, 0, "intro"); }
+      // 새 ‘참여자 전원 증정 혜택’ 칸은 카카오톡 오픈채팅 바로 앞에 (톡방 참여자에게 공개되는 자료라서)
+      if (out.order.length && out.order.indexOf("bonus") === -1) { const k0 = out.order.indexOf("kakao"); out.order.splice(k0 < 0 ? out.order.length : k0, 0, "bonus"); }
+      FREE_SECTIONS.forEach((x) => { if (out.order.indexOf(x.key) === -1) out.order.push(x.key); });
+      return out;
+    }
+
     /** 이 기기에 저장된 데이터로 시작하기 (db.js load() 의 순서 그대로): 저장된 데이터 → v2 면 v3 로 → 없거나 모양이 다르면 처음 데이터(저장) → 빠진 기본값 채우기
      *  서버(처음 데이터 · 정리)도 같은 순서로 불러요 — ctx.setDb 로 지금 데이터를 바꿔요 */
     function loadLocal(saved) {
@@ -707,7 +818,7 @@
       return loadFixups();
     }
 
-    return { THEMES, themeOf, STUDENT_MENUS, OLD_MENU_LABELS, botNameOf, OLD_BOT_NAME, RENAME_PHRASES, QL_RENAME, renameWord, renameContentPhrases, NOTE_PROMPTS, LIB_MENUS, CUSTOM_ICONS, VOD_MENUS, VOD_LIVE_ONLY, VOD_LABEL, splitMid, menuConfig, vodMenuConfig, isCustom, menuOn, libOn, template, QL_ICONS, defaultQuickLinks, MISSION_KINDS, missionKind, normalizeWeeks, normalizeContent, fullDemoProgress, fromSeed, migrate2to3, loadFixups, loadLocal, emptyProgress };
+    return { LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeStarter, freeOf, THEMES, themeOf, STUDENT_MENUS, OLD_MENU_LABELS, botNameOf, OLD_BOT_NAME, RENAME_PHRASES, QL_RENAME, renameWord, renameContentPhrases, NOTE_PROMPTS, LIB_MENUS, CUSTOM_ICONS, VOD_MENUS, VOD_LIVE_ONLY, VOD_LABEL, splitMid, menuConfig, vodMenuConfig, isCustom, menuOn, libOn, template, QL_ICONS, defaultQuickLinks, MISSION_KINDS, missionKind, normalizeWeeks, normalizeContent, fullDemoProgress, fromSeed, migrate2to3, loadFixups, loadLocal, emptyProgress };
   }
   return { make, emptyProgress, KEY_PROGRESS };
 });

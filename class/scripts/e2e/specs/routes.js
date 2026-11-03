@@ -59,6 +59,16 @@ module.exports = {
     const hidden = (vod.products || []).find((p) => p && p.status === "on" && p.title && off.indexOf(p.iid) >= 0 && !p.showOff);
     const hNo = await raw("/vod/p/no-such-class"), hHid = hidden ? await raw("/vod/p/" + hidden.id) : "";
     await run.check(hNo.indexOf("<title>" + T0 + "</title>") >= 0 && (!hidden || hHid.indexOf("<title>" + T0 + "</title>") >= 0), "없는 클래스 · 숨긴 강사 클래스는 예전 기본 미리보기 그대로", { hidden: hidden && hidden.id });
+    // 1-2) 강사 소개 · 무료강의 (3단계): 서버가 넣은 제목 = 화면이 그린 뒤 제목 (같은 규칙) · 주소
+    const dec = (t) => t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+    for (const u of ["/p/" + info.instructor.iid, "/free/" + info.instructor.iid]) {
+      const h = await raw(u), t = dec((h.match(/<title>([^<]*)<\/title>/) || [])[1] || ""), og = (h.match(/<meta property="og:url" content="([^"]*)"/) || [])[1] || "";
+      await L.open(page, base, u);
+      const shown = await page.evaluate(() => document.title);
+      await run.check(t !== T0 && t === shown && og === "https://www.doogoclass.com" + u, "공유 미리보기: " + u + " — 서버가 넣은 제목이 화면 제목과 같아요", { server: t, screen: shown, og });
+    }
+    const hP = await raw("/p/no-such-teacher");
+    await run.check(hP.indexOf("<title>" + T0 + "</title>") >= 0, "없는 강사 소개는 예전 기본 미리보기 그대로");
     // 2) 예전 #주소 링크 → 깨끗한 주소로 바뀌고 같은 화면
     const old = [["/#/doinggo", "/doinggo", "home"], ["/about", "/doinggo", "home"], ["/#/center/login", "/center/login", "admin"], ["/#/terms", "/terms", "vod"]].concat(detail.slice(0, 1).map((p) => ["/#/vod/p/" + p.id, "/vod/p/" + p.id, "vod"]));
     for (const [from, to, m] of old) {

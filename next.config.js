@@ -30,6 +30,7 @@ async function traceApi() {
 
 module.exports = async (phase) => {
   const traced = phase === PHASE_PRODUCTION_BUILD ? await traceApi() : [];
+  const PAGE = traced.concat(INCLUDE).map((f) => "./" + f).concat(["./public/index.html", "./public/og-images.json"]);
   return {
     poweredByHeader: false,
     reactStrictMode: true,
@@ -38,8 +39,8 @@ module.exports = async (phase) => {
     outputFileTracingRoot: __dirname,
     outputFileTracingIncludes: {
       "/api/*": traced.concat(INCLUDE).map((f) => "./" + f),
-      // 3단계: 클래스 상세 /vod/p/<클래스> (app/vod/p/[id]/route.js) — 서버 코드 + 화면 틀 index.html(빌드 때 public/ 으로 복사)
-      "/vod/p/**": traced.concat(INCLUDE).map((f) => "./" + f).concat(["./public/index.html"])
+      // 3단계: 공유 미리보기 페이지 (app/vod/p · app/p · app/free) — 서버 코드 + 화면 틀 index.html · 공유 사진 목록(빌드 때 public/ 으로)
+      "/vod/p/**": PAGE, "/p/**": PAGE, "/free/**": PAGE
     },
     async headers() {
       return [

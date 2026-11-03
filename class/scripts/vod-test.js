@@ -1617,39 +1617,60 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   }
 
   {
-    console.log("28) 클래스 상세 미리보기 정보 (카카오톡 공유 · 검색 — Next.js 전환 3단계)");
+    console.log("28) 공유 미리보기 정보: 클래스 상세 · 강사 소개 · 무료강의 (카카오톡 공유 · 검색 — Next.js 전환 3단계)");
     const PM = require(path.join(TMP, "class/api/_lib/pagemeta.js"));
     const html = require(path.join(ROOT, "scripts/index-abs.js"))(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"));
     const now28 = Date.parse("2026-11-04T12:00:00+09:00");
     const vod = { insOff: ["moon"], settings: {}, biz: {}, products: [
-      { id: "a1", type: "vod", status: "on", title: "AI 굿즈 <만들기> & \"판매\"", sub: "그림 실력 없이 AI로", hook: "0원 시작", creator: "유나", iid: "choi", price: 150000, sale: 139000, thumb: "assets/vod/a1.webp", learn: ["캐릭터 만들기", "<b>인쇄</b>"], who: ["부업 준비생"], pitch: "길게 쓴 소개" },
+      { id: "a1", type: "vod", status: "on", title: "AI 굿즈 <만들기> & \"판매\"", sub: "그림 실력 없이 AI로", hook: "0원 시작", creator: "유나", iid: "choi", price: 150000, sale: 139000, thumb: "assets/vod/a1.jpg", learn: ["캐릭터 만들기", "<b>인쇄</b>"], who: ["부업 준비생"], pitch: "길게 쓴 소개" },
       { id: "m1", type: "vod", status: "on", title: "숨긴 강사 강의", iid: "moon", price: 99000 },
       { id: "m2", type: "book", status: "on", title: "숨긴 강사 책 (보여요)", iid: "moon", showOff: true, price: 15900, cover: "assets/vod/book/c.webp" },
       { id: "x1", type: "vod", status: "off", title: "판매 끝", iid: "choi", price: 1000 },
       { id: "s1", type: "vod", status: "soon", title: "오픈 예정 강의", iid: "choi", price: 50000, thumb: "idb:abc" }
     ] };
     const h1 = PM.vodDetail(html, vod, "a1", now28);
-    ok(h1 && /<title>AI 굿즈 &lt;만들기&gt; &amp; &quot;판매&quot; \| DOOGO CLASS — 돈 되는 클래스<\/title>/.test(h1) && /<meta property="og:url" content="https:\/\/www\.doogoclass\.com\/vod\/p\/a1" \/>/.test(h1) && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/vod\/p\/a1" \/>/.test(h1) && /<meta property="og:image" content="https:\/\/www\.doogoclass\.com\/assets\/vod\/a1\.webp" \/>/.test(h1) && !/og:image:width/.test(h1),
+    ok(h1 && /<title>AI 굿즈 &lt;만들기&gt; &amp; &quot;판매&quot; \| DOOGO CLASS — 돈 되는 클래스<\/title>/.test(h1) && /<meta property="og:url" content="https:\/\/www\.doogoclass\.com\/vod\/p\/a1" \/>/.test(h1) && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/vod\/p\/a1" \/>/.test(h1) && /<meta property="og:image" content="https:\/\/www\.doogoclass\.com\/assets\/vod\/a1\.jpg" \/>/.test(h1) && !/og:image:width/.test(h1),
       "보이는 클래스: 제목(글자 이스케이프) · 주소 · 클래스 사진(전체 주소 · 기본 사진 크기 칸은 빼요)");
     ok(/<meta name="description" content="그림 실력 없이 AI로 · 0원 시작 — 유나" \/>/.test(h1) && /"@type":"AggregateOffer","lowPrice":139000,"highPrice":153000,"priceCurrency":"KRW"/.test(h1) && /<h1>AI 굿즈 &lt;만들기&gt;/.test(h1) && /<li>&lt;b&gt;인쇄&lt;\/b&gt;<\/li>/.test(h1) && !/<\/script><script>/.test(h1) && (h1.match(/application\/ld\+json/g) || []).length === 2,
       "설명 · 가격(결제와 같은 규칙: 6개월 139,000 ~ 12개월 153,000) · 로봇용 안내 글(이스케이프) · 구조화 데이터 추가");
     const app1 = h1.slice(h1.indexOf("<body>")), app0 = html.slice(html.indexOf("<body>"));
     ok(app1.replace(/<div class="seo-static">[\s\S]*?<\/main>/, "") === app0.replace(/<div class="seo-static">[\s\S]*?<\/main>/, "") && (h1.match(/<script src=/g) || []).length === (html.match(/<script src=/g) || []).length,
       "화면 쪽(스크립트 · 화면 틀)은 예전 index.html 과 똑같아요 — 미리보기 정보 · 로봇용 글만 달라요");
-    const hb = PM.vodDetail(html, vod, "m2", now28), hs = PM.vodDetail(html, vod, "s1", now28);
+    const hb = PM.vodDetail(html, vod, "m2", now28, { "assets/vod/book/c.webp": "assets/vod/book/c.og.jpg" }), hs = PM.vodDetail(html, vod, "s1", now28), hbw = PM.vodDetail(html, vod, "m2", now28, {});
     ok(PM.vodDetail(html, vod, "m1", now28) === null && PM.vodDetail(html, vod, "x1", now28) === null && PM.vodDetail(html, vod, "zz", now28) === null && PM.vodDetail(html, null, "a1", now28) === null,
       "숨긴 강사 · 판매 끝 · 없는 클래스 · 데이터 없음 → 예전 index.html 그대로");
-    ok(hb && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/vod\/book\/c\.webp"/.test(hb) && /"@type":"Offer","price":15900/.test(hb) && hs && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doogoclass\.jpg/.test(hs) && !/"offers"/.test(hs) && /오픈 예정/.test(hs),
-      "숨긴 강사라도 따로 보이게 한 책(표지 사진 · 15,900원) · 오픈 예정(브라우저에만 있는 사진 → 기본 사진 · 가격 없음)");
-    ok(PM.imageOf({ thumb: "http://x.com/a.png" }) === "" && PM.imageOf({ thumb: "//x.com/a.png" }) === "" && PM.imageOf({ thumb: "https://cdn.x.com/a.png" }) === "https://cdn.x.com/a.png" && PM.imageOf({ thumb: "/assets/a.webp" }) === "https://www.doogoclass.com/assets/a.webp",
-      "공유 사진 주소: https 만 · 사이트 안 파일은 전체 주소로");
-    process.env.DC_SSR_OFF = "vod-detail";
-    const offHtml = await PM.render("/vod/p/a1", html);
+    ok(hb && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/vod\/book\/c\.og\.jpg"/.test(hb) && /"@type":"Offer","price":15900/.test(hb) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doogoclass\.jpg/.test(hbw) && hs && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doogoclass\.jpg/.test(hs) && !/"offers"/.test(hs) && /오픈 예정/.test(hs),
+      "숨긴 강사라도 따로 보이게 한 책(webp 표지 → 빌드 때 만든 JPG · 없으면 기본 사진 · 15,900원) · 오픈 예정(브라우저에만 있는 사진 → 기본 사진 · 가격 없음)");
+    const M0 = { "assets/a.webp": "assets/a.og.jpg" };
+    ok(PM.imageOf("http://x.com/a.png", M0) === "" && PM.imageOf("//x.com/a.png", M0) === "" && PM.imageOf("https://cdn.x.com/a.png?v=1", M0) === "https://cdn.x.com/a.png?v=1" && PM.imageOf("https://cdn.x.com/a.webp", M0) === "" && PM.imageOf("/assets/a.webp", M0) === "https://www.doogoclass.com/assets/a.og.jpg" && PM.imageOf("assets/b.webp", M0) === "" && PM.imageOf("assets/c.png?v=2", M0) === "https://www.doogoclass.com/assets/c.png?v=2" && PM.imageOf("data:image/png;base64,xx", M0) === "",
+      "공유 사진: JPG · PNG · GIF 만 (카카오톡이 webp 를 못 읽어요) · https 만 · 사이트 안 파일은 전체 주소 · webp 는 빌드 때 만든 JPG 로, 없으면 기본 사진");
+    ok(PM.joinUniq(["0원에서 시작 · 문대표 첫 책", "문대표 첫 책"], " · ") === "0원에서 시작 · 문대표 첫 책" && PM.joinUniq(["짧은 말", "짧은 말이 들어간 긴 문장"], " · ") === "짧은 말이 들어간 긴 문장" && PM.joinUniq(["가", "", "나"], " · ") === "가 · 나" && PM.whenTxt("2026-11-17T19:30") === "11월 17일 (화) 19:30" && PM.whenTxt("bad") === "",
+      "설명에 같은 말이 두 번 들어가지 않아요 · 무료강의 일시 글자 (11월 17일 (화) 19:30)");
+    // 강사 소개 /p/<강사> · 무료강의 /free/<강사> — 처음 데이터(문대표)로
+    const SD28 = require(path.join(TMP, "class/api/_lib/seed.js")).seedDocs(), ins28 = SD28["ins:moon"], c28 = JSON.parse(JSON.stringify(SD28["content:moon"]));
+    c28.brand.photo = "assets/home/moon-profile.webp";
+    c28.freeClass = Object.assign({}, c28.freeClass, { published: true, liveAt: "2026-11-17T19:30", hero: Object.assign({}, (c28.freeClass || {}).hero, { title: "마진 50%\n내 브랜드 <만들기>", instructor: "문대표", sub: "무료 LIVE" }), live: Object.assign({}, (c28.freeClass || {}).live, { image: "assets/landing/moon-thumb-1117.jpg" }) });
+    const MP = { "assets/home/moon-profile.webp": "assets/home/moon-profile.og.jpg" };
+    const hl = PM.landingPage(html, ins28, c28, MP), hf = PM.freePage(html, ins28, c28, MP);
+    ok(hl && hl.indexOf("<title>" + c28.brand.courseTitle.replace(/&/g, "&amp;") + " · " + c28.brand.name + "</title>") >= 0 && /<meta property="og:url" content="https:\/\/www\.doogoclass\.com\/p\/moon" \/>/.test(hl) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/moon-profile\.og\.jpg"/.test(hl) && hl.indexOf("<h1>" + c28.brand.courseTitle) >= 0,
+      "강사 소개 /p/moon: 화면과 같은 제목(강의 이름 · 브랜드) · 주소 · 강사 사진(webp → JPG) · 로봇용 소개 글");
+    ok(hf && /<title>마진 50% 내 브랜드 &lt;만들기&gt; · 문대표 무료강의<\/title>/.test(hf) && /og:description" content="11월 17일 \(화\) 19:30 무료 LIVE/.test(hf) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/landing\/moon-thumb-1117\.jpg"/.test(hf) && /"@type":"Event"[^<]*"startDate":"2026-11-17T19:30:00\+09:00"/.test(hf) && /og:url" content="https:\/\/www\.doogoclass\.com\/free\/moon"/.test(hf),
+      "무료강의 /free/moon: 화면과 같은 제목 · 일시(11/17 (화) 19:30) · 포스터 사진 · 일정 구조화 데이터(한국 시간)");
+    const cOff = JSON.parse(JSON.stringify(c28)); cOff.landing = Object.assign({}, cOff.landing, { published: false }); cOff.freeClass.published = false;
+    ok(PM.landingPage(html, ins28, cOff, MP) === null && PM.freePage(html, ins28, cOff, MP) === null && PM.landingPage(html, Object.assign({}, ins28, { status: "paused" }), c28, MP) === null && PM.freePage(html, null, c28, MP) === null && PM.landingPage(html, ins28, null, MP) === null,
+      "비공개 페이지 · 이용 중지 강사 · 없는 강사 → 예전 index.html 그대로");
+    const hl0 = hl.slice(hl.indexOf("<body>")).replace(/<div class="seo-static">[\s\S]*?<\/main>/, ""), h00 = html.slice(html.indexOf("<body>")).replace(/<div class="seo-static">[\s\S]*?<\/main>/, "");
+    ok(hl0 === h00 && hf.slice(hf.indexOf("<body>")).replace(/<div class="seo-static">[\s\S]*?<\/main>/, "") === h00 && !/phone4|"pw|contact/.test(hl.slice(0, hl.indexOf("<body>")) + hf.slice(0, hf.indexOf("<body>"))),
+      "화면 쪽은 예전과 똑같고 · 미리보기 정보에 강사 연락처 · 뒷자리 같은 비공개 값이 없어요");
+    process.env.DC_SSR_OFF = "vod-detail, landing free";
+    const offs = [await PM.render("/vod/p/a1", html), await PM.render("/p/moon", html), await PM.render("/free/moon", html)];
     delete process.env.DC_SSR_OFF;
-    ok(offHtml === html && (await PM.render("/vod/c/all", html)) === html && (await PM.render("/vod/p/%E0%A4%A", html)) === html, "끄기(DC_SSR_OFF=vod-detail) · 다른 주소 · 이상한 주소 → 예전 index.html 그대로");
-    const rt = fs.readFileSync(path.join(ROOT, "..", "app/vod/p/[id]/route.js"), "utf8"), ds = fs.readFileSync(path.join(ROOT, "scripts/dev-server.js"), "utf8"), nc28 = fs.readFileSync(path.join(ROOT, "..", "next.config.js"), "utf8");
-    ok(/legacyLib\("api\/_lib\/pagemeta\.js"\)\.render\(url\.pathname, tpl\)/.test(rt) && /s-maxage=60/.test(rt) && /fetch\(new URL\("\/index\.html", url\)\)/.test(rt) && /pagemeta"\)\.render\(u\.pathname/.test(ds) && /"\/vod\/p\/\*\*": [^\n]*\.\/public\/index\.html/.test(nc28),
-      "배포(Next.js app/vod/p/[id]) · 로컬 개발 서버 모두 같은 규칙 · 1분 캐시 · 오류면 정적 index.html · 배포 함수에 index.html 실음");
+    ok(offs.every((x) => x === html) && (await PM.render("/vod/c/all", html)) === html && (await PM.render("/vod/p/%E0%A4%A", html)) === html && (await PM.render("/p/../x", html)) === html && (await PM.render("/free/a%2Fb", html)) === html && PM.SWITCHES.join() === "vod-detail,landing,free",
+      "끄기(DC_SSR_OFF=vod-detail · landing · free) · 다른 주소 · 이상한 주소 → 예전 index.html 그대로");
+    const rt = fs.readFileSync(path.join(ROOT, "..", "nextlib/page-route.js"), "utf8"), ds = fs.readFileSync(path.join(ROOT, "scripts/dev-server.js"), "utf8"), nc28 = fs.readFileSync(path.join(ROOT, "..", "next.config.js"), "utf8"), st28 = fs.readFileSync(path.join(ROOT, "scripts/site.js"), "utf8");
+    const routes28 = ["vod/p", "p", "free"].map((d) => fs.readFileSync(path.join(ROOT, "..", "app", d, "[id]", "route.js"), "utf8"));
+    ok(/legacyLib\("api\/_lib\/pagemeta\.js"\)\.render\(url\.pathname, tpl\)/.test(rt) && /s-maxage=60/.test(rt) && /fetch\(new URL\("\/index\.html", url\)\)/.test(rt) && routes28.every((r) => /export const GET = pageGET;/.test(r) && /force-dynamic/.test(r)) && /pagemeta"\)\.render\(u\.pathname/.test(ds) && /\(vod\\\/p\|p\|free\)/.test(ds) && /"\/vod\/p\/\*\*": PAGE, "\/p\/\*\*": PAGE, "\/free\/\*\*": PAGE/.test(nc28) && /\.\/public\/og-images\.json/.test(nc28) && /og-images\.json/.test(st28),
+      "배포(Next.js app/vod/p · app/p · app/free) · 로컬 개발 서버 모두 같은 규칙 · 1분 캐시 · 오류면 정적 index.html · 배포 함수에 index.html · 공유 사진 목록");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
