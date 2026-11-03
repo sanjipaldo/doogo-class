@@ -3211,7 +3211,7 @@
     if (rec && rec.snap) return Object.assign({}, rec.snap, { rec });
     const X = VX(), frozen = new Set();
     VD().payouts.forEach((x) => { if (x.key === key && x.snap && x.ym < ym) (x.snap.ids || []).forEach((id) => frozen.add(id)); });
-    const keep = (o) => (o.status === "refunded" ? Math.max(0, 1 - (o.amount > 0 && o.refundAmount != null ? o.refundAmount / o.amount : 1)) : 1);
+    const keep = window.DCS.settle.keepOf; // 환불된 주문은 남은 비율만큼 (공용 정산 모듈 shared/settle.js)
     // 체험 계정 주문(0원 · demo)은 정산에 넣지 않아요
     const os = VD().orders.filter((o) => !o.demo && vdKey(o) === key && o.paidAt && vdYM(o.paidAt) === ym && (o.status === "paid" || (o.status === "refunded" && keep(o) > 0 && !frozen.has(o.id))));
     const dl = VD().orders.filter((o) => !o.demo && vdKey(o) === key && o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym && frozen.has(o.id));
@@ -3221,18 +3221,15 @@
     // 상품 종류별 (VOD · 전자책 · 종이책 · LIVE · 코칭권 · TEA TIME) — 무엇이 얼마나 팔렸는지
     const kinds = {};
     os.forEach((o) => { const k = X.rateKeyOf(o), c = (kinds[k] = kinds[k] || { n: 0, base: 0, ins: 0 }); c.n++; c.base += baseK(o); c.ins += insK(o); });
-    const ratio = (o) => (o.amount > 0 && o.refundAmount != null ? Math.min(1, o.refundAmount / o.amount) : 1);
+    const ratio = window.DCS.settle.refundRatio;
     const ads = /^ext:/.test(key) ? [] : X.adOf(key, ym), adCost = ads.reduce((a, x) => a + (Number(x.amount) || 0), 0), adPct = X.adSplitOf(key), adDed = Math.round(adCost * adPct / 100 / 10) * 10;
     const carry = vdCarry(key, ym), ins = vdSum(os, insK), ded = dl.reduce((a, o) => a + Math.round(X.insAmt(o) * ratio(o) / 10) * 10, 0), net = ins - ded - adDed - carry, pf = vdProf(key), biz = pf.type === "biz";
     // 세금 (2026-11 std): 정산 금액(net)에는 부가세가 들어 있어요
     //  사업자 → 그대로 지급 · 강사님이 정산 금액(부가세 포함)으로 세금계산서 / 개인 → ÷ 1.1(부가세 전 금액 sup)에서 3.3% 원천징수
     // (예전 gross · net · supply 기준은 확정해 둔 명세서(snap)에만 남아 있어요)
+    // 지급액 계산은 공용 정산 모듈(shared/settle.js payout — 화면 · 서버 같은 규칙)
     const mode = X.taxMode(), base0 = vdSum(os, baseK);
-    const sup = !biz && net > 0 ? Math.floor(net / 1.1) : 0, vatOut = !biz && net > 0 ? net - sup : 0;
-    const wh = mode === "std" ? (sup > 0 ? Math.floor(sup * 0.033 / 10) * 10 : 0) : !biz && net > 0 ? Math.floor(net * 0.033 / 10) * 10 : 0;
-    const vat = mode === "supply" && biz && net > 0 ? Math.round(net * 0.1) : 0;
-    const pay0 = mode === "std" ? (net > 0 ? (biz ? net : sup - wh) : 0) : Math.max(0, net - wh + vat);
-    const invIns = !biz || net <= 0 ? 0 : mode === "gross" ? base0 : mode === "supply" ? net + vat : pay0, invPf = biz && net > 0 && mode === "gross" ? Math.max(0, base0 - pay0) : 0;
+    const { sup, vatOut, wh, vat, pay: pay0, invIns, invPf } = window.DCS.settle.payout(net, biz, mode, base0);
     // PG 결제 수수료: 정산 기준액에서 빼요 (정산액에 이미 반영 · 여기는 보여 주기용 합계)
     const pgK = (o) => Math.round(X.pgFeeOf(o) * keep(o));
     // 온드미디어 RS: YouTube 링크로 팔린 주문은 판매가에서 RS 를 먼저 빼고 강사 비율로 나눠요 (정산액에 이미 반영 · 여기는 보여 주기용 합계)
@@ -3319,7 +3316,7 @@
   function vdTaxCard() {
     const X = VX(), st = VD().settings, mode = X.taxMode(), d = st.rates || {};
     // 2026-11: 정산 기준은 하나로 고정 — 고르는 칸 대신 계산 순서와 예시를 보여 줘요 (예전 기준은 확정한 명세서에만)
-    const sup = Math.floor(2500000 / 1.1), wh = Math.floor(sup * 0.033 / 10) * 10;
+    const ex = window.DCS.settle.payout(2500000, false, "std", 0), sup = ex.sup, wh = ex.wh; // 예시도 같은 규칙(공용 정산 모듈)으로
     return '<section class="a-card"><div class="a-card-head"><h2>정산 · 세금계산서 기준</h2><span class="a-muted">모든 강사에게 같은 기준이에요. 강사 · 종류별 비율은 아래 표에서 정하고, 바꾸면 아직 확정하지 않은 명세서부터 새 비율로 계산해요. 확정한 명세서는 그대로예요.</span></div>' +
       '<form id="vda-tax-form" class="a-form" novalidate><div class="vs-rule">' +
         '<ol class="vs-rule-steps"><li><b>정산 기준액</b><span>할인 전 판매가 − 온드미디어 RS − PG 결제 수수료</span></li><li><b>정산액 (부가세 포함)</b><span>정산 기준액 × 강사 비율 (기본 50%) − 그 달 광고비 강사 분담</span></li><li><b>지급</b><span>사업자: 정산액 그대로 · 강사님이 두고홀딩스에 정산액(부가세 포함)으로 세금계산서<br>개인(3.3%): 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3% 원천징수</span></li></ol>' +

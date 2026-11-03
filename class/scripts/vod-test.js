@@ -1574,6 +1574,28 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "가격 규칙은 한 곳(shared/price.js): 화면 · 서버 모두 그 모듈을 쓰고 따로 계산하지 않아요 · 화면은 vod.js 보다 먼저 읽어요");
   }
 
+  {
+    console.log("26) 공용 모듈: 정산 계산 (화면 vod.js · admin.js · 서버 media.js 가 같은 규칙 · Next.js 전환 2단계)");
+    const ST = require(path.join(ROOT, "shared/settle.js")), MD26 = require(path.join(TMP, "class/api/_lib/media.js"));
+    // 1,000만 원 판매(카드 3.3%) · RS 없음 · 강사 50% → 정산 기준액 · 정산액
+    const o1 = { amount: 10000000, sale: 10000000, method: "card", kind: "course" };
+    ok(ST.pgFeeOf({}, o1) === 330000 && ST.insBase({}, o1) === 9670000 && ST.insAmt({}, o1, 50) === 4835000 && ST.pgFeeOf({ card: { pct: 2.5 } }, o1) === 250000 && ST.pgFeeOf({}, { amount: 9900, method: "vbank" }) === 300 && ST.pgFeeOf({}, { amount: 9900, method: "point" }) === 0,
+      "PG 수수료: 카드 3.3% · 마스터가 정한 2.5% · 가상계좌 건당 300원 · 포인트 결제 0원 → 강사 정산액 = (판매가 − 수수료) × 50%");
+    const o2 = { amount: 330000, sale: 330000, method: "bank", kind: "course", rs: { pg: 5, rate: 20 } };
+    ok(ST.rsOf(o2) === 62700 && ST.insBase({}, o2) === 267300 && ST.rsOf(Object.assign({}, o2, { kind: "coach" })) === 0,
+      "온드미디어 RS = 330,000 × 95% × 20% = 62,700원을 먼저 빼고 · 코칭권은 RS 없음");
+    const b = ST.payout(2500000, true, "std", 0), pp = ST.payout(2500000, false, "std", 0);
+    ok(b.pay === 2500000 && b.invIns === 2500000 && pp.sup === 2272727 && pp.wh === 74990 && pp.pay === 2197737 && ST.payout(-1000, false, "std", 0).pay === 0,
+      "지급액: 사업자 250만 원 그대로(세금계산서 250만 원) · 개인 250만 ÷ 1.1 = 2,272,727 − 3.3% 74,990(10원 아래 버림) → 2,197,737원 · 마이너스면 0원", [b, pp]);
+    ok(ST.keepOf({ status: "refunded", amount: 100000, refundAmount: 30000 }) === 0.7 && ST.keepOf({ status: "paid" }) === 1 && ST.refundRatio({ amount: 100000, refundAmount: 30000 }) === 0.3,
+      "부분 환불: 정산에 70% 남김 · 확정 뒤 환불은 30% 차감");
+    ok(MD26.rateOf({ subs: 120000 }, MD26.rules({})) === 20 && MD26.rateOf({ subs: 5000 }, MD26.rules({})) === 10 && MD26.rateOf({ rate: 15 }, MD26.rules({})) === 15 && MD26.codeOf("Doo-Go_MD!") === "doogomd" && MD26.rules({ vod: { settings: { rs: { pg: 50 } } } }).pg === 5,
+      "서버 RS 규칙(공용 모듈): 구독자 10만 이상 20% · 미만 10% · 직접 정한 15% · 링크 코드 정리 · 범위 밖 값은 기본값");
+    const vs26 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), as26 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ms26 = fs.readFileSync(path.join(ROOT, "api/_lib/media.js"), "utf8"), ix26 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    ok(/const ST = window\.DCS\.settle;/.test(vs26) && !/Math\.floor\(insBase\(o\) \* shareVal/.test(vs26) && /window\.DCS\.settle\.payout\(net, biz, mode, base0\)/.test(as26) && !/Math\.floor\(sup \* 0\.033/.test(as26) && /require\("\.\.\/\.\.\/shared\/settle"\)/.test(ms26) && /<script src="shared\/settle\.js"><\/script>[\s\S]*<script src="vod\.js">/.test(ix26),
+      "정산 규칙은 한 곳(shared/settle.js): 화면 · 강사 정산 명세서 · 서버 RS 모두 그 모듈을 써요");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

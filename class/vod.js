@@ -867,8 +867,10 @@
     return addon ? addonShare(p && p.iid) : shareOf(p);
   }
   const CH_TXT = { web: "플랫폼 유입", ins: "강사 링크", ad: "플랫폼 광고", addon: "1:1 코칭 · TEA TIME" };
-  const baseOf = (o) => Math.max(0, Number(o.sale != null ? o.sale : o.amount) || 0);
-  const supplyOf = (o) => Math.round(baseOf(o) / 1.1);
+  // 정산 계산 규칙은 화면 · 서버 공용 모듈(shared/settle.js — Next.js 전환 2단계)에 있어요. 여기서는 이 화면의 설정(수수료율 · RS 규칙 · 정산 비율)만 넘겨요
+  const ST = window.DCS.settle;
+  const baseOf = ST.baseOf;
+  const supplyOf = ST.supplyOf;
   /** 주문 → 비율 종류 · 강사 키 */
   const rateKeyOf = (o) => { const k = kindOf(o); return k === "coach" ? "coach" : k === "tea" ? "tea" : rateKeyOfP(product(o.pid) || {}); };
   const keyOfOrder = (o) => { const p = product(o.pid) || {}; return o.iid || p.iid || (p.creator ? "ext:" + p.creator : ""); };
@@ -900,29 +902,28 @@
     return { acct: a }; };
   const taxMode = () => "std";
   /* PG 결제 수수료 — 결제수단별 [%, 건당 원] (마스터 › 매출 리포트 › 수수료율에서 PG 계약대로) · 강사 정산 기준액에서 빼요 (2026-11) */
-  const PG_FEE_DEF = { card: [3.3, 0], kakao: [3.3, 0], naver: [3.3, 0], toss: [3.3, 0], transfer: [2, 0], vbank: [0, 300], bank: [0, 0], free: [0, 0] };
-  const PG_KEYS = ["card", "kakao", "naver", "toss", "transfer", "vbank", "bank"];
-  const payKeyOf = (o) => (!(Number(o && o.amount) > 0) || o.method === "free" || o.method === "point" ? "free" : PG_KEYS.indexOf(o.method) >= 0 ? o.method : "card");
-  const pgRate = (k) => { const s = ((STG() || {}).pgFee || {})[k] || {}, d = PG_FEE_DEF[k] || [0, 0], n = (x, dv) => (x != null && x !== "" && isFinite(Number(x)) ? Number(x) : dv); return [n(s.pct, d[0]), n(s.won, d[1])]; };
+  const PG_FEE_DEF = ST.PG_FEE_DEF;
+  const PG_KEYS = ST.PG_KEYS;
+  const payKeyOf = ST.payKeyOf;
+  const pgRate = (k) => ST.pgRate((STG() || {}).pgFee, k);
   /** 이 주문의 PG 결제 수수료 (고객 결제액 × 수수료율 + 건당) — 무료 · 쿠폰 · 포인트 결제는 0원 */
-  const pgFeeOf = (o) => { const a = Number(o && o.amount) || 0; if (!(a > 0)) return 0; const f = pgRate(payKeyOf(o)); return Math.max(0, Math.round(a * f[0] / 100) + f[1]); };
+  const pgFeeOf = (o) => ST.pgFeeOf((STG() || {}).pgFee, o);
   /* ---------- 온드미디어(YouTube 채널 팀) RS ----------
    * 홍보 링크 /vod/p/<상품>?rs=<코드> 로 들어오면 이 브라우저에 { 코드, 누른 때 } 를 상품마다 기억해요 (같은 상품은 마지막 링크가 이겨요).
    * 그 상품을 기간(기본 30일) 안에 사면 결제할 때 서버로 보내고, 서버가 코드 · 기간 · 상품을 다시 확인해 주문에 rs 를 남겨요 (api/_lib/media.js).
    * RS = (판매가 − 환불) × (1 − PG 공제 %) × RS % — 강사 정산은 판매가에서 RS 를 먼저 뺀 금액 × 강사 비율이에요 (회사소개서 정산 구조).
    * RS % 는 주문에 남은 값(그때 비율) 그대로라, 나중에 구독자 수 · 비율을 바꿔도 지난 주문은 그대로예요. 종이책 · 코칭권 · TEA TIME · 연장권은 RS 가 없어요. */
-  const RS_KEY = "dc:rs", RS_DEF = { lo: 10, hi: 20, subs: 100000, days: 30, pg: 5 };
-  const rsNum = (v, lo, hi, d) => { const n = Number(v); return v !== null && v !== undefined && v !== "" && isFinite(n) && n >= lo && n <= hi ? n : d; };
-  function rsRules() { const r = (STG() && STG().rs) || {}; return { lo: rsNum(r.lo, 0, 100, RS_DEF.lo), hi: rsNum(r.hi, 0, 100, RS_DEF.hi), subs: rsNum(r.subs, 0, 1e10, RS_DEF.subs), days: rsNum(r.days, 1, 365, RS_DEF.days), pg: rsNum(r.pg, 0, 30, RS_DEF.pg) }; }
+  const RS_KEY = "dc:rs", RS_DEF = ST.RS_DEF;
+  function rsRules() { return ST.rsRules(STG() && STG().rs); }
   /** 계정의 RS %: 마스터가 직접 정했으면 그 값, 아니면 구독자 수가 기준 이상이면 높은 %(20), 미만이면 낮은 %(10) */
-  const rsRateOf = (acc, R) => { R = R || rsRules(); const own = rsNum(acc && acc.rate, 0, 100, null); return own != null ? own : (Number(acc && acc.subs) || 0) >= R.subs ? R.hi : R.lo; };
-  const rsCode = (v) => String(v == null ? "" : v).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16);
-  const rsProduct = (p) => !!p && !isBook(p);
+  const rsRateOf = (acc, R) => ST.rsRateOf(acc, R || rsRules());
+  const rsCode = ST.rsCode;
+  const rsProduct = ST.rsProduct;
   /** 이 주문의 온드미디어 RS (환불 전 전체 · 부가세 포함 · 10원 아래 버림) — 부분 환불은 화면이 남은 비율만큼 줄여요 */
-  const rsOf = (o) => { if (!o || !o.rs || kindOf(o) !== "course") return 0; const pg = Number(o.rs.pg) || 0, r = Number(o.rs.rate) || 0; return Math.max(0, Math.floor(baseOf(o) * (100 - pg) * r / 100000 + 1e-6) * 10); };
+  const rsOf = ST.rsOf;
   /** 강사 정산액 = (할인 전 판매가 − 온드미디어 RS − PG 결제 수수료) × 강사 비율 · 10원 아래 버림 (부가세가 들어 있는 금액) */
-  const insBase = (o) => Math.max(0, baseOf(o) - rsOf(o) - pgFeeOf(o));
-  const insAmt = (o) => Math.floor(insBase(o) * shareVal(o) / 100 / 10) * 10;
+  const insBase = (o) => ST.insBase((STG() || {}).pgFee, o);
+  const insAmt = (o) => ST.insAmt((STG() || {}).pgFee, o, shareVal(o));
   function rsMap() { try { const m = JSON.parse(localStorage.getItem(RS_KEY) || "{}"); return m && typeof m === "object" && !Array.isArray(m) ? m : {}; } catch (e) { return {}; } }
   function rsKeep(pid, c) {
     try {

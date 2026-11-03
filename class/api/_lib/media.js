@@ -14,22 +14,17 @@
 "use strict";
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
-const RS_DEF = { lo: 10, hi: 20, subs: 100000, days: 30, pg: 5 };
-const num = (v, lo, hi, d) => { const n = Number(v); return v !== null && v !== undefined && v !== "" && isFinite(n) && n >= lo && n <= hi ? n : d; };
+// RS 규칙 · 비율 · 링크 코드는 화면과 같은 공용 정산 모듈(class/shared/settle.js — Next.js 전환 2단계)
+const ST = require("../../shared/settle");
+const RS_DEF = ST.RS_DEF;
+const num = ST.num;
 /** RS 규칙 (meta.vod.settings.rs 에서 빈 칸은 기본값) */
-function rules(meta) {
-  const r = (((meta || {}).vod || {}).settings || {}).rs || {};
-  return { lo: num(r.lo, 0, 100, RS_DEF.lo), hi: num(r.hi, 0, 100, RS_DEF.hi), subs: num(r.subs, 0, 1e10, RS_DEF.subs), days: num(r.days, 1, 365, RS_DEF.days), pg: num(r.pg, 0, 30, RS_DEF.pg) };
-}
+const rules = (meta) => ST.rsRules((((meta || {}).vod || {}).settings || {}).rs);
 /** 이 계정의 RS %: 마스터가 직접 정했으면 그 값, 아니면 구독자 수가 기준 이상이면 높은 %, 미만이면 낮은 % */
-function rateOf(acc, R) {
-  const own = num(acc && acc.rate, 0, 100, null);
-  if (own != null) return own;
-  return (Number(acc && acc.subs) || 0) >= R.subs ? R.hi : R.lo;
-}
-const codeOf = (v) => String(v == null ? "" : v).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16);
+const rateOf = ST.rsRateOf;
+const codeOf = ST.rsCode;
 /** RS 대상 상품: 종이책은 빼요 (택배 · 도서정가제) */
-const rsProduct = (p) => !!p && (p.type || "vod") !== "book";
+const rsProduct = ST.rsProduct;
 
 /** 결제 대기 주문을 만들 때: 회원 브라우저가 보낸 링크 기록 { c: 코드, p: 상품, at: 누른 때 } 를 확인 → 주문에 남길 rs | null
  *  수강권(course) 주문 · 판매가가 있는 상품 · 링크 기간(기본 30일) 안 · 사용 중인 계정 · 그 링크의 상품일 때만 */
