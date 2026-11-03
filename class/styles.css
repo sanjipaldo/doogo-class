@@ -1445,6 +1445,15 @@ body.lib-gated #main > .page { filter: blur(6px); pointer-events: none; user-sel
 .bp-scrim, .bp-grab { display: none; }
 .bot-full .bp-head { padding: 18px 20px; }
 .bot-full .chips { border-top: 1px solid var(--line-soft); }
+/* 바로 물어볼 질문 탭 (강사 학습 자료가 있을 때: 수업 · 과제 | 제조 · 배송) */
+.chip-tabs { display: flex; gap: 4px; padding: 10px 16px 0; background: var(--canvas); border-top: 1px solid var(--line-soft); }
+.chip-tabs + .chips, .chip-tabs + .bp-chips { border-top: 0; }
+.chip-tab { min-height: 30px; padding: 4px 12px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 700; color: var(--body); background: transparent; transition: background-color .15s, color .15s; }
+.chip-tab:hover { background: var(--canvas-soft); color: var(--ink); }
+.chip-tab.on { background: var(--ink); color: var(--canvas); }
+.chip-tab:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.bot-panel .chip-tabs { padding: 8px 12px 0; }
+.msg-bubble a { color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
 @media (max-width: 720px) {
   .bot-launch { padding: 6px; min-height: 0; }
   .bot-launch .bl-txt { display: none; }

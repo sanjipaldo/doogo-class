@@ -634,9 +634,48 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(r.status === 403, "AI 조교: 다른 강사는 문대표 조교를 못 써요", r.json);
   useJar({ dc_s: auth.sign({ r: "student", sid: "s1", iid: "moon" }) });
   r = await call("ai-tutor", { body: { iid: "moon", q: "1kg 넘으면 국제 운송료 얼마예요?" } });
-  ok(r.json.ok && r.json.src === "kb" && /\$16/.test(r.json.text) && !AI.reqs.length, "키가 없으면: 학습 자료에서 찾은 답 (운송료 $16)", r.json);
+  ok(r.json.ok && r.json.src === "kb" && r.json.hit === true && /\$16/.test(r.json.text) && !AI.reqs.length, "키가 없으면: 학습 자료 카드에서 찾은 답 (운송료 $16 · hit)", r.json);
   r = await call("ai-tutor", { body: { iid: "moon", q: "화성 날씨 알려줘" } });
-  ok(r.json.ok && r.json.src === "kb" && /1:1 요청/.test(r.json.text), "학습 자료에 없으면 지어내지 않고 1:1 요청 안내", r.json);
+  ok(r.json.ok && r.json.src === "kb" && r.json.hit === false && /1:1 요청/.test(r.json.text), "학습 자료에 없으면 지어내지 않고 1:1 요청 안내 (hit false)", r.json);
+  // 2026-11-03 뉴질랜드 제조 · 배송 학습 파일 5개 (tutor/moon/*.md) — 키 없이 24시간: 카드 · 계산 · 법 지키기
+  {
+    const KBX = require(path.join(TMP, "class/api/_lib/tutor-kb.js")), now = Date.parse("2026-11-03T02:39:00Z"); // 뉴질랜드 11/3(화)
+    const A = (q) => KBX.answer("moon", q, { now, ins: "문대표" });
+    const L = KBX.load("moon");
+    ok(L.files.length === 6 && L.sections.length >= 15 && !/<!--/.test(L.text) && !/USD \$10|\$10 정도/.test(L.text) && /06-0145-0847640-00/.test(L.text), "학습 자료: moon.md + 받은 파일 5개 · 조교용 주석은 Claude 에게 안 보냄 · 언더밸류(USD $10) 안내는 뺐어요", { files: L.files, n: L.sections.length });
+    const cases = [
+      ["택배 언제 와요?", "배송 일정", "11월 5일(목) 직항편"], ["배송은 며칠 걸려요?", "배송 일정", "영업일 기준 약 5일"], ["발송은 무슨 요일에 해요?", "배송 일정", "화요일 · 목요일"],
+      ["송장 조회는 어떻게 해요?", "송장 조회", "aciexpress.net/delivery"], ["2.3kg 보내면 운송료 얼마예요?", "국제 운송료", "$29"], ["500g짜리 하나 보내면 배송비는?", "국제 운송료", "$16"],
+      ["3키로 국제 배송비 계산해줘", "국제 운송료", "$36"], ["창고 보관료는 얼마예요?", "창고 관리", "$45"], ["ACI 로그인이 안 돼요", "배대지(ACI 3PL)", "대문자"],
+      ["건강식품 몇 개까지 보낼 수 있어요?", "수량 제한", "최대 6개"], ["마누카꿀 5개랑 초록홍합 6개 같이 보내도 돼요?", "수량 제한", "기준 안이에요"], ["프로폴리스 7개 한 번에 보내도 되나요?", "수량 제한", "기준을 넘어요"],
+      ["통관할 때 필요한 정보가 뭐예요?", "필수 항목", "개인통관고유부호"], ["마누카꿀은 어떻게 만들어요?", "생산 과정", "원심분리기"], ["꿀 색이 배치마다 달라요 왜 그래요?", "배치마다", "자연물"],
+      ["상세 공정도 공개해 주나요?", "원산지", "One Batch"], ["제조 최소 수량(MOQ)이 몇 개예요?", "제조 사양", "50개"], ["#00 캡슐에는 몇 mg 들어가요?", "캡슐", "400mg"],
+      ["제조 비용 입금 계좌 알려주세요", "입금 계좌", "06-0145-0847640-00"], ["해외 송금할 때 swift 코드가 뭐예요?", "입금 계좌", "ANZBNZ22"]
+    ];
+    const miss = cases.filter(([q, t, m]) => { const a = A(q); return !(a.hit && !a.guard && a.text.indexOf(t) >= 0 && a.text.indexOf(m) >= 0); }).map((c) => c[0]);
+    ok(!miss.length, "제조 · 배송 질문 " + cases.length + "개: 맞는 카드 · 계산(운송료 $29 · 도착일 · 6개 기준)", miss);
+    const classQ = ["이번 주 과제 마감은?", "내 진도 알려줘", "다음 라이브 언제예요?", "라이브 무슨 요일이에요?", "과제 몇 개 남았어요?", "수강료 입금했는데 확인됐나요?", "사업자 통장 계좌 개설은 어디서 해요?", "상세페이지 만드는 법 알려줘", "쿠팡 입점하려면 서류 뭐 필요해요?", "오늘 점심 뭐 먹지?"];
+    ok(classQ.every((q) => !A(q).hit), "수업 · 다른 질문은 학습 자료 카드를 쓰지 않아요 (과제 마감 · 진도 · 라이브 · 수강료 입금 …)", classQ.filter((q) => A(q).hit));
+    const guardQ = ["관세 안 내려면 가격 낮게 써도 돼요?", "언더밸류는 얼마로 적어요?", "인보이스 금액 줄여서 보내도 되나요?", "6개 넘으면 나눠서 보내도 돼요?", "10달러로 적으면 되나요?"];
+    ok(guardQ.every((q) => A(q).guard && /실제 결제 가격/.test(A(q).text)) && !A("관세 안 내는 기준이 뭐예요?").guard && !A("신고 가격은 얼마로 적어요?").guard, "관세 회피(언더밸류 · 기준 피해 나눠 보내기)는 안내하지 않고 실제 가격 신고 안내 · 기준 질문은 그대로", guardQ.filter((q) => !A(q).guard));
+    const days = [0, 1, 2, 3, 4, 5, 6].map((i) => KBX._.arrival("오늘 주문하면 언제 받아요?", Date.parse("2026-11-01T23:00:00Z") + i * 864e5));
+    ok(/11월 3일\(화\) 직항편.*11월 7일\(토\) ~ 11월 9일\(월\)/.test(days[0]) && /11월 5일\(목\) 직항편.*11월 10일\(화\) ~ 11월 11일\(수\)/.test(days[1]) && /11월 5일\(목\) 직항편/.test(days[2]) && days.slice(3).every((d) => /11월 9일\(월\) 마감.*11월 10일\(화\) 직항편.*11월 14일\(토\) ~ 11월 16일\(월\)/.test(d)), "도착일 계산: 월요일 마감 → 화요일 발송 → 토~월 · 수요일 마감 → 목요일 발송 → 다음 주 화~수 (뉴질랜드 날짜)", days);
+    ok(KBX._.fee(1000) === 16 && KBX._.fee(1050) === 17 && KBX._.fee(1500) === 21 && KBX._.fee(3000) === 36 && KBX._.weightsIn("1kg 넘으면 2,300g").join() === "2300", "운송료: 1kg까지 $16 · 넘으면 100g마다 $1(남는 무게는 올림) · ‘1kg 넘으면’은 무게로 안 셈", null);
+  }
+  r = await call("ai-tutor", { body: { iid: "moon", q: "택배 언제 와요?" } });
+  ok(r.json.hit && /직항편/.test(r.json.text) && !AI.reqs.length, "서버로 물어도 같은 카드 답 (키 없이)", r.json);
+  r = await call("ai-tutor", { body: { iid: "moon", q: "그럼 3kg은요?", history: [{ from: "me", text: "2.3kg 보내면 운송료 얼마예요?" }, { from: "bot", text: "$29예요" }] } });
+  ok(r.json.hit && /\$36/.test(r.json.text), "짧게 이어 물어도(‘그럼 3kg은요?’) 앞 질문과 이어서 답 ($36)", r.json);
+  let rlBefore = (await call("ai-tutor", { body: { iid: "moon", op: "info" } })).json;
+  ok(rlBefore.ok && rlBefore.cards.length >= 15 && rlBefore.chips && rlBefore.chips.title === "제조 · 배송" && rlBefore.chips.list.length >= 6 && rlBefore.guard.length && !/0847640|ANZBNZ22|1FAIpQL|docs\.google|doogobio\.bill/.test(JSON.stringify(rlBefore)), "info: 화면이 쓸 낱말 · 정규식 · ‘제조 · 배송’ 칩만 (학습 자료 내용 · 계좌는 안 보내요)", { cards: rlBefore.cards && rlBefore.cards.length, chips: rlBefore.chips });
+  r = await call("ai-tutor", { method: "GET" });
+  ok(r.status === 200 && r.json.kb && r.json.kb.moon && r.json.kb.moon.files === 6 && !/0847640/.test(JSON.stringify(r.json)), "GET: 배포 확인용 카드 수만 (내용 없음)", r.json);
+  useJar({ dc_a: auth.sign({ r: "instructor", iid: "choi" }) });
+  r = await call("ai-tutor", { body: { iid: "choi", op: "info" } });
+  ok(r.json.ok && r.json.cards.length === 0 && r.json.chips === null && r.json.guard.length, "학습 자료가 없는 강사: 카드 · 칩 없음 (관세 회피 안내 규칙만)", r.json);
+  r = await call("ai-tutor", { body: { iid: "choi", q: "관세 안 내려면 가격 낮게 써도 돼요?" } });
+  ok(r.json.hit && /실제 결제 가격/.test(r.json.text), "학습 자료가 없는 강사 조교도 관세 회피 질문엔 같은 안내", r.json);
+  useJar({ dc_s: auth.sign({ r: "student", sid: "s1", iid: "moon" }) });
   Object.assign(process.env, { ANTHROPIC_API_KEY: "sk-test", AI_TUTOR_MODEL: "tutor-test-model" });
   r = await call("ai-tutor", { body: { iid: "moon", q: "운송료 얼마예요?", history: [{ from: "bot", text: "반가워요" }, { from: "me", text: "안녕" }, { from: "bot", text: "안녕하세요!" }, { from: "me", text: "질문 있어요" }] } });
   const aq = AI.reqs[AI.reqs.length - 1] || { h: {}, body: {} }, sys = ((aq.body.system || [])[0]) || {};
@@ -645,9 +684,18 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(sys.cache_control && sys.cache_control.type === "ephemeral" && /06-0145-0847640-00/.test(sys.text) && /언더밸류/.test(sys.text) && /자주 묻는 질문/.test(sys.text), "시스템 프롬프트: 문대표 학습 자료 + 강의 FAQ + 법 지키는 규칙 (캐시)", (sys.text || "").length);
   const ms = aq.body.messages || [];
   ok(ms.length === 3 && ms[0].role === "user" && ms[1].role === "assistant" && ms[2].role === "user" && ms[2].content === "운송료 얼마예요?" && /질문 있어요/.test(ms[0].content) === false, "대화: 사용자부터 · 번갈아 · 마지막은 지금 질문", ms);
+  r = await call("ai-tutor", { body: { iid: "moon", q: "2.3kg 보내면 운송료 얼마예요?" } });
+  const aq2 = AI.reqs[AI.reqs.length - 1] || { body: {} }, lastU = ((aq2.body.messages || []).slice(-1)[0] || {}).content || "";
+  ok(r.json.src === "ai" && r.json.hit === true && /\[조교 계산/.test(lastU) && /\$29/.test(lastU) && /^2\.3kg 보내면 운송료 얼마예요\?/.test(lastU), "키가 있으면: 카드에서 계산한 값(2.3kg → $29)을 질문 끝에 붙여 Claude에게", lastU);
+  const nAI = AI.reqs.length;
+  r = await call("ai-tutor", { body: { iid: "moon", q: "관세 안 내려면 가격 낮게 써도 돼요?" } });
+  ok(r.json.src === "kb" && r.json.hit && /실제 결제 가격/.test(r.json.text) && AI.reqs.length === nAI, "관세 회피 질문은 키가 있어도 Claude 없이 같은 안내", r.json);
+  AI.next = { status: 200, body: { id: "msg_r", type: "message", role: "assistant", content: [], stop_reason: "refusal", usage: { input_tokens: 1, output_tokens: 0 } } };
+  r = await call("ai-tutor", { body: { iid: "moon", q: "화성 날씨 알려줘" } });
+  ok(r.json.ok && /답하기 어려워요/.test(r.json.text), "Claude가 거절하면 1:1 요청 안내", r.json);
   AI.next = { status: 200, body: { id: "msg_r", type: "message", role: "assistant", content: [], stop_reason: "refusal", usage: { input_tokens: 1, output_tokens: 0 } } };
   r = await call("ai-tutor", { body: { iid: "moon", q: "운송료" } });
-  ok(r.json.ok && /답하기 어려워요/.test(r.json.text), "Claude가 거절하면 1:1 요청 안내", r.json);
+  ok(r.json.ok && r.json.hit && /\$16/.test(r.json.text), "학습 자료 카드가 있는 질문은 Claude가 거절해도 카드 답", r.json);
   AI.next = { status: 401, body: { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } } };
   const errLog = console.error; console.error = () => {};
   r = await call("ai-tutor", { body: { iid: "moon", q: "국제 운송료 1kg 얼마예요?" } });
@@ -655,8 +703,10 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(r.json.ok && r.json.src === "kb" && /\$16/.test(r.json.text), "키가 틀리면(401) 학습 자료 답으로", r.json);
   AI.next = null; delete process.env.ANTHROPIC_API_KEY; delete process.env.AI_TUTOR_MODEL;
   let n429 = 0;
-  for (let i = 0; i < 26; i++) { r = await call("ai-tutor", { body: { iid: "moon", q: "운송료" } }); if (r.status === 429) n429++; }
-  ok(n429 === 1 && r.status === 429, "한 사람당 15분에 30번까지", { n429, last: r.status });
+  { const st17 = require(path.join(TMP, "class/api/_lib/store.js")); await st17.rlClear(["ai:stu:moon:s1"]); }
+  for (let i = 0; i < 31; i++) { r = await call("ai-tutor", { body: { iid: "moon", q: "운송료" } }); if (r.status === 429) n429++; }
+  r = await call("ai-tutor", { body: { iid: "moon", op: "info" } });
+  ok(n429 === 1 && r.status === 200 && r.json.ok, "한 사람당 15분에 30번까지 (info 는 횟수에 안 세요)", { n429, info: r.status });
 
   console.log("18) CRM 실제 발송 (솔라피 · Resend)");
   const st18 = require(path.join(TMP, "class/api/_lib/store.js"));

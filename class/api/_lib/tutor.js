@@ -1,24 +1,20 @@
-/* 강사 AI 조교 — 강사가 보낸 학습 자료(tutor/<강사>.md) + 강의 자료(FAQ · 용어 사전 · 서류 가이드 · 주차)를 바탕으로 답해요.
+/* 강사 AI 조교 — 강사가 보낸 학습 자료(tutor/<강사>.md + tutor/<강사>/*.md) + 강의 자료(FAQ · 용어 사전 · 서류 가이드 · 주차)를 바탕으로 답해요.
  *
- *  ANTHROPIC_API_KEY 가 있으면 Claude(모델은 Vercel 환경 변수 AI_TUTOR_MODEL, effort low)로 답하고, 둘 중 하나가 없거나 실패하면
- *  학습 자료에서 가장 가까운 단락을 찾아 그대로 보여 줘요 (지어내지 않음).
+ *  1) 학습 자료 카드(tutor-kb.js)에서 먼저 찾아요 — 질문 낱말이 맞는 카드 · 계산(운송료 · 도착일 · 수량)을 그대로 보여 줘서
+ *     Claude API 키가 없어도 24시간 같은 답이 나가요 (src "kb", hit true).
+ *  2) ANTHROPIC_API_KEY 와 AI_TUTOR_MODEL(Vercel 환경 변수, effort low)이 있으면 Claude가 학습 자료 전체를 읽고 자연스럽게 답해요.
+ *     카드에서 계산한 값이 있으면 질문 끝에 ‘조교 계산’으로 붙여서 숫자가 틀리지 않게 해요. 실패하면 1)의 답으로.
+ *  3) 카드에 없으면 학습 자료 · 강의 FAQ 에서 가장 가까운 단락을 찾아 그대로 보여 줘요 (지어내지 않음, hit false).
  *  학습 자료 · 강의 자료는 매번 같은 순서라 프롬프트 캐시(cache_control)로 다시 읽는 비용을 줄여요.
- *  관세 회피(언더밸류) · 질병 효능 표현처럼 법에 걸리는 안내는 하지 않아요. */
+ *  관세 회피(언더밸류 · 기준을 피하려고 나눠 보내기) · 질병 효능 표현처럼 법에 걸리는 안내는 하지 않아요 — 관세 회피 질문은 Claude 없이 같은 안내(tutor-kb GUARD). */
 "use strict";
-const fs = require("fs");
-const path = require("path");
 const store = require("./store");
 
 /** 쓸 모델 이름은 코드에 적지 않고 Vercel 환경 변수로 정해요 (모델을 바꿀 때 배포 없이 바꿀 수 있게) */
 const model = () => String(process.env.AI_TUTOR_MODEL || "").trim();
-const KB_DIR = path.join(__dirname, "tutor");
-const kbCache = {};
-/** 강사가 보낸 학습 자료 (없으면 빈 문자열) */
-function kbOf(iid) {
-  if (!/^[a-z0-9_-]{1,40}$/i.test(iid)) return "";
-  if (kbCache[iid] == null) { try { kbCache[iid] = fs.readFileSync(path.join(KB_DIR, iid + ".md"), "utf8"); } catch (e) { kbCache[iid] = ""; } }
-  return kbCache[iid];
-}
+const KB = require("./tutor-kb");
+/** 강사가 보낸 학습 자료 전체 (tutor/<강사>.md + tutor/<강사>/*.md · 조교용 주석은 뺀 글, 없으면 빈 문자열) */
+const kbOf = (iid) => KB.load(iid).text;
 const clip = (s, n) => { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n) + "…" : s; };
 /** 강의 자료를 짧은 글로 (FAQ · 용어 · 서류 가이드 · 주차 제목) */
 function courseText(c) {
@@ -37,7 +33,7 @@ function systemText(brand, kb, course) {
     "- 해요체로, 3~6문장 안에서 핵심부터 말해. 순서가 있으면 1. 2. 3. 줄바꿈 목록으로 써.\n" +
     "- 채팅 말풍선에 그대로 보여서 마크다운 기호(**, #, 표)는 쓰지 마.\n" +
     "- 자료에 없는 내용은 지어내지 마. 모르면 모른다고 하고, ‘질문 · 요청’ 메뉴의 1:1 요청이나 라이브 시간에 " + ins + "님께 물어보라고 안내해.\n" +
-    "- 가격 · 계좌 · 숫자 · 링크는 자료에 적힌 그대로만 알려 줘.\n" +
+    "- 가격 · 계좌 · 숫자 · 링크는 자료에 적힌 그대로만 알려 줘. 질문 끝에 [조교 계산]이 붙어 있으면 그 숫자 · 날짜를 그대로 써.\n" +
     "- 관세나 세금을 줄이려고 가격을 낮춰 신고(언더밸류)하거나 쪼개 보내는 등 법을 피하는 방법은 알려 주지 마. 실제 가격대로 신고해야 한다고 말해 줘.\n" +
     "- 건강식품의 질병 예방 · 치료 효과처럼 과장된 효능은 말하지 마.\n" +
     "- 통관 · 세금 · 영업 신고처럼 법으로 정한 일은 기준이 바뀔 수 있으니 관세청 · 식약처 같은 관할 기관 안내를 확인하라고 덧붙여.\n\n" +
@@ -56,9 +52,27 @@ function kbAnswer(q, kb, c) {
   return top.faq ? top.text : "‘" + top.head + "’ 자료를 찾았어요.\n" + (same.length ? same : [{ p: top }]).map((x) => "- " + x.p.text).join("\n");
 }
 /* ---------- 묻기 ---------- */
+/** 학습 자료 카드에서 찾기 — 짧게 이어 물으면(‘그럼 3kg은요?’) 바로 앞 질문과 붙여서 한 번 더 */
+function kbFind(iid, q, history, ins) {
+  const opt = { now: Date.now(), ins };
+  const a = KB.answer(iid, q, opt);
+  if (a.hit || norm(q).length > 12) return a;
+  const prev = (Array.isArray(history) ? history : []).filter((m) => m && m.from === "me" && String(m.text || "").trim() && String(m.text).trim() !== String(q).trim()).pop();
+  if (!prev) return a;
+  const b = KB.answer(iid, String(prev.text).slice(0, 300) + " " + q, opt);
+  return b.hit && !b.guard ? b : a;
+}
+const norm = (s) => String(s || "").toLowerCase().replace(/[^0-9a-z가-힣]/g, "");
 async function ask(iid, q, history) {
   const row = await store.getDoc("content:" + iid), c = (row && row.v) || null, brand = (c && c.brand) || {}, kb = kbOf(iid);
-  const fallback = (why) => { const t = kbAnswer(q, kb, c); return { ok: true, src: "kb", why, text: t || "그 부분은 제가 가진 자료로는 정확히 답하기 어려워요. ‘질문 · 요청’ 메뉴의 1:1 요청이나 라이브 시간에 " + (brand.instructor || "강사") + "님께 직접 물어봐 주세요." }; };
+  const ins = brand.instructor || "강사", card = kbFind(iid, q, history, ins);
+  // 관세 회피 질문은 Claude 없이 언제나 같은 안내
+  if (card.guard) return { ok: true, src: "kb", hit: true, text: card.text };
+  const fallback = (why) => {
+    if (card.hit) return { ok: true, src: "kb", hit: true, why, text: card.text };
+    const t = kbAnswer(q, kb, c);
+    return { ok: true, src: "kb", hit: false, why, text: t || "그 부분은 제가 가진 자료로는 정확히 답하기 어려워요. ‘질문 · 요청’ 메뉴의 1:1 요청이나 라이브 시간에 " + ins + "님께 직접 물어봐 주세요." };
+  };
   if (!process.env.ANTHROPIC_API_KEY || !model()) return fallback("no-key");
   const Anthropic = require("@anthropic-ai/sdk").default;
   // 대화: 최근 8개까지 · 사용자 → 조교 순서가 맞게 (첫 메시지는 사용자)
@@ -70,7 +84,7 @@ async function ask(iid, q, history) {
     if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += "\n" + text; else msgs.push({ role, content: text });
   });
   if (msgs.length && msgs[msgs.length - 1].role === "user") msgs.pop();
-  msgs.push({ role: "user", content: clip(q, 1500) });
+  msgs.push({ role: "user", content: clip(q, 1500) + (card.hit && card.calc ? "\n\n[조교 계산 — 학습 자료 기준으로 미리 계산한 값]\n" + card.calc : "") });
   // 함수 최대 60초(vercel.json) 안에 끝나게: 한 번 25초 · 다시 시도 1번
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 25000, maxRetries: 1 });
   try {
@@ -83,10 +97,10 @@ async function ask(iid, q, history) {
       system: [{ type: "text", text: systemText(brand, kb, courseText(c)), cache_control: { type: "ephemeral" } }],
       messages: msgs
     });
-    if (res.stop_reason === "refusal") return { ok: true, src: "ai", text: "그 질문에는 제가 답하기 어려워요. ‘질문 · 요청’ 메뉴의 1:1 요청으로 " + (brand.instructor || "강사") + "님께 직접 물어봐 주세요." };
+    if (res.stop_reason === "refusal") return card.hit ? fallback("refusal") : { ok: true, src: "ai", text: "그 질문에는 제가 답하기 어려워요. ‘질문 · 요청’ 메뉴의 1:1 요청으로 " + ins + "님께 직접 물어봐 주세요." };
     const text = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
     if (!text) return fallback("empty");
-    return { ok: true, src: "ai", text: clip(text, 3000) };
+    return { ok: true, src: "ai", hit: !!card.hit, text: clip(text, 3000) };
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) console.error("[tutor] ANTHROPIC_API_KEY 를 확인해 주세요 (인증 실패)");
     else if (e instanceof Anthropic.RateLimitError) console.error("[tutor] 요청이 많아 잠시 막힘 (429)");
@@ -96,4 +110,7 @@ async function ask(iid, q, history) {
   }
 }
 
-module.exports = { ask, kbOf, kbAnswer, systemText, courseText };
+/** 화면이 ‘서버 학습 자료에 물어볼 질문’을 고르는 규칙 + 바로 물어볼 질문 칩 (학습 자료 내용은 보내지 않아요) */
+const info = (iid) => KB.info(iid);
+
+module.exports = { ask, info, kbOf, kbAnswer, systemText, courseText };

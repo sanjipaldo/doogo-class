@@ -27,6 +27,8 @@
   let loginPick = null; // 로그인 화면에서 고른 강사
   let botOpen = window.matchMedia("(max-width: 720px)").matches ? false : DB.store.get(KEY_BOT, false);
   let botThinking = false;
+  // 서버 학습 자료 규칙(강사가 보낸 MD 카드의 낱말 · 정규식) · 대화창 ‘제조 · 배송’ 같은 칩 탭 — 강의마다 한 번 받아요
+  let TINFO = null, tinfoP = null, chipTab = "class";
   let lastTop = null;   // 바로 전 화면의 메뉴 (자료실 안내 팝업용)
   let vodClosed = false; // VOD 수강 기간이 끝나 로그인이 닫혔을 때 로그인 화면에 한 번 안내
 
@@ -1653,9 +1655,51 @@
     if (/(라이브|일정|강의\s*일정)/.test(t)) return { text: "VOD 클래스는 정해진 라이브 일정이 없어요. 원할 때 언제든 들으면 돼요. 강사님과 직접 이야기하고 싶다면 TEA TIME을 신청해 보세요.", links: [[ML("vodclass"), "#/vodclass"]] };
     return null;
   }
+  // 용어 사전에서 질문에 들어 있는 용어 찾기 (‘마누카꿀 UMF · MGO’처럼 가운뎃점 · 괄호로 묶인 용어는 나눠서도 찾는다)
+  function glossHit(nt) {
+    if (!on("glossary")) return null;
+    const termKeys = (g) => [g.term].concat(String(g.term).split(/[·\/(),]/)).map((x) => x.replace(/\s/g, "").toLowerCase()).filter((x, i, a) => x.length >= 2 && a.indexOf(x) === i);
+    return (D.glossary || []).filter((g) => g.term).map((g) => ({ g, k: termKeys(g).filter((x) => nt.indexOf(x) !== -1).sort((x, y) => y.length - x.length)[0] || "" })).filter((x) => x.k).sort((x, y) => y.k.length - x.k.length)[0] || null;
+  }
+  // ‘배대지가 뭐예요?’처럼 용어 뜻만 묻는 질문 (용어 · 조사 · 물음 말 말고 남는 글자가 없음) → 용어 사전이 먼저
+  function defOnly(t) {
+    const nt = t.replace(/\s/g, "").toLowerCase(), h = glossHit(nt);
+    if (!h) return false;
+    return !nt.split(h.k).join("").replace(/[?？!.~]+/g, "").replace(/(이|가|은|는|란|이란|라는|라는게|이라는|이라는게|뜻|의미|무슨|뭐|뭔|무엇|뭐야|뭐예요|뭐에요|뭔가요|뭐죠|뭐지|인가요|이에요|예요|에요|가요|알려줘|알려주세요|설명해줘|설명해주세요|좀|요)+$/, "");
+  }
+  /** 서버 학습 자료 규칙 받기 (tutor-kb.js info) — 서버 모드 · AI 조교가 켜진 강의만, 한 번 받으면 다시 묻지 않아요 */
+  function tutorInfo() {
+    if (!DB.remote.on || !INS || !on("bot")) return Promise.resolve(null);
+    if (TINFO && TINFO.iid === INS.id) return Promise.resolve(TINFO);
+    if (tinfoP) return tinfoP;
+    const rx = (a) => { try { return Array.isArray(a) ? new RegExp(a[0], String(a[1] || "").replace(/[gy]/g, "")) : null; } catch (e) { return null; } };
+    const iid = INS.id;
+    tinfoP = DB.remote.call("ai-tutor", { iid, op: "info" }).then((r) => {
+      TINFO = r && r.ok ? { iid, min: r.min || 1.5, re: r.re || 2.5, cards: (r.cards || []).map((c) => ({ k: (c.k || []).filter((k) => String(k).length >= 2), r: (c.r || []).map(rx).filter(Boolean), n: (c.n || []).map(rx).filter(Boolean) })), avoid: rx(r.avoid), guard: (r.guard || []).map(rx).filter(Boolean), chips: r.chips && (r.chips.list || []).length ? r.chips : null } : { iid, cards: [], guard: [], chips: null };
+      tinfoP = null; refreshChipRows(); return TINFO;
+    }).catch(() => { tinfoP = null; TINFO = { iid, cards: [], guard: [], chips: null }; return TINFO; }); // 못 받으면 예전처럼(화면 규칙 먼저) — 다음에 화면을 새로 열 때 다시
+    return tinfoP;
+  }
+  /** 이 질문을 서버 학습 자료(제조 · 배송 · 통관 …)에 먼저 물어볼지 — 서버 tutor-kb.js 와 같은 점수 규칙 */
+  function kbRoute(t) {
+    const I = TINFO;
+    if (!I || (!I.cards.length && !I.guard.length)) return false;
+    if (I.guard.some((r) => r.test(t))) return true;
+    const nq = t.toLowerCase().replace(/[^0-9a-z가-힣]/g, ""), half = I.avoid && I.avoid.test(t) ? 0.5 : 1;
+    return I.cards.some((c) => {
+      if (c.n.some((r) => r.test(t))) return false;
+      let sc = 0;
+      c.k.forEach((k) => { if (nq.indexOf(k) >= 0) sc += 1 + Math.min(k.length, 8) / 4; });
+      c.r.forEach((r) => { if (r.test(t)) sc += I.re; });
+      return sc * half >= I.min;
+    });
+  }
   function askBot(q) {
     const t = q.replace(/\s+/g, " ").trim();
     const today = todayStr();
+    // 강사 학습 자료에 있는 질문(뉴질랜드 배송 · 운송료 · 통관 · 제조 …)은 아래 수업 규칙(마감 · 일정 · 진도 · 용어)보다 먼저 서버로
+    // — ‘택배 언제 와요?’가 과제 마감으로, ‘배송 기간이 얼마나 돼요?’가 수강 기간으로 답하지 않게. 서버가 못 찾으면 아래 FAQ 답으로
+    if (!defOnly(t) && kbRoute(t)) return Object.assign({ nz: true }, faqMatch(t));
     if (TRACK === "vod") { const vr = askBotVod(t); if (vr) return vr; }
     if (/^(안녕|hi|hello|하이|ㅎㅇ)/i.test(t)) return { text: me.name + "님 안녕하세요! 과제, 서류, 일정 무엇이든 물어보세요." };
     if (/(마감|언제까지)/.test(t)) {
@@ -1668,9 +1712,7 @@
     }
     // 용어 사전에 있는 단어를 물으면 바로 풀이
     const nt = t.replace(/\s/g, "").toLowerCase();
-    // ‘마누카꿀 UMF · MGO’처럼 가운뎃점 · 괄호로 묶인 용어는 나눠서도 찾는다
-    const termKeys = (g) => [g.term].concat(String(g.term).split(/[·\/(),]/)).map((x) => x.replace(/\s/g, "").toLowerCase()).filter((x, i, a) => x.length >= 2 && a.indexOf(x) === i);
-    const hit = on("glossary") ? (D.glossary || []).filter((g) => g.term).map((g) => ({ g, k: termKeys(g).filter((x) => nt.indexOf(x) !== -1).sort((x, y) => y.length - x.length)[0] || "" })).filter((x) => x.k).sort((x, y) => y.k.length - x.k.length)[0] : null;
+    const hit = glossHit(nt);
     const term = hit ? hit.g : null;
     if (term && (/(뭐|뜻|의미|이란|란\??$|무슨|설명|알려)/.test(t) || nt.length <= hit.k.length + 4)) {
       return { text: "‘" + term.term + "’" + (term.category ? " (" + term.category + ")" : "") + "\n" + term.desc, links: [[ML("glossary") + "에서 보기", "#/glossary?q=" + encodeURIComponent(term.term)]] };
@@ -1692,6 +1734,10 @@
     if (/(마진|계산기|순이익|판매가)/.test(t) && DB.libOn(MID(), "file") && D.resources.file.some((x) => x.tool === "calculator")) {
       return { text: "자료실 ‘자료 파일’의 마진 계산기에 현지가·환율·배송비·수수료·광고비를 넣으면 순이익 · 마진율과 함께 지금 광고 ROAS · 최소 광고 ROAS(손익분기)가 바로 나와요. 제품 이름을 적어 저장하면 ‘내 제품 마진표’에 모여요. 판매가 기준 순이익 20~30%를 목표로 잡아 보세요.", links: [["마진 계산기 열기", "#/library/file?tool=calculator"]] };
     }
+    return faqMatch(t);
+  }
+  // FAQ · 서류 가이드 · 과제에서 가장 가까운 답 (kb) · 못 찾으면 weak
+  function faqMatch(t) {
     const cands = [];
     D.faqs.forEach((f) => {
       let s = similarity(t, f.q) * 2;
@@ -1728,7 +1774,7 @@
   function chatLog() {
     return [botGreeting()].concat(P.chat).map((m) =>
       '<div class="msg' + (m.from === "me" ? " me" : "") + '">' + (m.from === "me" ? "" : botFace("msg-avatar")) +
-      '<div class="msg-bubble">' + esc(m.text) + (m.links && m.links.filter(linkOk).length ? '<div class="msg-links">' + m.links.filter(linkOk).map((l) => '<a href="' + esc(l[1]) + '">' + esc(l[0]) + "</a>").join("") + "</div>" : "") + "</div></div>").join("") +
+      '<div class="msg-bubble">' + (m.from === "me" ? esc(m.text) : linkify(esc(m.text))) + (m.links && m.links.filter(linkOk).length ? '<div class="msg-links">' + m.links.filter(linkOk).map((l) => '<a href="' + esc(l[1]) + '">' + esc(l[0]) + "</a>").join("") + "</div>" : "") + "</div></div>").join("") +
       (botThinking ? '<div class="msg">' + botFace("msg-avatar") + '<div class="msg-bubble"><span class="typing-dots"><i></i><i></i><i></i></span></div></div>' : "");
   }
   function sendChat(text) {
@@ -1738,24 +1784,43 @@
     if (P.chat.length > 60) P.chat = P.chat.slice(-60);
     botThinking = true;
     saveProgress(); refreshChats();
-    const a = askBot(text), history = P.chat.slice(-9, -1), sid = me && me.id;
+    const history = P.chat.slice(-9, -1), sid = me && me.id;
     const reply = (x) => {
       botThinking = false;
       if (!me || me.id !== sid) return;
       P.chat.push({ from: "bot", text: x.text, links: x.links || [], at: Date.now() });
       saveProgress(); refreshChats();
     };
-    if (!(DB.remote.on && (a.kb || a.weak))) { setTimeout(() => reply(a), 550); return; }
-    askTutor(text, history).then((r) => {
-      // 서버에 AI 키가 없을 때(src kb): 화면에서 찾은 FAQ 답이 있으면 그걸, 못 찾았으면 서버 학습 자료에서 찾은 답을
-      if (!r || (r.src !== "ai" && a.kb)) return reply(a);
-      reply({ text: r.text, links: a.kb ? a.links : [[ML("qna") + " · 1:1 요청", "#/qna"]] });
-    });
+    const go = () => {
+      const a = askBot(text);
+      if (!(DB.remote.on && (a.kb || a.weak))) { setTimeout(() => reply(a), 550); return; }
+      askTutor(text, history).then((r) => {
+        if (!r) return reply(a.nz && a.weak ? { text: "자료를 불러오지 못했어요. 잠시 후 다시 물어봐 주세요.", links: [[ML("qna") + " · 1:1 요청", "#/qna"]] } : a);
+        // 학습 자료 카드에서 찾은 답(hit) · Claude 답 · 화면에서 못 찾은 질문 → 서버 답 / 서버도 카드를 못 찾았는데 화면 FAQ 답이 있으면 → FAQ 답
+        if (r.src === "ai" || r.hit || !a.kb) return reply({ text: r.text, links: a.kb && !r.hit ? a.links : [[ML("qna") + " · 1:1 요청", "#/qna"]] });
+        reply(a);
+      });
+    };
+    // 학습 자료 규칙을 아직 못 받았으면(대화창을 막 열었을 때) 최대 1.5초 기다렸다가 고르기
+    if (DB.remote.on && INS && on("bot") && !(TINFO && TINFO.iid === INS.id)) Promise.race([tutorInfo(), new Promise((ok) => setTimeout(ok, 1500))]).then(go);
+    else go();
   }
   function refreshChats() { document.querySelectorAll("[data-chat-log]").forEach((el) => { el.innerHTML = chatLog(); el.scrollTop = el.scrollHeight; }); }
   const chatForm = (id) => '<form class="chat-form" data-chat-form><input class="input" name="q" id="' + id + '" autocomplete="off" placeholder="궁금한 걸 편하게 적어 보세요" aria-label="질문 입력"><button class="btn btn-primary chat-send" type="submit" aria-label="보내기">' + icon("send", "sm") + "<span>보내기</span></button></form>";
-  const chipRow = (cls) => '<div class="' + cls + '">' + botChips().map((c) => '<button class="chip" type="button" data-action="chip" data-q="' + esc(c) + '">' + esc(c) + "</button>").join("") + "</div>";
+  // 조교 답 속 주소(배송 조회 · 신청 폼 …)는 새 창 링크로 (글은 먼저 esc 한 뒤라 안전)
+  const linkify = (h) => String(h).replace(/https?:\/\/[^\s<]+[^\s<.,;:)\]’'"]/g, (u) => '<a href="' + u + '" target="_blank" rel="noopener">' + u + "</a>");
+  // 바로 물어볼 질문 칩 — 강사 학습 자료가 있으면 ‘수업 · 과제 | 제조 · 배송’ 탭으로 나눠요
+  const chipRow = (cls) => {
+    const kc = TINFO && INS && TINFO.iid === INS.id ? TINFO.chips : null;
+    if (!kc) chipTab = "class";
+    const list = kc && chipTab === "kb" ? kc.list : botChips();
+    return '<div class="chip-wrap" data-chip-wrap="' + esc(cls) + '">' +
+      (kc ? '<div class="chip-tabs" role="tablist" aria-label="바로 물어볼 질문">' + [["class", TRACK === "vod" ? "강의 · 수강" : "수업 · 과제"], ["kb", kc.title]].map((x) => '<button type="button" role="tab" class="chip-tab' + (chipTab === x[0] ? " on" : "") + '" aria-selected="' + (chipTab === x[0]) + '" data-action="chip-tab" data-k="' + x[0] + '">' + esc(x[1]) + "</button>").join("") + "</div>" : "") +
+      '<div class="' + cls + '">' + list.map((c) => '<button class="chip" type="button" data-action="chip" data-q="' + esc(c) + '">' + esc(c) + "</button>").join("") + "</div></div>";
+  };
+  function refreshChipRows() { document.querySelectorAll("[data-chip-wrap]").forEach((el) => { const box = document.createElement("div"); box.innerHTML = chipRow(el.dataset.chipWrap); el.replaceWith(box.firstChild); }); }
   function pageBot() {
+    setTimeout(tutorInfo, 0);
     return '<div class="page">' + pageHead(D.brand.botName, D.brand.instructor + "님의 강의 자료 · FAQ · 과제 안내를 바탕으로 24시간 답해 드려요.") +
       '<section class="chat bot-full"><div class="bp-head">' + botFace("lg") + '<div class="bp-title"><strong>' + esc(D.brand.botName) + '</strong><small><i class="bp-dot"></i>지금 바로 답할 수 있어요</small></div></div>' +
         '<div class="chat-log" data-chat-log>' + chatLog() + "</div>" + chipRow("chips") + chatForm("chat-input-page") +
@@ -1768,6 +1833,7 @@
     if (!el) return;
     el.classList.toggle("open", !!botOpen);
     if (r.parts[0] === "bot" || !on("bot")) { el.innerHTML = ""; el.classList.remove("open"); return; }
+    tutorInfo();
     if (!botOpen) {
       el.innerHTML = '<button class="bot-launch" type="button" data-action="bot-open" aria-label="' + esc(D.brand.botName) + ' 열기">' + botFace() + '<span class="bl-txt"><small>' + esc(D.brand.botName) + "</small><b>무엇이든 물어보세요</b></span>" + '<span class="bl-go">' + icon("message", "sm") + "</span></button>";
       return;
@@ -2482,6 +2548,7 @@
       case "read-all": P.readNotices = P.readNotices || {}; D.notices.forEach((n) => { P.readNotices[n.id] = Date.now(); }); saveProgress(); render(); break;
       case "toggle-doc": { const s = a.dataset.id; if (P.docs[s]) delete P.docs[s]; else P.docs[s] = Date.now(); saveProgress(); render(); break; }
       case "chip": sendChat(a.dataset.q); break;
+      case "chip-tab": chipTab = a.dataset.k === "kb" ? "kb" : "class"; refreshChipRows(); break;
       case "ask-bot": botOpen = true; DB.store.set(KEY_BOT, true); renderBotFab(route()); sendChat(a.dataset.q); break;
       case "clear-chat": P.chat = []; saveProgress(); refreshChats(); break;
       case "bot-open": document.getElementById("app").classList.remove("nav-open"); botOpen = true; DB.store.set(KEY_BOT, true); renderBotFab(route()); { const i = document.getElementById("chat-input-fab") || document.getElementById("chat-input-page"); if (i && !window.matchMedia("(max-width: 720px)").matches) i.focus(); } break;
