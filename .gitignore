@@ -1,1 +1,5 @@
 /node_modules
+# Next.js (1단계): 빌드 결과 · 빌드 때 class/ 에서 복사하는 화면 파일
+/.next
+/public
+/next-env.d.ts

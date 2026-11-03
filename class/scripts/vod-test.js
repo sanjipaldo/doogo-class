@@ -4,6 +4,14 @@
 "use strict";
 const fs = require("fs"), path = require("path"), os = require("os"), crypto = require("crypto");
 const ROOT = path.join(__dirname, ".."), TMP = fs.mkdtempSync(path.join(os.tmpdir(), "vodtest-"));
+/** 배포 때 서버 함수에 함께 싣는 파일 (class/ 기준 glob) — Next.js(1단계~): next.config.js INCLUDE · 예전 정적 배포: vercel.json includeFiles */
+function deployIncludes() {
+  const vj = JSON.parse(fs.readFileSync(path.join(ROOT, "..", "vercel.json"), "utf8"));
+  const inc = String(((vj.functions || {})["api/*.js"] || {}).includeFiles || ""), m = inc.match(/^class\/\{(.+)\}$/);
+  if (m) return m[1].split(",");
+  const nc = path.join(ROOT, "..", "next.config.js");
+  return fs.existsSync(nc) ? (require(nc).INCLUDE || []).filter((g) => /^class\//.test(g)).map((g) => g.slice(6)) : [];
+}
 fs.cpSync(path.join(ROOT, "api"), path.join(TMP, "class/api"), { recursive: true });
 fs.cpSync(path.join(ROOT, "data.js"), path.join(TMP, "class/data.js")); fs.cpSync(path.join(ROOT, "db.js"), path.join(TMP, "class/db.js")); fs.cpSync(path.join(ROOT, "coach-perms.js"), path.join(TMP, "class/coach-perms.js"));
 fs.symlinkSync(path.join(ROOT, "..", "node_modules"), path.join(TMP, "node_modules"), "dir"); // 공식 SDK (저장소 맨 위 npm install)
@@ -649,11 +657,10 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(L.files.length === 11 && L.files.filter((f) => /^moon\/doogobio-nz\//.test(f)).length === 5 && L.files.filter((f) => /^moon\/doogo-connect\//.test(f)).length === 5 && L.sections.length >= 25 && !/<!--/.test(L.text) && !/USD \$10|\$10 정도/.test(L.text) && /06-0145-0847640-00/.test(L.text) && /contact@doogoconnect\.com/.test(L.text), "학습 자료: moon.md + doogobio-nz 5개 + doogo-connect 5개 · 조교용 주석은 Claude 에게 안 보냄 · 언더밸류(USD $10) 안내는 뺐어요", { files: L.files, n: L.sections.length });
     // 배포 때 함수에 실리는 파일(vercel.json includeFiles)이 학습 자료 파일을 모두 덮는지 — 폴더를 한 단계 더 만들면 여기서 잡혀요
     {
-      const vj = JSON.parse(fs.readFileSync(path.join(ROOT, "..", "vercel.json"), "utf8")), inc = String(((vj.functions || {})["api/*.js"] || {}).includeFiles || "");
-      const m = inc.match(/^class\/\{(.+)\}$/), pats = (m ? m[1].split(",") : []).map((g) => new RegExp("^" + g.replace(/[.+^$()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*") + "$"));
+      const inc = deployIncludes(), pats = inc.map((g) => new RegExp("^" + g.replace(/[.+^$()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*") + "$"));
       const files = L.files.map((f) => "api/_lib/tutor/" + f).concat(fs.existsSync(path.join(ROOT, "api/_lib/tutor/moon.json")) ? ["api/_lib/tutor/moon.json"] : []);
       const miss = files.filter((f) => !pats.some((r) => r.test(f)));
-      ok(pats.length && !miss.length, "vercel.json includeFiles 가 학습 자료 " + files.length + "개 파일을 모두 함수에 실어요", { inc, miss });
+      ok(pats.length && !miss.length, "배포 함수에 함께 싣는 파일(Next.js: next.config.js INCLUDE · 예전: vercel.json includeFiles)이 학습 자료 " + files.length + "개 파일을 모두 함수에 실어요", { inc, miss });
     }
     const cases = [
       ["택배 언제 와요?", "배송 일정", "11월 5일(목) 직항편"], ["배송은 며칠 걸려요?", "배송 일정", "영업일 기준 약 5일"], ["발송은 무슨 요일에 해요?", "배송 일정", "화요일 · 목요일"],
@@ -1458,8 +1465,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
     ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),
       "문대표 강사센터 · 코치센터: 강의실 전용 색(뉴질랜드 네이비)으로 · 화면이 권한표(coach-perms.js)를 db.js 보다 먼저 읽어요");
-    const vj22 = JSON.parse(fs.readFileSync(path.join(ROOT, "..", "vercel.json"), "utf8"));
-    ok(/coach-perms\.js/.test(String(((vj22.functions || {})["api/*.js"] || {}).includeFiles || "")), "배포 함수에 권한표(coach-perms.js)가 실려요");
+    ok(deployIncludes().indexOf("coach-perms.js") >= 0, "배포 함수에 권한표(coach-perms.js)가 실려요");
     useJar({});
   }
   {

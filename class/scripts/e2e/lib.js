@@ -43,7 +43,12 @@ async function waitHttp(url, ms) {
 async function startServer(dbFile) {
   const port = await freePort();
   const env = cleanEnv({ CLASS_SQLITE: dbFile, VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1" });
-  const child = spawn(process.execPath, [path.join(ROOT, "scripts", "dev-server.js"), String(port)], { env, stdio: ["ignore", "pipe", "pipe"] });
+  // E2E_SERVER=next: Next.js 서버로 (Next.js 전환 1단계~ · 먼저 저장소 맨 위에서 node class/scripts/site.js public && npx next build)
+  const next = process.env.E2E_SERVER === "next", repo = path.join(ROOT, "..");
+  if (next && !fs.existsSync(path.join(repo, ".next", "BUILD_ID"))) throw new Error("Next.js 빌드가 없어요: 저장소 맨 위에서 node class/scripts/site.js public && npx next build");
+  const child = next
+    ? spawn(process.execPath, [path.join(repo, "node_modules", "next", "dist", "bin", "next"), "start", "-p", String(port), "-H", "127.0.0.1"], { cwd: repo, env: Object.assign(env, { NEXT_TELEMETRY_DISABLED: "1" }), stdio: ["ignore", "pipe", "pipe"] })
+    : spawn(process.execPath, [path.join(ROOT, "scripts", "dev-server.js"), String(port)], { env, stdio: ["ignore", "pipe", "pipe"] });
   const log = [];
   child.stdout.on("data", (b) => log.push(String(b)));
   child.stderr.on("data", (b) => log.push(String(b)));

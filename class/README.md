@@ -287,6 +287,23 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 - 마스터 › 강사 정산 위에 **상품 종류 탭**(전체 · VOD 강의 · 전자책 · 종이책 · LIVE · 오프라인 · 1:1 코칭권 · TEA TIME, 숫자 = 그 달 건수)이 있어요. 탭을 고르면 그 종류를 판 강사만 남고, 위 요약 줄에 그 종류의 강사 수 · 건수 · 판매가 · 강사 정산액이 보여요.
 - 강사 이름 아래에 종류별 칩(예: ‘전자책 1건 · 29,000원’), 판매가 아래에 PG 수수료, 세금 칸에 부가세 빼기 · 3.3%가 보여요. 명세서 창 · 강사센터 판매 정산 카드에도 **상품 종류 표**(건수 · 판매가 · 정산액)가 있어요. 예전에 확정한 명세서는 주문 목록(ids)으로 종류를 다시 계산해요. 명세 CSV 에 상품 종류 · 결제수단 · PG 수수료 · 정산 기준액 · 정산 비율 칸이 있어요.
 
+## Next.js 틀 (Next.js 전환 1단계 · 2026-11-03)
+
+화면 · API · 데이터는 **그대로**이고, 내보내는 틀만 Next.js(16.4.3 · pages 라우터)로 바꿔요. 다음 단계에서 화면을 하나씩 Next.js 로 옮길 바탕이에요.
+
+| 파일 | 하는 일 |
+| --- | --- |
+| `next.config.js` (저장소 맨 위) | 예전 `vercel.json` 과 같은 주소 규칙(점 없는 주소 → `index.html`, `/api/…` 는 그대로) · 보안 헤더 · `/api` no-store · `doinggo.doogoclass.com` → `/doinggo` · 서버 함수에 함께 실을 파일 |
+| `pages/api/<이름>.js` | `/api/<이름>` → `class/api/<이름>.js` 그대로 (예전 `api/*.js` 자리) |
+| `nextlib/legacy-api.js` | 서버 코드를 묶지(bundle) 않고 Node 가 바로 불러요 — `__dirname` 으로 읽는 처음 데이터 · AI 조교 자료 · `node:sqlite` · 모듈 상태가 예전 서버 함수와 같아요. 요청 본문도 Next.js 가 읽지 않아요(`bodyParser: false`) — 결제 웹훅 서명이 원래 본문 그대로 맞아요 |
+| `class/scripts/site.js public` | 빌드 때 `class/` 의 화면 파일을 `public/` 으로 복사 (예전 `class/.site` 와 같은 내용 · `?v=<커밋>`) |
+| `vercel.json` | `framework: nextjs` · 빌드 `db-build.js → site.js public → next build` |
+
+- 서버 함수에 실을 파일은 예전 Vercel 과 같은 방법(nft)으로 `class/api/*.js` 를 따라가 찾고, 이름을 만들어서 읽는 파일(`data.js` · `db.js` · `coach-perms.js` · AI 조교 자료)은 `INCLUDE` 에 적어요 (`vod-test.js` 가 확인).
+- 로컬: `node scripts/dev-server.js` 는 그대로 써요. Next.js 로 보려면 저장소 맨 위에서 `node class/scripts/site.js public && npx next build && CLASS_SQLITE=/tmp/x.db MASTER_PASSWORD=… npx next start`.
+- 화면 테스트를 Next.js 서버로: `E2E_SERVER=next node scripts/e2e/run.js` (먼저 위처럼 빌드).
+- 되돌리기: 운영 전환 뒤 문제가 생기면 Vercel › Deployments 에서 전환 직전 배포로 **Instant Rollback** (데이터 모양이 그대로라 DB는 손대지 않아요).
+
 ## 상시 화면 테스트 (Next.js 전환 0단계 · 2026-11-03)
 
 - `node scripts/e2e/run.js` — 시험 DB(운영과 같은 순서로 만든 SQLite)로 테스트 서버를 띄워 브라우저로 주소 목록 · 역할별 로그인 · 구매(무통장 → 입금 확인 → 수강) · 과제 제출 → 검수 · 강사센터 저장 · 정산 · 자동 로그아웃을 확인해요. 운영 DB · 비밀 값은 넘기지 않아요. 자세한 것 · 주소 목록은 `scripts/e2e/README.md`.
