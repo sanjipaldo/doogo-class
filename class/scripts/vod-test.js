@@ -578,6 +578,10 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   delete process.env.MASTER_PASSWORD;
 
   console.log("16-1) 여러 강의를 맡은 코치 (테스트 코치 김하나: 문대표 · 초이)");
+  { // 운영 DB의 테스트 코치는 정리 작업이 지워서, 여기서 두 번째 강의 코치를 직접 더해요
+    const st161 = require(path.join(TMP, "class/api/_lib/store.js")), rc = await st161.getDoc("ins:choi"), ic = rc.v;
+    if (!(ic.coaches || []).some((c) => c.id === "coach-hana")) { ic.coaches = (ic.coaches || []).concat([{ id: "coach-hana", name: "김하나", phone4: "1004", status: "active", perms: ["reviews", "questions"], createdAt: "2026-10-30" }]); await st161.writeDoc("ins:choi", ic, rc.ver); }
+  }
   useJar({});
   r = await call("auth", { body: { action: "admin", tab: "coach", id: "김 하나", pw: "1004" } });
   ok(r.json.choose && r.json.courses.length === 2 && r.json.courses.map((x) => x.iid).sort().join() === "choi,moon" && !jar.dc_a && !JSON.stringify(r.json).includes("1004"), "강의 2개를 맡은 코치: 바로 로그인하지 않고 강의 목록 (쿠키 없음 · 뒷자리 안 보냄)", r.json);
@@ -1372,6 +1376,45 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     w = OO.demoPartnerClear((k) => (k === "meta" ? pm2 : undefined), () => []);
     ok(!Object.keys(w.writes).length && OO.OPS.some((x) => x.id === "2026-11-03-demo-partner-clear"), "일회성: 다시 돌려도 그대로 · 작업 목록에 있어요", w.result);
     ok(OO.OPS.some((x) => x.id === "2026-11-03-moon-coaches-live" && x.run === OO.moonCoachesLive), "일회성 작업 목록에 있어요 (코치 이름 없이 문대표 코치 전체 · 담당 빈 칸만)");
+    // 정식 운영: 테스트 데이터 정리 — 체험 계정은 하나씩 남기고 테스트용만 (가짜 이름만 써요)
+    const TC = {
+      "stu:moon:s1": { id: "s1", instructorId: "moon", name: "이수진", phone4: "2186", status: "approved", demo: true }, "prog:moon:s1": { a: 1 },
+      "stu:moon:demo1": { id: "demo1", instructorId: "moon", name: "1기 체험단", phone4: "1111", demo: true }, "prog:moon:demo1": { a: 1 },
+      "stu:logic:s13": { id: "s13", instructorId: "logic", name: "홍길동", phone4: "0000" }, "prog:logic:s13": { a: 1 },
+      "stu:moon:vs-a": { id: "vs-a", instructorId: "moon", name: "박OO", phone4: "3333", vodMid: "vm-3", track: "vod" }, "prog:moon:vs-a": { questions: [{ id: "q-coach-demo" }] },
+      "stu:moon:vs-b": { id: "vs-b", instructorId: "moon", name: "체험회원", phone4: "0000", vodMid: "vmdemo", track: "vod" },
+      "stu:moon:vs-c": { id: "vs-c", instructorId: "moon", name: "테스트", phone4: "0000", vodMid: "vmtest", track: "vod" },
+      "stu:moon:vs-d": { id: "vs-d", instructorId: "moon", name: "고객", phone4: "0000", vodMid: "vmreal", track: "vod" },
+      "stu:moon:s20": { id: "s20", instructorId: "moon", name: "정상", phone4: "1234", status: "approved" },
+      "vm:vmdemo": { id: "vmdemo", demo: true, phone: "010-0000-0000", email: "vod@gmail.com" },
+      "vm:vmtest": { id: "vmtest", phone: "010-0000-0000", email: "T@x.com", kakaoId: "k1", name: "테스트" }, "vme:t@x.com": { id: "vmtest" }, "vmk:k1": { id: "vmtest" }, "vp:vmtest": { v1: {} },
+      "vo:DC1": { id: "vo-DC1", no: "DC1", mid: "vmtest", amount: 0, status: "paid" }, "vo:DC9": { id: "vo-DC9", no: "DC9", mid: "vmtest", amount: 9000, status: "ready" },
+      "vr:r1": { id: "r1", mid: "vmtest" }, "vr:r2": { id: "r2", mid: "vmok" }, "vq:vmtest:q1": { id: "q1" }, "vpl:p1": { id: "p1", mid: "vmtest" },
+      "vm:vmreal": { id: "vmreal", phone: "01000000000", name: "고객" }, "vo:DC2": { id: "vo-DC2", no: "DC2", mid: "vmreal", amount: 15900, status: "paid" },
+      "vm:vmok": { id: "vmok", phone: "010-1234-5678" }, "vo:DC3": { id: "vo-DC3", no: "DC3", mid: "vmdemo", amount: 0, status: "paid", demo: true },
+      "ins:moon": { id: "moon", coaches: [{ id: "coach1", name: "김하나", phone4: "1004" }] },
+      "ins:choi": { id: "choi", displayName: "초이", coaches: [{ id: "coach-hana", name: "김하나", phone4: "1004", memo: "테스트 코치 · 여러 강의 코치 확인용" }, { id: "coach-x", name: "이OO", memo: "" }] },
+      meta: { other: 1, staff: [{ id: "st-demo1", loginId: "manager", pw: "manager", status: "stopped" }, { id: "st-demo2", loginId: "finance", pw: "바꿈", status: "active" }, { id: "st-real", loginId: "real", pw: "x" }] }
+    };
+    const tcGet = (k) => (TC[k] ? JSON.parse(JSON.stringify(TC[k])) : undefined), tcKeys = (pre) => Object.keys(TC).filter((k) => k.indexOf(pre) === 0).sort();
+    w = OO.launchTestClean(tcGet, tcKeys);
+    const del = Object.keys(w.writes).filter((k) => w.writes[k] === null).sort();
+    ok(del.join() === ["prog:logic:s13", "prog:moon:demo1", "prog:moon:vs-a", "stu:logic:s13", "stu:moon:demo1", "stu:moon:vs-a", "stu:moon:vs-c", "vm:vmtest", "vme:t@x.com", "vmk:k1", "vo:DC1", "vo:DC9", "vp:vmtest", "vpl:p1", "vq:vmtest:q1", "vr:r1"].sort().join(),
+      "일회성(테스트 정리): 0000 테스트 수강생 · 예시 VOD 회원 기록(예시 코칭 질문) · 중복 체험단 · 010-0000-0000 테스트 회원(이메일 · 카카오 · 진도 · 주문 · 후기 · 문의 · 다짐)만 지워요", del);
+    ok(!w.writes["stu:moon:s1"] && !w.writes["stu:moon:vs-b"] && !w.writes["stu:moon:vs-d"] && !w.writes["stu:moon:s20"] && !w.writes["vm:vmdemo"] && !w.writes["vm:vmreal"] && !w.writes["vo:DC2"] && !w.writes["vo:DC3"] && !w.writes["vr:r2"] && !w.writes["ins:moon"],
+      "일회성(테스트 정리): 체험 계정(수강생 이수진 · DOOGO CLASS 체험 회원 · 코치 김하나) · 실제 결제가 있는 회원 · 일반 수강생은 그대로", w.result);
+    ok(w.writes["ins:choi"] && w.writes["ins:choi"].coaches.map((c) => c.id).join() === "coach-x" && w.writes["ins:choi"].displayName === "초이" && w.writes.meta && w.writes.meta.staff.map((x) => x.id).join() === "st-demo2,st-real" && w.writes.meta.other === 1,
+      "일회성(테스트 정리): 테스트 코치(coach-hana) · 비밀번호가 예시 그대로인 예시 운영자만 지워요 (비밀번호를 바꾼 계정 · 다른 설정은 그대로)", w.writes.meta);
+    ok(w.result.membersKept.length === 2 && w.result.kept.length === 3 && w.result.students.every((x) => (/ \SOO \(/.test(x) || / \d기 체험단 \(/.test(x)) && !/홍길동|테스트 \(|고객 \(/.test(x)) && w.result.members.every((x) => /^\SOO \(/.test(x)),
+      "일회성(테스트 정리): 결과에는 이름을 가려 남기고, 남긴 체험 계정 · 실제 결제 회원도 적어요", w.result);
+    Object.keys(w.writes).forEach((k) => { if (w.writes[k] === null) delete TC[k]; else TC[k] = w.writes[k]; });
+    w = OO.launchTestClean(tcGet, tcKeys);
+    ok(!Object.keys(w.writes).length && OO.OPS.some((x) => x.id === "2026-11-03-launch-test-clean" && x.run === OO.launchTestClean), "일회성(테스트 정리): 다시 돌려도 그대로 · 작업 목록에 있어요", w.writes);
+    // 정산: 체험 계정 주문(demo)은 정산에서 빼요 · 자동 로그아웃
+    const ad24 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mj24 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8");
+    ok(/const os = VD\(\)\.orders\.filter\(\(o\) => !o\.demo/.test(ad24) && /if \(o\.demo\) return;/.test(ad24), "정산: 체험 계정 0원 주문은 강사 정산 건수에 넣지 않아요");
+    ok(/IDLE = \{ admin: 30 \* 60e3, student: 60 \* 60e3 \}/.test(mj24) && /action: "logout", which: "admin"/.test(mj24) && /post\("vod-auth", \{ action: "logout" \}\)/.test(mj24) && /\^#\\\/center/.test(mj24),
+      "자동 로그아웃: 강사센터 30분 무동작 · 수강생/회원 60분 자리 비움 → 서버 쿠키까지 로그아웃 (강사센터 밖 탭은 새로 고치지 않아요)");
     // 문대표 전용 색(뉴질랜드)은 강사센터 · 코치센터에도
     const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
     ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),

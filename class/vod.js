@@ -841,7 +841,7 @@
    * 기본: VOD 판매 강사 50% : 플랫폼 50% (촬영 · 편집 · 스튜디오 · 장비 · 운영은 플랫폼이 맡고, 강사는 강의 자료(PPT)를 준비)
    * 광고비: 마스터가 달마다 실제 집행액을 적고, 강사 50% : 플랫폼 50%로 나눠 강사 몫은 그 달 정산에서 빼요
    * 강사와 따로 조율한 비율은 마스터가 강사별로 확정 → 강사센터 › 판매 정산에 그대로 보여요. 강의별 계약 비율이 있으면 그게 먼저
-   * 기준액 = 할인 전 판매가 ÷ 1.1(공급가액). 플랫폼 쿠폰 · 포인트 할인과 결제 수수료(PG)는 플랫폼이 부담해요
+   * 정산 기준액 (2026-11 확정) = 할인 전 판매가 − 온드미디어 RS − PG 결제 수수료 → × 강사 비율 = 정산액(부가세 포함). 쿠폰 · 포인트 할인은 플랫폼 부담
    * 유입 경로(강사 링크 · 광고 · 플랫폼)는 판매 분석용으로 주문에 남지만, 비율은 바꾸지 않아요 */
   const SH_DEF = { share: 50, shareIns: 50, shareAd: 50, launchShare: 50, launchDays: 0 };
   const shSet = (k) => { const v = STG()[k], n = Number(v); return v != null && v !== "" && n >= 0 ? n : SH_DEF[k]; };
@@ -893,11 +893,14 @@
     if (isAccess(o) && p.share != null && p.share !== "") return Number(p.share);
     return rateAt(keyOfOrder(o), rateKeyOf(o), o.paidAt || o.at || 0);
   };
-  /* 정산 · 세금계산서 기준 (마스터 › 강사별 비율 · 가격)
-   *  gross  판매가(부가세 포함) × 비율 = 정산액. 사업자 강사는 판매가 합계로 두고홀딩스에 세금계산서, 두고홀딩스는 수수료 · 광고비 분담을 강사에게 세금계산서 (예: 100만 원 · 60% → 60만 원 지급)
-   *  net    판매가(부가세 포함) × 비율 = 정산액. 사업자 강사는 정산액(부가세 포함)으로 세금계산서
-   *  supply 예전 방식: 공급가액(판매가 ÷ 1.1) × 비율 + 사업자는 부가세 10% 더해 지급 */
-  const TAX_MODES = { gross: "판매 총액 세금계산서 (기본)", net: "정산액 세금계산서", supply: "공급가액 기준 (예전 방식)" };
+  /* 정산 · 세금계산서 기준 — 2026-11 하나로 고정 (std)
+   *  정산액 = (할인 전 판매가 − 온드미디어 RS − PG 결제 수수료) × 강사 비율(기본 50%) — 부가세가 들어 있는 금액
+   *  사업자 강사: 정산액 그대로 지급 · 강사님이 (주)두고홀딩스에 정산액(부가세 포함)으로 세금계산서
+   *  개인 강사(프리랜서 3.3%): 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3% 원천징수 후 지급
+   *  예) 판매 1,000만 원 → RS · PG 수수료 빼고 500만 원 → 강사 250만 원 · 플랫폼 250만 원
+   *      사업자: 250만 원 지급(세금계산서 250만 원) · 개인: 250만 ÷ 1.1 = 227만 2,727원 − 3.3% → 219만 7,737원 지급
+   *  예전 기준(gross · net · supply)은 이미 확정한 명세서를 그때 기준 그대로 보여 줄 때만 써요 */
+  const TAX_MODES = { std: "판매가 − RS − PG 수수료 기준 (사업자 세금계산서 · 개인 3.3%)", gross: "판매 총액 세금계산서 (예전)", net: "정산액 세금계산서 (예전)", supply: "공급가액 기준 (예전)" };
   /* 환불 받을 계좌의 은행 — 포트원 표준 은행 코드(가상계좌 환불에 그대로 보내요) · 화면 이름 */
   const BANKS = [["KOOKMIN", "국민은행"], ["SHINHAN", "신한은행"], ["WOORI", "우리은행"], ["HANA", "하나은행"], ["NONGHYUP", "NH농협은행"], ["LOCAL_NONGHYUP", "지역농축협"], ["IBK", "기업은행"], ["KAKAO", "카카오뱅크"], ["TOSS", "토스뱅크"], ["K_BANK", "케이뱅크"], ["KDB", "산업은행"], ["SUHYUP", "수협은행"], ["POST", "우체국"], ["KFCC", "새마을금고"], ["SHINHYUP", "신협"], ["SAVINGS_BANK", "저축은행"], ["BUSAN", "부산은행"], ["KYONGNAM", "경남은행"], ["DAEGU", "아이엠뱅크(대구)"], ["KWANGJU", "광주은행"], ["JEONBUK", "전북은행"], ["JEJU", "제주은행"], ["STANDARD_CHARTERED", "SC제일은행"], ["CITI", "한국씨티은행"], ["NFCF", "산림조합"]];
   const bankName = (code) => (BANKS.find((x) => x[0] === code) || [code, code || ""])[1];
@@ -909,7 +912,14 @@
     if (a.number.length < 8 || a.number.length > 20) return { err: "계좌번호를 숫자로 정확히 적어 주세요." };
     if (!a.holder) return { err: "예금주 이름을 적어 주세요." };
     return { acct: a }; };
-  const taxMode = () => (TAX_MODES[STG().taxMode] ? STG().taxMode : "gross");
+  const taxMode = () => "std";
+  /* PG 결제 수수료 — 결제수단별 [%, 건당 원] (마스터 › 매출 리포트 › 수수료율에서 PG 계약대로) · 강사 정산 기준액에서 빼요 (2026-11) */
+  const PG_FEE_DEF = { card: [3.3, 0], kakao: [3.3, 0], naver: [3.3, 0], toss: [3.3, 0], transfer: [2, 0], vbank: [0, 300], bank: [0, 0], free: [0, 0] };
+  const PG_KEYS = ["card", "kakao", "naver", "toss", "transfer", "vbank", "bank"];
+  const payKeyOf = (o) => (!(Number(o && o.amount) > 0) || o.method === "free" || o.method === "point" ? "free" : PG_KEYS.indexOf(o.method) >= 0 ? o.method : "card");
+  const pgRate = (k) => { const s = ((STG() || {}).pgFee || {})[k] || {}, d = PG_FEE_DEF[k] || [0, 0], n = (x, dv) => (x != null && x !== "" && isFinite(Number(x)) ? Number(x) : dv); return [n(s.pct, d[0]), n(s.won, d[1])]; };
+  /** 이 주문의 PG 결제 수수료 (고객 결제액 × 수수료율 + 건당) — 무료 · 쿠폰 · 포인트 결제는 0원 */
+  const pgFeeOf = (o) => { const a = Number(o && o.amount) || 0; if (!(a > 0)) return 0; const f = pgRate(payKeyOf(o)); return Math.max(0, Math.round(a * f[0] / 100) + f[1]); };
   /* ---------- 온드미디어(YouTube 채널 팀) RS ----------
    * 홍보 링크 /vod/p/<상품>?rs=<코드> 로 들어오면 이 브라우저에 { 코드, 누른 때 } 를 상품마다 기억해요 (같은 상품은 마지막 링크가 이겨요).
    * 그 상품을 기간(기본 30일) 안에 사면 결제할 때 서버로 보내고, 서버가 코드 · 기간 · 상품을 다시 확인해 주문에 rs 를 남겨요 (api/_lib/media.js).
@@ -924,8 +934,9 @@
   const rsProduct = (p) => !!p && !isBook(p);
   /** 이 주문의 온드미디어 RS (환불 전 전체 · 부가세 포함 · 10원 아래 버림) — 부분 환불은 화면이 남은 비율만큼 줄여요 */
   const rsOf = (o) => { if (!o || !o.rs || kindOf(o) !== "course") return 0; const pg = Number(o.rs.pg) || 0, r = Number(o.rs.rate) || 0; return Math.max(0, Math.floor(baseOf(o) * (100 - pg) * r / 100000 + 1e-6) * 10); };
-  /** 강사 정산액 = (기준액 − 온드미디어 RS) × 강사 비율 (공급가액 방식이면 RS 도 ÷ 1.1) */
-  const insAmt = (o) => { const sup = taxMode() === "supply", b = sup ? supplyOf(o) : baseOf(o), r = rsOf(o), rb = sup ? Math.round(r / 1.1) : r; return Math.floor(Math.max(0, b - rb) * shareVal(o) / 100 / 10) * 10; };
+  /** 강사 정산액 = (할인 전 판매가 − 온드미디어 RS − PG 결제 수수료) × 강사 비율 · 10원 아래 버림 (부가세가 들어 있는 금액) */
+  const insBase = (o) => Math.max(0, baseOf(o) - rsOf(o) - pgFeeOf(o));
+  const insAmt = (o) => Math.floor(insBase(o) * shareVal(o) / 100 / 10) * 10;
   function rsMap() { try { const m = JSON.parse(localStorage.getItem(RS_KEY) || "{}"); return m && typeof m === "object" && !Array.isArray(m) ? m : {}; } catch (e) { return {}; } }
   function rsKeep(pid, c) {
     try {
@@ -1273,7 +1284,7 @@
       '<i class="vd-art-go" aria-hidden="true">' + icon("arrowUpRight", "xs") + "</i></span>";
   }
 
-  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, RS_DEF, rsRules, rsRateOf, rsCode, rsProduct, rsOf, rsUrl, rsFor, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
+  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, PG_FEE_DEF, payKeyOf, pgRate, pgFeeOf, insBase, RS_DEF, rsRules, rsRateOf, rsCode, rsProduct, rsOf, rsUrl, rsFor, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
 
   /* ================= 두잉고 강의 묶음 (전체 클래스) ================= */
   // 무료강의 = 무료 VOD + 두잉고 강사 무료 LIVE(#/free) · 프리미엄강의 = LIVE · 오프라인 상품 + 두잉고 기수 강의(#/p) · VOD강의 = 유료 VOD · 전자책

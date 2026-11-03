@@ -3161,8 +3161,10 @@
       ((pay.cancellations || []).length ? "<tr><th>취소 내역</th><td>" + pay.cancellations.map((c) => won(c.amount) + " · " + esc(c.reason || "") + (c.at ? " · " + esc(String(c.at).slice(0, 10)) : "")).join("<br>") + "</td></tr>" : "") + "</table>";
   }
   /* ---------- 강사 VOD 정산: 월 명세 → 정산 확정 → (사업자) 세금계산서 → 지급 ----------
-   * 정산액 = 할인 전 판매가 ÷ 1.1(공급가액) × 정산 비율(유입 경로 · 상품별). 플랫폼 쿠폰 · 포인트 · 결제 수수료는 플랫폼 부담.
-   * 확정하면 그 달 숫자를 고정(snap)하고, 확정 뒤 환불은 환불한 달 명세에서 차감해요. 개인 3.3% 원천징수 · 사업자 부가세 10% + 세금계산서 */
+   * 정산액 = (할인 전 판매가 − 온드미디어 RS − PG 결제 수수료) × 정산 비율(기본 50%) — 부가세가 들어 있는 금액 (2026-11 기준 · vod.js TAX_MODES std).
+   *   사업자 강사: 정산액 그대로 지급 · 강사님이 두고홀딩스에 정산액(부가세 포함)으로 세금계산서
+   *   개인 강사: 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3% 원천징수 후 지급
+   * 확정하면 그 달 숫자를 고정(snap)하고, 확정 뒤 환불은 환불한 달 명세에서 차감해요. 쿠폰 · 포인트 할인은 플랫폼 부담 */
   const vdKey = (o) => vdIidOf(o) || "ext:" + ((vdP(o.pid) || {}).creator || "-");
   const vdPayout = (key, ym) => VD().payouts.find((x) => x.key === key && x.ym === ym) || null;
   const vdPayDate = (ym) => bizDay(vdYMadd(ym, 1) + "-10");
@@ -3185,28 +3187,40 @@
     const X = VX(), frozen = new Set();
     VD().payouts.forEach((x) => { if (x.key === key && x.snap && x.ym < ym) (x.snap.ids || []).forEach((id) => frozen.add(id)); });
     const keep = (o) => (o.status === "refunded" ? Math.max(0, 1 - (o.amount > 0 && o.refundAmount != null ? o.refundAmount / o.amount : 1)) : 1);
-    const os = VD().orders.filter((o) => vdKey(o) === key && o.paidAt && vdYM(o.paidAt) === ym && (o.status === "paid" || (o.status === "refunded" && keep(o) > 0 && !frozen.has(o.id))));
-    const dl = VD().orders.filter((o) => vdKey(o) === key && o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym && frozen.has(o.id));
+    // 체험 계정 주문(0원 · demo)은 정산에 넣지 않아요
+    const os = VD().orders.filter((o) => !o.demo && vdKey(o) === key && o.paidAt && vdYM(o.paidAt) === ym && (o.status === "paid" || (o.status === "refunded" && keep(o) > 0 && !frozen.has(o.id))));
+    const dl = VD().orders.filter((o) => !o.demo && vdKey(o) === key && o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym && frozen.has(o.id));
     const ch = {};
     const insK = (o) => Math.floor(X.insAmt(o) * keep(o) / 10) * 10, baseK = (o) => Math.round(X.baseOf(o) * keep(o));
     os.forEach((o) => { const k = X.isAccess(o) ? (o.ch || "web") : "addon", c = (ch[k] = ch[k] || { n: 0, base: 0, ins: 0 }); c.n++; c.base += baseK(o); c.ins += insK(o); });
+    // 상품 종류별 (VOD · 전자책 · 종이책 · LIVE · 코칭권 · TEA TIME) — 무엇이 얼마나 팔렸는지
+    const kinds = {};
+    os.forEach((o) => { const k = X.rateKeyOf(o), c = (kinds[k] = kinds[k] || { n: 0, base: 0, ins: 0 }); c.n++; c.base += baseK(o); c.ins += insK(o); });
     const ratio = (o) => (o.amount > 0 && o.refundAmount != null ? Math.min(1, o.refundAmount / o.amount) : 1);
     const ads = /^ext:/.test(key) ? [] : X.adOf(key, ym), adCost = ads.reduce((a, x) => a + (Number(x.amount) || 0), 0), adPct = X.adSplitOf(key), adDed = Math.round(adCost * adPct / 100 / 10) * 10;
     const carry = vdCarry(key, ym), ins = vdSum(os, insK), ded = dl.reduce((a, o) => a + Math.round(X.insAmt(o) * ratio(o) / 10) * 10, 0), net = ins - ded - adDed - carry, pf = vdProf(key), biz = pf.type === "biz";
-    // 사업자 부가세: 예전 방식(공급가액 기준)만 정산액에 10%를 더해요. 판매가 기준(기본)은 정산액에 부가세가 들어 있어요
-    const mode = X.taxMode(), wh = !biz && net > 0 ? Math.floor(net * 0.033 / 10) * 10 : 0, vat = biz && net > 0 && mode === "supply" ? Math.round(net * 0.1) : 0;
-    const base0 = vdSum(os, baseK), pay0 = Math.max(0, net - wh + vat);
-    // 세금계산서 (사업자 강사): gross 강사 → 두고홀딩스 판매가 합계 · 두고홀딩스 → 강사 나머지(수수료 · 광고비 분담 · 차감) / net 정산액 / supply 정산액 + 부가세
-    const invIns = !biz || net <= 0 ? 0 : mode === "gross" ? base0 : mode === "net" ? pay0 : net + vat, invPf = biz && net > 0 && mode === "gross" ? Math.max(0, base0 - pay0) : 0;
+    // 세금 (2026-11 std): 정산 금액(net)에는 부가세가 들어 있어요
+    //  사업자 → 그대로 지급 · 강사님이 정산 금액(부가세 포함)으로 세금계산서 / 개인 → ÷ 1.1(부가세 전 금액 sup)에서 3.3% 원천징수
+    // (예전 gross · net · supply 기준은 확정해 둔 명세서(snap)에만 남아 있어요)
+    const mode = X.taxMode(), base0 = vdSum(os, baseK);
+    const sup = !biz && net > 0 ? Math.floor(net / 1.1) : 0, vatOut = !biz && net > 0 ? net - sup : 0;
+    const wh = mode === "std" ? (sup > 0 ? Math.floor(sup * 0.033 / 10) * 10 : 0) : !biz && net > 0 ? Math.floor(net * 0.033 / 10) * 10 : 0;
+    const vat = mode === "supply" && biz && net > 0 ? Math.round(net * 0.1) : 0;
+    const pay0 = mode === "std" ? (net > 0 ? (biz ? net : sup - wh) : 0) : Math.max(0, net - wh + vat);
+    const invIns = !biz || net <= 0 ? 0 : mode === "gross" ? base0 : mode === "supply" ? net + vat : pay0, invPf = biz && net > 0 && mode === "gross" ? Math.max(0, base0 - pay0) : 0;
+    // PG 결제 수수료: 정산 기준액에서 빼요 (정산액에 이미 반영 · 여기는 보여 주기용 합계)
+    const pgK = (o) => Math.round(X.pgFeeOf(o) * keep(o));
     // 온드미디어 RS: YouTube 링크로 팔린 주문은 판매가에서 RS 를 먼저 빼고 강사 비율로 나눠요 (정산액에 이미 반영 · 여기는 보여 주기용 합계)
     const rsK = (o) => Math.floor(X.rsOf(o) * keep(o) / 10) * 10, rsOs = os.filter((o) => o.rs);
-    return { key, ym, name: vdKeyName(key), mode, invIns, invPf, rs: vdSum(rsOs, rsK), rsN: rsOs.length, rsBase: vdSum(rsOs, baseK), n: os.length, base: vdSum(os, baseK), paid: vdSum(os, (o) => Math.round(o.amount * keep(o))), supply: vdSum(os, (o) => Math.round(X.supplyOf(o) * keep(o))), ch, ins, dedN: dl.length, ded, dedIds: dl.map((o) => o.id), adCost, adPct, adDed, adN: ads.length, carry, next: net < 0 ? -net : 0, net, biz, wh, vat, pay: Math.max(0, net - wh + vat), ids: os.map((o) => o.id), rec };
+    return { key, ym, name: vdKeyName(key), mode, invIns, invPf, rs: vdSum(rsOs, rsK), rsN: rsOs.length, rsBase: vdSum(rsOs, baseK), n: os.length, base: vdSum(os, baseK), paid: vdSum(os, (o) => Math.round(o.amount * keep(o))), supply: vdSum(os, (o) => Math.round(X.supplyOf(o) * keep(o))), pg: vdSum(os, pgK), ch, kinds, ins, dedN: dl.length, ded, dedIds: dl.map((o) => o.id), adCost, adPct, adDed, adN: ads.length, carry, next: net < 0 ? -net : 0, net, biz, sup, vatOut, wh, vat, pay: pay0, ids: os.map((o) => o.id), rec };
   }
+  /** 세금 칸: 사업자 = 정산 금액 그대로(세금계산서) · 개인 = 부가세 빼고(÷1.1) 3.3% 원천징수 */
+  const vdTaxCell = (r) => (r.mode === "std" || !r.mode ? (r.net <= 0 ? "0원" : r.biz ? '0원<small class="a-memo">세금계산서 ' + won(r.invIns) + "</small>" : "- " + won((r.vatOut || 0) + r.wh) + '<small class="a-memo">부가세 ' + won(r.vatOut || 0) + " · 3.3% " + won(r.wh) + "</small>") : r.biz ? "+ " + won(r.vat) : r.wh ? "- " + won(r.wh) : "0원");
   const vdAdCell = (r) => (r.adDed ? "- " + won(r.adDed) : r.carry ? "" : "0원") + (r.carry ? '<small class="a-memo">지난달 이월 - ' + won(r.carry) + "</small>" : "");
   const vdNextTxt = (r) => (r.next ? '<small class="a-memo vs-next">다음 달 이월 ' + won(r.next) + "</small>" : "");
   function vdStmtKeys(ym, only) {
     const s = new Set();
-    VD().orders.forEach((o) => { if ((o.status === "paid" && o.paidAt && vdYM(o.paidAt) === ym) || (o.status === "refunded" && ((o.refundedAt && vdYM(o.refundedAt) === ym) || (o.paidAt && vdYM(o.paidAt) === ym)))) s.add(vdKey(o)); });
+    VD().orders.forEach((o) => { if (o.demo) return; if ((o.status === "paid" && o.paidAt && vdYM(o.paidAt) === ym) || (o.status === "refunded" && ((o.refundedAt && vdYM(o.refundedAt) === ym) || (o.paidAt && vdYM(o.paidAt) === ym)))) s.add(vdKey(o)); });
     VD().payouts.forEach((x) => { if (x.ym === ym) s.add(x.key); });
     (VD().adSpend || []).forEach((x) => { if (x.ym === ym) s.add(x.iid); });
     return [...s].filter((k) => !only || k === only).map((k) => vdStmt(k, ym)).filter((st) => st.n || st.ded || st.rec || st.adDed || st.carry).sort((a, b) => b.base - a.base);
@@ -3237,8 +3251,14 @@
     return '<div class="vs-type-m"><b>정산 유형</b><div class="a-seg vs-type-seg">' + [["person", "개인 · 3.3% 원천징수"], ["biz", "사업자 · 부가세 · 세금계산서"]].map((t) => '<button type="button" class="' + (cur === t[0] ? "on" : "") + '" data-action="vda-type" data-k="' + esc(key) + '" data-m="' + esc(ym) + '" data-t="' + t[0] + '"' + (cur === t[0] ? ' aria-pressed="true"' : "") + ">" + t[1] + "</button>").join("") + '</div><small class="a-muted">' + esc(by) + " · 여기서 고르면 강사센터에서는 바꿀 수 없어요 · 고르면 아래 금액이 바로 다시 계산돼요</small></div>";
   }
   function vdSettle() {
-    const ym = ui.vdYM || vdYMadd(todayStr().slice(0, 7), -1), rows = vdStmtKeys(ym).map((st) => Object.assign(st, { s: vdStState(st) }));
-    const tot = rows.reduce((a, r) => ({ n: a.n + r.n, base: a.base + r.base, rs: a.rs + (r.rs || 0), net: a.net + r.net, pay: a.pay + r.pay }), { n: 0, base: 0, rs: 0, net: 0, pay: 0 });
+    const ym = ui.vdYM || vdYMadd(todayStr().slice(0, 7), -1), all = vdStmtKeys(ym).map((st) => Object.assign(st, { s: vdStState(st) }));
+    // 상품 종류 탭: 전체 · VOD · 전자책 · 종이책 · LIVE · 코칭권 · TEA TIME — 고르면 그 종류를 판 강사만 · 그 종류 숫자를 따로
+    const KX = VX().RATE_KEYS, kf = KX.some((x) => x[0] === ui.vdKind) ? ui.vdKind : "all";
+    const kSum = (k) => all.reduce((a, r) => { const c = vdKindsOf(r)[k]; return c ? { n: a.n + c.n, base: a.base + c.base, ins: a.ins + c.ins, who: a.who + 1 } : a; }, { n: 0, base: 0, ins: 0, who: 0 });
+    const rows = kf === "all" ? all : all.filter((r) => vdKindsOf(r)[kf]);
+    const kTabs = '<div class="a-tabs vs-ktabs" role="tablist" aria-label="상품 종류">' + [["all", "전체", all.reduce((a, r) => a + r.n, 0)]].concat(KX.map((x) => [x[0], x[1], kSum(x[0]).n])).filter((t) => t[0] === "all" || t[2] || t[0] === kf).map((t) => '<button type="button" role="tab" class="a-tab' + (kf === t[0] ? " on" : "") + '" aria-selected="' + (kf === t[0]) + '" data-action="vda-kind" data-k="' + t[0] + '">' + esc(t[1]) + ' <span class="num">' + t[2] + "</span></button>").join("") + "</div>" +
+      (kf !== "all" ? (() => { const s = kSum(kf); return '<p class="vs-ksum">' + icon("layers", "xs") + "<b>" + esc((KX.find((x) => x[0] === kf) || [])[1]) + "</b> " + s.who + "명 · " + s.n + "건 · 판매가 " + won(s.base) + " · 강사 정산액 " + won(s.ins) + "</p>"; })() : "");
+    const tot = rows.reduce((a, r) => ({ n: a.n + r.n, base: a.base + r.base, rs: a.rs + (r.rs || 0), pg: a.pg + (r.pg || 0), net: a.net + r.net, pay: a.pay + r.pay }), { n: 0, base: 0, rs: 0, pg: 0, net: 0, pay: 0 });
     const cnt = (ks) => rows.filter((r) => ks.indexOf(r.s.k) >= 0).length, X = VX();
     const act = (r) => { const at = ' data-k="' + esc(r.key) + '" data-m="' + esc(ym) + '"', k = r.s.k;
       return btn("명세서", "vda-stm", "a-btn-ghost a-btn-sm", at) +
@@ -3250,10 +3270,10 @@
     return '<section class="a-card"><div class="a-card-head a-cal-head"><button type="button" class="a-icon-btn" data-action="vda-ym" data-dir="-1" aria-label="이전 달">' + icon("chevLeft") + "</button><h2>" + vdYMtxt(ym) + " 판매분 정산</h2>" + '<button type="button" class="a-icon-btn" data-action="vda-ym" data-dir="1" aria-label="다음 달">' + icon("chevRight") + "</button>" +
         '<span class="a-cal-sum">지급일 <b>' + fmtFull(vdPayDate(ym)) + "</b> · 지급 합계 <b>" + won(tot.pay) + "</b></span>" + (rows.length ? btn(icon("download", "sm") + "명세 CSV", "vda-stcsv", "a-btn-ghost a-btn-sm vda-ml", ' data-m="' + esc(ym) + '"') : "") + "</div>" +
       '<div class="vs-steps">' + [["확정 대기", cnt(["ready"]), "warn"], ["세금계산서 대기", cnt(["invreq"]) + rows.filter((r) => r.s.k === "confirmed" && r.biz).length, "warn"], ["지급 대기", rows.filter((r) => (r.s.k === "confirmed" && !r.biz) || r.s.k === "invoiced").length, "info"], ["지급 완료", cnt(["paid"]), "ok"]].map((x) => '<div class="vs-step ' + x[2] + '"><small>' + x[0] + "</small><b>" + x[1] + "명</b></div>").join("") + "</div>" +
-      '<p class="a-muted p-small vda-note">' + icon("alert", "xs") + " " + vdRuleTxt() + " 비율 · 기준 · 광고비는 ‘강사별 비율 · 가격’ 탭에서 정해요.</p>" +
+      '<p class="a-muted p-small vda-note">' + icon("alert", "xs") + " " + vdRuleTxt() + " 비율 · 광고비는 ‘정산 비율 · 가격’에서 정해요.</p>" + (all.length ? kTabs : "") +
       (rows.length ? '<div class="a-table-wrap"><table class="a-table vda-table vs-table"><thead><tr><th>강사 · 크리에이터</th><th>판매</th><th class="right">판매가 합계</th><th class="right">정산액</th><th class="right">차감</th><th class="right">광고비 분담</th><th class="right">세금</th><th class="right">지급액</th><th>정산 정보</th><th>상태</th><th class="right">관리</th></tr></thead><tbody>' +
-        rows.map((r) => "<tr><td><b>" + esc(r.name) + '</b><div class="vs-chs">' + vdChTags(r) + '</div></td><td class="num">' + r.n + '건</td><td class="right num">' + won(r.base) + (r.rs ? '<small class="vc-rs">온드 RS − ' + won(r.rs) + "</small>" : "") + '</td><td class="right num">' + won(r.ins) + '</td><td class="right num">' + (r.ded ? "- " + won(r.ded) : "0원") + '</td><td class="right num">' + vdAdCell(r) + '</td><td class="right num">' + (r.biz ? "+ " + won(r.vat) : r.wh ? "- " + won(r.wh) : "0원") + '</td><td class="right num"><b>' + won(r.pay) + "</b>" + vdNextTxt(r) + "</td><td>" + vdProfPill(r.key) + "</td><td>" + pill(r.s.t, r.s.c) + (r.rec && r.rec.invNo ? '<small class="a-memo">승인번호 ' + esc(r.rec.invNo) + "</small>" : "") + '</td><td class="right vs-acts">' + act(r) + "</td></tr>").join("") +
-        '<tr class="a-rev-total"><td><b>합계</b></td><td class="num"><b>' + tot.n + '건</b></td><td class="right num"><b>' + won(tot.base) + "</b>" + (tot.rs ? '<small class="vc-rs">온드 RS − ' + won(tot.rs) + "</small>" : "") + '</td><td class="right num"><b>' + won(tot.net) + '</b></td><td></td><td></td><td></td><td class="right num"><b>' + won(tot.pay) + "</b></td><td></td><td></td><td></td></tr>" +
+        rows.map((r) => "<tr><td><b>" + esc(r.name) + '</b><div class="vs-chs">' + vdChTags(r) + '</div><div class="vs-kinds">' + vdKindChips(r, kf) + '</div></td><td class="num">' + r.n + '건</td><td class="right num">' + won(r.base) + (r.rs ? '<small class="vc-rs">온드 RS − ' + won(r.rs) + "</small>" : "") + (r.pg ? '<small class="vc-rs">PG 수수료 − ' + won(r.pg) + "</small>" : "") + '</td><td class="right num">' + won(r.ins) + '</td><td class="right num">' + (r.ded ? "- " + won(r.ded) : "0원") + '</td><td class="right num">' + vdAdCell(r) + '</td><td class="right num">' + vdTaxCell(r) + '</td><td class="right num"><b>' + won(r.pay) + "</b>" + vdNextTxt(r) + "</td><td>" + vdProfPill(r.key) + "</td><td>" + pill(r.s.t, r.s.c) + (r.rec && r.rec.invNo ? '<small class="a-memo">승인번호 ' + esc(r.rec.invNo) + "</small>" : "") + '</td><td class="right vs-acts">' + act(r) + "</td></tr>").join("") +
+        '<tr class="a-rev-total"><td><b>합계</b></td><td class="num"><b>' + tot.n + '건</b></td><td class="right num"><b>' + won(tot.base) + "</b>" + (tot.rs ? '<small class="vc-rs">온드 RS − ' + won(tot.rs) + "</small>" : "") + (tot.pg ? '<small class="vc-rs">PG 수수료 − ' + won(tot.pg) + "</small>" : "") + '</td><td class="right num"><b>' + won(tot.net) + '</b></td><td></td><td></td><td></td><td class="right num"><b>' + won(tot.pay) + "</b></td><td></td><td></td><td></td></tr>" +
         "</tbody></table></div>" : emptyBox("coins", vdYMtxt(ym) + "에 결제된 VOD가 없어요.")) + "</section>";
   }
   /* 정산 비율 · 광고비 (마스터): 기본 강사 5 : 플랫폼 5 · 광고비도 5 : 5. 강사와 조율한 비율을 확정하면 강사센터 › 판매 정산에 바로 보여요 */
@@ -3263,6 +3283,7 @@
   /** 정산 기준 한 줄 설명 (마스터 · 강사 화면 공용) */
   function vdRuleTxt() {
     const X = VX(), m = X.taxMode();
+    if (m === "std") return "정산액 = (할인 전 판매가 − 온드미디어 RS − PG 결제 수수료) × 강사 비율(기본 50%), 부가세가 들어 있는 금액이에요. 사업자 강사는 정산액 그대로 지급하고 강사님이 (주)두고홀딩스에 정산액(부가세 포함)으로 세금계산서를 발행해요. 개인 강사는 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3%를 떼고 지급해요. 그 달 광고비 × 강사 분담은 정산액에서 빼고, 쿠폰 · 포인트 할인은 플랫폼 부담, 확정 뒤 환불은 다음 명세에서 차감해요.";
     const base = m === "supply" ? "정산액 = 할인 전 판매가 ÷ 1.1(공급가액) × 정산 비율" : "정산액 = 할인 전 판매가(부가세 포함) × 정산 비율 (예: 100만 원 · 60% → 60만 원)";
     const biz = m === "gross" ? "사업자 강사는 판매가 합계로 두고홀딩스에 세금계산서를 발행하고, 두고홀딩스는 수수료분 세금계산서를 발행해요." : m === "net" ? "사업자 강사는 정산액(부가세 포함)으로 두고홀딩스에 세금계산서를 발행해요." : "사업자 강사는 정산액에 부가세 10%를 더해 세금계산서를 발행해요.";
     return base + " − 그 달 광고비 × 강사 분담. YouTube 온드미디어 링크로 팔린 주문은 온드 RS(판매가 × (1 − PG " + X.rsRules().pg + "%) × RS율)를 먼저 빼고 비율을 곱해요. 쿠폰 · 포인트 · 결제 수수료는 플랫폼 부담, 확정 뒤 환불은 다음 명세에서 차감. 개인 강사는 3.3% 원천징수 후 지급. " + biz;
@@ -3272,13 +3293,17 @@
   /* 정산 · 세금계산서 기준 + 기본 비율 (마스터) */
   function vdTaxCard() {
     const X = VX(), st = VD().settings, mode = X.taxMode(), d = st.rates || {};
-    const ex = (m) => (m === "gross" ? "100만 원 · 강사 60% → 정산 60만 원 지급. 강사님이 두고홀딩스에 100만 원 세금계산서, 두고홀딩스가 강사님께 수수료 40만 원 세금계산서" : m === "net" ? "100만 원 · 강사 60% → 정산 60만 원 지급. 강사님이 두고홀딩스에 60만 원(부가세 포함) 세금계산서" : "100만 원 · 강사 60% → 공급가액 90만 9,090원 × 60% = 54만 5,450원 + 부가세 → 60만 원 지급 (개인 강사는 54만 5,450원에서 3.3%)");
-    return '<section class="a-card"><div class="a-card-head"><h2>정산 · 세금계산서 기준</h2><span class="a-muted">강사 · 종류별 비율은 아래 표에서 정해요. 바꾸면 아직 확정하지 않은 명세서부터 새 기준으로 계산하고, 확정한 명세서는 그대로예요.</span></div>' +
-      '<form id="vda-tax-form" class="a-form" novalidate><div class="vda-radios vda-tax">' + Object.keys(X.TAX_MODES).map((m) => '<label class="vda-radio"><input type="radio" name="taxMode" value="' + m + '"' + (mode === m ? " checked" : "") + "><span><b>" + esc(X.TAX_MODES[m]) + "</b><small>" + esc(ex(m)) + "</small></span></label>").join("") + "</div>" +
+    // 2026-11: 정산 기준은 하나로 고정 — 고르는 칸 대신 계산 순서와 예시를 보여 줘요 (예전 기준은 확정한 명세서에만)
+    const sup = Math.floor(2500000 / 1.1), wh = Math.floor(sup * 0.033 / 10) * 10;
+    return '<section class="a-card"><div class="a-card-head"><h2>정산 · 세금계산서 기준</h2><span class="a-muted">모든 강사에게 같은 기준이에요. 강사 · 종류별 비율은 아래 표에서 정하고, 바꾸면 아직 확정하지 않은 명세서부터 새 비율로 계산해요. 확정한 명세서는 그대로예요.</span></div>' +
+      '<form id="vda-tax-form" class="a-form" novalidate><div class="vs-rule">' +
+        '<ol class="vs-rule-steps"><li><b>정산 기준액</b><span>할인 전 판매가 − 온드미디어 RS − PG 결제 수수료</span></li><li><b>정산액 (부가세 포함)</b><span>정산 기준액 × 강사 비율 (기본 50%) − 그 달 광고비 강사 분담</span></li><li><b>지급</b><span>사업자: 정산액 그대로 · 강사님이 두고홀딩스에 정산액(부가세 포함)으로 세금계산서<br>개인(3.3%): 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3% 원천징수</span></li></ol>' +
+        '<p class="vs-rule-ex">' + icon("coins", "xs") + "<span>예) 1,000만 원 판매 → RS · PG 수수료 빼고 500만 원 → 강사 250만 원 · 플랫폼 250만 원 · 사업자 강사는 <b>250만 원</b> 지급(세금계산서 250만 원) · 개인 강사는 250만 ÷ 1.1 = " + won(sup) + "에서 3.3% " + won(wh) + " 빼고 <b>" + won(sup - wh) + "</b> 지급</span></p>" +
+        '<p class="a-muted p-small">PG 결제 수수료율은 매출 리포트 › 수수료율(결제수단별)을 써요 · 쿠폰 · 포인트 할인은 플랫폼 부담이에요.</p></div>' +
       '<p class="a-label">기본 비율 <small class="a-muted">강사별로 따로 정하지 않은 강사에게 써요 · 숫자는 강사 몫(%)</small></p><div class="a-form-row vda-defr">' +
         X.RATE_KEYS.map((x) => '<div class="a-field"><label for="vdt-' + x[0] + '">' + esc(x[1]) + '</label><div class="vda-pct"><input class="a-input" id="vdt-' + x[0] + '" name="r-' + x[0] + '" type="number" min="0" max="100" inputmode="numeric" value="' + esc(d[x[0]] != null && d[x[0]] !== "" ? d[x[0]] : X.rateDef(x[0])) + '"><span>%</span></div></div>').join("") + "</div>" +
-      '<p class="a-muted p-small">' + icon("alert", "xs") + " 세금계산서는 사업자 강사만 해당해요. 개인 강사는 정산액에서 사업소득 3.3%를 떼고 지급해요. 기준은 세무사와 한 번 확인해 주세요.</p>" +
-      '<div class="a-form-actions"><button class="a-btn a-btn-primary" type="submit">기준 저장</button></div></form></section>';
+      '<p class="a-muted p-small">' + icon("alert", "xs") + " 세금계산서는 사업자 강사만 해당해요(정산액 · 부가세 포함으로 강사님 → 두고홀딩스). 개인 강사는 부가세 전 금액에서 3.3%를 떼고 지급해요.</p>" +
+      '<div class="a-form-actions"><button class="a-btn a-btn-primary" type="submit">기본 비율 저장</button></div></form></section>';
   }
   /* 강사별 가격 (마스터): 강의 정가 · 판매가 · 1:1 코칭권 · TEA TIME 을 한 표에서 바로 고쳐요 */
   function vdPriceCard() {
@@ -3320,8 +3345,9 @@
   const VD_PAY_KEYS = [["card", "카드"], ["kakao", "카카오페이"], ["naver", "네이버페이"], ["toss", "토스페이"], ["transfer", "계좌이체"], ["vbank", "가상계좌"], ["bank", "무통장 입금"], ["free", "무료 · 쿠폰 · 포인트"]];
   const vdPayKey = (o) => (!(o.amount > 0) || o.method === "free" || o.method === "point" ? "free" : VD_PAY[o.method] ? o.method : "card");
   // 결제수단별 수수료 기본값 [%, 건당 원] — 매출 리포트 › ‘수수료율’에서 PG 계약대로 고쳐요
-  const PG_FEE_DEF = { card: [3.3, 0], kakao: [3.3, 0], naver: [3.3, 0], toss: [3.3, 0], transfer: [2, 0], vbank: [0, 300], bank: [0, 0], free: [0, 0] };
-  const vdFeeRate = (k) => { const s = ((VD().settings || {}).pgFee || {})[k] || {}, d = PG_FEE_DEF[k] || [0, 0], n = (x, dv) => (x != null && x !== "" && isFinite(Number(x)) ? Number(x) : dv); return [n(s.pct, d[0]), n(s.won, d[1])]; };
+  // 수수료율 표 · 계산은 vod.js 하나로 (강사 정산 기준액에서도 같은 수수료를 빼요)
+  const PG_FEE_DEF = window.VOD.PG_FEE_DEF;
+  const vdFeeRate = (k) => VX().pgRate(k);
   const vdFee = (o) => { const base = Math.round((Number(o.amount) || 0) * vdKeep(o)); if (!(base > 0)) return 0; const f = vdFeeRate(vdPayKey(o)); return Math.round(base * f[0] / 100) + f[1]; };
   const vdSold = (ym) => VD().orders.filter((o) => o.paidAt && vdYM(o.paidAt) === ym && (o.status === "paid" || o.status === "refunded"));
   const vdRefAmt = (o) => (o.refundAmount != null ? Number(o.refundAmount) || 0 : Number(o.amount) || 0);
@@ -3608,11 +3634,10 @@
   function saveVodTax(f) {
     const v = VD(), X = VX(), st = v.settings, pc = (x) => { const n = Math.round(Number(x)); return x !== "" && n >= 0 && n <= 100 ? n : null; }, rates = {};
     for (const x of X.RATE_KEYS) { const n = pc(f["r-" + x[0]].value); if (n == null) { toast("기본 비율은 0~100 사이 숫자로 적어 주세요.", "warn"); return; } rates[x[0]] = n; }
-    const m = f.taxMode.value;
-    st.taxMode = X.TAX_MODES[m] ? m : "gross";
+    st.taxMode = "std"; // 2026-11: 기준은 하나 (판매가 − RS − PG 수수료) × 비율
     st.rates = rates;
     st.share = rates.vod; st.addonShare = rates.coach;
-    commit("정산 · 세금계산서 기준을 저장했어요 (" + X.TAX_MODES[st.taxMode] + ").");
+    commit("기본 정산 비율을 저장했어요 (" + X.RATE_KEYS.map((x) => x[1] + " " + rates[x[0]] + "%").join(" · ") + ").");
   }
   function saveVodPrice(f) {
     const p = vdP(f.dataset.id); if (!p) return;
@@ -3649,10 +3674,25 @@
     if (!st.biz || !(st.invIns > 0)) return "";
     const mode = st.mode || VX().taxMode();
     return '<div class="vs-inv"><b>' + icon("file", "xs") + " 세금계산서</b>" +
-      '<div class="vs-inv-r"><span>강사님 → (주)두고홀딩스</span><strong>' + won(st.invIns) + "</strong><small>" + (mode === "gross" ? "판매가 합계(부가세 포함)로 발행 · " : mode === "net" ? "정산 금액(부가세 포함)으로 발행 · " : "정산 금액 + 부가세 10% · ") + vat10(st.invIns) + "</small></div>" +
+      '<div class="vs-inv-r"><span>강사님 → (주)두고홀딩스</span><strong>' + won(st.invIns) + "</strong><small>" + (mode === "gross" ? "판매가 합계(부가세 포함)로 발행 · " : mode === "net" || mode === "std" ? "정산 금액(부가세 포함)으로 발행 · " : "정산 금액 + 부가세 10% · ") + vat10(st.invIns) + "</small></div>" +
       (st.invPf > 0 ? '<div class="vs-inv-r"><span>(주)두고홀딩스 → 강사님</span><strong>' + won(st.invPf) + "</strong><small>플랫폼 수수료" + (st.adDed ? " · 광고비 분담" : "") + (st.ded || st.carry ? " · 환불 · 이월 차감" : "") + " · " + vat10(st.invPf) + " · 두고홀딩스가 발행해요</small></div>" : "") +
       (st.invPf > 0 ? '<p class="a-muted p-small">' + won(st.invIns) + " − " + won(st.invPf) + " = 지급액 " + won(st.pay) + "</p>" : "") + "</div>";
   }
+  /** 상품 종류별로 무엇이 얼마나 팔렸는지 (VOD · 전자책 · 종이책 · LIVE · 코칭권 · TEA TIME) — 예전 확정 명세서는 주문으로 다시 셈 */
+  function vdKindsOf(st) {
+    if (st.kinds) return st.kinds;
+    const X = VX(), out = {};
+    VD().orders.filter((o) => (st.ids || []).indexOf(o.id) >= 0).forEach((o) => { const k = X.rateKeyOf(o), c = (out[k] = out[k] || { n: 0, base: 0, ins: 0 }); c.n++; c.base += Math.round(X.baseOf(o)); c.ins += X.insAmt(o); });
+    return out;
+  }
+  function vdKindTable(st) {
+    const X = VX(), ks = vdKindsOf(st), list = X.RATE_KEYS.filter((x) => ks[x[0]]);
+    if (!list.length) return "";
+    return '<div class="a-table-wrap"><table class="a-table vs-ch-table vs-kind-table"><thead><tr><th>상품 종류</th><th class="right">건수</th><th class="right">판매가</th><th class="right">정산액</th></tr></thead><tbody>' +
+      list.map((x) => "<tr><td>" + esc(x[1]) + '</td><td class="right num">' + ks[x[0]].n + '건</td><td class="right num">' + won(ks[x[0]].base) + '</td><td class="right num">' + won(ks[x[0]].ins) + "</td></tr>").join("") + "</tbody></table></div>";
+  }
+  /** 목록 칸에 넣는 짧은 종류 표시: 종이책 2건 · 31,800원 */
+  const vdKindChips = (st, on) => { const X = VX(), ks = vdKindsOf(st); return X.RATE_KEYS.filter((x) => ks[x[0]]).map((x) => '<span class="vs-kind' + (on === x[0] ? " on" : "") + '"><b>' + esc(x[1]) + "</b> " + ks[x[0]].n + "건 · " + won(ks[x[0]].base) + "</span>").join(""); };
   function vdStmtModal(key, ym) {
     const st = vdStmt(key, ym), s = vdStState(st), X = VX(), pf = vdProf(key);
     const os = VD().orders.filter((o) => st.ids.indexOf(o.id) >= 0).sort((a, b) => a.paidAt - b.paidAt);
@@ -3660,20 +3700,21 @@
     const r = st.rec || {};
     openModal(st.name + " · " + vdYMtxt(ym) + " 정산 명세서",
       '<div class="vs-stmt"><div class="vs-stmt-top">' + pill(s.t, s.c) + "<span>" + (st.biz ? "사업자 · 세금계산서" : "개인 · 사업소득 3.3% 원천징수") + " · 지급일 " + fmtFull(vdPayDate(ym)) + "</span></div>" + vdTypeBox(key, ym, st) +
-        '<dl class="vs-dl">' + row("판매", st.n + "건") + row("판매가 합계 (할인 전)", won(st.base)) + row("고객 결제액", won(st.paid)) + (st.base - st.paid > 0 ? row("플랫폼 부담 할인 (쿠폰 · 포인트)", won(st.base - st.paid)) : "") + row("공급가액 (판매가 ÷ 1.1)", won(st.supply)) + (st.rs ? row("온드미디어 RS (YouTube 링크 " + st.rsN + "건 · 판매가 " + won(st.rsBase || 0) + ")", "- " + won(st.rs) + " <small>나누기 전에 먼저 빼요</small>") : "") + "</dl>" +
+        '<dl class="vs-dl">' + row("판매", st.n + "건") + row("판매가 합계 (할인 전)", won(st.base)) + row("고객 결제액", won(st.paid)) + (st.base - st.paid > 0 ? row("플랫폼 부담 할인 (쿠폰 · 포인트)", won(st.base - st.paid)) : "") + (st.mode === "std" ? "" : row("공급가액 (판매가 ÷ 1.1)", won(st.supply))) + (st.rs ? row("온드미디어 RS (YouTube 링크 " + st.rsN + "건 · 판매가 " + won(st.rsBase || 0) + ")", "- " + won(st.rs) + " <small>나누기 전에 먼저 빼요</small>") : "") + (st.pg ? row("PG 결제 수수료 (결제수단별)", "- " + won(st.pg) + " <small>나누기 전에 먼저 빼요</small>") : "") + (st.mode === "std" ? row("정산 기준액 (판매가 − RS − PG 수수료)", won(Math.max(0, st.base - (st.rs || 0) - (st.pg || 0))), "b") : "") + "</dl>" +
+        vdKindTable(st) +
         '<div class="a-table-wrap"><table class="a-table vs-ch-table"><thead><tr><th>유입 · 상품</th><th class="right">건수</th><th class="right">판매가</th><th class="right">정산액</th></tr></thead><tbody>' +
           (Object.keys(st.ch).length ? Object.keys(st.ch).map((k) => "<tr><td>" + esc(X.CH_TXT[k] || k) + '</td><td class="right num">' + st.ch[k].n + '건</td><td class="right num">' + won(st.ch[k].base) + '</td><td class="right num">' + won(st.ch[k].ins) + "</td></tr>").join("") : '<tr><td colspan="4" class="a-muted">이 달 판매 없음</td></tr>') + "</tbody></table></div>" +
-        '<dl class="vs-dl vs-dl-sum">' + row("강사 정산액", won(st.ins)) + (st.ded ? row("확정 뒤 환불 차감 (" + st.dedN + "건)", "- " + won(st.ded)) : "") + (st.adDed ? row("광고비 분담 (집행 " + won(st.adCost) + " × 강사 " + st.adPct + "%)", "- " + won(st.adDed)) : "") + (st.carry ? row("지난달에서 이월된 차감", "- " + won(st.carry)) : "") + row("정산 금액", won(st.net) + (st.biz && st.mode !== "supply" ? " (부가세 포함)" : ""), "b") + (st.biz ? (st.mode === "supply" ? row("부가세 10%", "+ " + won(st.vat)) : "") : row("원천징수 3.3% (소득세 3% · 지방세 0.3%)", "- " + won(st.wh))) + row("지급액", won(st.pay), "big") + (st.next ? row("다음 달 정산으로 이월", won(st.next) + " (다음 달 정산액에서 이어서 빼요)") : "") + "</dl>" +
+        '<dl class="vs-dl vs-dl-sum">' + row("강사 정산액", won(st.ins)) + (st.ded ? row("확정 뒤 환불 차감 (" + st.dedN + "건)", "- " + won(st.ded)) : "") + (st.adDed ? row("광고비 분담 (집행 " + won(st.adCost) + " × 강사 " + st.adPct + "%)", "- " + won(st.adDed)) : "") + (st.carry ? row("지난달에서 이월된 차감", "- " + won(st.carry)) : "") + row("정산 금액", won(st.net) + (st.mode !== "supply" ? " (부가세 포함)" : ""), "b") + (st.biz ? (st.mode === "supply" ? row("부가세 10%", "+ " + won(st.vat)) : st.mode === "std" && st.net > 0 ? row("사업자: 그대로 지급", "세금계산서 " + won(st.invIns) + " (부가세 포함)") : "") : (st.mode === "std" && st.net > 0 ? row("부가세 전 금액 (정산 금액 ÷ 1.1)", won(st.sup) + " <small>부가세 " + won(st.vatOut) + " 빼고</small>") : "") + row("원천징수 3.3% (소득세 3% · 지방세 0.3%)" + (st.mode === "std" ? " · 부가세 전 금액 기준" : ""), "- " + won(st.wh))) + row("지급액", won(st.pay), "big") + (st.next ? row("다음 달 정산으로 이월", won(st.next) + " (다음 달 정산액에서 이어서 빼요)") : "") + "</dl>" +
         vdInvBox(st) +
         (os.length ? '<details class="vs-orders"><summary>주문 ' + os.length + "건 보기</summary>" + '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>결제일</th><th>주문번호</th><th>상품</th><th>구분</th><th class="right">판매가</th><th class="right">비율</th><th class="right">정산액</th></tr></thead><tbody>' +
-          os.map((o) => "<tr><td>" + esc(fmtMD(DB.date.toStr(new Date(o.paidAt)))) + '</td><td><small class="num">' + esc(o.no) + "</small></td><td>" + esc(o.title) + (X.optTxt(o) ? '<small class="a-memo">' + esc(X.optTxt(o)) + "</small>" : "") + vdRsTag(o) + vdRbTag(o) + "</td><td>" + esc(X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"]) + '</td><td class="right num">' + won(X.baseOf(o)) + '</td><td class="right num">' + (o.share != null ? o.share : "-") + '%</td><td class="right num">' + won(X.insAmt(o)) + "</td></tr>").join("") + "</tbody></table></div></details>" : "") +
+          os.map((o) => "<tr><td>" + esc(fmtMD(DB.date.toStr(new Date(o.paidAt)))) + '</td><td><small class="num">' + esc(o.no) + "</small></td><td>" + esc(o.title) + (X.optTxt(o) ? '<small class="a-memo">' + esc(X.optTxt(o)) + "</small>" : "") + vdRsTag(o) + vdRbTag(o) + "</td><td>" + esc(X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"]) + '</td><td class="right num">' + won(X.baseOf(o)) + (X.pgFeeOf(o) ? '<small class="a-memo">PG − ' + won(X.pgFeeOf(o)) + "</small>" : "") + '</td><td class="right num">' + X.shareVal(o) + '%</td><td class="right num">' + won(X.insAmt(o)) + "</td></tr>").join("") + "</tbody></table></div></details>" : "") +
         '<ol class="vs-time">' + [["판매 월 마감", vdYMadd(ym, 1) + "-01" <= todayStr()], ["정산 확정", r.confirmedAt], [st.biz ? "세금계산서 " + (r.invoiceAt ? "수취" : r.invReqAt ? "발행 신고" : "") : "원천징수 처리", st.biz ? r.invoiceAt || r.invReqAt : r.confirmedAt], ["지급", r.st === "paid" || (!r.st && r.at) ? r.at : null]].map((x) => '<li class="' + (x[1] ? "on" : "") + '"><b>' + esc(x[0]) + "</b><small>" + (x[1] === true ? "완료" : x[1] ? esc(typeof x[1] === "number" ? DB.date.toStr(new Date(x[1])) : x[1]) : "대기") + "</small></li>").join("") + "</ol>" +
         (pf.account ? '<p class="a-muted p-small">' + icon("coins", "xs") + " 지급 계좌: " + esc(pf.bank || "") + " " + esc(pf.account) + " (" + esc(pf.holder || "") + ")" + (pf.bizNo ? " · 사업자 " + esc(pf.bizNo) : "") + "</p>" : '<p class="a-error">' + icon("alert", "xs") + " 정산 정보(계좌 · 개인/사업자)가 없어요. 강사센터 › 판매 정산 › 정산 받을 정보에서 등록해야 지급할 수 있어요.</p>") + "</div>",
       btn(icon("download", "sm") + "CSV", "vda-stcsv", "a-btn-ghost", ' data-m="' + esc(ym) + '" data-k="' + esc(key) + '"') + btn(icon("download", "sm") + "PDF", "vda-print", "a-btn-ghost") + btn("닫기", "modal-close", "a-btn-primary"), "lg");
   }
   function vdStmtCsv(ym, only) {
-    const X = VX(), rows = [["판매월", "강사", "주문번호", "결제일", "상품", "구분", "판매가", "고객결제액", "공급가액", "온드미디어 채널", "RS율", "온드 RS", "정산비율", "정산액"]];
-    vdStmtKeys(ym, only).forEach((st) => VD().orders.filter((o) => st.ids.indexOf(o.id) >= 0).forEach((o) => rows.push([ym, st.name, o.no, DB.date.toStr(new Date(o.paidAt)), o.title, X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"], X.baseOf(o), o.amount, X.supplyOf(o), o.rs ? o.rs.ch || "" : "", o.rs ? (Number(o.rs.rate) || 0) + "%" : "", X.rsOf(o), o.share != null ? o.share : "", X.insAmt(o)])));
+    const X = VX(), kName = (o) => (X.RATE_KEYS.find((x) => x[0] === X.rateKeyOf(o)) || [0, ""])[1], rows = [["판매월", "강사", "주문번호", "결제일", "상품", "상품 종류", "구분", "판매가", "고객결제액", "결제수단", "PG 수수료", "온드미디어 채널", "RS율", "온드 RS", "정산 기준액", "정산비율", "정산액"]];
+    vdStmtKeys(ym, only).forEach((st) => VD().orders.filter((o) => st.ids.indexOf(o.id) >= 0).forEach((o) => rows.push([ym, st.name, o.no, DB.date.toStr(new Date(o.paidAt)), o.title, kName(o), X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"], X.baseOf(o), o.amount, VD_PAY[o.method] || o.method || "", X.pgFeeOf(o), o.rs ? o.rs.ch || "" : "", o.rs ? (Number(o.rs.rate) || 0) + "%" : "", X.rsOf(o), X.insBase(o), X.shareVal(o), X.insAmt(o)])));
     const csv = "﻿" + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "DOOGO-CLASS-정산-" + ym + (only ? "-" + vdKeyName(only) : "") + ".csv"; document.body.appendChild(a); a.click(); a.remove();
     toast("정산 명세 CSV를 내려받았어요.");
@@ -4775,7 +4816,7 @@
       '<a class="a-link vda-ml" href="#/center/vod-cal">정산 달력 ' + icon("arrowRight", "xs") + '</a><a class="a-link" href="#/center/vod-settle">판매 정산 ' + icon("arrowRight", "xs") + "</a></div>" +
       '<div class="vs-strip-g">' + X.RATE_KEYS.map((x) => '<div class="vs-strip-i"><small>' + esc(x[1]) + "</small><b>" + r[x[0]] + "<em>%</em></b><span>강사 " + r[x[0]] + " : 플랫폼 " + (100 - r[x[0]]) + "</span></div>").join("") +
         '<div class="vs-strip-i vs-strip-now"><small>이번 달 정산 예정</small><b>' + won(Math.max(0, st.net)) + "</b><span>" + st.n + "건 판매 · " + esc(fmtFull(vdPayDate(ym))) + " 지급</span></div></div>" +
-      '<p class="a-muted p-small">' + icon("alert", "xs") + " " + (X.taxMode() === "supply" ? "공급가액(판매가 ÷ 1.1)" : "판매가(부가세 포함)") + " × 비율로 정산해요. 예: 100만 원 · " + r.vod + "% → " + won(Math.round((X.taxMode() === "supply" ? 1000000 / 1.1 : 1000000) * r.vod / 100 / 10) * 10) + ".</p></section>";
+      '<p class="a-muted p-small">' + icon("alert", "xs") + " (판매가 − 온드 RS − PG 결제 수수료) × 비율로 정산해요(부가세 포함 금액). 예: RS · PG 수수료 빼고 100만 원 · " + r.vod + "% → " + won(Math.floor(1000000 * r.vod / 100 / 10) * 10) + " · 사업자는 그대로(세금계산서) · 개인은 ÷ 1.1에서 3.3%를 떼고 받아요.</p></section>";
   }
   function pageVodDash() {
     const iid = IID(), ins = INS(), c = C(), X = VX(), v = VD();
@@ -4928,7 +4969,7 @@
     const view = btn(icon("file", "sm") + "명세서 보기", "vda-stm", "a-btn-primary a-btn-sm", at);
     if (s.k === "ready") return '<div class="vs-notice wait">' + icon("clock", "sm") + "<div><b>" + esc(vdYMtxt(st.ym)) + " 판매분 정산을 운영팀이 확정하고 있어요</b><small>확정되면 여기에 ‘이번 달 정산 명세서’가 열려요 · " + esc(payD) + " 지급 예정</small></div></div>";
     if (s.k === "paid") return '<div class="vs-notice ok">' + icon("check", "sm") + "<div><b>이번 달 정산을 지급했어요 · " + won(st.pay) + "</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 정산 명세서</small></div>" + view + "</div>";
-    return '<div class="vs-notice new">' + icon("file", "sm") + "<div><b>이번 달 정산 명세서가 나왔어요</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 · " + esc(payD) + " 지급 예정 · 받을 금액 <b>" + won(st.pay) + "</b>" + (st.biz ? (s.k === "invoiced" ? " · 세금계산서 확인 완료" : " · 세금계산서를 발행한 뒤 ‘세금계산서 발행 완료’를 눌러 주세요") : " · 3.3% 원천징수 뒤 금액") + "</small></div>" + view + (st.biz && !isCoach() && (s.k === "confirmed" || s.k === "invreq") ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-ghost a-btn-sm", ' data-m="' + esc(st.ym) + '"') : "") + "</div>";
+    return '<div class="vs-notice new">' + icon("file", "sm") + "<div><b>이번 달 정산 명세서가 나왔어요</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 · " + esc(payD) + " 지급 예정 · 받을 금액 <b>" + won(st.pay) + "</b>" + (st.biz ? (s.k === "invoiced" ? " · 세금계산서 확인 완료" : " · 세금계산서를 발행한 뒤 ‘세금계산서 발행 완료’를 눌러 주세요") : st.mode === "std" ? " · 부가세 전 금액에서 3.3% 원천징수 뒤 금액" : " · 3.3% 원천징수 뒤 금액") + "</small></div>" + view + (st.biz && !isCoach() && (s.k === "confirmed" || s.k === "invreq") ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-ghost a-btn-sm", ' data-m="' + esc(st.ym) + '"') : "") + "</div>";
   }
   function vsPayCard(st, last) {
     const ss = vdStState(st), X = VX(), payD = vdPayDate(st.ym);
@@ -4938,17 +4979,19 @@
       '<ul class="fin-pnl">' +
         li("판매가 합계", won(st.base), "", st.n + "건") +
         (st.rs ? li("온드미디어 RS", "- " + won(st.rs), "neg", "YouTube 링크 판매 " + st.rsN + "건 · 나누기 전에 먼저 빼요") : "") +
-        li((isCoach() ? "강사님" : "내") + " 정산액", won(st.ins), "", (st.rs ? "(판매가 − 온드 RS) × " : "판매가 × ") + (isCoach() ? "강사님" : "내") + " 비율") +
+        (st.pg ? li("PG 결제 수수료", "- " + won(st.pg), "neg", "결제수단별 수수료 · 나누기 전에 먼저 빼요") : "") +
+        li((isCoach() ? "강사님" : "내") + " 정산액", won(st.ins), "", (st.mode === "std" ? "(판매가 − RS − PG 수수료) × " : st.rs ? "(판매가 − 온드 RS) × " : "판매가 × ") + (isCoach() ? "강사님" : "내") + " 비율") +
         (st.ded ? li("확정 뒤 환불 차감", "- " + won(st.ded), "neg", st.dedN + "건") : "") +
         li("광고비 분담", (st.adDed ? "- " : "") + won(st.adDed), "neg", st.adCost ? "이 달 광고비 " + won(st.adCost) + " × " + st.adPct + "%" : "이 달 광고비 없음") +
         (st.carry ? li("지난달 이월 차감", "- " + won(st.carry), "neg", "광고비가 정산액보다 많아 넘어온 금액") : "") +
-        li("정산액", won(Math.max(0, st.net)), "sum") +
-        (st.biz ? (st.vat ? li("부가세", "+ " + won(st.vat), "", "사업자") : "") : li("원천징수 3.3%", (st.wh ? "- " : "") + won(st.wh), "neg", "개인 · 사업소득")) +
+        li("정산액", won(Math.max(0, st.net)), "sum", st.mode !== "supply" ? "부가세 포함" : "") +
+        (st.biz ? (st.vat ? li("부가세", "+ " + won(st.vat), "", "사업자") : st.mode === "std" && st.net > 0 ? li("세금계산서 발행", won(st.invIns), "", "사업자 · 정산액(부가세 포함)으로 두고홀딩스에") : "")
+          : (st.mode === "std" && st.net > 0 ? li("부가세 빼기 (÷ 1.1)", "- " + won(st.vatOut || 0), "neg", "개인 · 부가세 전 금액 " + won(st.sup || 0)) : "") + li("원천징수 3.3%", (st.wh ? "- " : "") + won(st.wh), "neg", "개인 · 사업소득" + (st.mode === "std" ? " (부가세 전 금액 기준)" : ""))) +
         li(ss.k === "paid" ? "받은 금액" : "받을 금액", won(st.pay), "sum ok") +
       "</ul>" +
       (st.next ? '<p class="a-muted p-small">' + icon("alert", "xs") + " 광고비가 정산액보다 많아 " + won(st.next) + "은 다음 달 정산에서 이어서 빼요.</p>" : "") +
       (!last && ss.k === "live" ? '<p class="a-muted p-small">' + icon("clock", "xs") + " 이번 달은 아직 집계 중이에요. 판매 · 광고비가 늘면 숫자가 바뀌고, 다음 달 초 마스터가 확정해요.</p>" : "") +
-      (st.biz && X.taxMode() === "gross" && st.invIns ? '<p class="a-muted p-small">' + icon("file", "xs") + " 세금계산서: 강사님 → 두고홀딩스 " + won(st.invIns) + " · 두고홀딩스 → 강사님 " + won(st.invPf) + "</p>" : "") + "</section>";
+      (st.biz && st.mode === "gross" && st.invIns ? '<p class="a-muted p-small">' + icon("file", "xs") + " 세금계산서: 강사님 → 두고홀딩스 " + won(st.invIns) + " · 두고홀딩스 → 강사님 " + won(st.invPf) + "</p>" : "") + vdKindTable(st) + "</section>";
   }
   /** 지급 일정 (최근 4개월 판매분) */
   function vsPaySchedule(iid) {
@@ -4962,7 +5005,7 @@
     const X = VX(), r = X.rateOf(iid), ex = mine.filter((p) => p.share != null && p.share !== ""), ym = todayStr().slice(0, 7);
     const ads = (VD().adSpend || []).filter((x) => x.iid === iid).sort((a, b) => String(b.day || b.ym).localeCompare(String(a.day || a.ym))).slice(0, 8);
     const big = (t, n, d) => '<div class="vs-rate2"><small>' + t + "</small><b>" + n + '<em>%</em></b><span class="vs-rbar"><i style="width:' + n + '%"></i></span><span class="vs-rlab"><span>강사 ' + n + "</span><span>플랫폼 " + (100 - n) + "</span></span><p>" + d + "</p></div>";
-    return '<section class="a-card vs-rate-card"><div class="a-card-head"><h2>내 정산 비율</h2>' + (r.next ? pill("다음 비율 예정 · " + fmtFull(DB.date.toStr(new Date(r.next.from))) + "부터", "warn") : r.at ? pill(fmtFull(DB.date.toStr(new Date(r.from || r.at))) + "부터 · 마스터 확정", "ok") : pill("기본 계약", "info")) + '<span class="a-muted">' + (X.taxMode() === "supply" ? "공급가액(판매가 ÷ 1.1) 기준" : "판매가(부가세 포함) 기준") + " · 쿠폰 · 포인트 · 결제 수수료는 플랫폼 부담</span></div>" +
+    return '<section class="a-card vs-rate-card"><div class="a-card-head"><h2>내 정산 비율</h2>' + (r.next ? pill("다음 비율 예정 · " + fmtFull(DB.date.toStr(new Date(r.next.from))) + "부터", "warn") : r.at ? pill(fmtFull(DB.date.toStr(new Date(r.from || r.at))) + "부터 · 마스터 확정", "ok") : pill("기본 계약", "info")) + '<span class="a-muted">' + (X.taxMode() === "std" ? "판매가(부가세 포함) − RS − PG 결제 수수료 기준 · 쿠폰 · 포인트 할인은 플랫폼 부담" : (X.taxMode() === "supply" ? "공급가액(판매가 ÷ 1.1) 기준" : "판매가(부가세 포함) 기준") + " · 쿠폰 · 포인트 · 결제 수수료는 플랫폼 부담") + "</span></div>" +
       '<div class="vs-rates2">' + X.RATE_KEYS.map((x) => big(x[1], r[x[0]], x[2])).join("") + big("광고비 분담", r.ad, "플랫폼이 쓴 광고비 중 강사님 몫 · 그 달 정산에서 빠져요") + "</div>" +
       (r.next ? '<p class="vs-rmemo">' + icon("clock", "xs") + " 다음 비율 · " + esc(vdRateNextTxt(r)) + " (그 전에 결제한 주문은 지금 비율)</p>" : "") +
       (r.memo ? '<p class="vs-rmemo">' + icon("file", "xs") + " 계약 메모 · " + esc(r.memo) + "</p>" : "") +
@@ -5015,7 +5058,7 @@
         (hasPay ? '<p class="vc-paynote">' + icon("coins", "xs") + " <b>" + Number(payD.slice(5, 7)) + "월 " + Number(payD.slice(8)) + "일</b>에 " + vdYMtxt(pym) + " 판매분 <b>" + won(pst.pay) + "</b>" + (pss.k === "paid" ? "을 받았어요." : "을 받아요 (" + esc(pss.t) + ").") + (pst.adDed ? " 광고비 분담 " + won(pst.adDed) + " 차감 뒤예요." : "") + "</p>" : "") +
         '<div class="vc-sum">' + VC_KIND.map((k) => '<div class="vc-sum-i vc-k-' + k[0] + '"><span>' + (k[2] === "coffee" ? X.icx("coffee", "xs") : icon(k[2], "xs")) + k[1] + "</span><b>" + byK[k[0]].n + "건</b><small>" + won(byK[k[0]].ins) + '</small><small class="vc-my">내 몫 ' + r[k[0]] + "%</small></div>").join("") + "</div>" +
         '<div class="vc-grid" role="grid" aria-label="' + esc(vdYMtxt(ym)) + ' 정산 달력">' + ["일", "월", "화", "수", "목", "금", "토"].map((w, i) => '<div class="vc-w' + (i === 0 ? " sun" : i === 6 ? " sat" : "") + '">' + w + "</div>").join("") + cells.join("") + "</div>" +
-        '<p class="a-muted p-small">' + icon("coins", "xs") + " 날짜 칸의 금액은 그날 판매의 정산 예정 금액(" + (X.taxMode() === "supply" ? "공급가액(판매가 ÷ 1.1)" : "판매가(부가세 포함)") + " × 내 비율 · YouTube 온드미디어 링크로 팔린 주문은 RS를 먼저 뺀 금액 × 내 비율)이에요. 초록 칸은 지난달 판매분을 받는 날이에요. 광고비 분담 · 확정 뒤 환불 차감은 월 명세서에서 빠져요 (" + vdYMtxt(ym) + " 판매분 지급 예정 " + won(st.pay) + " · " + fmtFull(vdPayDate(ym)) + ').</p></section>' +
+        '<p class="a-muted p-small">' + icon("coins", "xs") + " 날짜 칸의 금액은 그날 판매의 정산 예정 금액((판매가 − 온드 RS − PG 결제 수수료) × 내 비율 · 부가세 포함)이에요. 초록 칸은 지난달 판매분을 받는 날이에요. 광고비 분담 · 확정 뒤 환불 차감은 월 명세서에서 빠져요 (" + vdYMtxt(ym) + " 판매분 지급 예정 " + won(st.pay) + " · " + fmtFull(vdPayDate(ym)) + ').</p></section>' +
       detail + vsPaySchedule(iid);
   }
   function pageInsVodSettle() {
@@ -5043,7 +5086,7 @@
         months.map((x) => { const at = ' data-k="' + esc(iid) + '" data-m="' + esc(x.ym) + '"'; return "<tr" + ((x.n || x.rec || x.adDed || x.carry) ? "" : ' class="a-dim"') + "><td><b>" + vdYMtxt(x.ym) + '</b><div class="vs-chs">' + vdChTags(x) + '</div></td><td class="num">' + x.n + '건</td><td class="right num">' + won(x.base) + (x.rs ? '<small class="vc-rs">온드 RS − ' + won(x.rs) + "</small>" : "") + '</td><td class="right num">' + won(x.ins) + '</td><td class="right num">' + (x.ded ? "- " + won(x.ded) : "0원") + '</td><td class="right num">' + vdAdCell(x) + '</td><td class="right num">' + (x.biz ? "+ " + won(x.vat) : x.wh ? "- " + won(x.wh) : "0원") + '</td><td class="right num"><b>' + won(x.pay) + "</b>" + vdNextTxt(x) + "</td><td>" + ((x.n || x.rec || x.adDed || x.carry) ? pill(x.s.t, x.s.c) : '<span class="a-muted">-</span>') + '</td><td class="right vs-acts">' + ((x.n || x.rec || x.adDed || x.carry) ? btn("명세서", "vda-stm", "a-btn-ghost a-btn-sm", at) : "") + (x.s.k === "confirmed" && x.biz ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-primary a-btn-sm", ' data-m="' + esc(x.ym) + '"') : "") + "</td></tr>"; }).join("") +
       "</tbody></table></div></section>" +
       (coach ? "" : '<section class="a-card"><div class="a-card-head"><h2>정산 받을 정보</h2><span class="a-muted">마스터에게만 보여요</span></div><form id="vs-prof-form" class="a-form" novalidate>' +
-        '<div class="vs-type' + (pf.typeBy === "master" ? " locked" : "") + '">' + [["person", "개인 (프리랜서)", "사업소득 3.3%를 떼고 지급해요"], ["biz", "사업자", X.taxMode() === "gross" ? "판매가 합계로 세금계산서를 발행해 주세요 · 수수료분은 두고홀딩스가 발행" : X.taxMode() === "net" ? "정산 금액(부가세 포함)으로 세금계산서를 발행해 주세요" : "정산 금액 + 부가세 10% · 세금계산서를 발행해 주세요"]].map((t) => '<label class="vb-kind-o"><input type="radio" name="type" value="' + t[0] + '"' + ((pf.type || "person") === t[0] ? " checked" : "") + (pf.typeBy === "master" ? " disabled" : "") + "><span><b>" + t[1] + "</b><small>" + t[2] + "</small></span></label>").join("") + "</div>" +
+        '<div class="vs-type' + (pf.typeBy === "master" ? " locked" : "") + '">' + [["person", "개인 (프리랜서)", X.taxMode() === "std" ? "정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3%를 떼고 지급해요" : "사업소득 3.3%를 떼고 지급해요"], ["biz", "사업자", X.taxMode() === "std" ? "정산액(부가세 포함)으로 두고홀딩스에 세금계산서를 발행해 주세요" : X.taxMode() === "gross" ? "판매가 합계로 세금계산서를 발행해 주세요 · 수수료분은 두고홀딩스가 발행" : X.taxMode() === "net" ? "정산 금액(부가세 포함)으로 세금계산서를 발행해 주세요" : "정산 금액 + 부가세 10% · 세금계산서를 발행해 주세요"]].map((t) => '<label class="vb-kind-o"><input type="radio" name="type" value="' + t[0] + '"' + ((pf.type || "person") === t[0] ? " checked" : "") + (pf.typeBy === "master" ? " disabled" : "") + "><span><b>" + t[1] + "</b><small>" + t[2] + "</small></span></label>").join("") + "</div>" +
         (pf.typeBy === "master" ? '<p class="a-hint">' + icon("lock", "xs") + " 정산 유형(" + (pf.type === "biz" ? "사업자" : "개인") + ")은 운영팀이 정했어요. 바꾸려면 운영팀에 문의해 주세요.</p>" : "") +
         '<div class="a-form-row"><div class="a-field"><label for="vs-name">이름 · 상호</label><input class="a-input" id="vs-name" name="name" value="' + esc(pf.name || "") + '" maxlength="40"></div><div class="a-field"><label for="vs-biz">사업자등록번호 <small>(사업자만)</small></label><input class="a-input" id="vs-biz" name="bizNo" value="' + esc(pf.bizNo || "") + '" maxlength="12" inputmode="numeric" placeholder="000-00-00000"></div></div>' +
         '<div class="a-form-row"><div class="a-field"><label for="vs-bank">은행</label><input class="a-input" id="vs-bank" name="bank" value="' + esc(pf.bank || "") + '" maxlength="20" placeholder="국민은행"></div><div class="a-field"><label for="vs-acc">계좌번호</label><input class="a-input" id="vs-acc" name="account" value="' + esc(pf.account || "") + '" maxlength="30" inputmode="numeric"></div><div class="a-field"><label for="vs-hold">예금주</label><input class="a-input" id="vs-hold" name="holder" value="' + esc(pf.holder || "") + '" maxlength="30"></div></div>' +
@@ -5051,13 +5094,13 @@
         '<p class="a-muted p-small">' + icon("shieldCheck", "xs") + " 주민등록번호 같은 원천징수 신고 정보는 화면에 저장하지 않고, 첫 지급 전에 마스터가 따로 안전하게 받아요.</p>" +
         '<p class="a-error" id="vs-error"></p><div class="a-form-actions"><button class="a-btn a-btn-primary" type="submit">정산 정보 저장</button></div></form></section>') +
       '<section class="a-card a-settle-note"><h2>' + icon("shieldCheck", "sm") + " 정산 기준</h2><ul>" +
-        "<li>" + (X.taxMode() === "supply" ? "정산액 = 할인 전 판매가 ÷ 1.1(부가세를 뺀 공급가액) × 정산 비율." : "정산액 = 할인 전 판매가(부가세 포함) × 정산 비율. 예: 100만 원어치 팔리고 비율이 60%면 60만 원이에요.") + " 플랫폼이 발행한 쿠폰 · 포인트 할인과 카드 결제 수수료는 플랫폼이 부담해요.</li>" +
+        "<li>정산액 = (할인 전 판매가 − 온드미디어 RS − PG 결제 수수료) × 정산 비율(기본 50%)이고, 부가세가 들어 있는 금액이에요. 예: 1,000만 원이 팔리고 RS · PG 수수료를 빼서 500만 원이면 강사님 250만 원 · 플랫폼 250만 원이에요. 플랫폼이 발행한 쿠폰 · 포인트 할인은 플랫폼이 부담해요.</li>" +
         "<li><b>온드미디어 RS</b>: 두고미디어 등 YouTube 채널(온드미디어)의 홍보 링크로 팔린 주문은 RS(판매가 × (1 − PG " + X.rsRules().pg + "%) × RS율 · 구독자 " + (X.rsRules().subs / 10000) + "만 이상 " + X.rsRules().hi + "% · 미만 " + X.rsRules().lo + "%)를 먼저 빼고 남은 금액을 내 비율로 나눠요. 어떤 채널 링크로 팔렸는지는 주문 · 정산 달력 · 명세서에 그대로 보여요. 링크 없이 팔린 주문은 RS가 없어요.</li>" +
         "<li>정산 비율은 마스터가 강사님과 조율해 확정한 비율이에요(기본 강사 5 : 플랫폼 5). VOD 강의 · 전자책 · LIVE · 1:1 코칭권 · TEA TIME마다 따로 정할 수 있고, 적용 시작일 전에 결제한 주문은 그때 비율 그대로예요.</li>" +
         "<li>광고비는 마스터가 달마다 실제 집행액을 적고, 강사 분담분(기본 50%)을 그 달 정산에서 빼요. 내역은 위 ‘광고비 내역’에서 볼 수 있어요.</li>" +
         "<li>매달 1일 ~ 말일 판매분을 다음 달 초에 마스터가 확정하고, 다음 달 10일에 등록한 계좌로 지급해요. 10일이 주말 · 공휴일이면 다음 영업일이에요.</li>" +
         "<li>확정 전에 환불된 주문은 빠지고, 확정한 뒤 환불되면 다음 정산에서 차감해요.</li>" +
-        "<li>개인 강사는 사업소득 3.3%(소득세 3% + 지방소득세 0.3%)를 떼고 지급해요. " + (X.taxMode() === "gross" ? "사업자 강사는 그 달 판매가 합계로 (주)두고홀딩스에 세금계산서를 발행하고, 두고홀딩스가 수수료 · 광고비 분담분 세금계산서를 발행한 뒤 차액(정산 금액)을 지급해요." : X.taxMode() === "net" ? "사업자 강사는 정산 금액(부가세 포함)으로 (주)두고홀딩스에 세금계산서를 발행해 주시면 지급해요." : "사업자 강사는 정산 금액에 부가세 10%를 더해 세금계산서를 발행해 주시면 지급해요.") + " 월별 명세서에 발행할 금액이 나와요.</li></ul></section>";
+        "<li>" + (X.taxMode() === "std" ? "사업자 강사는 정산액(부가세 포함) 그대로 받아요 — 그 금액으로 (주)두고홀딩스에 세금계산서를 발행해 주시면 지급해요. 개인(프리랜서) 강사는 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3%(소득세 3% + 지방소득세 0.3%)를 떼고 받아요. 예: 250만 원 → 부가세 전 " + won(Math.floor(2500000 / 1.1)) + " − 3.3% " + won(Math.floor(Math.floor(2500000 / 1.1) * 0.033 / 10) * 10) + " = " + won(Math.floor(2500000 / 1.1) - Math.floor(Math.floor(2500000 / 1.1) * 0.033 / 10) * 10) + "." : "개인 강사는 사업소득 3.3%(소득세 3% + 지방소득세 0.3%)를 떼고 지급해요. ") + (X.taxMode() === "std" ? "" : X.taxMode() === "gross" ? "사업자 강사는 그 달 판매가 합계로 (주)두고홀딩스에 세금계산서를 발행하고, 두고홀딩스가 수수료 · 광고비 분담분 세금계산서를 발행한 뒤 차액(정산 금액)을 지급해요." : X.taxMode() === "net" ? "사업자 강사는 정산 금액(부가세 포함)으로 (주)두고홀딩스에 세금계산서를 발행해 주시면 지급해요." : "사업자 강사는 정산 금액에 부가세 10%를 더해 세금계산서를 발행해 주시면 지급해요.") + " 월별 명세서에 발행할 금액이 나와요.</li></ul></section>";
   }
 
   /* ---------- VOD 부가 상품: 1:1 코칭 답변 · TEA TIME 신청 (DOOGO CLASS에서 결제) ---------- */
@@ -5340,6 +5383,7 @@
       case "vc-ym": ui.vcYM = vdYMadd(ui.vcYM || todayStr().slice(0, 7), Number(d.dir)); ui.vcDay = ""; render(); break;
       case "vc-day": ui.vcDay = d.d; { const y0 = window.scrollY; render(); window.scrollTo(0, y0); const el = document.querySelector(".vc-detail"); if (el && window.innerWidth < 720) el.scrollIntoView({ behavior: "smooth", block: "start" }); } break;
       case "vda-ym": ui.vdYM = vdYMadd(ui.vdYM || vdYMadd(todayStr().slice(0, 7), -1), Number(d.dir)); render(); break;
+      case "vda-kind": ui.vdKind = d.k; render(); break;
       case "vda-od": { e.preventDefault(); const o = O(); if (o) vdOrderModal(o); break; }
       /* 종이책 주문 · 배송 */
       case "vda-ship-tab": ui.vsTab = d.k; ui.vsEdit = ""; (ui.vsPick || new Set()).clear(); render(); { const on = document.querySelector(".bo-tabs button.on"); if (on && on.scrollIntoView) on.scrollIntoView({ inline: "center", block: "nearest" }); } break;

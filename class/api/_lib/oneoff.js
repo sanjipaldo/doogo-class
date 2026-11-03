@@ -638,6 +638,81 @@ function demoPartnerClear(get, keys) {
   return { writes: { meta: Object.assign({}, meta, { affiliates: keep }, po ? { affPayouts: po } : {}) }, result };
 }
 
+/* ---------- 정식 운영: 테스트 데이터 정리 (사용자 요청 2026-11-03) ----------
+ * 정식 오픈 전에 만들어 둔 테스트용 계정 · 기록을 지우고, 대표님이 직접 확인할 체험 계정은 하나씩만 남겨요.
+ *  남겨요: 강사(실제 강사 그대로) · 수강생 체험 계정 이수진(s1 · 2186) · 코치 체험 계정(문대표 강의 김하나 1004) ·
+ *         DOOGO CLASS 체험 계정(vod@gmail.com · demo 표시 · 0원 체험 주문) · 마스터(환경 변수 로그인)
+ *  지워요: ① 두잉고 수강생 중 비밀번호(전화 뒷자리)가 0000인 테스트 수강생 + 진도 기록
+ *         ② 처음 예시 VOD 회원(vm-demo · vm-2 · vm-3)에 딸린 두잉고 기록 (예: 박OO 님 예시 코칭 질문)
+ *         ③ 중복 체험 계정 1기 체험단 · 2기 체험단 (demo 표시) + 진도 기록
+ *         ④ DOOGO CLASS 회원 중 전화번호가 010-0000-0000인 테스트 회원(체험 계정 빼고) — 실제 결제(0원 넘는 결제 완료 · 환불) 주문이 있으면 지우지 않고 결과에만 적어요.
+ *            그 회원의 이메일 · 카카오 연결, 진도, 0원 · 결제 전 주문, 후기 · 문의 · 다짐 기록도 같이 지워요
+ *         ⑤ 테스트 코치(초이 강의 김하나 coach-hana · 메모에 ‘테스트’) ⑥ 예시 운영자 계정(manager · finance — 비밀번호가 예시 그대로일 때만)
+ *  지운 항목은 이름을 가려 결과에 남겨요. 배포 직전 자동 백업이 있어 마스터 › 데이터 백업에서 되돌릴 수 있어요 */
+const SEED_VM = ["vm-demo", "vm-2", "vm-3"];
+const maskNm = (n) => { const s = String(n || "").trim(); return !s ? "이름 없음" : /체험/.test(s) ? s : s[0] + "OO"; };
+const zeroPhone = (p) => String(p || "").replace(/\D/g, "") === "01000000000";
+const realPaid = (o) => isObj(o) && Number(o.amount) > 0 && (o.status === "paid" || o.status === "refunded") && !o.demo;
+function launchTestClean(get, keys) {
+  const writes = {}, result = { students: [], members: [], membersKept: [], coaches: [], staff: [], kept: [] };
+  // ④ DOOGO CLASS 테스트 회원
+  const orders = keys("vo:").map((k) => [k, get(k)]).filter((x) => isObj(x[1]));
+  const goneM = new Set();
+  let demoMid = "";
+  keys("vm:").forEach((k) => {
+    const m = get(k); if (!isObj(m)) return;
+    const id = m.id || k.slice(3);
+    if (m.demo) { demoMid = demoMid || id; return; }
+    if (!zeroPhone(m.phone)) return;
+    const mine = orders.filter((x) => x[1].mid === id);
+    const tag = maskNm(m.name) + " (" + id + ")";
+    if (mine.some((x) => realPaid(x[1]))) { result.membersKept.push(tag + " · 실제 결제 주문이 있어 남김"); return; }
+    goneM.add(id); writes[k] = null;
+    if (m.email) { const ek = "vme:" + String(m.email).toLowerCase(); if (get(ek) != null) writes[ek] = null; }
+    if (m.kakaoId && get("vmk:" + m.kakaoId) != null) writes["vmk:" + m.kakaoId] = null;
+    if (get("vp:" + id) != null) writes["vp:" + id] = null;
+    mine.forEach((x) => { writes[x[0]] = null; });
+    result.members.push(tag + (mine.length ? " · 주문 " + mine.length + "건" : ""));
+  });
+  ["vr:", "vq:", "vpl:"].forEach((pre) => keys(pre).forEach((k) => { const x = get(k); if (isObj(x) && (goneM.has(x.mid) || (pre === "vq:" && goneM.has(k.split(":")[1])))) writes[k] = null; }));
+  // ①②③ 두잉고 테스트 수강생
+  keys("stu:").forEach((k) => {
+    const s = get(k); if (!isObj(s)) return;
+    const p = k.split(":"), iid = p[1], sid = p[2];
+    const why = s.id === "s1" || sid === "s1" ? "" : s.vodMid && s.vodMid === demoMid ? "" :
+      s.vodMid && SEED_VM.indexOf(s.vodMid) >= 0 ? "예시 VOD 회원" : s.vodMid && goneM.has(s.vodMid) ? "테스트 회원(010-0000-0000)" :
+      String(s.phone4 || "") === "0000" ? "비밀번호 0000" : s.demo === true ? "중복 체험 계정" : "";
+    if (!why) return;
+    if (s.vodMid && !goneM.has(s.vodMid) && SEED_VM.indexOf(s.vodMid) < 0 && s.vodMid !== demoMid && get("vm:" + s.vodMid) != null) { result.membersKept.push(iid + " " + maskNm(s.name) + " (" + sid + ") · DOOGO CLASS 회원 기록이라 남김"); return; }
+    writes[k] = null;
+    if (get("prog:" + iid + ":" + sid) != null) writes["prog:" + iid + ":" + sid] = null;
+    result.students.push(iid + " " + maskNm(s.name) + " (" + sid + ") · " + why);
+  });
+  // ⑤ 테스트 코치
+  keys("ins:").forEach((k) => {
+    const ins = get(k); if (!isObj(ins) || !Array.isArray(ins.coaches)) return;
+    const gone = ins.coaches.filter((c) => isObj(c) && c.id === "coach-hana" && /테스트/.test(String(c.memo || "")));
+    if (!gone.length) return;
+    writes[k] = Object.assign({}, ins, { coaches: ins.coaches.filter((c) => gone.indexOf(c) < 0) });
+    gone.forEach((c) => result.coaches.push(k.slice(4) + " " + maskNm(c.name) + " (" + c.id + ")"));
+  });
+  // ⑥ 예시 운영자 계정
+  const meta = get("meta");
+  if (isObj(meta) && Array.isArray(meta.staff)) {
+    const DEF = { "st-demo1": "manager", "st-demo2": "finance" };
+    const isDemo = (x) => isObj(x) && DEF[x.id] && String(x.pw == null ? "" : x.pw).trim() === DEF[x.id];
+    const gone = meta.staff.filter(isDemo);
+    if (gone.length) { writes.meta = Object.assign({}, meta, { staff: meta.staff.filter((x) => !isDemo(x)) }); gone.forEach((x) => result.staff.push(x.loginId || x.id)); }
+  }
+  // 남는 체험 계정 확인
+  const s1 = keys("stu:").map((k) => get(k)).find((s) => isObj(s) && s.id === "s1");
+  if (s1) result.kept.push("수강생 체험 계정 " + maskNm(s1.name) + " (s1)");
+  const mc = (get("ins:moon") || {}).coaches || [];
+  if (mc.some((c) => isObj(c) && c.id === "coach1")) result.kept.push("코치 체험 계정 문대표 강의 coach1");
+  if (demoMid) result.kept.push("DOOGO CLASS 체험 계정 (" + demoMid + ")");
+  return { writes, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -666,6 +741,7 @@ const OPS = [
   { id: "2026-11-03-moon-coaches-live", note: "문대표 코치들을 LIVE 두잉고 담당으로 — 코치 메뉴를 LIVE · VOD로 나누기 (담당 칸이 비어 있을 때만 · 메뉴 체크는 그대로)", run: moonCoachesLive },
   { id: "2026-11-03-demo-inquiries-clear", note: "강사 입점 문의: 예시(테스트) 문의 3건 지우기 — 예시 id · 예시 파트너 추천 · @example.com 이메일만 (실제 문의는 그대로)", run: demoInqClear },
   { id: "2026-11-03-demo-partner-clear", note: "두고 파트너스: 예시(테스트) 파트너 계정과 그 RS 지급 기록만 지우기 (실제 파트너는 그대로)", run: demoPartnerClear },
+  { id: "2026-11-03-launch-test-clean", note: "정식 운영: 테스트 데이터 정리 — 0000 테스트 수강생 · 예시 VOD 회원 기록 · 중복 체험단 · 010-0000-0000 테스트 회원 · 테스트 코치 · 예시 운영자 지우기 (체험 계정은 하나씩 남김)", run: launchTestClean },
 ];
 
-module.exports = { OPS, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

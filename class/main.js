@@ -84,9 +84,73 @@
     setTimeout(() => t.remove(), 5000);
   }
 
+  /* ---------- 자동 로그아웃 (2026-11) ----------
+   * 로그인한 채로 창을 닫거나 내려 두면 다음에 열 때도 로그인이 남아 있었어요. 이제는
+   *  · 강사센터 · 코치 · 마스터 · 파트너 · 온드미디어: 30분 동안 아무 동작(누르기 · 키보드 · 스크롤)이 없으면
+   *  · 수강생(두잉고 강의실) · DOOGO CLASS 회원: 화면을 보고 있는 동안은 그대로(영상 시청 중에도), 창을 닫거나 내린 뒤 60분이 지나면
+   * 로그아웃해요. 마지막 동작 시각은 이 브라우저에 남겨 탭끼리 같이 써요 (input = 진짜 동작 · seen = 화면을 보고 있던 때) */
+  const IDLE = { admin: 30 * 60e3, student: 60 * 60e3 }, K_IN = "doinggo:last-input", K_SEEN = "doinggo:last-seen";
+  const lsNum = (k) => { try { return Number(localStorage.getItem(k)) || 0; } catch (e) { return 0; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* 저장 못 하면 자동 로그아웃만 쉬어요 */ } };
+  let wrote = 0;
+  function touch() { const t = Date.now(); if (t - wrote < 10e3) return; wrote = t; lsSet(K_IN, t); lsSet(K_SEEN, t); }
+  ["pointerdown", "keydown", "wheel", "touchstart", "scroll"].forEach((ev) => window.addEventListener(ev, touch, { passive: true, capture: true }));
+  // 화면을 보고 있는 동안은 1분마다 ‘보고 있음’ (수강생 영상 시청은 끊지 않아요)
+  setInterval(() => { if (document.visibilityState === "visible") lsSet(K_SEEN, Date.now()); }, 60e3);
+  const studentIn = () => { const s = DB.session.student(); return !!(s && !s.preview); };
+  // 서버 쿠키(수강생 · DOOGO CLASS 회원)로 로그인했는지 이 브라우저에 기억 — 다음에 열 때(서버에 묻기 전) 확인용
+  const K_WHO = "doinggo:signed";
+  const signedSt = () => lsNum(K_WHO) > 0;
+  let started = false;
+  function markSigned() { if (!started) return; const me = (DB.remote.on && DB.remote.me) || {}; lsSet(K_WHO, me.student || me.vod || studentIn() ? 1 : 0); }
+  // 로그인 · 로그아웃은 화면 갱신 없이 지나가기도 해서, 1분마다 · 창을 내리거나 닫을 때도 남겨요
+  setInterval(markSigned, 60e3);
+  window.addEventListener("pagehide", markSigned);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") markSigned(); });
+  /** 지금 로그아웃해야 하는 쪽 { admin, student } — 기록이 처음이면 지금부터 셈 */
+  function idleOver() {
+    const now = Date.now(), lin = lsNum(K_IN), lseen = lsNum(K_SEEN);
+    const ad = !!DB.session.admin(), stu = studentIn() || signedSt();
+    // 처음이거나 로그인한 곳이 없으면(방문자) 지금부터 셈
+    if (!lin || !lseen || (!ad && !stu)) { lsSet(K_IN, now); lsSet(K_SEEN, now); return { admin: false, student: false }; }
+    return { admin: ad && now - lin > IDLE.admin, student: stu && now - lseen > IDLE.student };
+  }
+  /** 서버 쿠키까지 지워요 (강사센터 · 수강생 · DOOGO CLASS 회원) — 실패해도 이 화면 세션은 지워요 */
+  function idleLogout(o, server) {
+    const jobs = [];
+    if (o.admin) DB.session.setAdmin(null);
+    if (o.student && studentIn()) DB.session.setStudent(null);
+    if (server) {
+      const post = (name, b) => fetch("api/" + name, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).catch(() => {});
+      if (o.admin) jobs.push(post("auth", { action: "logout", which: "admin" }));
+      if (o.student) { jobs.push(post("auth", { action: "logout", which: "student" })); jobs.push(post("vod-auth", { action: "logout" })); }
+    }
+    lsSet(K_IN, Date.now()); lsSet(K_SEEN, Date.now()); if (o.student) lsSet(K_WHO, 0);
+    try { sessionStorage.setItem("doinggo:idle-out", "1"); } catch (e) { /* 안내만 못 보여요 */ }
+    return Promise.all(jobs);
+  }
+  const idleMsg = () => { try { if (sessionStorage.getItem("doinggo:idle-out")) { sessionStorage.removeItem("doinggo:idle-out"); notify("오래 사용하지 않아 안전을 위해 로그아웃했어요. 다시 로그인해 주세요.", "warn"); } } catch (e) { /* 안내 생략 */ } };
+  let idleBusy = false;
+  function idleCheck() {
+    if (idleBusy || (window.__dirty && window.__dirty())) return; // 저장하지 않은 편집이 있으면 기다려요
+    const o = idleOver();
+    // 강사센터 밖(수강생 강의실 · VOD 영상)을 보는 탭은 강사센터 로그아웃 때문에 새로 고치지 않아요 — 강사센터 탭을 다시 볼 때 · 다음에 열 때 확인
+    if (o.admin && !/^#\/center/.test(location.hash)) o.admin = false;
+    if (!o.admin && !o.student) return;
+    idleBusy = true;
+    idleLogout(o, DB.remote.on).then(() => { if (DB.remote.on) location.reload(); else { idleBusy = false; idleMsg(); go(); } });
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") idleCheck(); });
+  window.addEventListener("pageshow", idleCheck);
+  window.addEventListener("focus", idleCheck);
+  // 강사센터 등은 화면을 켜 둔 채 30분 동안 동작이 없어도 로그아웃 (1분마다 확인)
+  setInterval(() => { if (document.visibilityState === "visible") idleCheck(); }, 60e3);
+
   function start(server) {
     DB.load();
-    if (server) { reconcile(); DB.remote.listen(onRemote); }
+    idleMsg();
+    started = true;
+    if (server) { reconcile(); markSigned(); setTimeout(idleCheck, 0); DB.remote.listen((type, info) => { if (type === "change") markSigned(); onRemote(type, info); }); }
     else {
       // 다른 탭(예: 강사센터 탭)에서 바뀐 내용을 이 탭에도 반영
       window.addEventListener("storage", (e) => {
@@ -149,7 +213,8 @@
   // 첫 로딩 화면: 흰 바탕 + DOOGO CLASS 글자 로고 + 진행 막대 + ‘로딩중입니다’ (index.html 에 이미 있으면 그대로 — 다시 그리면 깜박인다)
   const LOGO = '<img class="boot-logo boot-logo-dc" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchpriority="high">';
   if (!root.querySelector(".boot-wait")) root.innerHTML = '<div class="boot-wait" role="status" aria-live="polite">' + LOGO + '<span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>';
-  DB.remote.connect().then(start, (err) => {
+  const boot0 = idleOver();
+  (boot0.admin || boot0.student ? idleLogout(boot0, true) : Promise.resolve()).then(() => DB.remote.connect()).then(start, (err) => {
     console.error(err);
     root.innerHTML = '<div class="boot-wait boot-err" role="alert">' + LOGO + '<b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onclick="location.reload()">다시 시도</button></div>';
   });
