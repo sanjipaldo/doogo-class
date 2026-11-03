@@ -1184,6 +1184,11 @@
   /* ---------------- 조회 ---------------- */
   const instructor = (id) => db.instructors.find((x) => x.id === id) || null;
   const activeInstructors = () => db.instructors.filter((x) => x.status === "active");
+  /** 강사가 쓸 수 있는 두잉고 (2026-11): live = LIVE 두잉고(기수 · 주차 · 과제) · vod = DOOGO CLASS(VOD 판매 · VOD 강의실)
+   *  ins.tracks 가 없으면(예전 강사) 둘 다 열림. 잠긴 쪽은 강사센터에서 자물쇠 → 입점 신청 → 마스터가 열어 줘요 (서버 access.js 가 강사는 못 바꾸게 지켜요) */
+  const tracksOf = (x) => { const ins = x && typeof x === "object" ? x : x && db ? instructor(x) : null, t = ins && ins.tracks; return { live: !t || t.live !== false, vod: !t || t.vod !== false }; };
+  /** LIVE 두잉고가 열린 강사만 — 수강생 로그인 강사 고르기 · 두잉고 첫 화면 강사진 · 강의 소개 · 무료강의 목록 (VOD 강사는 DOOGO CLASS 로만) */
+  const liveInstructors = () => activeInstructors().filter((x) => tracksOf(x).live);
   const content = (id) => db.content[id] || null;
   const VOD_CO = {};
   const vodCohortId = (iid) => "vod:" + iid;
@@ -1399,6 +1404,16 @@
   const catchRef = () => { try { const m = (ROUTE.hash + location.search).match(/[?&]ref=([A-Za-z0-9_.-]{2,30})/); if (m) localStorage.setItem("doinggo:ref", m[1]); } catch (e) {} };
   // 서버(정식 API)도 이 파일을 읽어서 시드를 만들어요 — 브라우저에서만 주소 변화를 들어요
   catchRef(); if (typeof window.addEventListener === "function") window.addEventListener("hashchange", catchRef);
+  /** 강사센터 잠긴 영역 입점 신청 (강사 본인) — 서버: /api/public track-apply (입점 문의로 저장 · 강사 계정에 ‘신청 중’ 표시) */
+  async function applyTrack(want, a) {
+    if (R.on) return call("public", Object.assign({ action: "track-apply", want }, a));
+    const ins = instructor(a.iid); if (!ins) return { error: "notfound" };
+    const x = Object.assign({ id: uid("inq"), at: Date.now(), status: "new", memo: "", addTo: ins.id, want }, a, want === "vod" ? { source: "partners" } : {});
+    delete x.agree; delete x.iid;
+    if (!saveInquiry(x)) return { error: "storage" };
+    ins.trackReq = Object.assign({}, ins.trackReq || {}, { [want]: { at: Date.now(), inq: x.id } }); save();
+    return { ok: true };
+  }
   async function applyPartner(a) {
     try { const ref = localStorage.getItem("doinggo:ref"); if (ref && !a.ref) a = Object.assign({}, a, { ref }); } catch (e) {}
     if (R.on) return call("public", Object.assign({ action: "partner-apply" }, a));
@@ -1836,12 +1851,12 @@
   window.DB = {
     load, save, reset, store, clone, uid, esc, youtubeId, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
     get data() { return db; },
-    instructor, activeInstructors, content, cohort, cohortsOf, studentsOf, student, certNo,
+    instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
     curricula, curriculum, curriculumOf, weeksOf, cohortWeeks,
     weekOpen, weekDeadline, cohortEnd, cohortStatus, STATUS_LABEL, currentWeek, LEVEL_SET, levelSteps, level, currentCohort, nextCohortName,
     EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort,
-    REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, siteInfo, saveSite, SITE_DEFAULT, opsKakao,
+    REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, applyTrack, siteInfo, saveSite, SITE_DEFAULT, opsKakao,
     BILLING_DEFAULT, BILL_VAT, BILL_STATE, billingInfo, saveBilling, bills, saveBill, removeBill, billMoney, billState, won,
     THEMES, themeOf, STUDENT_MENUS, LIB_MENUS, CUSTOM_ICONS, menuConfig, menuOn, libOn, isCustom, NOTE_PROMPTS, botNameOf,
     emptyProgress, progress, saveProgress, allProgress, lastSub, subState, stats,

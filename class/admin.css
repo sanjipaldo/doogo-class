@@ -3384,6 +3384,40 @@ td .md-yt { display: flex; width: fit-content; }
   .a-ctrack-guide { grid-template-columns: 1fr; }
 }
 
+/* ---------- 강사 영역 자물쇠 (2026-11): VOD 강사는 두잉고 탭, LIVE 강사는 DOOGO CLASS 탭이 잠겨요 → 누르면 입점 신청 ---------- */
+.a-trk-sw button.is-lock { color: #a1a1aa; gap: 3px; }
+.a-trk-sw button.is-lock .icon { display: inline-block; width: 12px; height: 12px; }
+.a-trk-sw button.is-lock:hover { color: #52525b; }
+.a-trk-req { display: flex; align-items: center; gap: 5px; width: 100%; margin-top: 8px; padding: 7px 10px; border: 1px dashed #d4d4d8; border-radius: 10px; background: #fafafa; font: inherit; font-size: 12px; font-weight: 700; color: #3f3f46; cursor: pointer; text-align: left; }
+.a-trk-req span { flex: 1; min-width: 0; }
+.a-trk-req:hover { border-color: var(--m-primary-500); color: var(--m-primary-deep); background: var(--m-primary-soft); }
+.a-trk-lockcard { display: grid; justify-items: center; gap: 10px; padding: 40px 24px; text-align: center; }
+.a-trk-lockcard h2 { margin: 0; font-size: 19px; }
+.a-trk-lockcard p { margin: 0; max-width: 520px; color: var(--m-slate); line-height: 1.6; }
+.a-trk-lockic { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; background: #f4f4f5; color: #3f3f46; }
+.a-trk-pend { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; background: var(--m-success-soft); color: #00664f !important; font-size: 13px; font-weight: 700; }
+.a-trk-lead { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #f6f6f7; color: #27272a; }
+.a-trk-lead > .icon { flex: none; margin-top: 2px; }
+.a-trk-lead b { display: block; font-size: 14px; }
+.a-trk-lead p { margin: 4px 0 0; font-size: 13px; line-height: 1.55; color: var(--m-slate); }
+.a-trk-lead.ok { background: var(--m-success-soft); }
+.a-trk-lead.ok > .icon { color: var(--m-success); }
+.a-req { font-style: normal; color: var(--m-critical); }
+.a-ta-kinds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.a-ta-agree { align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #fafafa; border: 1px solid var(--m-hairline-soft); }
+.a-ta-agree small { display: block; margin-top: 2px; font-weight: 500; line-height: 1.45; }
+.a-ins-tracks { display: grid; gap: 6px; margin-top: 6px; }
+.a-ins-tracks .a-check { align-items: flex-start; padding: 8px 10px; border: 1px solid var(--m-hairline-soft); border-radius: 10px; }
+.a-ins-tracks small { display: block; font-weight: 500; }
+.a-ins-trk { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.a-ins-trk .a-pill.mute { display: inline-flex; align-items: center; gap: 3px; }
+.a-pill.inq-add { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; color: #27272a; border: 1px solid #e4e4e7; }
+.a-ctrack-o.is-lock { cursor: not-allowed; }
+.a-ctrack-o.is-lock span { background: #fafafa; border-style: dashed; }
+.a-ctrack-o.is-lock b, .a-ctrack-o.is-lock small { color: #a1a1aa; }
+.a-ctrack-o.is-lock b .icon { width: 12px; height: 12px; margin-right: 3px; vertical-align: -1px; }
+@media (max-width: 720px) { .a-ta-kinds { grid-template-columns: 1fr; } }
+
 /* ---------- 강사 전용 색 (2026-11): 문대표(뉴질랜드 색) 강사센터 · 코치센터는 빨강 대신 국기 네이비 ----------
  * body[data-ath="nz"] — 강의실 색이 그 강사 전용 색(db.js THEMES.nz · only)일 때 admin.js 가 붙여요. 오류 · 경고 · 일요일 빨강은 그대로 */
 body[data-mode="admin"][data-ath="nz"] {

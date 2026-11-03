@@ -55,10 +55,16 @@
   /* 두잉고 버전: 강사센터에서 LIVE · 오프라인(기수 · 주차 · 과제) / VOD(DOOGO CLASS에서 VOD를 산 수강생)를 따로 세팅한다
    * VOD 버전이면 C()는 content.vod 를 고치고(기본 정보 · 색상은 함께), 메뉴는 "강사ID@vod" 메뉴를 고친다 */
   const TRK_KEY = "doinggo:center-track";
-  // 코치: 담당이 ‘둘 다’일 때만 두잉고 ↔ DOOGO CLASS 탭을 오가요 (LIVE 코치는 두잉고 탭 · VOD 코치는 DOOGO CLASS 탭 고정)
-  const trackable = () => !!S && S.role !== "partner" && !(S.role === "master" && !S.actingAs) && (S.role !== "coach" || coachTrack() === "both");
+  /* 강사마다 열린 영역 (2026-11): LIVE 두잉고(두잉고 탭) · DOOGO CLASS(VOD) — VOD 강사로 등록하면 두잉고 탭, LIVE 로 만들면 DOOGO CLASS 탭이 자물쇠.
+   * 자물쇠를 누르면 그 영역 입점 신청 → 마스터가 강사 입점 문의에서 열어 줘요. 예전 강사(칸 없음)는 둘 다 열림 (DB.tracksOf) */
+  const OPEN = () => DB.tracksOf(IID());
+  const inCenter = () => !!S && S.role !== "partner" && S.role !== "media" && !(S.role === "master" && !S.actingAs);
+  // 탭 스위치: 강사 · 마스터(대신 보기)는 늘 보여요(잠긴 탭은 자물쇠). 코치는 담당이 ‘둘 다’이고 두 영역이 다 열린 강사일 때만 (LIVE 코치는 두잉고 탭 · VOD 코치는 DOOGO CLASS 탭 고정)
+  const trackable = () => inCenter() && (S.role !== "coach" || (coachTrack() === "both" && OPEN().live && OPEN().vod));
   const trkKey = () => TRK_KEY + ":" + (S ? (S.coachId || S.role) + "@" + (IID() || "") : "");
-  const TRK = () => { if (isCoach() && coachTrack() !== "both") return coachTrack(); const k = trkKey(); if (ui.track == null || ui.trackKey !== k) { ui.trackKey = k; try { ui.track = sessionStorage.getItem(k) === "vod" ? "vod" : "live"; } catch (e) { ui.track = "live"; } } return trackable() && ui.track === "vod" ? "vod" : "live"; };
+  const TRK = () => {
+    if (inCenter()) { if (isCoach() && coachTrack() !== "both") return coachTrack(); const o = OPEN(); if (!o.vod) return "live"; if (!o.live) return "vod"; }
+    const k = trkKey(); if (ui.track == null || ui.trackKey !== k) { ui.trackKey = k; try { ui.track = sessionStorage.getItem(k) === "vod" ? "vod" : "live"; } catch (e) { ui.track = "live"; } } return trackable() && ui.track === "vod" ? "vod" : "live"; };
   // v15: VOD 버전은 VOD 상품마다 두잉고 강의실이 따로 — 지금 꾸미는 강의실(상품)을 고르면 메뉴 · 콘텐츠가 그 VOD 것으로 바뀌어요
   const vodProds = () => (window.VOD ? window.VOD.V().products.filter((p) => p.iid === IID() && window.VOD.typeOf(p) === "vod") : []);
   const VPK = () => "doinggo:center-vpid:" + IID();
@@ -73,6 +79,10 @@
   const MID = () => IID() + (TRK() === "vod" ? "@vod" + (VPID() ? ":" + VPID() : "") : "");
   const LIVE_ONLY_PAGES = ["students", "cohorts", "billing", "reviews", "curriculum", "replays", "missions", "showcase", "notes", "schedule", "free", "landing"];
   const VOD_ONLY_PAGES = ["vod-students", "vodlink", "vodlessons", "coaching", "teatime"];
+  // DOOGO CLASS 판매 메뉴 — 두 영역이 다 열린 강사는 두잉고 탭에서도 주소로 열 수 있고, DOOGO CLASS 가 잠긴 강사는 자물쇠 화면
+  const VOD_SALES_PAGES = ["vod", "vod-live", "vod-settle", "vod-cal"];
+  /** 이 메뉴가 어느 영역 것인지 (live · vod · 두 영역 공통이면 "") */
+  const pageTrack = (k) => (VOD_ONLY_PAGES.indexOf(k) >= 0 || VOD_SALES_PAGES.indexOf(k) >= 0 ? "vod" : LIVE_ONLY_PAGES.indexOf(k) >= 0 ? "live" : "");
   const VOD_NAV_LABEL = { notices: "업데이트 소식", docs: "실습 체크리스트", faq: "FAQ · 자주 묻는 질문" };
   const C = () => (TRK() === "vod" ? DB.vodContent(IID(), VPID()) : DB.content(IID()));
   // 강의실 콘텐츠를 고치는 화면 (위에 ‘지금 꾸미는 VOD 강의실’ 띠를 보여 줘요)
@@ -1545,7 +1555,9 @@
     const iid = IID(), vod0 = TRK() === "vod";
     const x = id ? DB.coach(iid, id) : { name: "", phone4: "", status: "active", track: vod0 ? "vod" : "live", perms: CP.DEFAULT[vod0 ? "vod" : "live"].slice(), memo: "" };
     if (!x) return;
-    const t = CP.trackOf(x), on = CP.permsOf(x).concat(x.perms || []), has = (k) => on.indexOf(k) !== -1;
+    // 강사 영역이 잠긴 쪽(LIVE · DOOGO CLASS)은 코치 담당으로 고를 수 없어요
+    const op = OPEN(), okT = (k) => (k === "live" ? op.live : k === "vod" ? op.vod : op.live && op.vod);
+    const t0 = CP.trackOf(x), t = okT(t0) ? t0 : op.live ? "live" : "vod", on = CP.permsOf(x).concat(x.perms || []), has = (k) => on.indexOf(k) !== -1;
     const panel = (side, title, sub, groups) => '<div class="a-cpanel ' + side + '" data-side="' + side + '"><div class="a-cpanel-h"><span class="a-ct-tag ' + side + '">' + title + "</span><small>" + sub + "</small></div>" +
       '<div class="a-perm-presets">' + COACH_PRESET[side].map((pr, i) => btn(pr[0], "coach-preset", "a-btn-ghost a-btn-sm", ' data-k="' + side + ":" + i + '"')).join("") + "</div>" +
       groups.map((g) => '<fieldset class="a-perm-group"><legend>' + esc(g[0]) + "</legend>" + g[1].map((p) => '<label class="a-check"><input type="checkbox" name="perm" value="' + p[0] + '"' + (has(p[0]) ? " checked" : "") + "><span>" + esc(p[1]) + (p[2] ? ' <small class="a-muted">' + esc(p[2]) + "</small>" : "") + "</span></label>").join("") + "</fieldset>").join("") + "</div>";
@@ -1556,7 +1568,7 @@
         '<div class="a-form-row"><div class="a-field"><label for="cf-cmemo">담당 업무 메모 <small>(선택 · 코치 대시보드에 보여요)</small></label><input class="a-input" id="cf-cmemo" name="cmemo" value="' + esc(x.memo || "") + '" placeholder="예: 과제 검수 · 1:1 문의 담당"></div>' +
         '<div class="a-field"><label for="cf-cstatus">상태</label><select class="a-input" id="cf-cstatus" name="cstatus"><option value="active"' + (x.status === "active" ? " selected" : "") + '>사용 중</option><option value="paused"' + (x.status !== "active" ? " selected" : "") + ">중지 (로그인 막기)</option></select></div></div>" +
         '<div class="a-field"><span class="a-label" id="cf-ctrack-l">담당 두잉고 <small>(담당이 아닌 쪽 메뉴는 체크해도 열리지 않아요)</small></span>' +
-          '<div class="a-ctrack" role="radiogroup" aria-labelledby="cf-ctrack-l">' + CP.TRACKS.map((r) => '<label class="a-ctrack-o ' + r[0] + '"><input type="radio" name="ctrack" value="' + r[0] + '"' + (t === r[0] ? " checked" : "") + "><span><b>" + esc(r[1]) + "</b><small>" + esc(r[2]) + "</small></span></label>").join("") + "</div></div>" +
+          '<div class="a-ctrack" role="radiogroup" aria-labelledby="cf-ctrack-l">' + CP.TRACKS.map((r) => '<label class="a-ctrack-o ' + r[0] + (okT(r[0]) ? "" : " is-lock") + '"><input type="radio" name="ctrack" value="' + r[0] + '"' + (t === r[0] ? " checked" : "") + (okT(r[0]) ? "" : " disabled") + "><span><b>" + (okT(r[0]) ? "" : icon("lock", "xs")) + esc(r[1]) + "</b><small>" + esc(okT(r[0]) ? r[2] : "강사님 " + (r[0] === "vod" || (r[0] === "both" && !op.vod) ? "DOOGO CLASS" : "두잉고") + " 영역이 잠겨 있어요") + "</small></span></label>").join("") + "</div></div>" +
         '<div class="a-field"><span class="a-label">볼 수 있는 메뉴 <small>(대시보드 · 수강생 화면 보기는 늘 열려 있어요)</small></span>' +
           panel("live", "LIVE 두잉고 메뉴", "기수 · 주차 · 과제로 운영하는 프로그램", CP.LIVE) +
           panel("vod", "VOD 두잉고 메뉴", "DOOGO CLASS에서 VOD를 산 수강생 · 매출은 보기만 · 정산 계좌 · 세금계산서는 강사님만", CP.VOD) +
@@ -1571,7 +1583,8 @@
     const same = (a, b) => a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
     if (DB.data.instructors.some((ins) => same(ins.name, name) && ins.phone4 === phone4) || DB.data.instructors.some((ins) => (ins.coaches || []).some((c) => c.id !== id && same(c.name, name) && c.phone4 === phone4))) { err.textContent = "같은 이름 + 뒷자리 계정이 이미 있어요. 뒷자리나 이름을 바꿔 주세요."; return; }
     // 담당 두잉고에 맞는 메뉴만 저장해요 (안 보이는 쪽에 체크가 남아 있어도 빼요)
-    const track = (f.querySelector("input[name=ctrack]:checked") || {}).value || "live";
+    const op = OPEN(), track = (f.querySelector("input[name=ctrack]:checked") || {}).value || (op.live ? "live" : "vod");
+    if ((track !== "vod" && !op.live) || (track !== "live" && !op.vod)) { err.textContent = "잠긴 영역은 코치 담당으로 고를 수 없어요."; return; }
     const ok = track === "live" ? CP.LIVE_KEYS : track === "vod" ? CP.VOD_KEYS : CP.LIVE_KEYS.concat(CP.VOD_KEYS);
     const perms = Array.from(f.querySelectorAll("input[name=perm]:checked")).map((x) => x.value).filter((k, i, a) => ok.indexOf(k) >= 0 && a.indexOf(k) === i);
     const data = { name, phone4, memo: f.cmemo.value.trim(), status: f.cstatus.value, track, perms };
@@ -2069,6 +2082,7 @@
   function inqApplyStatus(x, st) {
     if (!x || (x.status || "new") === st || !INQ_STATUS.some((s) => s[0] === st)) return;
     setInqStatus(x, st); DB.saveInquiry(x);
+    if (x.addTo && st === "fail") { const ai = DB.instructor(x.addTo), w = x.want === "vod" ? "vod" : "live"; if (ai && ai.trackReq && ai.trackReq[w]) { delete ai.trackReq[w]; if (!Object.keys(ai.trackReq).length) delete ai.trackReq; } }
     const lb = inqStatus(x)[1], ro = "’" + josa(lb, "으로", "로").slice(lb.length);
     actLog(x.name + " 님 " + (inqIsVod(x) ? "두고 파트너스 지원" : "입점 문의") + "을 ‘" + lb + ro + " 바꿨어요."); DB.save(); render();
     const nx = INQ_TODO.indexOf(st) < 0 ? DB.inquiries().filter((q) => q.id !== x.id && inqIsVod(q) === inqIsVod(x) && INQ_TODO.indexOf(q.status || "new") >= 0).sort((a, b) => (a.at || 0) - (b.at || 0))[0] : null;
@@ -2092,7 +2106,7 @@
     const lv = st === "new" ? 0 : st === "seen" ? 1 : st === "contact" ? 2 : st === "done" ? (x.iid ? 4 : 3) : fail ? 3 : been("contact") ? 2 : 1;
     // 계약 안 됨: 4단계를 ‘계약 안 됨(✕)’로 바꿔 보여 주고, 5단계는 흐리게
     const vod = inqIsVod(x), cAt = inqStepAt(x, "contact");
-    const steps = [[vod ? "지원 접수" : "문의 접수", x.at], ["열람", x.seenAt || inqStepAt(x, "seen") || cAt || (fail ? x.failAt : null)], [vod ? "상담" : "두잉고 상담", cAt || (fail ? x.failAt : null)], fail ? ["계약 안 됨", x.failAt || inqStepAt(x, "fail")] : ["계약 완료", x.doneAt || inqStepAt(x, "done")], [vod ? "VOD 강사 등록" : "플랫폼 오픈", x.openedAt]];
+    const steps = [[vod ? "지원 접수" : "문의 접수", x.at], ["열람", x.seenAt || inqStepAt(x, "seen") || cAt || (fail ? x.failAt : null)], [vod ? "상담" : "두잉고 상담", cAt || (fail ? x.failAt : null)], fail ? ["계약 안 됨", x.failAt || inqStepAt(x, "fail")] : ["계약 완료", x.doneAt || inqStepAt(x, "done")], [x.addTo ? (x.want === "vod" ? "DOOGO CLASS 열기" : "LIVE 두잉고 열기") : vod ? "VOD 강사 등록" : "플랫폼 오픈", x.openedAt]];
     return '<ol class="p-track' + (hold ? " hold" : "") + (fail ? " fail" : "") + '" style="--n:5">' + steps.map((s, i) => '<li class="' + (i < lv ? "done" : i === lv ? "now" : "") + '"><i>' + (fail && i === lv ? icon("x", "xs") : i < lv || (i === lv && i === 4) ? icon("check", "xs") : i + 1) + "</i><b>" + s[0] + "</b><small>" + (s[1] && i <= lv ? fmtMD(DB.date.toStr(new Date(s[1]))) : hold && i === lv ? "보류" : "") + "</small></li>").join("") + "</ol>";
   }
 
@@ -2173,6 +2187,7 @@
         '<span class="a-inq-who"><b>' + esc(x.name) + (F.nick ? " <small>" + esc(F.nick) + "</small>" : "") + "</b><small>" + esc(sub.slice(0, 90) || "-") + "</small></span>" +
         '<span class="a-inq-tags">' + (next ? '<span class="a-pill a-inq-next">' + icon("arrowRight", "xs") + "다음 차례</span>" : "") +
           (isVod(x) && !(only && inqIsPt(x)) ? '<span class="a-pill inq-vod">' + icon(inqIsPt(x) ? "handshake" : "monitorPlay", "xs") + (inqIsPt(x) ? "두고 파트너스" : "DOOGO CLASS 강사 모집") + "</span>" : "") +
+          (x.addTo ? '<span class="a-pill inq-add">' + icon("lock", "xs") + "기존 강사 · " + (x.want === "vod" ? "DOOGO CLASS" : "LIVE 두잉고") + " 열기 신청</span>" : "") +
           (pa ? '<span class="a-pill p-aff-pill">' + icon("handshake", "xs") + esc(pa.name) + " 파트너 소개</span>" : "") + (un ? '<span class="a-pill inq-new-msg">' + icon("bell", "xs") + "새 메시지 " + un + "</span>" : "") + pill(st[1], st[2]) + "</span>" +
         '<span class="a-inq-when">' + fmtStamp(x.at) + "<small>" + (INQ_TODO.indexOf(cur) >= 0 ? ago(x.at) : (x.ref ? "추천 코드 " + esc(x.ref) : "")) + "</small></span>" + '<span class="a-inq-chev">' + icon("chevDown", "sm") + "</span></button>";
       if (!open) return '<article class="a-inq a-inq2' + (next ? " is-next" : "") + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '">' + row + "</article>";
@@ -2189,7 +2204,8 @@
         '<div class="a-inq-ctl"><div class="a-inq-sels">' +
           '<label class="a-inq-st"><span>소개 파트너</span><select class="a-input a-sm" data-inq-aff="' + esc(x.id) + '"><option value="none">없음</option>' + affList().map((p) => '<option value="' + esc(p.id) + '"' + (pa && pa.id === p.id ? " selected" : "") + ">" + esc(p.name) + " (" + esc(p.code || p.loginId) + ")</option>").join("") + "</select></label></div>" +
           '<textarea class="a-input" rows="2" data-inq-memo="' + esc(x.id) + '" placeholder="메모 (예: 11/03 통화 · 다음 주 미팅) — 마스터만 봐요" aria-label="메모">' + esc(x.memo || "") + "</textarea>" +
-          '<div class="a-row-actions">' + (!x.iid && cur !== "fail" ? btn(icon("store", "sm") + (inqIsVod(x) ? "VOD 강사로 등록" : "플랫폼 만들기"), "inq-make", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : "") + btn(icon("check", "sm") + "메모 저장", "inq-memo", "a-btn-outline a-btn-sm", ' data-id="' + esc(x.id) + '"') + btn(icon("trash", "sm") + "삭제", "inq-del", "a-btn-ghost a-btn-sm danger", ' data-id="' + esc(x.id) + '"') + "</div></div>" +
+          '<div class="a-row-actions">' + (x.addTo ? (() => { const ai = DB.instructor(x.addTo), w = x.want === "vod" ? "vod" : "live"; return !ai ? "" : DB.tracksOf(ai)[w] ? pill(TRACK_TAB[w] + " 열림", "ok") : cur !== "fail" ? btn(icon("lock", "sm") + (w === "vod" ? "DOOGO CLASS 열어 주기" : "LIVE 두잉고 열어 주기"), "inq-open-track", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : ""; })()
+            : !x.iid && cur !== "fail" ? btn(icon("store", "sm") + (inqIsVod(x) ? "VOD 강사로 등록" : "LIVE 플랫폼 만들기"), "inq-make", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : "") + btn(icon("check", "sm") + "메모 저장", "inq-memo", "a-btn-outline a-btn-sm", ' data-id="' + esc(x.id) + '"') + btn(icon("trash", "sm") + "삭제", "inq-del", "a-btn-ghost a-btn-sm danger", ' data-id="' + esc(x.id) + '"') + "</div></div>" +
         inqLogHtml(x) + "</div></article>";
     };
     // 화면에 1.5초 이상 보인 카드의 파트너 메시지는 읽음으로 (메뉴 · 종 숫자가 줄어요)
@@ -2835,11 +2851,12 @@
   function insTable() {
     const list = DB.data.instructors;
     return '<section class="a-card"><div class="a-card-head"><h2>강사 플랫폼</h2><span class="a-muted">' + list.length + "개</span></div>" +
-      (list.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>수강생에게 보이는 이름</th><th>강사 로그인</th><th>강의</th><th>기수</th><th>수강생</th><th>이용료 입금</th><th>상태</th><th class="right">관리</th></tr></thead><tbody>' +
+      (list.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>수강생에게 보이는 이름</th><th>강사 로그인</th><th>강의</th><th>열린 영역</th><th>기수</th><th>수강생</th><th>이용료 입금</th><th>상태</th><th class="right">관리</th></tr></thead><tbody>' +
         list.map((x) => {
           const c = DB.content(x.id), cos = DB.cohortsOf(x.id), cur = DB.currentCohort(x.id);
           const ss = DB.studentsOf(x.id), paid = DB.bills(x.id).filter((b) => !b.canceledAt && b.paidAt);
           return "<tr><td><b>" + esc(x.displayName) + '</b><small class="a-memo">' + fmtMD(x.createdAt || todayStr()) + " 개설</small></td><td>" + esc(x.name) + ' <span class="a-muted num">/ ' + (staffCan("master/instructors") ? '<button type="button" class="a-pw-peek" data-action="pw-peek" data-pw="' + esc(x.phone4) + '" title="눌러서 보기">••••</button>' : "••••") + "</span></td><td>" + esc(c ? c.brand.courseTitle : "-") + "</td>" +
+            "<td>" + (() => { const o = DB.tracksOf(x), rq = x.trackReq || {}; return '<span class="a-ins-trk">' + (o.live ? pill("두잉고 LIVE", "ok") : '<span class="a-pill mute">' + icon("lock", "xs") + "두잉고" + (rq.live ? " · 신청 중" : "") + "</span>") + (o.vod ? pill("DOOGO CLASS", "dark") : '<span class="a-pill mute">' + icon("lock", "xs") + "DOOGO CLASS" + (rq.vod ? " · 신청 중" : "") + "</span>") + "</span>"; })() + "</td>" +
             "<td>" + cos.length + "개" + (cur ? ' <small class="a-memo">' + esc(cur.name) + " " + DB.STATUS_LABEL[DB.cohortStatus(cur)] + "</small>" : "") + '</td><td class="num">' + ss.filter((s) => s.status === "approved").length + "명" + (ss.filter((s) => s.status === "pending").length ? ' <small class="a-memo">대기 ' + ss.filter((s) => s.status === "pending").length + "</small>" : "") + "</td>" +
             '<td class="num">' + (!staffCan("master/billing") ? '<span class="a-muted">-</span>' : paid.length ? won(sumMoney(paid, "supply")) + ' <small class="a-memo">' + paid.length + "개 기수</small>" : '<span class="a-muted">-</span>') + "</td>" +
             "<td>" + (x.status === "active" ? pill("운영 중", "ok") : pill("중지", "mute")) + '</td><td class="right"><div class="a-row-actions">' +
@@ -2847,7 +2864,7 @@
         }).join("") + "</tbody></table></div>" : emptyBox("store", "강사 플랫폼이 없어요.")) + "</section>";
   }
   function pageMasterInstructors() {
-    return head("강사 플랫폼 관리", "새 강사에게 플랫폼을 만들어 주면 문대표 플랫폼 구성(메뉴·커리큘럼·과제·FAQ 등)이 들어간 상태로 시작해요. 강사는 이름 + 전화번호 뒷자리로 강사센터에 로그인해요.", dgSplitBtn((DB.data.instructors.find((i) => i.status === "active") || {}).id ? "room:" + DB.data.instructors.find((i) => i.status === "active").id : "home", "강의실 미리보기") + btn(icon("plus", "sm") + "새 강사 플랫폼", "ins-add", "a-btn-primary")) + insTable();
+    return head("강사 플랫폼 관리", "LIVE 두잉고 강사는 ‘새 강사 플랫폼’(문대표 플랫폼 구성 · 기수 · 이용료), DOOGO CLASS VOD 강사는 ‘VOD 강사 등록’(계정만 · VOD 판매 정산)으로 만들어요. 강사는 이름 + 전화번호 뒷자리로 강사센터에 로그인하고, 잠긴 영역은 자물쇠를 눌러 신청해요(‘수정’에서 바로 열 수도 있어요).", dgSplitBtn((DB.data.instructors.find((i) => i.status === "active") || {}).id ? "room:" + DB.data.instructors.find((i) => i.status === "active").id : "home", "강의실 미리보기") + btn(icon("monitorPlay", "sm") + "VOD 강사 등록", "vins-add", "a-btn-outline") + btn(icon("plus", "sm") + "새 강사 플랫폼 (LIVE)", "ins-add", "a-btn-primary")) + insTable();
   }
   function pageMasterStudents() {
     const ins = DB.data.instructors;
@@ -2868,8 +2885,10 @@
     pre = pre || {};
     x = x || { name: pre.name || "", phone4: String(pre.phone || "").replace(/\D/g, "").slice(-4), displayName: pre.name || "", status: "active" };
     const c = isNew ? null : DB.content(x.id);
-    openModal(isNew ? "새 강사 플랫폼 만들기" : x.displayName + " 수정",
-      '<form id="ins-form" class="a-form" data-id="' + (isNew ? "" : x.id) + '" data-inq="' + esc(pre.inq || "") + '" data-vod="' + (pre.vod ? "1" : "") + '" novalidate>' + (pre.vod ? '<p class="a-hint">' + icon("monitorPlay", "xs") + " DOOGO CLASS VOD 강사로 등록해요. 기수 이용료는 받지 않고, VOD 판매 정산(강사센터 › DOOGO CLASS › 판매 정산)으로 정산해요. 이용료 칸은 비워 두세요.</p>" : "") +
+    const op = isNew ? null : DB.tracksOf(x), rq = (x && x.trackReq) || {};
+    openModal(isNew ? "새 강사 플랫폼 만들기 · LIVE 두잉고" : x.displayName + " 수정",
+      '<form id="ins-form" class="a-form" data-id="' + (isNew ? "" : x.id) + '" data-inq="' + esc(pre.inq || "") + '" novalidate>' +
+        (isNew ? '<p class="a-hint">' + icon("layers", "xs") + "<span>LIVE 두잉고(기수 · 주차 · 과제) 강사 플랫폼을 만들어요. 1기 이용료는 1인 수강료 × 1명분이에요. DOOGO CLASS(VOD) 탭은 잠긴 채로 시작하고, 강사님이 자물쇠를 눌러 신청하면 ‘강사 입점 문의’로 들어와요. VOD 강사는 ‘VOD 강사 등록’으로 따로 만들어요.</span></p>" : "") +
         '<div class="a-form-row"><div class="a-field"><label for="if-name">강사 이름 <small>(강사센터 로그인)</small></label><input class="a-input" id="if-name" name="name" value="' + esc(x.name) + '"></div>' +
         '<div class="a-field"><label for="if-phone">전화번호 뒷자리 <small>(비밀번호)</small></label><input class="a-input" id="if-phone" name="phone4" inputmode="numeric" maxlength="4" value="' + esc(x.phone4) + '"></div></div>' +
         '<div class="a-field"><label for="if-display">수강생에게 보이는 이름</label><input class="a-input" id="if-display" name="displayName" value="' + esc(x.displayName) + '" placeholder="예: 갓농부"><small class="a-muted">수강생 로그인 화면의 강사 선택 목록에 보여요.</small></div>' +
@@ -2886,9 +2905,53 @@
             '<small class="a-muted">1인 수강료를 적으면 ‘기수 신청 · 매출’에 1기 이용료가 기록돼요. 비워 두면 기록 없이 만들어요.</small></fieldset>' +
           '<div class="a-field"><span class="a-label">수강생 화면 색상</span>' + themePicker("orange", "itheme") + "</div>"
           : '<div class="a-field"><label for="if-status">상태</label><select class="a-input" id="if-status" name="status"><option value="active"' + (x.status === "active" ? " selected" : "") + '>운영 중</option><option value="paused"' + (x.status !== "active" ? " selected" : "") + ">운영 중지 (강사·수강생 로그인 막기)</option></select></div>" +
+            '<div class="a-field"><span class="a-label">열린 영역 <small>(체크를 빼면 강사센터에서 그 탭이 자물쇠로 잠겨요)</small></span><div class="a-ins-tracks">' +
+              '<label class="a-check"><input type="checkbox" name="trkLive"' + (op.live ? " checked" : "") + "><span><b>두잉고 (LIVE 두잉고)</b><small class=\"a-muted\">기수 · 주차 · 과제 · 수강생 로그인 강사 목록" + (rq.live ? " · 강사님이 입점 신청 중" : "") + "</small></span></label>" +
+              '<label class="a-check"><input type="checkbox" name="trkVod"' + (op.vod ? " checked" : "") + "><span><b>DOOGO CLASS (VOD)</b><small class=\"a-muted\">VOD 판매 · 정산 · VOD 수강생 강의실" + (rq.vod ? " · 강사님이 입점 신청 중" : "") + "</small></span></label></div></div>" +
             '<p class="a-muted">강의: ' + esc(c ? c.brand.courseTitle : "-") + "</p>") +
         '<p class="a-error" id="if-error"></p></form>',
       (isNew ? "" : btn(icon("trash", "sm") + "플랫폼 삭제", "ins-delete", "a-btn-ghost danger", ' data-id="' + x.id + '"')) + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="ins-form">' + (isNew ? "만들기" : "저장") + "</button>", "md");
+  }
+  /** VOD 강사 등록 (DOOGO CLASS · 2026-11): 기수 · 이용료 없이 강사센터 계정만 — 강사님은 이름 + 전화번호 뒷자리로 로그인해서 DOOGO CLASS 탭을 써요.
+   *  두잉고(LIVE) 탭은 자물쇠 (신청하면 입점 문의로) · pre: 두고 파트너스 지원서에서 미리 채울 값 { inq, name, phone, email, form } */
+  function vodInsForm(pre) {
+    pre = pre || {};
+    const F = pre.form || {}, ph4 = String(pre.phone || "").replace(/\D/g, "").slice(-4);
+    openModal("VOD 강사 등록 · DOOGO CLASS",
+      '<form id="vins-form" class="a-form" data-inq="' + esc(pre.inq || "") + '" novalidate>' +
+        '<p class="a-hint">' + icon("monitorPlay", "xs") + "<span>DOOGO CLASS에 VOD를 올릴 강사님의 강사센터 계정을 만들어요. 강사님은 강사센터에 <b>이름 + 전화번호 뒷자리</b>로 로그인해서 <b>DOOGO CLASS 탭</b>(VOD 판매 · 정산 · VOD 수강생 강의실 · 1:1 코칭 · TEA TIME)을 써요. 기수 · 1인 수강료는 없고 VOD 판매 정산으로 정산해요. 두잉고(LIVE) 탭은 잠겨 있고, 강사님이 자물쇠를 눌러 신청하면 ‘강사 입점 문의’로 들어와요.</span></p>" +
+        '<div class="a-form-row"><div class="a-field"><label for="vf-name">강사 이름 <small>(강사센터 로그인)</small></label><input class="a-input" id="vf-name" name="name" maxlength="20" value="' + esc(pre.name || "") + '"></div>' +
+        '<div class="a-field"><label for="vf-phone4">전화번호 뒷자리 <small>(비밀번호)</small></label><input class="a-input" id="vf-phone4" name="phone4" inputmode="numeric" maxlength="4" value="' + esc(ph4) + '"></div></div>' +
+        '<div class="a-field"><label for="vf-display">DOOGO CLASS에 보이는 이름 <small>(활동명)</small></label><input class="a-input" id="vf-display" name="displayName" maxlength="20" value="' + esc(F.nick || pre.name || "") + '" placeholder="예: 셀러훈"><small class="a-muted">강사센터 · VOD 수강생 강의실에 보여요. 스토어 클래스의 강사 이름은 VOD 클래스 관리에서 따로 정할 수 있어요.</small></div>' +
+        '<div class="a-field"><label for="vf-course">대표 클래스 이름 <small>(선택)</small></label><input class="a-input" id="vf-course" name="courseTitle" maxlength="60" value="' + esc(String(F.topic || "").slice(0, 60)) + '" placeholder="예: 광고 없이 월 100 버는 중국 구매대행"></div>' +
+        '<div class="a-form-row"><div class="a-field"><label for="vf-cphone">연락처</label><input class="a-input" id="vf-cphone" name="cphone" type="tel" maxlength="20" value="' + esc(pre.phone || "") + '" placeholder="010-0000-0000"></div>' +
+        '<div class="a-field"><label for="vf-email">이메일 <small>(정산 · 안내 받을 곳)</small></label><input class="a-input" id="vf-email" name="email" type="email" maxlength="100" value="' + esc(pre.email || "") + '"></div></div>' +
+        '<p class="a-error" id="vf-error"></p></form>',
+      '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="vins-form">' + icon("monitorPlay", "sm") + "VOD 강사 등록</button>", "md");
+  }
+  function saveVodIns(f) {
+    const err = document.getElementById("vf-error");
+    const name = f.name.value.trim(), phone4 = f.phone4.value.trim(), displayName = f.displayName.value.trim() || name, email = f.email.value.trim();
+    if (!name) { err.textContent = "강사 이름을 입력해 주세요."; return; }
+    if (!/^\d{4}$/.test(phone4)) { err.textContent = "전화번호 뒷자리는 숫자 4자리예요."; return; }
+    if (DB.data.instructors.some((x) => x.name === name && x.phone4 === phone4)) { err.textContent = "같은 이름 · 뒷자리의 강사가 이미 있어요."; return; }
+    if (email && !EMAIL_RE.test(email)) { err.textContent = "이메일을 확인해 주세요."; return; }
+    const nid = DB.uid("i");
+    DB.data.instructors.push({ id: nid, name, phone4, displayName, status: "active", createdAt: todayStr(), tracks: { live: false, vod: true }, contact: { phone: f.cphone.value.trim(), email } });
+    const brand = { name: displayName, instructor: displayName, courseTitle: f.courseTitle.value.trim() || displayName + " VOD 클래스", theme: "white" };
+    DB.data.content[nid] = DB.normalizeContent(DB.template(brand));
+    DB.data.content[nid].brand.themeSet = true;
+    // 메뉴 기본값도 지금(마스터가 저장할 때) 같이 만들어 둬요 — 나중에 다른 화면이 채우면 그 화면 계정으로는 저장이 막혀요
+    DB.menuConfig(nid); DB.menuConfig(nid + "@vod");
+    // 두고 파트너스 지원서에서 만들었으면 그 지원은 ‘계약 완료 · VOD 강사 등록’으로 + 소개 파트너의 ‘내 강사’에 자동 연결
+    const inq = f.dataset.inq && findInq(f.dataset.inq);
+    if (inq) {
+      setInqStatus(inq, "done"); inq.iid = nid; inq.openedAt = Date.now();
+      const pa = inqAff(inq);
+      if (pa && !affList().some((p) => (p.instructors || []).some((l) => l.iid === nid))) { (pa.instructors = pa.instructors || []).push({ iid: nid, rs: null, since: todayStr(), fromInq: inq.id }); }
+      DB.saveInquiry(inq);
+    }
+    commit(displayName + " VOD 강사 계정을 만들었어요. 강사센터 로그인: " + name + " / " + phone4 + " · DOOGO CLASS › VOD 클래스 관리에서 이 강사님 클래스를 만들어 주세요.");
   }
   function saveIns(f) {
     const err = document.getElementById("if-error");
@@ -2898,20 +2961,28 @@
     const id = f.dataset.id;
     if (DB.data.instructors.some((x) => x.id !== id && x.name === name && x.phone4 === phone4)) { err.textContent = "같은 이름·뒷자리의 강사가 이미 있어요."; return; }
     if (!id && f.email && f.email.value.trim() && !EMAIL_RE.test(f.email.value.trim())) { err.textContent = "이메일을 확인해 주세요."; return; }
-    if (id) { Object.assign(DB.instructor(id), { name, phone4, displayName, status: f.status.value }); commit("강사 정보를 저장했어요."); return; }
+    if (id) {
+      const live = !!(f.trkLive && f.trkLive.checked), vod = !!(f.trkVod && f.trkVod.checked);
+      if (!live && !vod) { err.textContent = "열린 영역을 하나는 골라 주세요."; return; }
+      const xi = DB.instructor(id);
+      Object.assign(xi, { name, phone4, displayName, status: f.status.value });
+      setTrack(xi, "live", live); setTrack(xi, "vod", vod);
+      commit("강사 정보를 저장했어요."); return;
+    }
     const nid = DB.uid("i");
-    DB.data.instructors.push({ id: nid, name, phone4, displayName, status: "active", createdAt: todayStr() });
+    // LIVE 두잉고로 시작 — DOOGO CLASS(VOD)는 자물쇠 (강사님이 신청하면 입점 문의로 · 2026-11)
+    DB.data.instructors.push({ id: nid, name, phone4, displayName, status: "active", createdAt: todayStr(), tracks: { live: true, vod: false }, contact: { phone: f.cphone.value.trim(), email: f.email.value.trim() } });
     const th = (f.querySelector("input[name=itheme]:checked") || {}).value || "lime";
     const brand = { name: displayName, instructor: displayName, courseTitle: f.courseTitle.value.trim() || displayName + " 실전 클래스", theme: th };
     const fromMoon = (f.querySelector("input[name=seed]:checked") || {}).value !== "blank";
     DB.data.content[nid] = fromMoon ? DB.templateFromMoon(brand) : DB.normalizeContent(DB.template(brand));
     if (fromMoon) DB.instructor(nid).menu = DB.moonMenu();
+    DB.menuConfig(nid); DB.menuConfig(nid + "@vod"); // 메뉴 기본값도 마스터가 저장할 때 같이
     DB.data.content[nid].brand.themeSet = true;
     const co1 = { id: DB.uid("c"), instructorId: nid, name: "1기", startDate: f.startDate.value || addDays(todayStr(), 14), recruiting: true };
     DB.data.cohorts.push(co1);
     // 1기 이용료 기록 (입점 = 1기 이용료)
-    const fee = f.dataset.vod === "1" ? 0 : parseWon(f.fee.value);
-    if (f.dataset.vod === "1") DB.instructor(nid).vodCreator = true;
+    const fee = parseWon(f.fee.value);
     if (fee) {
       const b = { id: DB.uid("b"), instructorId: nid, kind: "new", cohortName: "1기", startDate: co1.startDate, fee, contactName: name, phone: f.cphone.value.trim(), email: f.email.value.trim(), requestedAt: Date.now(), by: "master", cohortId: co1.id, openedAt: todayStr(), vat: DB.billingInfo().vat };
       if (f.paid.checked) b.paidAt = todayStr();
@@ -2994,7 +3065,7 @@
   }
   const vdRqTxt = (o) => (o.refundReq && typeof o.refundReq === "object" ? "회원 환불 요청 · " + o.refundReq.why + (o.refundReq.text ? " · " + o.refundReq.text : "") : "강사 취소 · 환불 필요");
   const vdThumb = (p, cls) => '<span class="vda-th ' + (cls || "") + '">' + VX().thumbArt(p) + "</span>";
-  const vdInsOpts = (sel) => '<option value="">외부 크리에이터 (강사 플랫폼 없음)</option>' + DB.data.instructors.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === sel ? " selected" : "") + ">" + esc(vdName(x.id) !== x.displayName ? vdName(x.id) + " · 두잉고 " + x.displayName : x.displayName) + " (" + esc(x.name) + ")</option>").join(""); // DOOGO CLASS 이름이 따로 있으면 함께 (유나 · 두잉고 초이)
+  const vdInsOpts = (sel) => '<option value="">외부 크리에이터 (강사 플랫폼 없음)</option>' + DB.data.instructors.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === sel ? " selected" : "") + ">" + esc(vdName(x.id) !== x.displayName ? vdName(x.id) + " · 두잉고 " + x.displayName : x.displayName) + " (" + esc(x.name) + ")" + (DB.tracksOf(x).vod ? "" : " · DOOGO CLASS 잠김") + "</option>").join(""); // DOOGO CLASS 이름이 따로 있으면 함께 (유나 · 두잉고 초이) · 잠긴 강사는 강사센터에서 판매가 안 보여요
   const vdStoreBtn = (href, label) => '<button type="button" class="a-btn a-btn-ghost" data-action="store-split" data-href="' + esc(href || "#/vod") + '">' + icon("layers", "sm") + (label || "스토어 미리보기") + "</button>";
 
   /* ---------- 1) VOD 매출 · 주문 · 강사 정산 ---------- */
@@ -4578,14 +4649,115 @@
   /* ---------- 강사센터: 내 VOD 판매 (읽기 전용) ---------- */
   /* ---------- 두잉고 버전 스위치 (강사센터 왼쪽 위) ---------- */
   function trackSwitch() {
-    const vod = TRK() === "vod";
-    return '<div class="a-trk"><span class="a-trk-l">관리 영역</span><div class="a-trk-sw ' + (vod ? "at-vod" : "at-live") + '" role="tablist" aria-label="관리 영역"><i class="a-trk-k" aria-hidden="true"></i>' +
-      '<button type="button" role="tab" aria-selected="' + !vod + '" data-action="trk" data-k="live">두잉고</button>' +
-      '<button type="button" role="tab" aria-selected="' + vod + '" data-action="trk" data-k="vod">DOOGO CLASS' + (!vod && vsNew() ? '<i class="a-trk-dot" title="새 정산 명세서가 있어요" aria-label="새 정산 명세서"></i>' : "") + "</button></div>" +
-      "<small>" + (vod ? "VOD 판매 · 정산 · VOD 수강생 강의실" : "기수 · 수강생 · 과제로 운영하는 프로그램") + "</small></div>";
+    const vod = TRK() === "vod", o = OPEN(), req = { live: trkReq("live"), vod: trkReq("vod") };
+    // 잠긴 탭: 자물쇠 + 누르면 그 영역 입점 신청 (신청 중이면 ‘신청 중’)
+    const tab = (k, label) => {
+      const lock = !o[k], on = !lock && (k === "vod") === vod;
+      return '<button type="button" role="tab" aria-selected="' + on + '" data-action="' + (lock ? "trk-lock" : "trk") + '" data-k="' + k + '"' + (lock ? ' class="is-lock" title="' + (req[k] ? "입점 신청 중 · 운영팀이 확인하고 있어요" : "잠겨 있어요 · 누르면 입점 신청") + '"' : "") + ">" +
+        (lock ? icon("lock", "xs") : "") + label + (k === "vod" && !vod && !lock && vsNew() ? '<i class="a-trk-dot" title="새 정산 명세서가 있어요" aria-label="새 정산 명세서"></i>' : "") + "</button>";
+    };
+    const lockTxt = !o.live ? "두잉고(LIVE)" : !o.vod ? "DOOGO CLASS(VOD)" : "", lockK = !o.live ? "live" : "vod";
+    return '<div class="a-trk' + (lockTxt ? " has-lock" : "") + '"><span class="a-trk-l">관리 영역</span><div class="a-trk-sw ' + (vod ? "at-vod" : "at-live") + '" role="tablist" aria-label="관리 영역"><i class="a-trk-k" aria-hidden="true"></i>' + tab("live", "두잉고") + tab("vod", "DOOGO CLASS") + "</div>" +
+      "<small>" + (vod ? "VOD 판매 · 정산 · VOD 수강생 강의실" : "기수 · 수강생 · 과제로 운영하는 프로그램") + "</small>" +
+      (lockTxt && !isCoach() ? '<button type="button" class="a-trk-req" data-action="trk-lock" data-k="' + lockK + '">' + icon("lock", "xs") + "<span>" + lockTxt + (S.role === "master" ? " · 열어 주기" : req[lockK] ? " · 입점 신청 중" : " · 입점 신청하기") + "</span>" + icon("arrowRight", "xs") + "</button>" : "") + "</div>";
+  }
+  /* ---------- 잠긴 영역 입점 신청 (강사센터 자물쇠 · 2026-11) ----------
+   * LIVE 두잉고 신청은 두잉고 첫 화면 ‘강사 입점 문의’와 같은 칸, DOOGO CLASS 신청은 ‘두고 파트너스 지원서’의 핵심 칸 → 마스터 › 강사 입점 문의 */
+  const TRACK_TAB = { live: "두잉고", vod: "DOOGO CLASS" };
+  const TA_KINDS = ["VOD 강의", "전자책 · 종이책", "1:1 코칭 · TEA TIME"];
+  const TA_WHEN = ["최대한 빨리", "1~2개월 안", "3개월 안", "아직 정하지 않았어요"];
+  const TA_PRICE = ["10만 원 미만", "10만~30만 원", "30만~50만 원", "50만 원 이상", "상담하며 정할게요"];
+  /** 마스터: 강사 영역 열기 · 잠그기 (열면 그 영역 ‘신청 중’ 표시는 지워요) */
+  function setTrack(ins, want, on) {
+    const t = DB.tracksOf(ins); t[want] = !!on; ins.tracks = t;
+    if (on && ins.trackReq) { delete ins.trackReq[want]; if (!Object.keys(ins.trackReq).length) delete ins.trackReq; }
+  }
+  /** 입점 신청 창에 미리 채울 연락처 — 강사 계정(contact) → 기수 이용료 신청서 순서 */
+  function insContact(ins) {
+    const c = (ins && ins.contact) || {}, b = ins ? DB.bills(ins.id).slice().reverse().find((x) => x.phone || x.email) || {} : {};
+    return { phone: c.phone || b.phone || "", email: c.email || b.email || "" };
+  }
+  /** 이 영역 입점 신청 중인지 (서버가 남긴 표시 · 방금 보낸 신청) */
+  const trkReq = (want) => { const ins = INS() || {}; return (ins.trackReq || {})[want] || (ui.trkSent || {})[ins.id + ":" + want] || null; };
+  function trackLockOpen(want) {
+    const ins = INS(); if (!ins) return;
+    const what = want === "vod" ? "DOOGO CLASS(VOD)" : "두잉고(LIVE 두잉고)", req = trkReq(want);
+    if (isCoach()) { toast(what + "는 잠겨 있어요. 입점 신청은 강사님 계정에서 할 수 있어요.", "warn"); return; }
+    if (S.role === "master") {
+      confirmModal(what + " 열어 주기", "<b>" + esc(ins.displayName) + "</b> 강사님에게 " + what + " 영역을 열어 줄까요?<br>열면 강사님 강사센터에 " + TRACK_TAB[want] + " 탭이 바로 보여요." + (req ? "<br><small>강사님이 " + esc(fmtStamp(req.at)) + "에 입점 신청을 보냈어요.</small>" : ""), "열어 주기", false, () => { setTrack(ins, want, true); commit(ins.displayName + " 강사님 " + what + " 영역을 열었어요."); });
+      return;
+    }
+    if (req) {
+      openModal("입점 신청을 보냈어요",
+        '<div class="a-trk-lead ok">' + icon("check", "sm") + "<div><b>" + what + " 입점 신청이 접수됐어요</b><p>" + esc(fmtStamp(req.at)) + " 신청 · 운영팀이 확인하고 연락드려요. 승인되면 " + TRACK_TAB[want] + " 탭이 바로 열려요. 급하면 운영팀 카카오톡으로 문의해 주세요.</p></div></div>",
+        '<a class="a-btn a-btn-ghost" href="' + esc(DB.opsKakao().chat) + '" target="_blank" rel="noopener" data-kk-ops>' + icon("headset", "sm") + "운영팀 상담 (카카오톡)</a><span class=\"a-spacer\"></span>" + btn("닫기", "modal-close", "a-btn-primary"), "md");
+      return;
+    }
+    trackApplyForm(want);
+  }
+  function trackApplyForm(want) {
+    const ins = INS(), vod = want === "vod", ct = insContact(ins);
+    const fld = (n, label, req, attrs, val, wide) => '<div class="a-field' + (wide ? " a-wide" : "") + '"><label for="ta-' + n + '">' + label + (req ? ' <em class="a-req">*</em>' : "") + '</label><input class="a-input" id="ta-' + n + '" name="' + n + '" ' + (attrs || "") + ' value="' + esc(val || "") + '"></div>';
+    const area = (n, label, req, ph, rows) => '<div class="a-field"><label for="ta-' + n + '">' + label + (req ? ' <em class="a-req">*</em>' : "") + '</label><textarea class="a-input" id="ta-' + n + '" name="' + n + '" rows="' + (rows || 3) + '" maxlength="1500" placeholder="' + esc(ph || "") + '"></textarea></div>';
+    const sel = (n, label, list) => '<div class="a-field"><label for="ta-' + n + '">' + label + '</label><select class="a-input" id="ta-' + n + '" name="' + n + '"><option value="">고르기</option>' + list.map((x) => "<option>" + esc(x) + "</option>").join("") + "</select></div>";
+    openModal(vod ? "DOOGO CLASS (VOD) 입점 신청" : "LIVE 두잉고 입점 신청",
+      '<form id="trk-apply-form" class="a-form" data-want="' + want + '" novalidate>' +
+        '<div class="a-trk-lead">' + icon("lock", "sm") + "<div><b>" + (vod ? "DOOGO CLASS(VOD)" : "두잉고(LIVE 두잉고)") + "는 아직 잠겨 있어요</b><p>" +
+          (vod ? "DOOGO CLASS는 VOD 강의 · 전자책 · 1:1 코칭 · TEA TIME을 파는 스토어예요. 판매 · 정산 · VOD 수강생 강의실을 강사센터에서 관리해요." : "LIVE 두잉고는 기수 · 주차 · 과제로 수강생을 운영하는 강의실이에요. 이용료는 기수마다 1인 수강료 × 1명분이에요.") +
+          " 남겨 주시면 운영팀이 확인하고 연락드려요. 마스터가 승인하면 " + TRACK_TAB[want] + " 탭이 바로 열려요.</p></div></div>" +
+        '<div class="a-form-row">' + fld("name", "성함", 1, 'maxlength="40" autocomplete="name"', ins.name) + fld("phone", "연락처", 1, 'type="tel" inputmode="tel" maxlength="30" placeholder="010-0000-0000"', ct.phone) + "</div>" +
+        fld("email", "이메일", 1, 'type="email" inputmode="email" maxlength="120" placeholder="name@example.com"', ct.email) +
+        (vod
+          ? '<div class="a-form-row">' + fld("nick", "활동명 · 브랜드명", 0, 'maxlength="40" placeholder="스토어 · 강사 페이지에 보일 이름"', ins.displayName) + fld("cat", "강의 분야", 0, 'maxlength="40" placeholder="예: 쇼핑몰 · 커머스"', "") + "</div>" +
+            '<fieldset class="a-perm-group a-ta-kinds"><legend>열고 싶은 클래스</legend>' + TA_KINDS.map((k, i) => '<label class="a-check"><input type="checkbox" name="kinds" value="' + esc(k) + '"' + (i === 0 ? " checked" : "") + "><span>" + esc(k) + "</span></label>").join("") + "</fieldset>" +
+            fld("topic", "클래스 주제 한 줄", 1, 'maxlength="80" placeholder="예: 재고 없이 시작하는 해외 건기식 브랜드"', "") +
+            area("course", "어떤 노하우인가요", 1, "누구에게 · 무엇을 · 어떤 순서로 알려 주고 싶은지 자유롭게 적어 주세요", 4) +
+            '<div class="a-form-row">' + sel("when", "원하는 오픈 시기", TA_WHEN) + sel("price", "생각하는 판매가", TA_PRICE) + "</div>"
+          : fld("where", "지금 강의하고 있는 곳", 0, 'maxlength="120" placeholder="예: 클래스101 · 유튜브 · 오프라인 · 아직 없어요"', "") +
+            area("course", "어떤 강의인가요", 1, "강의 주제 · 대상 · 기간 · 수강생 수 등을 자유롭게 적어 주세요", 3) +
+            fld("link", "강의 페이지 · 채널 주소", 0, 'type="url" inputmode="url" maxlength="300" placeholder="https://"', "")) +
+        area("message", "하고 싶은 말", 0, "궁금한 점이나 원하는 점을 남겨 주세요", 2) +
+        '<label class="a-check a-ta-agree"><input type="checkbox" name="agree"><span>개인정보 수집 · 이용에 동의합니다 <em class="a-req">(필수)</em><small class="a-muted">입점 상담을 위해 성함 · 연락처 · 이메일 · 강의 정보를 받아요. 상담에만 쓰고, 상담이 끝나면 지체 없이 지워요.</small></span></label>' +
+        '<p class="a-error" id="ta-error" role="alert"></p></form>',
+      '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="trk-apply-form">' + icon("send", "sm") + "입점 신청 보내기</button>", "md");
+  }
+  function saveTrackApply(f) {
+    const want = f.dataset.want === "vod" ? "vod" : "live", vod = want === "vod", err = document.getElementById("ta-error"), ins = INS();
+    const v = (n) => (f.elements[n] ? String(f.elements[n].value || "").trim() : "");
+    if (!ins) return;
+    if (!v("name") || !v("phone") || !v("email") || !v("course") || (vod && !v("topic"))) { err.textContent = "* 표시한 칸을 채워 주세요."; return; }
+    if (!/^[0-9+\-() ]{8,}$/.test(v("phone"))) { err.textContent = "연락처를 확인해 주세요. (예: 010-0000-0000)"; return; }
+    if (!EMAIL_RE.test(v("email"))) { err.textContent = "이메일을 확인해 주세요."; return; }
+    if (!f.elements.agree.checked) { err.textContent = "개인정보 수집 · 이용에 동의해 주세요."; return; }
+    const kinds = vod ? Array.from(f.querySelectorAll("input[name=kinds]:checked")).map((x) => x.value) : [];
+    const a = { iid: ins.id, name: v("name"), phone: v("phone"), email: v("email"), link: v("link"), message: v("message"), agree: true,
+      where: vod ? "[두고 파트너스 · 강사센터] " + (ins.displayName || ins.name) : v("where"),
+      course: vod ? "[" + (kinds.join(", ") || "VOD 강의") + (v("cat") ? " / " + v("cat") : "") + "] " + v("topic") + "\n" + v("course") : v("course") };
+    if (vod) a.form = { nick: v("nick"), cat: v("cat"), kinds, topic: v("topic"), when: v("when"), price: v("price") };
+    const sb = document.querySelector('#modal-root button[type=submit][form="trk-apply-form"]'); if (sb) sb.disabled = true;
+    const done = (r) => {
+      if (sb) sb.disabled = false;
+      // ‘신청 중’ 표시는 서버가 강사 계정에 남겨요 (다음에 열 때 받아요) — 지금 화면에는 바로 보이게만
+      if (r && r.ok) { (ui.trkSent = ui.trkSent || {})[ins.id + ":" + want] = { at: Date.now() }; closeModal(); render(); toast((vod ? "DOOGO CLASS" : "LIVE 두잉고") + " 입점 신청을 보냈어요. 운영팀이 확인하고 연락드릴게요."); return; }
+      const e2 = r && r.error;
+      err.textContent = e2 === "dup" ? "이미 보낸 신청이 있어요. 운영팀이 확인하고 연락드릴게요." : e2 === "open" ? "이미 열려 있어요. 새로고침해 주세요." : e2 === "locked" ? "잠시 후 다시 시도해 주세요." : e2 === "auth" ? "강사님 계정으로 로그인해야 보낼 수 있어요." : "보내지 못했어요. 칸을 확인하고 다시 시도해 주세요.";
+    };
+    DB.applyTrack(want, a).then(done, () => { if (sb) sb.disabled = false; err.textContent = "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."; });
+  }
+  /** 잠긴 영역 안내 카드 (다른 탭 메뉴 · 자물쇠 화면) */
+  function trackLockCard(want) {
+    const req = trkReq(want), vod = want === "vod";
+    const what = vod ? "DOOGO CLASS(VOD)" : "두잉고(LIVE 두잉고)";
+    const desc = vod ? "VOD 강의 · 전자책 · 1:1 코칭 · TEA TIME을 DOOGO CLASS 스토어에서 팔고, 판매 · 정산 · VOD 수강생 강의실을 관리하는 영역이에요." : "기수 · 주차 · 과제로 수강생을 운영하는 강의실이에요. 이용료는 기수마다 1인 수강료 × 1명분이에요.";
+    const act = isCoach() ? '<p class="a-muted">입점 신청은 강사님 계정에서 할 수 있어요.</p>' : S.role === "master" ? btn(icon("lock", "sm") + what + " 열어 주기", "trk-lock", "a-btn-primary", ' data-k="' + want + '"') : req ? btn(icon("clock", "sm") + "신청 내용 보기", "trk-lock", "a-btn-outline", ' data-k="' + want + '"') : btn(icon("send", "sm") + what + " 입점 신청하기", "trk-lock", "a-btn-primary", ' data-k="' + want + '"');
+    return '<section class="a-card a-trk-lockcard">' + '<span class="a-trk-lockic">' + icon("lock") + "</span><h2>" + what + "는 아직 잠겨 있어요</h2><p>" + desc + "</p>" +
+      (req ? '<p class="a-trk-pend">' + icon("check", "xs") + fmtStamp(req.at) + " 입점 신청을 보냈어요 · 운영팀이 확인하고 연락드려요. 승인되면 탭이 바로 열려요.</p>" : '<p class="a-muted">입점 신청을 남기면 운영팀이 확인하고 연락드려요. 마스터가 승인하면 ' + (vod ? "DOOGO CLASS" : "두잉고") + " 탭이 열려요.</p>") + act + "</section>";
   }
   function trackOffPage(r) {
-    const k = r.parts[0] || "", toLive = VOD_ONLY_PAGES.indexOf(k) < 0;
+    const k = r.parts[0] || "", pt = pageTrack(k);
+    // 잠긴 영역의 메뉴: 자물쇠 안내 + 입점 신청
+    if (pt && !OPEN()[pt]) return head(pt === "vod" ? "DOOGO CLASS 메뉴예요" : "두잉고 메뉴예요", pt === "vod" ? "VOD 판매 · 정산 · VOD 수강생 강의실 메뉴예요." : "기수 · 수강생 · 과제로 운영하는 LIVE 두잉고 메뉴예요.") + trackLockCard(pt);
+    const toLive = VOD_ONLY_PAGES.indexOf(k) < 0;
     return head(toLive ? "두잉고 탭 메뉴예요" : "DOOGO CLASS 탭 메뉴예요", toLive ? "DOOGO CLASS 탭에는 주차 · 과제 · 기수 · 홍보 페이지가 없어요." : "두잉고 탭에는 없는 메뉴예요.") +
       '<section class="a-card">' + emptyBox(toLive ? "layers" : "circlePlay", toLive ? "이 메뉴는 두잉고 탭에서 고쳐요." : "이 메뉴는 DOOGO CLASS 탭에서 고쳐요.", btn((toLive ? "두잉고" : "DOOGO CLASS") + " 탭으로 바꾸기", "trk", "a-btn-primary", ' data-k="' + (toLive ? "live" : "vod") + '" data-stay="1"')) + "</section>";
   }
@@ -7627,7 +7799,7 @@
     document.body.dataset.ath = master ? "" : athOf(IID());
     renderShell(r);
     const main = document.getElementById("a-main");
-    const k0 = r.parts[0] || "", offTrack = !master && ((TRK() === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (TRK() !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0));
+    const k0 = r.parts[0] || "", pt0 = pageTrack(k0), offTrack = !master && ((pt0 && !OPEN()[pt0]) || (TRK() === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (TRK() !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0));
     const fn = master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : offTrack ? trackOffPage : (PAGES[k0] || pageDashboard);
     main.innerHTML = '<div class="a-page">' + (!master && !offTrack && TRK() === "vod" && VP_PAGES.indexOf(k0) >= 0 ? vpidStrip() : "") + fn(r) + "</div>";
     labelTables(main); ktInit(main);
@@ -7756,6 +7928,7 @@
       case "confirm-ok": { const fn = confirmFn; confirmFn = null; if (fn) fn(); break; }
       case "preview": openPreview(d.cohort); break;
       case "vp-go": setVpid(d.id); ROUTE.hash = "#/center/menus"; toast("‘" + ((vdP(d.id) || {}).title || "") + "’ 강의실을 꾸며요."); break;
+      case "trk-lock": trackLockOpen(d.k === "vod" ? "vod" : "live"); break;
       case "trk": {
         const k = d.k === "vod" ? "vod" : "live"; ui.track = k; ui.trackKey = trkKey(); try { sessionStorage.setItem(trkKey(), k); } catch (e2) { /* 저장 못 해도 이번 화면에서는 바뀐다 */ }
         const k0 = route().parts[0] || "", off = (k === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (k !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0);
@@ -7965,7 +8138,20 @@
       case "inq-st": inqApplyStatus(findInq(d.id), d.st); break;
       case "vr-tab": ui.vrFilter = d.k; ui.inqOpen = null; render(); break;
       case "inq-xl": inqXl(d.only, d.f); break;
-      case "inq-make": { if (staffDeny("master/instructors")) break; const x = findInq(d.id); if (x) insForm(null, { inq: x.id, name: x.name, phone: x.phone, email: x.email, course: x.course, vod: inqIsVod(x) }); break; }
+      // 입점 문의 → 두고 파트너스(VOD) 지원은 VOD 강사 등록 창, 두잉고(LIVE) 문의는 LIVE 강사 플랫폼 만들기 창
+      case "inq-make": { if (staffDeny("master/instructors")) break; const x = findInq(d.id); if (!x) break; if (inqIsVod(x)) vodInsForm({ inq: x.id, name: x.name, phone: x.phone, email: x.email, form: x.form }); else insForm(null, { inq: x.id, name: x.name, phone: x.phone, email: x.email, course: x.course }); break; }
+      // 기존 강사의 잠긴 영역 입점 신청 → 마스터가 열어 주기
+      case "inq-open-track": {
+        if (staffDeny("master/instructors")) break;
+        const x = findInq(d.id), ins = x && DB.instructor(x.addTo); if (!x || !ins) { toast("강사 플랫폼을 찾지 못했어요.", "warn"); break; }
+        const want = x.want === "vod" ? "vod" : "live", what = want === "vod" ? "DOOGO CLASS(VOD)" : "두잉고(LIVE 두잉고)";
+        confirmModal(what + " 열어 주기", "<b>" + esc(ins.displayName) + "</b> 강사님에게 " + what + " 영역을 열어 줄까요?<br>열면 강사님 강사센터에 " + TRACK_TAB[want] + " 탭이 바로 보이고, 이 신청은 ‘계약 완료’로 바뀌어요.", "열어 주기", false, () => {
+          setTrack(ins, want, true); setInqStatus(x, "done"); x.iid = ins.id; x.openedAt = Date.now(); DB.saveInquiry(x);
+          actLog(ins.displayName + " 강사님 " + what + " 영역을 열었어요 (입점 신청 승인)."); commit(ins.displayName + " 강사님 " + what + " 영역을 열었어요.");
+        });
+        break;
+      }
+      case "vins-add": if (staffDeny("master/instructors")) break; vodInsForm(null); break;
       case "inq-memo": { const x = findInq(d.id), ta = document.querySelector('[data-inq-memo="' + d.id + '"]'); if (x && ta) { x.memo = ta.value.trim(); DB.saveInquiry(x); toast("메모를 저장했어요."); } break; }
       case "inq-del": { const x = findInq(d.id); if (!x) break; confirmModal("입점 문의 삭제", "‘" + esc(x.name) + "’ 님의 입점 문의를 삭제할까요?<br>삭제하면 되돌릴 수 없어요.", "삭제", true, () => { DB.removeInquiry(x.id); closeModal(); render(); toast("입점 문의를 삭제했어요."); }); break; }
       case "brand-photo-del": if (C().brand.photo) setBrandPhoto(""); break;
@@ -8091,7 +8277,7 @@
       render(); toast("입금 계좌 · 부가세 설정을 저장했어요.");
       return;
     }
-    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "coach-form": saveCoach };
+    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "vins-form": saveVodIns, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "coach-form": saveCoach };
     if (forms[f.id]) { e.preventDefault(); forms[f.id](f); return; }
     if (f.classList.contains("vda-price")) { e.preventDefault(); saveVodPrice(f); return; }
     if (f.classList.contains("a-q-form")) {

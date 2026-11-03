@@ -1380,6 +1380,60 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/coach-perms\.js/.test(String(((vj22.functions || {})["api/*.js"] || {}).includeFiles || "")), "배포 함수에 권한표(coach-perms.js)가 실려요");
     useJar({});
   }
+  {
+    console.log("23) 강사 영역: VOD 강사 · LIVE 강사 · 잠긴 탭 입점 신청 → 마스터가 열어 주기");
+    const AC = require(path.join(TMP, "class/api/_lib/access.js")), st23 = require(path.join(TMP, "class/api/_lib/store.js"));
+    // 화면(db.js): 열린 영역 · LIVE 강사 목록
+    const vm = require("vm"), ls = new Map(), sb = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k), key: () => null, length: 0 } };
+    sb.window = sb; vm.createContext(sb); ["data.js", "coach-perms.js", "db.js"].forEach((f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb, { filename: f })); sb.DB.load();
+    const T = sb.DB.tracksOf;
+    ok(JSON.stringify(T({})) === '{"live":true,"vod":true}' && JSON.stringify(T({ tracks: { live: false, vod: true } })) === '{"live":false,"vod":true}' && JSON.stringify(T({ tracks: { live: true, vod: false } })) === '{"live":true,"vod":false}' && JSON.stringify(T(null)) === '{"live":true,"vod":true}',
+      "열린 영역: 예전 강사(칸 없음)는 둘 다 · VOD 강사는 DOOGO CLASS만 · LIVE 강사는 두잉고만");
+    sb.DB.data.instructors.push({ id: "t-vod", name: "브이", phone4: "1111", displayName: "VOD강사", status: "active", tracks: { live: false, vod: true } });
+    ok(sb.DB.liveInstructors().every((x) => x.id !== "t-vod") && sb.DB.activeInstructors().some((x) => x.id === "t-vod") && /DB\.liveInstructors\(\)/.test(fs.readFileSync(path.join(ROOT, "app.js"), "utf8")) && /DB\.liveInstructors\(\)/.test(fs.readFileSync(path.join(ROOT, "home.js"), "utf8")),
+      "수강생 로그인 강사 고르기 · 두잉고 첫 화면 강사진에는 LIVE 두잉고가 열린 강사만 (VOD 강사는 DOOGO CLASS 로만)");
+    // 서버: 강사는 열린 영역 · 신청 중 표시를 못 바꾸고, 방문자 · 수강생에게는 연락처 · 정산 정보가 안 보여요
+    const i0 = { id: "t1", status: "active", createdAt: 1, tracks: { live: false, vod: true }, trackReq: { live: { at: 5 } }, contact: { phone: "010-1", email: "a@b.c" }, vodSettle: { type: "biz", account: "1" }, phone4: "1234" };
+    let o = AC.writer("ins:t1", { admin: { role: "instructor", iid: "t1" } }, false).fix(JSON.parse(JSON.stringify(i0)), Object.assign(JSON.parse(JSON.stringify(i0)), { tracks: { live: true, vod: true }, trackReq: {}, displayName: "새 이름" }));
+    ok(o.tracks.live === false && o.trackReq.live.at === 5 && o.displayName === "새 이름", "강사가 보낸 계정: 열린 영역 · 신청 중 표시는 서버 값 그대로 (이름 등은 받아요)", o);
+    o = AC.writer("ins:t1", { admin: { role: "master" } }, false).fix(JSON.parse(JSON.stringify(i0)), Object.assign(JSON.parse(JSON.stringify(i0)), { tracks: { live: true, vod: true } }));
+    ok(o.tracks.live === true, "마스터는 열린 영역을 바꿀 수 있어요");
+    const pv = AC.view("ins:t1", JSON.parse(JSON.stringify(i0)), {}), cv = AC.view("ins:t1", JSON.parse(JSON.stringify(i0)), { admin: { role: "coach", iid: "t1", perms: [] } });
+    ok(!pv.contact && !pv.vodSettle && !pv.trackReq && !pv.phone4 && pv.tracks && !cv.contact && cv.trackReq, "방문자 · 수강생: 연락처 · 정산 계좌 · 신청 표시 없이 (열린 영역만) · 코치도 연락처는 안 받아요", pv);
+    // 잠긴 탭 입점 신청 (/api/public track-apply)
+    await st23.writeDoc("ins:t-live", { id: "t-live", name: "라이브", phone4: "2222", displayName: "LIVE강사", status: "active", tracks: { live: true, vod: false } }, null);
+    await st23.writeDoc("ins:t-vod", { id: "t-vod", name: "브이", phone4: "1111", displayName: "VOD강사", status: "active", tracks: { live: false, vod: true }, coaches: [{ id: "c1", name: "코", phone4: "9999", status: "active", track: "vod", perms: ["teatime"] }] }, null);
+    const ap = (want, extra) => call("public", { body: Object.assign({ action: "track-apply", want, name: "브이", phone: "010-1111-2222", email: "v@gmail.com", course: "오프라인 4주 실전반", agree: true }, extra || {}) });
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "t-vod" }) });
+    r = await ap("live", { where: "오프라인", link: "blog.naver.com/x" });
+    let inqs = (await st23.listDocs({ prefixes: ["inq:%"] })).map((x) => x.v).filter((q) => q && q.addTo === "t-vod");
+    let iv = (await st23.getDoc("ins:t-vod")).v;
+    ok(r.json.ok && inqs.length === 1 && inqs[0].want === "live" && inqs[0].status === "new" && !inqs[0].source && inqs[0].link === "https://blog.naver.com/x" && iv.trackReq && iv.trackReq.live && iv.trackReq.live.inq === inqs[0].id && iv.tracks.live === false,
+      "VOD 강사가 두잉고(LIVE) 자물쇠로 신청 → 입점 문의(기존 강사 · LIVE 열기 신청) + 강사 계정에 ‘신청 중’ (아직 잠김)", { r: r.json, inqs, tr: iv.trackReq });
+    r = await ap("live");
+    ok(r.json.error === "dup", "같은 신청이 처리 중이면 또 받지 않아요", r.json);
+    r = await ap("vod");
+    ok(r.json.error === "open", "이미 열린 영역은 신청할 필요가 없어요", r.json);
+    r = await ap("live", { agree: false });
+    ok(r.status === 400, "개인정보 동의 없으면 받지 않아요", r.json);
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "t-live" }) });
+    r = await ap("vod", { form: { nick: "라이브브랜드", topic: "구매대행 VOD", kinds: ["VOD 강의"], hack: "x" } });
+    inqs = (await st23.listDocs({ prefixes: ["inq:%"] })).map((x) => x.v).filter((q) => q && q.addTo === "t-live");
+    ok(r.json.ok && inqs.length === 1 && inqs[0].want === "vod" && inqs[0].source === "partners" && inqs[0].form.nick === "라이브브랜드" && !("hack" in inqs[0].form), "LIVE 강사가 DOOGO CLASS 자물쇠로 신청 → 두고 파트너스 지원서 칸으로 (모르는 칸은 버려요)", inqs[0]);
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "choi" }) });
+    r = await ap("vod");
+    ok(r.json.error === "open", "예전 강사(칸 없음)는 둘 다 열려 있어서 신청할 게 없어요", r.json);
+    useJar({ dc_a: auth.sign({ r: "coach", iid: "t-vod", cid: "c1" }) });
+    r = await ap("live");
+    ok(r.status === 403, "코치는 입점 신청을 못 해요 (강사님만)", r.json);
+    useJar({});
+    r = await ap("live");
+    ok(r.status === 403, "로그인 안 한 사람도 못 해요", r.json);
+    // 마스터 화면 연결 · 문서
+    const adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
+    ok(/case "inq-open-track"/.test(adsrc) && /function vodInsForm/.test(adsrc) && /tracks: \{ live: false, vod: true \}/.test(adsrc) && /tracks: \{ live: true, vod: false \}/.test(adsrc) && /inqIsVod\(x\)\) vodInsForm/.test(adsrc),
+      "마스터: 두고 파트너스 지원 → VOD 강사 등록 창(DOOGO CLASS만) · 두잉고 문의 → LIVE 플랫폼(두잉고만) · 기존 강사 신청 → 열어 주기");
+  }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });

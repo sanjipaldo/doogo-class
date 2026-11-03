@@ -45,6 +45,9 @@ function keepSettleType(o, n) {
   }
   return n;
 }
+/* 강사 계정에서 마스터 · 서버만 정하는 칸 (2026-11): 열린 두잉고(tracks: LIVE · DOOGO CLASS) · 잠긴 영역 입점 신청 중 표시(trackReq) — 강사가 보내도 서버 값 그대로 */
+const INS_MASTER = ["tracks", "trackReq"];
+const keepServerKeys = (o, n, keys) => { keys.forEach((k) => { if (o && o[k] !== undefined) n[k] = clone(o[k]); else delete n[k]; }); return n; };
 /* meta 에서 마스터만 보는 칸 (운영자 · 파트너 계정에는 비밀번호가 들어 있어요 · 온드미디어 계정 · RS 지급 기록) */
 const MASTER_META = ["staff", "affiliates", "affPayouts", "adminLog", "media", "mdPayouts"];
 const adminOf = (ids, iid) => !!(ids.admin && (ids.admin.role === "master" || ids.admin.iid === iid));
@@ -76,10 +79,11 @@ function publicContent(c) {
   o.curricula = (c.curricula || []).map((cu) => Object.assign(pick(cu, ["id", "name"]), { weeks: weeksSkeleton(cu.weeks) }));
   return o;
 }
-function publicIns(v) { const o = clone(v); delete o.phone4; delete o.coaches; return o; }
+/** 방문자 · 수강생이 보는 강사 계정: 뒷자리(비밀번호) · 코치 · 연락처 · 정산 정보 · 입점 신청 표시는 빼요 */
+function publicIns(v) { const o = clone(v); ["phone4", "coaches", "contact", "vodSettle", "trackReq"].forEach((k) => delete o[k]); return o; }
 /** 코치가 보는 강사 계정: 뒷자리(비밀번호)는 빼고, 정산 받을 정보(계좌 · 사업자번호 · 이메일)는 정산 유형만 남겨요 — 계좌 등록은 강사님만 */
 function coachIns(v) {
-  const o = clone(v); delete o.phone4;
+  const o = clone(v); delete o.phone4; delete o.contact;
   o.coaches = (o.coaches || []).map((c) => { const x = Object.assign({}, c); delete x.phone4; return x; });
   if (o.vodSettle && typeof o.vodSettle === "object") { const s = o.vodSettle; o.vodSettle = {}; ["type", "typeBy", "typeAt"].forEach((k) => { if (s[k] !== undefined) o.vodSettle[k] = s[k]; }); }
   return o;
@@ -187,7 +191,7 @@ function writer(k, ids, creating) {
       return null;
     case "ins":
       if (creating) return null;
-      if (instructorOf(ids, K.iid)) return { fix: (o, n) => (n == null ? clone(o) : keepSettleType(o, Object.assign(n, { id: K.iid, status: o.status, createdAt: o.createdAt }))) };
+      if (instructorOf(ids, K.iid)) return { fix: (o, n) => (n == null ? clone(o) : keepSettleType(o, keepServerKeys(o, Object.assign(n, { id: K.iid, status: o.status, createdAt: o.createdAt }), isMaster(ids) ? [] : INS_MASTER))) };
       // 코치: 메뉴 구성만 — LIVE 메뉴(menu) · VOD 강의실 메뉴(menuVod · menuVodBy)를 담당에 맞게
       if (coachWrites(ids, K.iid, "ins")) return { fix: (o, n) => COACH.fixIns(o, n, ids.admin.perms || []) };
       return null;

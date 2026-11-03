@@ -4,6 +4,8 @@
  *  { action: "partner-apply", name, email, phone, where, course, link, message, agree, source?, form?, ref? }
  *                                                       강사 입점 문의 (마스터 → 입점 문의에서 관리)
  *                                                       source "partners" = 두고클래스 ‘두고 파트너스’ 지원서 (form = 지원서 칸들)
+ *  { action: "track-apply", want: "live"|"vod", name, email, phone, where, course, link, message, agree, form? }
+ *                                                       강사센터의 잠긴 영역(LIVE 두잉고 · DOOGO CLASS) 입점 신청 — 로그인한 강사 본인만 (2026-11)
  *  { action: "vdur", urls: [...] }                     강의 영상(비메오 · 유튜브)의 실제 길이(초) */
 "use strict";
 const crypto = require("crypto");
@@ -87,6 +89,43 @@ async function partnerApply(req, res, b) {
   send(res, 200, { ok: true });
 }
 
+/* 강사센터 잠긴 영역 입점 신청 (2026-11) — VOD 로 들어온 강사는 LIVE 두잉고, LIVE 로 들어온 강사는 DOOGO CLASS 가 잠겨 있어요.
+ * 자물쇠를 눌러 신청하면 입점 문의(inq:<id>)로 저장 — addTo = 강사 · want = live | vod (DOOGO CLASS 는 두고 파트너스 지원서 칸으로).
+ * 강사 계정에는 ‘신청 중’(trackReq)만 남기고, 여는 건 마스터가 강사 입점 문의에서 해요 */
+const TODO = ["new", "seen", "contact"];
+async function trackApply(req, res, b) {
+  const ids = await auth.identify(req), a0 = ids.admin;
+  if (!a0 || a0.role !== "instructor" || !a0.iid) return send(res, 403, { error: "auth" });
+  const want = b.want === "vod" || b.want === "live" ? b.want : "";
+  if (!want) return send(res, 400, { error: "input" });
+  const t = (v, n) => String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, n);
+  const a = {
+    name: t(b.name, 40), email: t(b.email, 120), phone: t(b.phone, 30), where: t(b.where, 120),
+    course: String(b.course == null ? "" : b.course).trim().slice(0, 1500), link: t(b.link, 300), message: String(b.message == null ? "" : b.message).trim().slice(0, 1500)
+  };
+  if (!a.name || !a.course || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email) || !/^[0-9+\-() ]{8,}$/.test(a.phone) || b.agree !== true) return send(res, 400, { error: "input" });
+  if (a.link && !/^https?:\/\//i.test(a.link)) a.link = "https://" + a.link;
+  const k = "ins-track:" + a0.iid;
+  if (await store.rlCheck([k], 5)) return send(res, 429, { error: "locked" });
+  const row = await store.getDoc("ins:" + a0.iid), ins = row && row.v;
+  if (!ins || ins.status !== "active") return send(res, 200, { error: "notfound" });
+  if (!ins.tracks || ins.tracks[want] !== false) return send(res, 200, { error: "open" });
+  const all = (await store.listDocs({ prefixes: ["inq:%"] })).map((r) => r.v).filter(Boolean);
+  if (all.some((q) => q.addTo === a0.iid && q.want === want && TODO.indexOf(q.status || "new") >= 0)) return send(res, 200, { error: "dup" });
+  const doc = Object.assign({ id: uid("inq"), at: Date.now(), status: "new", memo: "", addTo: a0.iid, want }, a);
+  if (want === "vod") { doc.source = "partners"; const form = cleanForm(b.form, t); if (form) doc.form = form; }
+  await store.writeDoc("inq:" + doc.id, doc, null);
+  await store.rlFail([k]);
+  // 강사 계정에 ‘신청 중’ 표시 (강사센터 자물쇠 창에 보여요) — 그새 다른 저장이 끼면 다시 읽어서
+  for (let i = 0, r = row; i < 5; i++) {
+    if (i) r = await store.getDoc("ins:" + a0.iid);
+    if (!r || !r.v) break;
+    const v = Object.assign({}, r.v, { trackReq: Object.assign({}, r.v.trackReq || {}, { [want]: { at: doc.at, inq: doc.id } }) });
+    if ((await store.writeDoc("ins:" + a0.iid, v, r.ver)) !== false) break;
+  }
+  send(res, 200, { ok: true });
+}
+
 /* 영상 길이 — 비메오는 oEmbed, 유튜브는 YOUTUBE_API_KEY 가 있으면 Data API · 없으면 영상 페이지의 재생 시간으로 받아요.
  * 받은 길이는 문서 vdur 에 기억해서 같은 영상은 다시 묻지 않아요 (못 받은 영상은 하루 뒤 다시). 한 번에 40개까지 */
 const VD_MAX = 40, VD_RETRY = 864e5, VD_KEEP = 4000;
@@ -157,6 +196,7 @@ module.exports = handler(["POST"], async (req, res) => {
   if (b.action === "signup") return signup(req, res, b);
   if (b.action === "free-question") return freeQuestion(req, res, b);
   if (b.action === "partner-apply") return partnerApply(req, res, b);
+  if (b.action === "track-apply") return trackApply(req, res, b);
   if (b.action === "vdur") return vdur(req, res, b);
   send(res, 400, { error: "action" });
 });

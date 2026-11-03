@@ -233,7 +233,7 @@
 
   /* ---------------- 로그인 ---------------- */
   function loginInstructor() {
-    const list = DB.activeInstructors();
+    const list = DB.liveInstructors();
     const id = loginPick || DB.session.instructorPick();
     return list.find((x) => x.id === id) || null;
   }
@@ -370,7 +370,7 @@
   }
   function renderLogin() {
     const rank = (id) => { const i = PICK_ORDER.indexOf(id); return i < 0 ? 99 : i; };
-    const list = DB.activeInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id));
+    const list = DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id));
     const ins = loginInstructor();
     if (!ins && list.length) return renderPicker(list);
     const brandIns = ins || list[0];
@@ -491,14 +491,14 @@
   window.DG_LOGIN = {
     list() {
       const rank = (id) => { const i = PICK_ORDER.indexOf(id); return i < 0 ? 99 : i; };
-      return DB.activeInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)).map((x) => {
+      return DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)).map((x) => {
         const b = (DB.content(x.id) || {}).brand || {}, ph = String(b.photo || "");
         return { id: x.id, name: x.displayName, title: b.shortTitle || b.courseTitle || "", field: b.field || b.shortTitle || b.courseTitle || "", photo: ph };
       });
     },
     pick() { const ins = loginInstructor(); return ins ? ins.id : ""; },
-    setPick(id) { if (id && DB.activeInstructors().some((x) => x.id === id)) { loginPick = id; DB.session.setInstructorPick(id); } else { loginPick = null; DB.store.remove("moonclass:instructor"); } },
-    login(iid, name, phone4) { return dgLoginCore(DB.activeInstructors().find((x) => x.id === iid) || null, name, phone4); }
+    setPick(id) { if (id && DB.liveInstructors().some((x) => x.id === id)) { loginPick = id; DB.session.setInstructorPick(id); } else { loginPick = null; DB.store.remove("moonclass:instructor"); } },
+    login(iid, name, phone4) { return dgLoginCore(DB.liveInstructors().find((x) => x.id === iid) || null, name, phone4); }
   };
 
   // 강의 내용 중 커리큘럼(주차·강의·과제)만 내 기수가 고른 커리큘럼으로 바꿔 끼운다
@@ -2468,7 +2468,7 @@
     if (!me) {
       // 랜딩페이지에서 넘어온 경우: #/login?ins=강사&signup=1
       const want = r.params.get("ins");
-      if (want && DB.activeInstructors().some((x) => x.id === want)) { loginPick = want; DB.session.setInstructorPick(want); }
+      if (want && DB.liveInstructors().some((x) => x.id === want)) { loginPick = want; DB.session.setInstructorPick(want); }
       const openSign = r.params.get("signup") === "1" && loginInstructor();
       if (r.parts[0] !== "login" || want) ROUTE.replace("#/login");
       renderLogin();

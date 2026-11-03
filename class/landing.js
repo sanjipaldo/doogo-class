@@ -158,7 +158,7 @@
 
   // #/p — 공개된 강사 랜딩페이지 모음
   function renderIndex() {
-    const list = DB.activeInstructors().filter((x) => { const L = DB.landingOf(x.id); return L && L.published; });
+    const list = DB.liveInstructors().filter((x) => { const L = DB.landingOf(x.id); return L && L.published; });
     document.title = "강의 둘러보기 · 두잉고";
     root.innerHTML = '<div class="lp"><header class="lp-nav"><div class="lp-wrap lp-nav-in"><span class="lp-brand">' + window.doogoClassWord("lp-word") + '</span><div class="lp-nav-r"><a class="lp-btn lp-btn-text" href="#/login">수강생 로그인</a></div></div></header>' +
       '<main class="lp-sec"><div class="lp-wrap"><p class="lp-kicker">CLASSES</p><h2>강의 둘러보기</h2><div class="lp-index">' +

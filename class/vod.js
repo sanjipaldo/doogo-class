@@ -1279,7 +1279,7 @@
   // 무료강의 = 무료 VOD + 두잉고 강사 무료 LIVE(#/free) · 프리미엄강의 = LIVE · 오프라인 상품 + 두잉고 기수 강의(#/p) · VOD강의 = 유료 VOD · 전자책
   function liveItems() {
     const out = [];
-    (DB.activeInstructors ? DB.activeInstructors() : []).forEach((x, i) => {
+    (DB.liveInstructors ? DB.liveInstructors() : []).forEach((x, i) => {
       if (storeAs(x.id) || V().products.some((p) => p.fromFree === x.id && p.status !== "hidden")) return; // STORE_AS 강사의 두잉고 무료 LIVE 페이지는 스토어에 걸지 않아요
       const f = DB.freeOf && DB.freeOf(x.id), c = DB.content(x.id); if (!f || !f.published || !c) return;
       const t = new Date(f.liveAt).getTime(); if (!(t > now() - 3 * 36e5)) return;
@@ -1290,7 +1290,7 @@
     return out.sort((a, b) => a.sort - b.sort);
   }
   function premiumItems() {
-    return (DB.activeInstructors ? DB.activeInstructors() : []).map((x, i) => {
+    return (DB.liveInstructors ? DB.liveInstructors() : []).map((x, i) => {
       if (storeAs(x.id)) return null; // STORE_AS 강사의 두잉고 기수 페이지는 스토어에 걸지 않아요
       const c = DB.content(x.id), lp = DB.landingOf && DB.landingOf(x.id), b = (c && c.brand) || {}; if (!lp || lp.published === false) return null;
       const nx = DB.nextCohortName ? DB.nextCohortName(x.id) : "";

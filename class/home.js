@@ -169,7 +169,7 @@
   const ORDER = ["moon", "choi"]; // 카드 순서: 문대표 → 초이 → 나머지
   function classes() {
     const rank = (id) => { const i = ORDER.indexOf(id); return i < 0 ? 99 : i; };
-    return DB.activeInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)).map((x) => {
+    return DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)).map((x) => {
       const c = DB.content(x.id) || {};
       const b = c.brand || {};
       const t = DB.themeOf(b.theme);
