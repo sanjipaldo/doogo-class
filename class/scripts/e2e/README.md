@@ -59,4 +59,15 @@ node scripts/e2e/fixture.js /tmp/fx  # 시험 DB만 만들기 → E2E_FIXTURE=/t
 
 ## 시험용 DB (미리보기 배포)
 
-미리보기 배포는 지금 운영 DB에 연결돼 있어요. 미리보기에는 시험용 DB만 연결하고, 미리보기 환경 변수 `DB_ROLE=staging` 을 두면 빌드(`scripts/db-build.js`)가 시험용 DB에만 처음 데이터 · 일회성 작업을 돌려요. 시험용 표시(oplog `__staging-db__`)가 없는데 데이터가 있는 DB(운영 DB일 수 있음)면 아무것도 바꾸지 않고 빌드를 멈춰요.
+2026-11-03부터 미리보기 배포는 **시험용 DB(Turso `doogo-class-staging`)** 에만 연결돼요. 운영 DB(`doogo-class-db`)는 운영(Production) · 개발(Development) 환경에만 있어요.
+
+| 미리보기 환경 변수 | 값 |
+| --- | --- |
+| `TURSO_DATABASE_URL` · `TURSO_AUTH_TOKEN` | 시험용 DB (Storage 연결 · Preview만) |
+| `DB_ROLE` | `staging` — 빌드(`scripts/db-build.js`)가 시험용 DB에만 처음 데이터 · 일회성 작업 · 기본값 채우기를 돌려요 |
+| `MASTER_PASSWORD` | 시험용 마스터 비밀번호 (운영과 다름 · 아이디 `doogobiz`) |
+
+- 시험용 표시(oplog `__staging-db__`)가 없는데 데이터가 있는 DB(운영 DB일 수 있음)면 아무것도 바꾸지 않고 빌드를 멈춰요.
+- 운영과 같은 순서: 빈 DB → 처음 데이터 → 마스터가 스토어를 한 번 열어 스토어 데이터를 올림 → 다음 미리보기 빌드 때 일회성 작업.
+- 미리보기 주소: 브랜치마다 `https://doogo-class-git-<브랜치>-sanjipaldo.vercel.app` (Vercel 로그인 필요).
+- 시험 배포에 읽기 전용 테스트 돌리기: `E2E_BASE=<미리보기 주소> node scripts/e2e/run.js routes` (Vercel 보호가 켜져 있으면 브라우저에서 확인).
