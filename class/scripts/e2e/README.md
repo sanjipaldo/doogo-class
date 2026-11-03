@@ -34,16 +34,21 @@ node scripts/e2e/fixture.js /tmp/fx  # 시험 DB만 만들기 → E2E_FIXTURE=/t
 | 주소 | 화면 |
 | --- | --- |
 | `/` · `/vod` | DOOGO CLASS 스토어 |
-| `/vod/p/<클래스>` | 클래스 상세 (VOD · 전자책 · LIVE · 오프라인 · 종이책) |
-| `/vod/my/…` | 회원 마이페이지 (내 강의 · 주문 · 계정) |
-| `/vodclass/<클래스>/<강의>` | VOD 강의실 |
+| `/vod/c/<all · soon · biz · commerce · marketing · ai · money · career>` · `/vod/teachers[/<강사>]` · `/vod/search?q=` · `/vod/about` · `/vod/partners` | 카테고리 · 강사진 · 검색 · 소개 · 두고 파트너스 |
+| `/vod/p/<클래스>` (`?rs=` · `?by=` · `utm_*`) | 클래스 상세 (VOD · 전자책 · LIVE · 오프라인 · 종이책) |
+| `/vod/login` · `/vod/signup` (`?next=`) | 스토어 로그인 · 회원가입 |
+| `/vod/checkout/<클래스>` (`?plan=180·365` · `coach=1` · `item=coach·tea·extend` · `qty=`) · `/vod/order/<주문번호>` | 결제 · 주문 완료 |
+| `/vod/my/<classes · free · vod · addons · ebooks · live · alarm · likes · pending · orders · ship · coupons · points · reviews · posts · badges · account · devices · help>` | 회원 마이페이지 |
+| `/vod/learn/<클래스>/<강의>` · `/vod/dg` · `/vodclass/<클래스>/<강의>` | VOD 강의실 |
 | `/terms` · `/privacy` · `/refund` | 약관 · 개인정보 처리방침 · 환불 규정 |
 | `/doinggo` | 두잉고 소개 (예전 `/about` · `/partner` 도 여기로) |
 | `/p/<강사>` · `/free/<강사>` | 강사 소개 · 무료강의 페이지 |
 | `/login` · `/login?ins=<강사>` · `/login?tab=vod` | 두잉고 수강생 로그인 · DOOGO CLASS 회원 로그인 |
-| `/home` 등 | 두잉고 수강생 강의실 (주차 강의 · 과제 · 캘린더 · 질문 …) |
-| `/center/…` | 강사센터 · 코치 · 마스터 · 파트너 · 온드미디어 |
+| `/home` · `/curriculum` · `/missions[/<주차>[/<과제>]]` · `/replays` · `/showcase` · `/notes` · `/glossary` · `/schedule` · `/notices` · `/qna` · `/docs` · `/bot` · `/library` · `/motivation` · `/channels` · `/partners` · `/certificate` · `/page/<키>` | 두잉고 수강생 강의실 |
+| `/center/login` · `/center/<메뉴>` · `/center/master/<메뉴>` · `/center/partner/…` · `/center/media/…` | 강사센터 · 코치 · 마스터 · 파트너 · 온드미디어 |
 | `/#/…` | 예전 링크 — 깨끗한 주소로 바꿔서 같은 화면 |
+
+**돌아오는 주소의 값:** 결제 `/?pay=<결제ID>#/vod/order/<주문번호>` (+ 포트원 `paymentId` · `code` · `message` · `pgCode` · `pgMessage` · `transactionType` · `txId`) · 카카오 로그인 `?vodlogin=ok|linked|deny|dup|taken|other|blocked|fail` — 화면이 읽고 나서 주소에서 지워요 (`ROUTE.dropQuery`).
 
 **바깥 서비스에 등록된 주소 (바뀌면 바로 장애):** 카카오 로그인 Redirect URI `/api/vod-kakao` · 포트원 결제 · 웹훅 `/api/vod-pay` · 무통장 입금 확인 웹훅 `/api/vod-bank` · `doinggo.doogoclass.com` → `/doinggo` 넘기기(vercel.json).
 

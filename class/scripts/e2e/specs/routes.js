@@ -20,6 +20,13 @@ module.exports = {
     const pages = [
       ["/", "vod", null, "스토어 첫 화면"],
       ["/vod", "vod", null, "스토어"],
+      ["/vod/c/all", "vod", null, "전체 클래스"],
+      ["/vod/teachers", "vod", null, "강사진"],
+      ["/vod/search?q=AI", "vod", null, "검색"],
+      ["/vod/about", "vod", null, "DOOGO CLASS 소개"],
+      ["/vod/partners", "vod", null, "두고 파트너스 (강사 지원)"],
+      ["/vod/login", "vod", "form[data-vd-auth='login']", "스토어 로그인"],
+      ["/vod/signup", "vod", "form[data-vd-auth='signup']", "회원가입"],
       ["/doinggo", "home", null, "두잉고 소개"],
       ["/p/moon", "landing", null, "강사 소개 페이지"],
       ["/free/moon", "landing", null, "무료강의 페이지"],
@@ -42,7 +49,7 @@ module.exports = {
     }
     await run.check(detail.length >= 3, "상품 상세를 3종류 이상 확인했어요", detail.map((p) => p.id + ":" + p.type));
     // 2) 예전 #주소 링크 → 깨끗한 주소로 바뀌고 같은 화면
-    const old = [["/#/doinggo", "/doinggo", "home"], ["/#/center/login", "/center/login", "admin"], ["/#/terms", "/terms", "vod"]].concat(detail.slice(0, 1).map((p) => ["/#/vod/p/" + p.id, "/vod/p/" + p.id, "vod"]));
+    const old = [["/#/doinggo", "/doinggo", "home"], ["/about", "/doinggo", "home"], ["/#/center/login", "/center/login", "admin"], ["/#/terms", "/terms", "vod"]].concat(detail.slice(0, 1).map((p) => ["/#/vod/p/" + p.id, "/vod/p/" + p.id, "vod"]));
     for (const [from, to, m] of old) {
       await L.open(page, base, from);
       const loc = await page.evaluate(() => location.pathname + location.search + location.hash);

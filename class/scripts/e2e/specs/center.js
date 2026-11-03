@@ -10,7 +10,15 @@ module.exports = {
     // 1) 강사: 클래스 소식(공지) 올리기 → 새로 고쳐도 있음 → 수강생 화면에도 보임
     const title = "E2E 공지 " + Date.now().toString(36);
     await FL.instructor(page, base, info);
-    await require("./center-notice").post(page, base, title, L);
+    await L.open(page, base, "/center/notices");
+    await page.click('button[data-action="item-add"][data-coll="notice"]');
+    await page.waitForSelector("form#coll-form #cf-title");
+    await page.fill("#cf-title", title);
+    await page.fill("#cf-body", "E2E 테스트 공지 본문이에요.");
+    await page.click('#modal-root button[type="submit"][form="coll-form"]');
+    await page.waitForTimeout(600);
+    await run.check(/공지를 저장했어요/.test(await L.toasts(page)), "강사: 공지 저장 안내", await L.toasts(page), page);
+    await L.flushed(page);
     await L.open(page, base, "/center/notices");
     await run.check((await L.bodyText(page)).indexOf(title) >= 0, "강사: 공지를 올리면 새로 고쳐도 남아요 (서버 저장)", null, page);
     await FL.student(page, base, info);

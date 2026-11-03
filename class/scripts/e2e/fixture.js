@@ -57,6 +57,7 @@ const masterLogin = (page, base) => adminLogin(page, base, "master", "doogobiz",
 
 async function build(dir) {
   dir = dir || L.tmp();
+  fs.mkdirSync(dir, { recursive: true });
   const db = path.join(dir, "fixture.db");
   fs.rmSync(db, { force: true });
   let srv = await L.startServer(db);
