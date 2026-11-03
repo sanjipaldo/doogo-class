@@ -4731,14 +4731,18 @@
     if (!f.elements.agree.checked) { err.textContent = "개인정보 수집 · 이용에 동의해 주세요."; return; }
     const kinds = vod ? Array.from(f.querySelectorAll("input[name=kinds]:checked")).map((x) => x.value) : [];
     const a = { iid: ins.id, name: v("name"), phone: v("phone"), email: v("email"), link: v("link"), message: v("message"), agree: true,
-      where: vod ? "[두고 파트너스 · 강사센터] " + (ins.displayName || ins.name) : v("where"),
+      // 마스터 화면 ‘강의 · 활동하는 곳’: DOOGO CLASS 신청은 두잉고(LIVE)로 이미 활동 중인 강사라는 표시 (앞의 [ ] 는 마스터 화면에서 빼고 보여요)
+      where: vod ? "[두고 파트너스] 기존 두잉고(LIVE) 강사 · 강사센터에서 신청" : v("where"),
       course: vod ? "[" + (kinds.join(", ") || "VOD 강의") + (v("cat") ? " / " + v("cat") : "") + "] " + v("topic") + "\n" + v("course") : v("course") };
     if (vod) a.form = { nick: v("nick"), cat: v("cat"), kinds, topic: v("topic"), when: v("when"), price: v("price") };
     const sb = document.querySelector('#modal-root button[type=submit][form="trk-apply-form"]'); if (sb) sb.disabled = true;
     const done = (r) => {
       if (sb) sb.disabled = false;
-      // ‘신청 중’ 표시는 서버가 강사 계정에 남겨요 (다음에 열 때 받아요) — 지금 화면에는 바로 보이게만
-      if (r && r.ok) { (ui.trkSent = ui.trkSent || {})[ins.id + ":" + want] = { at: Date.now() }; closeModal(); render(); toast((vod ? "DOOGO CLASS" : "LIVE 두잉고") + " 입점 신청을 보냈어요. 운영팀이 확인하고 연락드릴게요."); return; }
+      // ‘신청 중’ 표시는 서버가 강사 계정에 남겨요 — 바로 다시 받아 오고, 받기 전까지만 화면 표시로 (마스터가 나중에 지우면 그대로 따라가요)
+      if (r && r.ok) {
+        const key = ins.id + ":" + want; (ui.trkSent = ui.trkSent || {})[key] = { at: Date.now() };
+        if (DB.remote.on) DB.remote.refresh().then(() => { delete ui.trkSent[key]; if (!document.querySelector("#modal-root .a-modal")) render(); }, () => {});
+        closeModal(); render(); toast((vod ? "DOOGO CLASS" : "LIVE 두잉고") + " 입점 신청을 보냈어요. 운영팀이 확인하고 연락드릴게요."); return; }
       const e2 = r && r.error;
       err.textContent = e2 === "dup" ? "이미 보낸 신청이 있어요. 운영팀이 확인하고 연락드릴게요." : e2 === "open" ? "이미 열려 있어요. 새로고침해 주세요." : e2 === "locked" ? "잠시 후 다시 시도해 주세요." : e2 === "auth" ? "강사님 계정으로 로그인해야 보낼 수 있어요." : "보내지 못했어요. 칸을 확인하고 다시 시도해 주세요.";
     };
