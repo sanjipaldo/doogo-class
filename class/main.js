@@ -135,7 +135,8 @@
     if (idleBusy || (window.__dirty && window.__dirty())) return; // 저장하지 않은 편집이 있으면 기다려요
     const o = idleOver();
     // 강사센터 밖(수강생 강의실 · VOD 영상)을 보는 탭은 강사센터 로그아웃 때문에 새로 고치지 않아요 — 강사센터 탭을 다시 볼 때 · 다음에 열 때 확인
-    if (o.admin && !/^#\/center/.test(location.hash)) o.admin = false;
+    // (운영의 깨끗한 주소 /center/… 에서는 location.hash 가 비어 있어서 ROUTE.hash 로 봐요)
+    if (o.admin && !/^#\/center/.test(ROUTE.hash)) o.admin = false;
     if (!o.admin && !o.student) return;
     idleBusy = true;
     idleLogout(o, DB.remote.on).then(() => { if (DB.remote.on) location.reload(); else { idleBusy = false; idleMsg(); go(); } });

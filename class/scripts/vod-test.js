@@ -1450,6 +1450,10 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/const os = VD\(\)\.orders\.filter\(\(o\) => !o\.demo/.test(ad24) && /if \(o\.demo\) return;/.test(ad24), "정산: 체험 계정 0원 주문은 강사 정산 건수에 넣지 않아요");
     ok(/IDLE = \{ admin: 30 \* 60e3, student: 60 \* 60e3 \}/.test(mj24) && /action: "logout", which: "admin"/.test(mj24) && /post\("vod-auth", \{ action: "logout" \}\)/.test(mj24) && /\^#\\\/center/.test(mj24),
       "자동 로그아웃: 강사센터 30분 무동작 · 수강생/회원 60분 자리 비움 → 서버 쿠키까지 로그아웃 (강사센터 밖 탭은 새로 고치지 않아요)");
+    ok(/!\/\^#\\\/center\/\.test\(ROUTE\.hash\)/.test(mj24) && !/\.test\(location\.hash\)\) o\.admin = false/.test(mj24), "자동 로그아웃: 강사센터 화면인지는 ROUTE.hash 로 봐요 (운영의 깨끗한 주소 /center/… 에서도 켜 둔 화면이 30분 뒤 로그아웃)");
+    const vj24 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), dbb = fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8");
+    ok(/DB\.remote\.flush\(\)\)\.catch\(\(\) => \{\}\)\.then\(\(\) => authApi\("logout"\)\)/.test(vj24), "DOOGO CLASS 회원 로그아웃: 보내지 못한 기록을 먼저 보내고 로그아웃 (로그아웃 뒤에 보내면 서버가 거절)");
+    ok(/DB_ROLE === "staging"/.test(dbb) && /__staging-db__/.test(dbb) && /process\.exit\(1\)/.test(dbb), "빌드: 시험용 미리보기(DB_ROLE=staging)는 시험용 표시가 있는 DB에서만 바꾸고, 표시 없는 DB면 멈춰요");
     // 문대표 전용 색(뉴질랜드)은 강사센터 · 코치센터에도
     const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
     ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),

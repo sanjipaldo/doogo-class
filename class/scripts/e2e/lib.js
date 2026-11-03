@@ -1,0 +1,130 @@
+/* 상시 화면 테스트(E2E) 공용 도구 — 0단계 (Next.js 전환 전 · 후에 같은 테스트로 비교)
+ *
+ *  · 테스트 서버: scripts/dev-server.js 를 시험용 SQLite 파일로 띄워요. 운영 DB · 결제 · 카카오 키는 절대 넘기지 않아요
+ *    (환경 변수를 통째로 넘기지 않고, 필요한 것만 골라 새로 만들어요)
+ *  · 브라우저: 이 컴퓨터에 설치된 Playwright(chromium)를 써요. 저장소 package.json 에는 넣지 않아요 (배포 빌드가 무거워지지 않게)
+ *  · 확인 기록: check(ok, 이름, 자세히) — 실패하면 화면을 찍어 남겨요 */
+"use strict";
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const net = require("net");
+const { spawn } = require("child_process");
+
+const ROOT = path.join(__dirname, "..", ".."); // class/
+const MASTER_PW = "e2e-master-pass"; // 테스트 서버 전용 (운영 비밀번호와 무관)
+
+/** 운영 값이 섞이지 않는 최소 환경 변수 */
+function cleanEnv(extra) {
+  const keep = ["PATH", "HOME", "TMPDIR", "LANG", "TZ", "SYSTEMROOT"];
+  const env = {};
+  keep.forEach((k) => { if (process.env[k] != null) env[k] = process.env[k]; });
+  return Object.assign(env, extra || {});
+}
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.unref();
+    s.on("error", reject);
+    s.listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => resolve(p)); });
+  });
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitHttp(url, ms) {
+  const end = Date.now() + (ms || 15000);
+  for (;;) {
+    try { const r = await fetch(url); if (r.ok) return true; } catch (e) { /* 아직 안 떴어요 */ }
+    if (Date.now() > end) throw new Error("테스트 서버가 뜨지 않았어요: " + url);
+    await sleep(150);
+  }
+}
+
+/** 시험용 DB 파일로 테스트 서버 띄우기 → { base, stop, log } */
+async function startServer(dbFile) {
+  const port = await freePort();
+  const env = cleanEnv({ CLASS_SQLITE: dbFile, VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1" });
+  const child = spawn(process.execPath, [path.join(ROOT, "scripts", "dev-server.js"), String(port)], { env, stdio: ["ignore", "pipe", "pipe"] });
+  const log = [];
+  child.stdout.on("data", (b) => log.push(String(b)));
+  child.stderr.on("data", (b) => log.push(String(b)));
+  const base = "http://127.0.0.1:" + port;
+  await waitHttp(base + "/api/vod-config");
+  return { base, log, stop: () => new Promise((r) => { if (child.exitCode != null) return r(); child.once("exit", () => r()); child.kill(); }) };
+}
+
+/** 같은 시험 DB에 서버 코드(일회성 작업 등)를 따로 돌리기 — 운영 값 없이 */
+function runNode(code, dbFile) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["-e", code], { cwd: ROOT, env: cleanEnv({ CLASS_SQLITE: dbFile, NODE_NO_WARNINGS: "1" }), stdio: ["ignore", "pipe", "pipe"] });
+    let out = "", err = "";
+    child.stdout.on("data", (b) => { out += b; });
+    child.stderr.on("data", (b) => { err += b; });
+    child.on("exit", (c) => (c === 0 ? resolve(out) : reject(new Error((err || out).slice(-2000)))));
+  });
+}
+
+function chromium() {
+  try { return require("playwright").chromium; } catch (e) {
+    throw new Error("Playwright(chromium)가 없어요. 이 테스트는 Playwright 가 설치된 컴퓨터에서 돌려요 (npm i -g playwright && npx playwright install chromium)");
+  }
+}
+
+/** 확인 기록 + 페이지 오류 모으기 */
+function makeRun(name, shotDir) {
+  const checks = [], errs = [];
+  let n = 0;
+  const run = {
+    name, checks, errs,
+    /** 페이지 오류 · 콘솔 오류 · 서버 저장 거절을 모아요 (테스트가 끝날 때 0개여야 통과) */
+    watch(page, tag) {
+      page.on("pageerror", (e) => errs.push(tag + " 페이지 오류: " + e.message));
+      page.on("console", (m) => { if (m.type() === "error" && !/favicon|Failed to load resource|ERR_|net::/.test(m.text())) errs.push(tag + " 콘솔 오류: " + m.text().slice(0, 300)); });
+      page.on("response", async (r) => {
+        if (!/\/api\/sync/.test(r.url())) return;
+        try { const j = await r.json(); (j.results || []).forEach((x) => { if (x.error) errs.push(tag + " 저장 거절 " + x.k + " " + x.error); }); } catch (e) { /* 응답 본문 없음 */ }
+      });
+    },
+    async check(ok, label, info, page) {
+      n++;
+      const c = { ok: !!ok, label };
+      if (!ok) {
+        c.info = info === undefined ? undefined : typeof info === "string" ? info.slice(0, 800) : JSON.stringify(info).slice(0, 800);
+        if (page && shotDir) { try { const f = path.join(shotDir, name + "-" + n + ".png"); await page.screenshot({ path: f, fullPage: true }); c.shot = f; } catch (e) { /* 화면을 못 찍어도 계속 */ } }
+      }
+      checks.push(c);
+      return !!ok;
+    }
+  };
+  return run;
+}
+
+/* ---------- 화면 도우미 (지금 화면 · 나중 Next.js 화면이 같은 주소 · 같은 결과를 내야 해요) ---------- */
+/** 새 브라우저 창 — 운영(www.doogoclass.com)처럼 ‘#’ 없는 깨끗한 주소로 (index.html 이 dc:clean 을 보고 켜요) */
+async function newPage(browser, opts) {
+  const ctx = await browser.newContext(Object.assign({ viewport: { width: 1280, height: 900 } }, opts || {}));
+  await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); } catch (e) { /* 저장소를 못 쓰면 #주소로 */ } });
+  return ctx.newPage();
+}
+/** 첫 로딩이 끝날 때까지 (로딩 화면이 사라지고 화면이 그려짐) */
+async function ready(page, ms) {
+  await page.waitForFunction(() => { const r = document.getElementById("root"); return !!(r && r.children.length && !r.querySelector(".boot-wait")); }, null, { timeout: ms || 15000 });
+  await page.waitForTimeout(300);
+}
+async function open(page, base, p) { await page.goto(base + p, { waitUntil: "load" }); await ready(page); }
+const text = (page, sel) => page.evaluate((s) => { const e = document.querySelector(s); return e ? e.textContent.replace(/\s+/g, " ").trim() : null; }, sel);
+const toasts = (page) => page.evaluate(() => Array.from(document.querySelectorAll("#toast-root .toast")).map((t) => t.textContent.trim()).join(" | "));
+const bodyText = (page) => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+const me = (page) => page.evaluate(() => (window.DB && DB.remote && DB.remote.me) || null);
+/** 이 브라우저의 저장 · 쿠키를 비우고 새로 시작 */
+async function fresh(page, base) {
+  await page.goto(base + "/terms", { waitUntil: "load" });
+  await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) { /* 비우기 실패해도 계속 */ } });
+  await page.context().clearCookies();
+}
+/** 서버에 남은 변경을 다 보낼 때까지 */
+async function flushed(page, ms) {
+  await page.waitForFunction(() => !(window.DB && DB.remote && DB.remote.pending && DB.remote.pending()), null, { timeout: ms || 10000 }).catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+module.exports = { ROOT, MASTER_PW, cleanEnv, freePort, sleep, waitHttp, startServer, runNode, chromium, makeRun, newPage, ready, open, text, toasts, bodyText, me, fresh, flushed, tmp: () => fs.mkdtempSync(path.join(os.tmpdir(), "doogo-e2e-")) };

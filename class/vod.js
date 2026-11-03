@@ -3688,7 +3688,8 @@
     if (v === "kk-link") { kakaoLink(); return; }
     if (v === "kk-off") { kakaoUnlink(t); return; }
     if (v === "logout") {
-      if (SRV()) { closeModal(); authApi("logout").then(() => DB.remote.logout("student")).catch(() => {}).then(() => { try { DB.session.setStudent(null); } catch (e) {} return DB.remote.refresh(); }).then(() => { toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); }); return; }
+      // 보내지 못한 변경(진도 · 찜 등)을 먼저 서버에 보내고 로그아웃해요 — 로그아웃 뒤에 보내면 서버가 거절해서 기록이 사라졌어요
+      if (SRV()) { closeModal(); Promise.resolve(DB.remote.flush && DB.remote.flush()).catch(() => {}).then(() => authApi("logout")).then(() => DB.remote.logout("student")).catch(() => {}).then(() => { try { DB.session.setStudent(null); } catch (e) {} return DB.remote.refresh(); }).then(() => { toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); }); return; }
       setMe(null); closeModal(); toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); return;
     }
     if (v === "print") { window.print(); return; }
