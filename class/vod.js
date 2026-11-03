@@ -3513,8 +3513,12 @@
   }
   const isActive = () => document.body.dataset.mode === "vod";
   const closeModal = () => { document.getElementById("modal-root").innerHTML = ""; if (pgWait) pgWait(false, true); };
+  // 팝업은 X(또는 취소 · 닫기 버튼)를 눌러야만 닫혀요 — 바깥을 누르거나 ESC 로는 닫히지 않아요 (2026-11)
+  // 예외: 전체 메뉴 · 내 계정 메뉴는 펼침 메뉴라 바깥을 누르거나 ESC 로 닫혀요
+  const MENU_MODAL = ["vd-modal-drawer", "vd-modal-acct"];
+  const isMenuModal = (el) => !!el && MENU_MODAL.some((c) => el.classList.contains(c));
   function modal(title, body, cls) {
-    document.getElementById("modal-root").innerHTML = '<div class="vd-modal-bg' + (cls ? " " + cls : "") + '" data-v="close"><div class="vd-modal" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="vd-modal-h"><b>' + esc(title) + '</b><button type="button" data-v="close" aria-label="닫기">' + icon("x", "sm") + "</button></div>" + body + "</div></div>";
+    document.getElementById("modal-root").innerHTML = '<div class="vd-modal-bg' + (cls ? " " + cls : "") + '"' + (MENU_MODAL.indexOf(cls) >= 0 ? ' data-v="close"' : "") + '><div class="vd-modal" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="vd-modal-h"><b>' + esc(title) + '</b><button type="button" data-v="close" aria-label="닫기">' + icon("x", "sm") + "</button></div>" + body + "</div></div>";
   }
   // 내 계정 메뉴: 인사 · 내 강의 · 쿠폰 · 포인트 · 자주 가는 곳 · 로그아웃 (PC 는 오른쪽 위에서 펼침, 휴대폰은 아래에서 올라옴)
   function acctBody(m) {
@@ -3742,7 +3746,7 @@
       if (next) ROUTE.hash = "#/vod/learn/" + p.id + "/" + next.id; else { render(); toast(pctDone(m.id, p.id) === 100 ? "모든 강의를 완료했어요! 후기도 남겨 주세요." : "완료했어요."); }
     }
   });
-  document.addEventListener("keydown", (e) => { if (isActive() && e.key === "Escape" && document.querySelector("#modal-root .vd-modal-bg")) closeModal(); else if (isActive() && e.key === "Escape" && ui.mega) { megaSet(false); const b = document.querySelector(".vd-allcat"); if (b) b.focus(); } });
+  document.addEventListener("keydown", (e) => { if (isActive() && e.key === "Escape" && document.querySelector("#modal-root .vd-modal-bg")) { if (isMenuModal(document.querySelector("#modal-root .vd-modal-bg"))) closeModal(); } else if (isActive() && e.key === "Escape" && ui.mega) { megaSet(false); const b = document.querySelector(".vd-allcat"); if (b) b.focus(); } });
   // 펼침 메뉴: 안의 링크를 누르면 닫고 이동 · 머리띠의 다른 곳은 닫고 그대로 · 어둡게 가린 아래 화면을 누르면 닫기만 (밑의 카드가 눌리지 않게)
   document.addEventListener("click", (e) => {
     if (!ui.mega || !isActive() || e.target.closest(".vd-allcat")) return;

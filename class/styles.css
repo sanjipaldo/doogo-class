@@ -2212,7 +2212,7 @@ html.th-night { color-scheme: dark; }
 
 /* ---------- v12: 강의실 안 AI 조교 = 오른쪽 패널 ---------- */
 .vt-focus .bot-fab.open { display: block !important; position: fixed; inset: 0; z-index: 80; }
-.vt-focus .bot-fab.open .bp-scrim { display: block; position: fixed; inset: 0; border: 0; background: rgba(10, 10, 12, .38); cursor: pointer; }
+.vt-focus .bot-fab.open .bp-scrim { display: block; position: fixed; inset: 0; border: 0; background: rgba(10, 10, 12, .38); }
 .vt-focus .bot-fab.open .bot-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); max-width: none; height: 100dvh; max-height: none; border-radius: 0; display: flex; flex-direction: column; animation: vtBotIn .28s cubic-bezier(.2, .9, .3, 1); }
 .vt-focus .bot-fab.open .bot-panel .chat-log { flex: 1; max-height: none; min-height: 0; overflow: auto; }
 @keyframes vtBotIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }

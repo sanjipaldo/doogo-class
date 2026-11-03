@@ -362,7 +362,7 @@
   }
   function questionModal(id) {
     const F = DB.freeOf(id), m = document.getElementById("modal-root");
-    m.innerHTML = '<div class="modal-backdrop" data-fc="close-bg"><div class="modal fc-modal" role="dialog" aria-modal="true" aria-labelledby="fc-q-title"><div class="modal-head"><h3 id="fc-q-title">' + esc(F.question.title) + '</h3><button class="icon-btn" data-fc="close" aria-label="닫기">' + icon("x") + "</button></div>" +
+    m.innerHTML = '<div class="modal-backdrop"><div class="modal fc-modal" role="dialog" aria-modal="true" aria-labelledby="fc-q-title"><div class="modal-head"><h3 id="fc-q-title">' + esc(F.question.title) + '</h3><button class="icon-btn" data-fc="close" aria-label="닫기">' + icon("x") + "</button></div>" +
       '<form id="fc-q-form" class="modal-body stack" style="white-space:normal"><div class="field"><label for="fcq-name">이름 (선택)</label><input class="input" id="fcq-name" name="qname" placeholder="예: 홍길동"></div>' +
       '<div class="field"><label for="fcq-text">질문</label><textarea class="textarea" id="fcq-text" name="qtext" rows="5" placeholder="예: 사업자 없이도 시작할 수 있나요? 제 상황은 …"></textarea></div><p class="field-error" id="fcq-err"></p>' +
       '<button class="btn btn-primary btn-block" type="submit">질문 남기기</button></form></div></div>';
@@ -449,7 +449,7 @@
     if (f) {
       const k = f.dataset.fc, mr = document.getElementById("modal-root");
       if (k === "question") { e.preventDefault(); questionModal(insIdFromHash()); }
-      else if (k === "close" || (k === "close-bg" && e.target === f)) mr.innerHTML = "";
+      else if (k === "close") mr.innerHTML = ""; // 바깥(어두운 곳)을 눌러도 닫지 않아요 (X 버튼만, 2026-11)
       else if (k === "gift") { e.preventDefault(); fcToast(f.dataset.open === "1" ? "공개됐어요. 전자책 링크가 곧 올라와요." : lockWhen(f.dataset.date) + "에 자동으로 열려요. 조금만 기다려 주세요!"); }
       else if (k === "nolink") { e.preventDefault(); fcToast("신청 페이지가 곧 열려요."); }
       else if (k === "intro-play") {

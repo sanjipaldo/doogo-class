@@ -1865,7 +1865,7 @@
       el.innerHTML = '<button class="bot-launch" type="button" data-action="bot-open" aria-label="' + esc(D.brand.botName) + ' 열기">' + botFace() + '<span class="bl-txt"><small>' + esc(D.brand.botName) + "</small><b>무엇이든 물어보세요</b></span>" + '<span class="bl-go">' + icon("message", "sm") + "</span></button>";
       return;
     }
-    el.innerHTML = '<button type="button" class="bp-scrim" data-action="bot-close" aria-label="닫기"></button>' +
+    el.innerHTML = '<span class="bp-scrim" aria-hidden="true"></span>' + // 바깥을 눌러도 닫지 않아요 (X 버튼만)
       '<section class="bot-panel" role="dialog" aria-label="' + esc(D.brand.botName) + '"><span class="bp-grab" aria-hidden="true"></span><div class="bp-head">' + botFace("lg") +
         '<div class="bp-title"><strong>' + esc(D.brand.botName) + '</strong><small><i class="bp-dot"></i>' + esc(D.brand.instructor) + "님 강의 자료로 답해요 · 24시간</small></div>" +
         '<div class="tools"><a href="#/bot" aria-label="전체 화면으로 보기" title="전체 화면">' + icon("arrowUpRight", "sm") + '</a><button type="button" data-action="bot-close" aria-label="닫기" title="닫기">' + icon("x", "sm") + "</button></div></div>" +
@@ -2358,7 +2358,8 @@
 
   /* ---------------- 모달 · 토스트 ---------------- */
   function openModal(title, bodyHtml, actionsHtml, wide) {
-    modalRoot.innerHTML = '<div class="modal-backdrop" data-action="modal-close-bg"><div class="modal' + (wide ? " wide" : "") + '" role="dialog" aria-modal="true" aria-labelledby="modal-title">' +
+    // 팝업은 X(또는 취소 · 닫기 버튼)를 눌러야만 닫혀요 — 바깥을 누르거나 ESC 로는 닫히지 않아요 (2026-11)
+    modalRoot.innerHTML = '<div class="modal-backdrop"><div class="modal' + (wide ? " wide" : "") + '" role="dialog" aria-modal="true" aria-labelledby="modal-title">' +
       '<div class="modal-head"><h3 id="modal-title">' + esc(title) + '</h3><button class="icon-btn" data-action="modal-close" aria-label="닫기">' + icon("x") + "</button></div>" +
       '<div class="modal-body">' + bodyHtml + "</div>" + (actionsHtml ? '<div class="modal-actions">' + actionsHtml + "</div>" : "") + "</div></div>";
     const f = modalRoot.querySelector("input, select, [data-action=modal-close]");
@@ -2544,7 +2545,6 @@
         break;
       case "legal": { const doc = LEGAL[a.dataset.doc]; openModal(doc[0], window.CLASS_LEGAL_HTML ? window.CLASS_LEGAL_HTML(doc[1]) : esc(doc[1]), '<button class="btn btn-primary" data-action="modal-close">확인</button>', true); break; }
       case "modal-close": closeModal(); break;
-      case "modal-close-bg": if (e.target === a) closeModal(); break;
       case "logout": logout(); break;
       case "exit-preview": if (INS) { loginPick = INS.id; DB.session.setInstructorPick(INS.id); } DB.session.setStudent(null); me = null; ROUTE.hash = "#/login"; break;
       case "toggle-nav": document.getElementById("app").classList.toggle("nav-open"); break;
@@ -2772,8 +2772,7 @@
     if (!isActive()) return;
     if (e.key === "Enter" && e.target.matches && e.target.matches(".video-ph[role=button], tr[data-action=req-open]")) { e.target.click(); return; }
     if (e.key !== "Escape") return;
-    if (modalRoot.querySelector(".lib-gate")) return; // 자료실 안내는 ‘확인’을 눌러야 닫힌다
-    if (modalRoot.innerHTML) closeModal();
+    // 팝업은 ESC 로 닫지 않아요 (X · 확인 버튼만) — 왼쪽 메뉴만 닫아요
     const app = document.getElementById("app");
     if (app) app.classList.remove("nav-open");
   });

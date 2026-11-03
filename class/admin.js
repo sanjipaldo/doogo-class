@@ -108,7 +108,8 @@
     setTimeout(() => t.remove(), /🔔/.test(msg) ? 4200 : 2600);
   }
   function openModal(title, body, actions, size) {
-    modalRoot.innerHTML = '<div class="a-modal-backdrop" data-action="modal-bg"><div class="a-modal ' + (size || "") + '" role="dialog" aria-modal="true" aria-labelledby="a-modal-title">' +
+    // 팝업은 X(또는 취소 · 닫기 버튼)를 눌러야만 닫혀요 — 바깥 어두운 곳을 누르거나 ESC 로는 닫히지 않아요 (쓰던 내용이 날아가지 않게, 2026-11)
+    modalRoot.innerHTML = '<div class="a-modal-backdrop"><div class="a-modal ' + (size || "") + '" role="dialog" aria-modal="true" aria-labelledby="a-modal-title">' +
       '<div class="a-modal-head"><h3 id="a-modal-title">' + esc(title) + '</h3><button class="a-icon-btn" data-action="modal-close" aria-label="닫기">' + icon("x") + "</button></div>" +
       '<div class="a-modal-body">' + body + "</div>" + (actions ? '<div class="a-modal-actions">' + actions + "</div>" : "") + "</div></div>";
     const f = modalRoot.querySelector(".a-modal-body input:not([type=checkbox]), .a-modal-body textarea, .a-modal-body select");
@@ -7752,7 +7753,6 @@
       case "aff-go-settings": ROUTE.hash = "#/center/partner/settings"; break;
       case "toggle-nav": document.getElementById("a-app").classList.toggle("nav-open"); break;
       case "modal-close": closeModal(); break;
-      case "modal-bg": if (e.target === a) closeModal(); break;
       case "confirm-ok": { const fn = confirmFn; confirmFn = null; if (fn) fn(); break; }
       case "preview": openPreview(d.cohort); break;
       case "vp-go": setVpid(d.id); ROUTE.hash = "#/center/menus"; toast("‘" + ((vdP(d.id) || {}).title || "") + "’ 강의실을 꾸며요."); break;
@@ -8205,7 +8205,7 @@
       if (b && e.target.value.trim()) b.click();
       return;
     }
-    if (e.key === "Escape") { if (modalRoot.innerHTML) closeModal(); const app = document.getElementById("a-app"); if (app) app.classList.remove("nav-open"); }
+    if (e.key === "Escape") { const app = document.getElementById("a-app"); if (app) app.classList.remove("nav-open"); } // 팝업은 ESC 로 닫지 않아요 (X 버튼만)
   });
 
   window.AdminApp = { render, mount };

@@ -1010,7 +1010,7 @@
 
   document.addEventListener("click", (e) => {
     if (!isActive()) return;
-    if (e.target.closest("[data-hm-close]") || (e.target.matches && e.target.matches("[data-hm-bg]"))) { closeApply(); return; }
+    if (e.target.closest("[data-hm-close]")) { closeApply(); return; } // 바깥(어두운 곳)을 눌러도 닫지 않아요 (X 버튼만, 2026-11)
     if (e.target.closest("[data-hm-apply]")) { e.preventDefault(); openApply(); return; }
     const lg = e.target.closest("[data-hm-legal]");
     if (lg) { e.preventDefault(); openLegal(lg.dataset.hmLegal); return; }
@@ -1045,7 +1045,7 @@
     submitApply(e.target);
   });
   document.addEventListener("keydown", (e) => {
-    if (isActive() && e.key === "Escape" && document.querySelector(".hm-mbg")) closeApply();
+    // 팝업은 ESC 로 닫지 않아요 (X 버튼만, 2026-11)
   });
 
   window.HomeApp = { render, mount, openApply };

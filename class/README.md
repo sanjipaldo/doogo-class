@@ -267,6 +267,11 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 - 예전 코치(담당 칸 없음): VOD 메뉴가 하나라도 있으면 ‘둘 다’, 없으면 ‘LIVE’로 읽어요(둘 다면 예전처럼 같은 이름의 VOD 강의실 메뉴도 열림). 문대표 코치들은 일회성 작업 `2026-11-03-moon-coaches-live` 로 LIVE 담당이 돼요(담당 칸이 빈 코치만 · 메뉴 체크는 그대로).
 - 표는 `coach-perms.js` 한 곳(화면 `admin.js` · `db.js` 와 서버 `api/_lib/auth.js` · `access.js` · `vodaccess.js` 가 함께 씀 — `index.html` 에서 `db.js` 보다 먼저, 배포 함수 `includeFiles` 에도 들어 있어요). 테스트: `node scripts/vod-test.js` 22번.
 
+## 팝업은 X 버튼으로만 닫혀요 (2026-11)
+
+- 강사센터 · 코치센터 · 마스터 · 파트너센터(`admin.js` openModal), 수강생 화면(`app.js` openModal · AI 조교 떠 있는 창), DOOGO CLASS(`vod.js` modal), 두잉고 첫 화면 입점 문의 · 약관(`home.js`), 무료강의 질문(`landing.js`) 팝업은 **바깥 어두운 곳을 눌러도 · ESC 를 눌러도 닫히지 않아요**. 쓰던 내용이 실수로 날아가지 않게, 위 X 버튼(또는 팝업 안의 취소 · 닫기 · 확인 버튼)으로만 닫혀요.
+- 예외: DOOGO CLASS 위쪽 **전체 메뉴 · 내 계정 메뉴**는 펼침 메뉴라 예전처럼 바깥을 누르거나 ESC 로 닫혀요(`vod.js` MENU_MODAL).
+
 ## 강사 전용 색 (강사센터 · 코치센터)
 
 - 강의실 색이 그 강사 전용 색(`db.js` THEMES 의 `only` — 지금은 문대표 ‘뉴질랜드’)이면 강사센터 · 코치센터도 빨강 대신 그 색이에요(`body[data-ath="nz"]` · `admin.css` 맨 아래). 국기 네이비 #0B2A5B 포인트 · 맨 위 국기 띠(네이비 · 흰색 · 실버 펀 · 남십자성 레드) · 코치 화면의 초록 포인트도 네이비. 오류 · 경고 · 일요일 빨강은 그대로. 마스터 · 파트너 · 로그인 화면은 예전 레드.
