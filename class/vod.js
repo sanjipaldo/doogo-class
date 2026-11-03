@@ -581,7 +581,7 @@
    * 도서정가제: 쿠폰은 쓰지 않고, 할인가는 정가의 90% 이상으로만 정해요 (포인트는 결제 수단이라 써요) */
   const isBook = (p) => typeOf(p) === "book";
   const BOOK_MAX = 10;
-  const shipFeeOf = (p) => (isBook(p) ? Math.max(0, Math.round(Number(p.shipFee) || 0)) : 0);
+  const shipFeeOf = (p) => PRC().shipOf(p);
   const shipFeeTxt = (p) => (shipFeeOf(p) ? "배송비 " + won(shipFeeOf(p)) : "무료배송");
   const SHIP_DEF = { autoDays: 3, outDays: 2, carrier: "CJ대한통운", returnFee: 6000, returnAddr: "" };
   const shipSet = () => Object.assign({}, SHIP_DEF, (V().settings || {}).ship || {});
@@ -626,35 +626,36 @@
   const onSale = () => V().products.filter((p) => p.status === "on" && !eventPast(p));
   /* 판매 영역 (마스터 › VOD 전시 · 설정 › 판매 영역): 지금은 VOD · 전자책 중심. 꺼 둔 영역(LIVE · 오프라인 / 무료 강의)은
    * 메뉴 · 홈 · 카테고리 아이콘 · 전체 클래스 · 검색 · 강사 페이지에서 숨겨요. 이미 산 강의는 마이페이지에서 그대로 들어요 */
-  const BIZ_DEF = { ebook: true, live: false, free: false, flive: false };
-  const bizOn = (k) => { const b = V().biz || {}; return b[k] != null ? b[k] !== false : BIZ_DEF[k] !== false; };
+  const BIZ_DEF = window.DCS.price.BIZ_DEF;
+  const bizOn = (k) => PRC().bizOn(k);
   /* 무료 LIVE → 얼리버드 (타이탄 클래스처럼 상품은 둘, 운영은 하나로 이어요)
    * 무료 LIVE(0원 LIVE · 설명회)에 ‘이어지는 유료 강의(next)’ · 얼리버드 가격(ebPrice) · 기간(ebDays) · 끝날 때까지 숨기기(gate)를 적어 두면,
    * LIVE가 끝나는 순간 무료 LIVE 카드는 빠지고 연결한 유료 강의가 얼리버드 가격 · 마감 시계와 함께 ‘얼리버드 할인중’ 섹션에 떠요.
    * 같은 유료 강의에 무료 LIVE를 회차마다 계속 이어 붙일 수 있어요. 판매 영역 ‘무료 LIVE’가 꺼져 있으면 아무것도 바뀌지 않아요 */
-  const isFreeEv = (p) => !!p && isEvent(p) && !(Number(p.price) > 0);
-  const evEnd = (p) => eventTime(p) + (Number(p.eventMin) || 60) * 6e4;
-  function funnelOf(f) {
-    if (!isFreeEv(f) || !f.next || !eventTime(f)) return null;
-    const end = evEnd(f), e = new Date(end), d0 = e.getFullYear() + "-" + String(e.getMonth() + 1).padStart(2, "0") + "-" + String(e.getDate()).padStart(2, "0");
-    const ebDay = DB.date.addDays(d0, Math.max(1, Math.min(60, Number(f.ebDays) || 3))), ebEnd = new Date(ebDay + "T23:59:59").getTime();
-    return { f, next: f.next, end, ebDay, ebEnd, ebPrice: Number(f.ebPrice) || 0, phase: now() < end ? "before" : now() <= ebEnd ? "eb" : "done" };
+  const isFreeEv = window.DCS.price.isFreeEv;
+  const evEnd = (p) => PRC().evEnd(p);
+  // 가격 계산 규칙은 화면 · 서버 공용 모듈(shared/price.js — Next.js 전환 2단계)에 있어요. 여기서는 이 화면의 ‘지금 값’을 넘겨요
+  //  (시각은 예전처럼 이 기기 시간대 — 결제 금액은 늘 서버가 같은 규칙 · 한국 시간으로 다시 계산해요)
+  function PRC() {
+    return PRC.x || (PRC.x = window.DCS.price.make({
+      products: () => V().products, settings: () => STG(), biz: () => V().biz, now: () => now(), today: () => today(),
+      time: (s) => { const t = s ? new Date(s).getTime() : NaN; return isNaN(t) ? 0 : t; },
+      dayOf: (ms) => DB.date.toStr(new Date(ms)), addDays: (d, n) => DB.date.addDays(d, n), endOfDay: (d) => new Date(d + "T23:59:59").getTime(),
+      dgOpen: (p) => dgOpen(p)
+    }));
   }
+  function funnelOf(f) { return PRC().funnelOf(f); }
   // 이 유료 강의로 이어지는 무료 LIVE: 얼리버드 중인 회차 → 다가오는 회차 순
-  function funnelTo(p) {
-    if (!p || isFreeEv(p) || !bizOn("flive")) return null;
-    const fs = V().products.filter((f) => f.status === "on" && f.next === p.id).map(funnelOf).filter(Boolean);
-    return fs.filter((x) => x.phase === "eb").sort((a, b) => b.end - a.end)[0] || fs.filter((x) => x.phase === "before").sort((a, b) => a.end - b.end)[0] || null;
-  }
-  const basePrice = (p) => (p.sale != null && p.sale !== "" && (!p.saleEnd || today() <= p.saleEnd) ? Number(p.sale) : Number(p.price) || 0);
-  function ebOf(p) { const fn = funnelTo(p); return fn && fn.phase === "eb" && fn.ebPrice > 0 && fn.ebPrice < basePrice(p) ? Object.assign({ price: fn.ebPrice }, fn) : null; }
+  function funnelTo(p) { return PRC().funnelTo(p); }
+  const basePrice = (p) => PRC().basePrice(p);
+  function ebOf(p) { return PRC().ebOf(p); }
   // ‘무료 LIVE가 끝날 때까지 숨기기’를 켠 유료 강의는 LIVE가 끝나야 목록에 보여요
   const gatedBy = (p) => { const fn = funnelTo(p); return fn && fn.phase === "before" && fn.f.gate ? fn : null; };
   const bizKey = (p) => (isFreeEv(p) ? "flive" : isEvent(p) ? "live" : typeOf(p) === "ebook" || isBook(p) ? "ebook" : p.status !== "soon" && basePrice(p) === 0 ? "free" : "");
   const bizShow = (p) => !!p && (!bizKey(p) || bizOn(bizKey(p))) && !gatedBy(p) && insShown(p);
   const listed = () => onSale().filter(bizShow);
   const product = (id) => V().products.find((p) => p.id === id) || null;
-  const priceOf = (p) => { const e = ebOf(p); return e ? e.price : basePrice(p); };
+  const priceOf = (p) => PRC().priceOf(p);
   // 할인 · 얼리버드 마감 시각 (카드 D-day · 상세 마감 시계)
   const saleEndOf = (p) => { const e = ebOf(p); return e ? e.ebDay + "T23:59:59" : p.saleEnd && pctOf(p) ? p.saleEnd + "T23:59:59" : ""; };
   const pctOf = (p) => { const a = priceOf(p), b = Number(p.price) || 0; return b > 0 && a < b ? Math.round((1 - a / b) * 100) : 0; };
@@ -782,24 +783,20 @@
    * 클래스마다 가격을 정하고, 비우면 6개월 = 판매가 · 12개월 = × 1.1 (천 원 단위). 화면에는 ‘월 가격’(총액 ÷ 개월 수, 100원 올림)을 크게 + 총액을 함께 보여요
    * 부가 상품: 1:1 코칭권 (횟수 · 사용 기간 · 가격) · 강사님과 TEA TIME (시간 · 가격)
    * 주문 kind: course(수강권) · extend(예전 1년 연장권 — 이제 팔지 않고 재수강 할인으로 바뀜) · coach(1:1 코칭권) · tea(TEA TIME). 예전 주문은 kind 없이 course로 봐요 */
-  const PLAN_DAYS = [[180, "6개월", 1, 6], [365, "12개월", 1.1, 12]];
+  const PLAN_DAYS = window.DCS.price.PLAN_DAYS;
   const PLAN_OLD = { 1095: "3년" }; // 예전에 판 수강권 이름 (주문 · 정산 화면에서만)
-  const r1k = (n) => Math.round(n / 1000) * 1000;
+  const r1k = window.DCS.price.r1k;
   const planLabel = (d) => { const x = PLAN_DAYS.find((y) => y[0] === Number(d)); return x ? x[1] : PLAN_OLD[Number(d)] || monthsTxt(Number(d) || 0); };
-  const perMonth = (sale, mo) => Math.ceil(sale / mo / 100) * 100;
-  function plansOf(p) {
-    if (!p || typeOf(p) !== "vod" || priceOf(p) === 0) return [];
-    const cfg = p.plans || {}, base = priceOf(p), list0 = Number(p.price) || base, eb = ebOf(p), er = eb ? eb.price / basePrice(p) : 1;
-    return PLAN_DAYS.map((x) => { const c = cfg[x[0]] || {}; if (c.on === false) return null; const sale = c.price != null && c.price !== "" ? (eb ? r1k(Number(c.price) * er) : Number(c.price)) : r1k(base * x[2]); return { d: x[0], label: x[1], mo: x[3], sale, list: Math.max(sale, r1k(list0 * x[2])), day: Math.round(sale / x[0]), month: perMonth(sale, x[3]) }; }).filter(Boolean);
-  }
-  const defPlan = (p) => { const ps = plansOf(p); return ps.find((x) => x.d === 365) || ps[0] || null; };
-  const planOf = (p, d) => plansOf(p).find((x) => x.d === Number(d)) || defPlan(p);
+  const perMonth = window.DCS.price.perMonth;
+  function plansOf(p) { return PRC().plansOf(p); }
+  const defPlan = (p) => PRC().defPlan(p);
+  const planOf = (p, d) => PRC().planOf(p, d);
   /* ---------- 재수강 할인 (2026-11) ----------
    * 수강 기간이 끝난 강의를 다시 사면 수강권(6개월 · 12개월) 가격에서 자동으로 40% 할인 (마스터 › VOD 설정에서 % · 켜고 끄기 — settings.rebuy)
    * 할인된 금액이 그대로 정산 기준액(o.sale)이라, 할인은 강사 : 플랫폼이 정산 비율(기본 5 : 5)대로 함께 나눠요. 쿠폰과는 함께 쓰지 않아요 (포인트는 써요)
    * 서버(_lib/vod.js quote)가 회원 주문으로 다시 확인해요. 주문에는 rebuy { pct, was(할인 전 판매가) } 가 남고, 관리 화면에는 ‘재결제’로 보여요 */
-  const rebuySet = () => { const r = STG().rebuy || {}, n = Number(r.pct); return { on: r.on !== false, pct: n > 0 && n < 100 ? n : 40 }; };
-  const rbPrice = (sale, pct) => Math.floor(sale * (100 - pct) / 100 / 100) * 100;
+  const rebuySet = () => PRC().rebuySet();
+  const rbPrice = window.DCS.price.rbPrice;
   /** 이 회원이 지금 재수강 할인을 받는지 → 할인 % (아니면 0): 예전에 이 강의를 수강했고(결제 완료) 지금은 수강 기간이 끝났을 때 */
   const rebuyOf = (mid, p) => { const r = rebuySet(); return r.on && !!mid && !!p && plansOf(p).length > 0 && hadCourse(mid, p.id) && !owns(mid, p.id) ? r.pct : 0; };
   /** 이 회원 기준 수강권 목록 — 재수강이면 할인가(sale) · 할인 전(was) */
@@ -808,25 +805,14 @@
     return pct ? ps.map((y) => { const sale = rbPrice(y.sale, pct); return Object.assign({}, y, { was: y.sale, rb: pct, sale, day: Math.round(sale / y.d), month: perMonth(sale, y.mo) }); }) : ps;
   }
   const planFor = (p, d, mid) => { const ps = plansFor(p, mid); return ps.find((x) => x.d === Number(d)) || ps.find((x) => x.d === 365) || ps[0] || null; };
-  const y365 = (p) => plansOf(p).find((x) => x.d === 365) || null;
+  const y365 = (p) => PRC().y365(p);
   const STG = () => V().settings;
-  function coachOf(p) {
-    if (!p || typeOf(p) !== "vod" || priceOf(p) === 0 || !dgOpen(p)) return null;
-    const c = p.coach || {}, d = STG().coach || {};
-    if (c.on === false) return null;
-    const n = Number(c.n) || Number(d.n) || 5, days = Number(c.days) || Number(d.days) || 180, price = c.price != null && c.price !== "" ? Number(c.price) : Number(d.price) || 150000;
-    return { n, days, price, per: Math.round(price / n / 100) * 100 };
-  }
+  function coachOf(p) { return PRC().coachOf(p); }
   const TEA_MODE = { online: "온라인 화상 (Zoom)", offline: "오프라인 만남", both: "온라인 · 오프라인 중 선택" };
-  function teaOf(p) {
-    if (!p || typeOf(p) !== "vod" || priceOf(p) === 0 || !dgOpen(p)) return null;
-    const t = p.tea || {}, d = STG().tea || {};
-    if (t.on === false) return null;
-    // TEA TIME 은 Zoom(온라인 화상)으로만 진행해요 — 예전 오프라인 · 선택 설정도 Zoom 으로
-    return { min: Number(t.min) || Number(d.min) || 60, price: t.price != null && t.price !== "" ? Number(t.price) : Number(d.price) || 99000, mode: "online" };
-  }
-  const extendPct = () => { const n = Number(STG().extendPct); return n > 0 && n <= 100 ? n : 50; };
-  function extendOf(p) { const y = y365(p) || defPlan(p); return y ? { d: 365, sale: r1k(y.sale * extendPct() / 100), list: y.sale } : null; }
+  // TEA TIME 은 Zoom(온라인 화상)으로만 진행해요 — 예전 오프라인 · 선택 설정도 Zoom 으로
+  function teaOf(p) { return PRC().teaOf(p); }
+  const extendPct = () => PRC().extendPct();
+  function extendOf(p) { return PRC().extendOf(p); }
   const addonShare = (iid) => rateAt(iid, "coach", 0);
   /** 광고비 강사 분담 비율 (기본 50% · 강사 5 : 플랫폼 5) */
   const adSplitOf = (iid) => { const r = rateNum(insRate(iid), "ad"); if (r != null) return r; const v = STG().adSplit, n = Number(v); return v != null && v !== "" && n >= 0 && n <= 100 ? n : 50; };
@@ -1174,13 +1160,7 @@
   }
   const couponTxt = (c) => (c.kind === "pct" ? c.value + "% 할인" + (c.max ? " (최대 " + won(c.max) + ")" : "") : won(c.value) + " 할인");
   const couponCond = (c) => [c.min ? won(c.min) + " 이상 결제 시" : "금액 제한 없음", (c.types || []).length ? c.types.map((t) => TYPE[t] ? TYPE[t][0] : t).join(" · ") + "만" : "모든 클래스"].join(" · ");
-  function couponOff(c, p, amount) {
-    if (!c || amount <= 0 || isBook(p)) return 0;
-    if ((c.types || []).length && c.types.indexOf(typeOf(p)) < 0) return 0;
-    if (c.min && amount < c.min) return 0;
-    const off = c.kind === "pct" ? Math.floor(amount * c.value / 100 / 10) * 10 : Number(c.value) || 0;
-    return Math.min(amount, c.kind === "pct" && c.max ? Math.min(off, c.max) : off);
-  }
+  function couponOff(c, p, amount) { return PRC().couponOff(c, p, amount); }
   const couponsFor = (mid, p, amt) => myCoupons(mid).filter((y) => y.st === "ok").map((y) => Object.assign(y, { off: couponOff(y.c, p, amt) })).filter((y) => y.off > 0).sort((a, b) => b.off - a.off);
   const usableCoupons = (mid, p) => couponsFor(mid, p, (defPlan(p) || {}).sale || priceOf(p));
   function issueCoupon(mid, c) {

@@ -1539,11 +1539,39 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const vm24 = require("vm"), sbx = {}; sbx.window = sbx; vm24.createContext(sbx); ["shared/dates.js", "shared/schedule.js"].forEach((f) => vm24.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sbx, { filename: f }));
     ok(sbx.DCS && sbx.DCS.schedule && sbx.DCS.schedule.classDate(c2, 5) === "2026-09-23" && sbx.DCS.dates.addDays("2026-12-31", 1) === "2027-01-01", "브라우저(<script>)로 읽어도 같은 계산 (window.DCS)");
     const dbsrc24 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), idx24 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-    ok(!/const weekOpen = \(co, no\) =>|function baseClassDate|const dateOver =|function parseDate\(/.test(dbsrc24) && /SCH\.cohortEnd\(co, cohortWeeks\(co\)\)/.test(dbsrc24) && /<script src="shared\/dates\.js"><\/script>\s*<script src="shared\/schedule\.js"><\/script>\s*<script src="db\.js">/.test(idx24),
+    ok(!/const weekOpen = \(co, no\) =>|function baseClassDate|const dateOver =|function parseDate\(/.test(dbsrc24) && /SCH\.cohortEnd\(co, cohortWeeks\(co\)\)/.test(dbsrc24) && /<script src="shared\/dates\.js"><\/script>\s*<script src="shared\/schedule\.js"><\/script>(\s*<script src="shared\/[a-z-]+\.js"><\/script>)*\s*<script src="db\.js">/.test(idx24),
       "db.js 는 일정 계산을 공용 모듈에 맡기고 · 화면은 공용 모듈을 db.js 보다 먼저 읽어요");
     const sd24 = require(path.join(TMP, "class/api/_lib/seed.js"));
     ok(sd24.CLIENT_FILES.indexOf("shared/schedule.js") >= 0 && sd24.CLIENT_FILES.indexOf("shared/schedule.js") < sd24.CLIENT_FILES.indexOf("db.js") && deployIncludes().indexOf("shared/*.js") >= 0 && Object.keys(sd24.seedDocs()).length > 10,
       "서버(처음 데이터 · 정리)도 공용 모듈을 먼저 읽고 · 배포 함수에 shared/ 가 실려요");
+  }
+
+  {
+    console.log("25) 공용 모듈: 가격 계산 하나로 (화면 vod.js · 서버 vodprice.js 가 같은 규칙 · Next.js 전환 2단계)");
+    const PR = require(path.join(ROOT, "shared/price.js")), VP25 = require(path.join(TMP, "class/api/_lib/vodprice.js"));
+    const now25 = Date.parse("2026-11-18T12:00:00+09:00");
+    const cat25 = { products: [
+      { id: "fl", type: "live", status: "on", price: 0, eventAt: "2026-11-17T19:30", eventMin: 90, next: "v1", ebPrice: 199000, ebDays: 3 },
+      { id: "v1", type: "vod", status: "on", price: 330000, sale: 249000, dg: true, plans: { 180: {}, 365: { price: 290000 } } },
+      { id: "bk", type: "book", status: "on", price: 17600, sale: 15900, shipFee: 3000 }
+    ], settings: { coach: { n: 5, days: 180, price: 150000 }, rebuy: { pct: 40 } }, biz: { flive: true } };
+    const X25 = VP25.pricer(cat25, now25), v1 = X25.product("v1");
+    // 무료 LIVE(11/17 19:30 · 90분) 끝 → 3일 얼리버드: 199,000원 · 12개월은 정한 값 × (얼리버드 / 할인가) 비율 (천 원 단위)
+    ok(X25.priceOf(v1) === 199000 && X25.plansOf(v1).map((x) => x.d + ":" + x.sale).join(",") === "180:199000,365:232000" && X25.basePrice(v1) === 249000,
+      "서버: 무료 LIVE 끝나고 얼리버드 199,000원 · 6개월 199,000 · 12개월 232,000 (290,000 × 199/249)", X25.plansOf(v1));
+    ok(X25.coachOf(v1).price === 150000 && X25.coachOf(v1).n === 5 && X25.shipOf(X25.product("bk")) === 3000 && X25.couponOff({ kind: "pct", value: 10 }, X25.product("bk"), 15900) === 0 && X25.couponOff({ kind: "pct", value: 10, max: 15000 }, v1, 199000) === 15000 && VP25.rbPrice(290000, 40) === 174000,
+      "1:1 코칭권 · 종이책 배송비 · 종이책은 쿠폰 안 씀 · 쿠폰 최대 할인 · 재수강 40% 할인가 (100원 아래 버림)");
+    const later = VP25.pricer(cat25, Date.parse("2026-11-21T00:00:01+09:00"));
+    ok(later.priceOf(later.product("v1")) === 249000, "얼리버드 마지막 날(11/20) 밤 12시가 지나면 할인가 249,000원으로", later.priceOf(later.product("v1")));
+    // 화면 쪽(vod.js)도 같은 공용 모듈로 계산해요 — 같은 값 · 같은 시각이면 같은 금액
+    const D25 = require(path.join(ROOT, "shared/dates.js"));
+    const K = 9 * 3600e3, kd = (ms) => new Date(ms + K).toISOString().slice(0, 10);
+    const C25 = PR.make({ products: () => cat25.products, settings: () => cat25.settings, biz: () => cat25.biz, now: () => now25, today: () => kd(now25), time: (s) => Date.parse(String(s).length <= 16 ? s + ":00+09:00" : s) || 0, dayOf: kd, addDays: (d, n) => kd(Date.parse(d + "T00:00:00+09:00") + n * 864e5), endOfDay: (d) => Date.parse(d + "T23:59:59+09:00"), dgOpen: (p) => !!p.dg });
+    ok(JSON.stringify(C25.plansOf(cat25.products[1]).map((x) => [x.d, x.sale, x.list])) === JSON.stringify(X25.plansOf(v1).map((x) => [x.d, x.sale, x.list])) && C25.priceOf(cat25.products[1]) === X25.priceOf(v1) && typeof D25.addDays === "function",
+      "화면 계산(공용 모듈) = 서버 계산 (한국 시간 기준)");
+    const vsrc25 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), psrc25 = fs.readFileSync(path.join(ROOT, "api/_lib/vodprice.js"), "utf8"), idx25 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    ok(/window\.DCS\.price\.make\(/.test(vsrc25) && /function plansOf\(p\) \{ return PRC\(\)\.plansOf\(p\); \}/.test(vsrc25) && !/PLAN_DAYS\.map\(/.test(vsrc25) && /require\("\.\.\/\.\.\/shared\/price"\)/.test(psrc25) && !/PLAN_DAYS\.map\(/.test(psrc25) && /<script src="shared\/price\.js"><\/script>[\s\S]*<script src="vod\.js">/.test(idx25),
+      "가격 규칙은 한 곳(shared/price.js): 화면 · 서버 모두 그 모듈을 쓰고 따로 계산하지 않아요 · 화면은 vod.js 보다 먼저 읽어요");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
