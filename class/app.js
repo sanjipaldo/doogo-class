@@ -1675,9 +1675,9 @@
     const rx = (a) => { try { return Array.isArray(a) ? new RegExp(a[0], String(a[1] || "").replace(/[gy]/g, "")) : null; } catch (e) { return null; } };
     const iid = INS.id;
     tinfoP = DB.remote.call("ai-tutor", { iid, op: "info" }).then((r) => {
-      TINFO = r && r.ok ? { iid, min: r.min || 1.5, re: r.re || 2.5, cards: (r.cards || []).map((c) => ({ k: (c.k || []).filter((k) => String(k).length >= 2), r: (c.r || []).map(rx).filter(Boolean), n: (c.n || []).map(rx).filter(Boolean) })), avoid: rx(r.avoid), guard: (r.guard || []).map(rx).filter(Boolean), chips: r.chips && (r.chips.list || []).length ? r.chips : null } : { iid, cards: [], guard: [], chips: null };
+      TINFO = r && r.ok ? { iid, min: r.min || 1.5, re: r.re || 2.5, cards: (r.cards || []).map((c) => ({ k: (c.k || []).filter((k) => String(k).length >= 2), r: (c.r || []).map(rx).filter(Boolean), n: (c.n || []).map(rx).filter(Boolean) })), avoid: rx(r.avoid), guard: (r.guard || []).map(rx).filter(Boolean), tabs: (Array.isArray(r.tabs) ? r.tabs : r.chips ? [r.chips] : []).filter((x) => x && (x.list || []).length) } : { iid, cards: [], guard: [], tabs: [] };
       tinfoP = null; refreshChipRows(); return TINFO;
-    }).catch(() => { tinfoP = null; TINFO = { iid, cards: [], guard: [], chips: null }; return TINFO; }); // 못 받으면 예전처럼(화면 규칙 먼저) — 다음에 화면을 새로 열 때 다시
+    }).catch(() => { tinfoP = null; TINFO = { iid, cards: [], guard: [], tabs: [] }; return TINFO; }); // 못 받으면 예전처럼(화면 규칙 먼저) — 다음에 화면을 새로 열 때 다시
     return tinfoP;
   }
   /** 이 질문을 서버 학습 자료(제조 · 배송 · 통관 …)에 먼저 물어볼지 — 서버 tutor-kb.js 와 같은 점수 규칙 */
@@ -1793,9 +1793,10 @@
     };
     const go = () => {
       const a = askBot(text);
-      if (!(DB.remote.on && (a.kb || a.weak))) { setTimeout(() => reply(a), 550); return; }
+      // 학습 자료 질문(nz)은 화면 규칙이 무엇을 찾았든(‘안 되면’ → 오류 안내 같은) 서버에 먼저 물어요
+      if (!(DB.remote.on && (a.kb || a.weak || a.nz))) { setTimeout(() => reply(a), 550); return; }
       askTutor(text, history).then((r) => {
-        if (!r) return reply(a.nz && a.weak ? { text: "자료를 불러오지 못했어요. 잠시 후 다시 물어봐 주세요.", links: [[ML("qna") + " · 1:1 요청", "#/qna"]] } : a);
+        if (!r) return reply(a.nz && !a.kb ? { text: "자료를 불러오지 못했어요. 잠시 후 다시 물어봐 주세요.", links: [[ML("qna") + " · 1:1 요청", "#/qna"]] } : a);
         // 학습 자료 카드에서 찾은 답(hit) · Claude 답 · 화면에서 못 찾은 질문 → 서버 답 / 서버도 카드를 못 찾았는데 화면 FAQ 답이 있으면 → FAQ 답
         if (r.src === "ai" || r.hit || !a.kb) return reply({ text: r.text, links: a.kb && !r.hit ? a.links : [[ML("qna") + " · 1:1 요청", "#/qna"]] });
         reply(a);
@@ -1809,18 +1810,44 @@
   const chatForm = (id) => '<form class="chat-form" data-chat-form><input class="input" name="q" id="' + id + '" autocomplete="off" placeholder="궁금한 걸 편하게 적어 보세요" aria-label="질문 입력"><button class="btn btn-primary chat-send" type="submit" aria-label="보내기">' + icon("send", "sm") + "<span>보내기</span></button></form>";
   // 조교 답 속 주소(배송 조회 · 신청 폼 …)는 새 창 링크로 (글은 먼저 esc 한 뒤라 안전)
   const linkify = (h) => String(h).replace(/https?:\/\/[^\s<]+[^\s<.,;:)\]’'"]/g, (u) => '<a href="' + u + '" target="_blank" rel="noopener">' + u + "</a>");
-  // 바로 물어볼 질문 칩 — 강사 학습 자료가 있으면 ‘수업 · 과제 | 제조 · 배송’ 탭으로 나눠요
+  // 바로 물어볼 질문 칩 — 강사 학습 자료가 있으면 탭으로 나눠요 (수업 · 과제 | 배송 · 통관 | NZ 제조 · 결제 | 두고커넥트 — tutor/<강사>.json 의 tabs)
+  // 칩은 한 줄 슬라이드: 옆으로 밀거나(휴대폰) · 끌거나 · 양옆 화살표(PC)로 넘겨요
   const chipRow = (cls) => {
-    const kc = TINFO && INS && TINFO.iid === INS.id ? TINFO.chips : null;
-    if (!kc) chipTab = "class";
-    const list = kc && chipTab === "kb" ? kc.list : botChips();
+    const tabs = TINFO && INS && TINFO.iid === INS.id ? TINFO.tabs || [] : [];
+    if (chipTab !== "class" && !tabs[+chipTab]) chipTab = "class";
+    const list = chipTab === "class" ? botChips() : tabs[+chipTab].list;
     return '<div class="chip-wrap" data-chip-wrap="' + esc(cls) + '">' +
-      (kc ? '<div class="chip-tabs" role="tablist" aria-label="바로 물어볼 질문">' + [["class", TRACK === "vod" ? "강의 · 수강" : "수업 · 과제"], ["kb", kc.title]].map((x) => '<button type="button" role="tab" class="chip-tab' + (chipTab === x[0] ? " on" : "") + '" aria-selected="' + (chipTab === x[0]) + '" data-action="chip-tab" data-k="' + x[0] + '">' + esc(x[1]) + "</button>").join("") + "</div>" : "") +
-      '<div class="' + cls + '">' + list.map((c) => '<button class="chip" type="button" data-action="chip" data-q="' + esc(c) + '">' + esc(c) + "</button>").join("") + "</div></div>";
+      (tabs.length ? '<div class="chip-tabs" role="tablist" aria-label="바로 물어볼 질문 분류">' + [["class", TRACK === "vod" ? "강의 · 수강" : "수업 · 과제"]].concat(tabs.map((x, i) => [String(i), x.title])).map((x) => '<button type="button" role="tab" class="chip-tab' + (chipTab === x[0] ? " on" : "") + '" aria-selected="' + (chipTab === x[0]) + '" data-action="chip-tab" data-k="' + x[0] + '">' + esc(x[1]) + "</button>").join("") + "</div>" : "") +
+      '<div class="chip-rail">' +
+        '<button type="button" class="chip-nav prev" data-action="chip-nav" data-d="-1" tabindex="-1" aria-label="앞 질문 보기">' + icon("chevLeft", "sm") + "</button>" +
+        '<div class="' + cls + '" data-chip-scroll>' + list.map((c) => '<button class="chip" type="button" data-action="chip" data-q="' + esc(c) + '">' + esc(c) + "</button>").join("") + "</div>" +
+        '<button type="button" class="chip-nav next" data-action="chip-nav" data-d="1" tabindex="-1" aria-label="다음 질문 보기">' + icon("chevRight", "sm") + "</button>" +
+      "</div></div>";
   };
-  function refreshChipRows() { document.querySelectorAll("[data-chip-wrap]").forEach((el) => { const box = document.createElement("div"); box.innerHTML = chipRow(el.dataset.chipWrap); el.replaceWith(box.firstChild); }); }
+  function refreshChipRows() { document.querySelectorAll("[data-chip-wrap]").forEach((el) => { const box = document.createElement("div"); box.innerHTML = chipRow(el.dataset.chipWrap); el.replaceWith(box.firstChild); }); chipNavInit(); }
+  /** 칩 한 줄 슬라이드: 끝에 닿았는지에 따라 양옆 화살표 · 흐림을 켜고 끄고, 마우스로 끌어서 넘기기 (조금이라도 끌었으면 칩 누름은 무시) */
+  const chipDrag = { el: null, x: 0, left: 0, moved: false };
+  function chipEdges(el) { const rail = el.parentElement, max = el.scrollWidth - el.clientWidth; rail.classList.toggle("can-prev", el.scrollLeft > 4); rail.classList.toggle("can-next", el.scrollLeft < max - 4); }
+  function chipNavInit() {
+    document.querySelectorAll("[data-chip-scroll]").forEach((el) => {
+      if (el.__nav) return chipEdges(el);
+      el.__nav = 1;
+      el.addEventListener("scroll", () => chipEdges(el), { passive: true });
+      el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.button !== 0) return; chipDrag.el = el; chipDrag.x = e.clientX; chipDrag.left = el.scrollLeft; chipDrag.moved = false; });
+      el.addEventListener("click", (e) => { if (chipDrag.moved) { e.preventDefault(); e.stopPropagation(); chipDrag.moved = false; } }, true);
+      chipEdges(el);
+    });
+  }
+  window.addEventListener("pointermove", (e) => {
+    const d = chipDrag; if (!d.el) return;
+    const dx = e.clientX - d.x;
+    if (!d.moved && Math.abs(dx) > 6) { d.moved = true; d.el.classList.add("dragging"); }
+    if (d.moved) d.el.scrollLeft = d.left - dx;
+  });
+  window.addEventListener("pointerup", () => { const d = chipDrag; if (!d.el) return; d.el.classList.remove("dragging"); d.el = null; setTimeout(() => { d.moved = false; }, 0); });
+  window.addEventListener("resize", () => document.querySelectorAll("[data-chip-scroll]").forEach(chipEdges));
   function pageBot() {
-    setTimeout(tutorInfo, 0);
+    setTimeout(() => { tutorInfo(); chipNavInit(); }, 0);
     return '<div class="page">' + pageHead(D.brand.botName, D.brand.instructor + "님의 강의 자료 · FAQ · 과제 안내를 바탕으로 24시간 답해 드려요.") +
       '<section class="chat bot-full"><div class="bp-head">' + botFace("lg") + '<div class="bp-title"><strong>' + esc(D.brand.botName) + '</strong><small><i class="bp-dot"></i>지금 바로 답할 수 있어요</small></div></div>' +
         '<div class="chat-log" data-chat-log>' + chatLog() + "</div>" + chipRow("chips") + chatForm("chat-input-page") +
@@ -1846,6 +1873,7 @@
       '<p class="bp-foot">답변은 참고용이에요 · <button type="button" class="link-btn" data-action="clear-chat">대화 지우기</button></p></section>';
     const log = el.querySelector("[data-chat-log]");
     log.scrollTop = log.scrollHeight;
+    chipNavInit();
   }
 
   /* ---------------- 자료실 ---------------- */
@@ -2548,7 +2576,8 @@
       case "read-all": P.readNotices = P.readNotices || {}; D.notices.forEach((n) => { P.readNotices[n.id] = Date.now(); }); saveProgress(); render(); break;
       case "toggle-doc": { const s = a.dataset.id; if (P.docs[s]) delete P.docs[s]; else P.docs[s] = Date.now(); saveProgress(); render(); break; }
       case "chip": sendChat(a.dataset.q); break;
-      case "chip-tab": chipTab = a.dataset.k === "kb" ? "kb" : "class"; refreshChipRows(); break;
+      case "chip-tab": chipTab = /^\d$/.test(a.dataset.k) ? a.dataset.k : "class"; refreshChipRows(); break;
+      case "chip-nav": { const el = a.parentElement && a.parentElement.querySelector("[data-chip-scroll]"); if (el) el.scrollBy({ left: (Number(a.dataset.d) || 1) * Math.max(160, el.clientWidth * 0.7), behavior: "smooth" }); break; }
       case "ask-bot": botOpen = true; DB.store.set(KEY_BOT, true); renderBotFab(route()); sendChat(a.dataset.q); break;
       case "clear-chat": P.chat = []; saveProgress(); refreshChats(); break;
       case "bot-open": document.getElementById("app").classList.remove("nav-open"); botOpen = true; DB.store.set(KEY_BOT, true); renderBotFab(route()); { const i = document.getElementById("chat-input-fab") || document.getElementById("chat-input-page"); if (i && !window.matchMedia("(max-width: 720px)").matches) i.focus(); } break;

@@ -1445,14 +1445,35 @@ body.lib-gated #main > .page { filter: blur(6px); pointer-events: none; user-sel
 .bp-scrim, .bp-grab { display: none; }
 .bot-full .bp-head { padding: 18px 20px; }
 .bot-full .chips { border-top: 1px solid var(--line-soft); }
-/* 바로 물어볼 질문 탭 (강사 학습 자료가 있을 때: 수업 · 과제 | 제조 · 배송) */
-.chip-tabs { display: flex; gap: 4px; padding: 10px 16px 0; background: var(--canvas); border-top: 1px solid var(--line-soft); }
-.chip-tabs + .chips, .chip-tabs + .bp-chips { border-top: 0; }
-.chip-tab { min-height: 30px; padding: 4px 12px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 700; color: var(--body); background: transparent; transition: background-color .15s, color .15s; }
+/* 바로 물어볼 질문 탭 (강사 학습 자료가 있을 때: 수업 · 과제 | 배송 · 통관 | NZ 제조 · 결제 | 두고커넥트) — 좁으면 옆으로 밀어요 */
+.chip-tabs { display: flex; gap: 4px; padding: 10px 16px 0; background: var(--canvas); border-top: 1px solid var(--line-soft); overflow-x: auto; scrollbar-width: none; }
+.chip-tabs::-webkit-scrollbar { display: none; }
+.chip-tabs + .chip-rail .chips, .chip-tabs + .chip-rail .bp-chips { border-top: 0; }
+.chip-tab { flex: none; min-height: 30px; padding: 4px 12px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 700; color: var(--body); background: transparent; white-space: nowrap; transition: background-color .15s, color .15s; }
 .chip-tab:hover { background: var(--canvas-soft); color: var(--ink); }
 .chip-tab.on { background: var(--ink); color: var(--canvas); }
 .chip-tab:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .bot-panel .chip-tabs { padding: 8px 12px 0; }
+/* 칩 한 줄 슬라이드 — 밀거나 · 끌거나 · 양옆 화살표(마우스가 있는 화면)로 넘겨요. 끝에 닿으면 그쪽 화살표 · 흐림이 사라져요 */
+.chip-rail { position: relative; background: var(--canvas); }
+.chip-rail .chips { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scroll-behavior: smooth; scrollbar-width: none; padding-bottom: 2px; }
+.chip-rail .chips::-webkit-scrollbar { display: none; }
+.chip-rail .chip { flex: none; white-space: nowrap; }
+.chip-rail .chips.dragging { scroll-behavior: auto; cursor: grabbing; user-select: none; }
+.chip-rail .chips.dragging .chip { pointer-events: none; }
+.chip-rail::before, .chip-rail::after { content: ""; position: absolute; top: 0; bottom: 0; z-index: 1; width: 44px; pointer-events: none; opacity: 0; transition: opacity .2s ease; }
+.chip-rail::before { left: 0; background: linear-gradient(90deg, var(--canvas) 30%, transparent); }
+.chip-rail::after { right: 0; background: linear-gradient(270deg, var(--canvas) 30%, transparent); }
+.chip-rail.can-prev::before, .chip-rail.can-next::after { opacity: 1; }
+.chip-nav { position: absolute; top: calc(50% + 6px); z-index: 2; display: none; place-items: center; width: 30px; height: 30px; margin-top: -15px; border-radius: 50%; background: var(--canvas); color: var(--ink); box-shadow: 0 2px 8px rgba(14, 15, 12, .16), 0 0 0 1px var(--line); transition: transform .15s ease, box-shadow .15s ease; }
+.chip-nav:hover { transform: scale(1.06); box-shadow: 0 4px 12px rgba(14, 15, 12, .2), 0 0 0 1px var(--line); }
+.chip-nav.prev { left: 8px; }
+.chip-nav.next { right: 8px; }
+.bot-panel .chip-nav { top: calc(50% + 4px); }
+@media (hover: hover) and (pointer: fine) {
+  .chip-rail.can-prev .chip-nav.prev, .chip-rail.can-next .chip-nav.next { display: grid; }
+  .chip-rail .chips { cursor: grab; }
+}
 .msg-bubble a { color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
 @media (max-width: 720px) {
   .bot-launch { padding: 6px; min-height: 0; }

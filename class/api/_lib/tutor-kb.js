@@ -95,7 +95,16 @@ function load(iid) {
   const files = [];
   const read = (p, name) => { try { files.push({ name, md: fs.readFileSync(p, "utf8") }); } catch (e) {} };
   read(path.join(DIR, iid + ".md"), iid + ".md");
-  try { fs.readdirSync(path.join(DIR, iid)).filter((f) => /\.md$/i.test(f)).sort().forEach((f) => read(path.join(DIR, iid, f), iid + "/" + f)); } catch (e) {}
+  // 강사 폴더: tutor/<강사>/*.md 와 그 아래 한 단계 폴더(예: doogobio-nz/ · doogo-connect/)의 *.md — 경로 이름 순서
+  const walk = (dir, rel, depth) => {
+    let names = [];
+    try { names = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
+    names.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)).forEach((d) => {
+      if (d.isDirectory() && depth < 1) walk(path.join(dir, d.name), rel + d.name + "/", depth + 1);
+      else if (d.isFile() && /\.md$/i.test(d.name)) read(path.join(dir, d.name), rel + d.name);
+    });
+  };
+  walk(path.join(DIR, iid), iid + "/", 0);
   let settings = {};
   try { settings = JSON.parse(fs.readFileSync(path.join(DIR, iid + ".json"), "utf8")) || {}; } catch (e) {}
   let avoid = null;
@@ -121,34 +130,61 @@ function rank(kb, t) {
   return kb.sections.map((sec) => ({ sec, s: scoreSec(t, nq, sec) * half })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
 }
 
-/* ---------- 계산 ---------- */
+/* ---------- 계산 (숫자 기준은 tutor/<강사>.json 의 calc — 없으면 아래 기본값) ---------- */
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
-/** 뉴질랜드 오늘 (서머타임 포함) → { y, m, d, dow } */
-function nzToday(ms) {
+const CFG = {
+  "운송료": { cur: "NZ$", curName: "뉴질랜드 달러", base: 16, baseG: 1000, stepG: 100, step: 1 },
+  "도착일": { tz: "Pacific/Auckland", cutoff: [14, 0], flights: [{ cut: 1, fly: 2, arrive: [4, 6] }, { cut: 3, fly: 4, arrive: [5, 6] }] },
+  "수량": { limit: 6, free: "꿀|허니|honey|마누카" }
+};
+const cfgOf = (kb, name) => Object.assign({}, CFG[name], ((kb && kb.settings && kb.settings.calc) || {})[name] || {});
+/** 그 시간대의 지금 → { y, m, d, dow, h, mi } (서머타임 포함) */
+function tzNow(ms, tz) {
   try {
     const p = {};
-    new Intl.DateTimeFormat("en-US", { timeZone: "Pacific/Auckland", year: "numeric", month: "numeric", day: "numeric", weekday: "short" }).formatToParts(new Date(ms)).forEach((x) => { p[x.type] = x.value; });
-    return { y: +p.year, m: +p.month, d: +p.day, dow: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(p.weekday) };
+    new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(new Date(ms)).forEach((x) => { p[x.type] = x.value; });
+    return { y: +p.year, m: +p.month, d: +p.day, dow: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(p.weekday), h: +p.hour % 24, mi: +p.minute };
   } catch (e) {
     const t = new Date(ms + 13 * 3600e3);
-    return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), dow: t.getUTCDay() };
+    return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), dow: t.getUTCDay(), h: t.getUTCHours(), mi: t.getUTCMinutes() };
   }
+}
+const nzToday = (ms) => tzNow(ms, "Pacific/Auckland");
+/** tz 의 날짜 x · 시각 h:mi 가 가리키는 실제 순간(ms) — 서머타임 바뀌는 날도 맞게 두 번 맞춰요 */
+function tzInstant(x, h, mi, tz) {
+  const want = Date.UTC(x.y, x.m - 1, x.d, h, mi);
+  let t = want;
+  for (let i = 0; i < 2; i++) { const p = tzNow(t, tz); t += want - Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi); }
+  return t;
 }
 const addDays = (b, n) => { const t = new Date(Date.UTC(b.y, b.m - 1, b.d) + n * 864e5); return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), dow: t.getUTCDay() }; };
 const md = (x) => x.m + "월 " + x.d + "일(" + DOW[x.dow] + ")";
-/** 화요일 발송(월요일 마감) → 그 주 토요일~다음 주 월요일 · 목요일 발송(수요일 마감) → 다음 주 화~수요일 */
-function arrival(t, now) {
-  // ‘며칠 걸려요?’(기간)는 카드만 · ‘언제 받아요? · 오늘 주문하면?’(날짜)일 때 계산해요
-  if (!/(오늘|지금|이번\s*주|내일|언제|도착|받아|받을|받나|받으|와요|오나요|올까|주문하면|보내면)/.test(t)) return "";
-  const td = nzToday(now), dow = td.dow;
-  let fly, cut;
-  if (dow === 1) { fly = 1; cut = "오늘(월요일)"; }
-  else if (dow === 2) { fly = 2; cut = "내일 " + md(addDays(td, 1)); }
-  else if (dow === 3) { fly = 1; cut = "오늘(수요일)"; }
-  else { fly = (2 - dow + 7) % 7 || 7; cut = md(addDays(td, fly - 1)); }
-  const f = addDays(td, fly), tue = f.dow === 2, a1 = addDays(f, tue ? 4 : 5), a2 = addDays(f, 6);
-  return "지금 뉴질랜드는 " + md(td) + "이에요. " + cut + " 마감에 맞춰 접수하면 " + md(f) + " 직항편으로 나가서, 한국에서 " + md(a1) + " ~ " + md(a2) + "쯤 받을 수 있어요. (마감 시각은 담당자에게 확인해 주세요)";
+/** 받침 있으면 ‘이에요’, 없으면 ‘예요’ (3시예요 · 30분이에요) */
+const ieyo = (w) => { const c = String(w).slice(-1).charCodeAt(0); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? "이에요" : "예요"; };
+const hm = (h, mi) => (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시" + (mi ? " " + mi + "분" : "");
+/** 마감 요일 · 시각이 아직 안 지난 가장 가까운 발송편 → 발송일 · 받는 날 (월요일 2시 마감 → 화요일 발송 → 그 주 토~다음 주 월) */
+function arrival(t, now, c) {
+  // ‘며칠 걸려요?’(기간)는 카드만 · ‘언제 받아요? · 오늘 주문하면? · 마감 몇 시?’(날짜 · 시각)일 때 계산해요
+  if (!/(오늘|지금|이번\s*주|내일|언제|도착|받아|받을|받나|받으|와요|오나요|올까|주문하면|보내면|마감|몇\s*시)/.test(t)) return "";
+  c = c || CFG["도착일"];
+  const tz = c.tz || "Pacific/Auckland", ch = +(c.cutoff || [14, 0])[0], cm = +(c.cutoff || [14, 0])[1] || 0;
+  const td = tzNow(now, tz), before = td.h * 60 + td.mi < ch * 60 + cm;
+  let best = null;
+  for (let k = 0; k < 14 && !best; k++) {
+    const day = addDays(td, k);
+    if (k === 0 && !before) continue;
+    const f = (c.flights || []).find((x) => x.cut === day.dow);
+    if (f) best = { k, day, f };
+  }
+  if (!best) return "";
+  const fly = addDays(best.day, ((best.f.fly - best.f.cut) % 7 + 7) % 7 || 7), a1 = addDays(fly, best.f.arrive[0]), a2 = addDays(fly, best.f.arrive[1]);
+  const ks = tzNow(tzInstant(best.day, ch, cm, tz), "Asia/Seoul");
+  const when = (best.k === 0 ? "오늘 " : best.k === 1 ? "내일 " : "") + md(best.day) + " " + hm(ch, cm) + "쯤(한국 시간 " + hm(ks.h, ks.mi) + "쯤)";
+  const nowTx = md(td) + " " + hm(td.h, td.mi);
+  return "지금 뉴질랜드는 " + nowTx + ieyo(nowTx) + "." + (k0passed(td, c, before) ? " 오늘 마감(" + hm(ch, cm) + "쯤)은 지났어요." : "") +
+    "\n다음 발송 마감은 " + when + "이에요. 그 전에 접수하면 " + md(fly) + " 직항편으로 나가서, 한국에서 " + md(a1) + " ~ " + md(a2) + "쯤 받을 수 있어요.";
 }
+const k0passed = (td, c, before) => !before && (c.flights || []).some((x) => x.cut === td.dow);
 /** 질문 속 무게 → 그램 (최대 3개) · ‘1kg 넘으면’처럼 기준을 말한 숫자는 빼요 */
 function weightsIn(t) {
   const out = [], re = /(\d{1,3}(?:,\d{3})+|\d+(?:[.,]\d+)?)\s*(kg|㎏|킬로그램|키로|킬로|kilo|그램|그람|g)(?![a-z])/gi;
@@ -161,34 +197,38 @@ function weightsIn(t) {
   }
   return out;
 }
-const fee = (g) => 16 + Math.ceil(Math.max(0, g - 1000) / 100);
+const fee = (g, c) => { c = c || CFG["운송료"]; return c.base + Math.ceil(Math.max(0, g - c.baseG) / c.stepG) * c.step; };
 const wtxt = (g) => (g >= 1000 ? String(+(g / 1000).toFixed(3)) + "kg" : g + "g");
-function shipCost(t) {
-  const ws = weightsIn(t);
+/** 무게 → 운송료 (1kg까지 기본 · 넘으면 100g마다 · 남는 무게는 올림) */
+function shipCost(t, c) {
+  c = c || CFG["운송료"];
+  const ws = weightsIn(t), $ = (n) => c.cur + n;
   if (!ws.length) return "";
   return ws.map((g) => {
-    if (g <= 1000) return wtxt(g) + "은 1kg 이하라 기본 운송료 $16예요. (포장비 포함)";
-    const extra = g - 1000, n = Math.ceil(extra / 100);
-    return wtxt(g) + "이면 예상 운송료는 $" + fee(g) + "예요. 기본 $16(1kg까지, 포장비 포함) + 1kg를 넘는 " + wtxt(extra) + " → 100g × " + n + " = $" + n + (extra % 100 ? " (100g이 안 되는 무게는 100g으로 올려 계산했어요)" : "");
-  }).join("\n") + "\n실제 무게에 따라 달라질 수 있으니 정확한 금액은 담당자에게 확인해 주세요.";
+    if (g <= c.baseG) return wtxt(g) + "은 " + wtxt(c.baseG) + " 이하라 기본 운송료 " + $(c.base) + "예요. (포장비 포함)";
+    const extra = g - c.baseG, n = Math.ceil(extra / c.stepG);
+    return wtxt(g) + "이면 예상 운송료는 " + $(fee(g, c)) + "예요. 기본 " + $(c.base) + "(" + wtxt(c.baseG) + "까지, 포장비 포함) + " + wtxt(c.baseG) + "를 넘는 " + wtxt(extra) + " → " + c.stepG + "g × " + n + " = " + $(n * c.step) + (extra % c.stepG ? " (" + c.stepG + "g이 안 되는 무게는 " + c.stepG + "g으로 올려 계산해요)" : "");
+  }).join("\n") + "\n금액은 " + c.curName + "(" + c.cur.replace(/\$$/, "D") + ") 기준이에요. 실제 무게에 따라 달라질 수 있어요.";
 }
 /** ‘마누카꿀 5개랑 초록홍합 6개’ → 꿀을 뺀 건강식품 개수로 1회 6개 기준 확인 (나눠 보내라고는 안내하지 않아요) */
-function quantity(t, ins) {
+function quantity(t, ins, c) {
+  c = c || CFG["수량"];
+  const free = new RegExp(c.free || "꿀", "i"), lim = +c.limit || 6;
   const items = [], re = /([가-힣a-zA-Z]{1,12})?\s*(\d{1,3})\s*(개|병|통|박스|ea)(?![a-z])/gi;
   let m;
   while ((m = re.exec(t))) {
     if (/^\s*(을|를|이|가|은|는)?\s*(넘|초과|이상|이하|미만|부터|까지|제한|기준)/.test(t.slice(m.index + m[0].length))) continue;
     const name = String(m[1] || "").replace(/(이랑|랑|하고|와|과|및|그리고|또|도|만|을|를|은|는|이|가)$/, "");
-    items.push({ name, n: Number(m[2]), honey: /꿀|허니|honey|마누카/i.test(name) });
+    items.push({ name, n: Number(m[2]), honey: free.test(name) });
   }
   if (!items.length || !(items.some((x) => x.name) || /(보내|발송|배송|통관|주문)/.test(t))) return "";
   const other = items.filter((x) => !x.honey).reduce((a, x) => a + x.n, 0), honey = items.filter((x) => x.honey).reduce((a, x) => a + x.n, 0);
   const list = items.map((x) => (x.name ? x.name + " " : "") + x.n + "개").join(" + ");
-  if (!other) return list + ": 꿀은 1회 6개 제한에 들어가지 않아요.";
-  if (other <= 6) return list + ": 꿀을 뺀 건강식품이 " + other + "개라 1회 6개 기준 안이에요. 보낼 수 있어요." + (honey ? " 꿀 " + honey + "개는 6개 제한에 들어가지 않아요." : "");
-  return list + ": 꿀을 뺀 건강식품이 " + other + "개라 1회 6개 기준을 넘어요. 한 번에 6개 이하로 맞춰 주세요. 수량이 많다면 ‘질문 · 요청’ 메뉴의 1:1 요청으로 " + (ins || "강사") + "님께 상의해 주세요.";
+  if (!other) return list + ": 꿀은 1회 " + lim + "개 제한에 들어가지 않아요.";
+  if (other <= lim) return list + ": 꿀을 뺀 건강식품이 " + other + "개라 1회 " + lim + "개 기준 안이에요. 보낼 수 있어요." + (honey ? " 꿀 " + honey + "개는 " + lim + "개 제한에 들어가지 않아요." : "");
+  return list + ": 꿀을 뺀 건강식품이 " + other + "개라 1회 " + lim + "개 기준을 넘어요. 한 번에 " + lim + "개 이하로 맞춰 주세요. 수량이 많다면 ‘질문 · 요청’ 메뉴의 1:1 요청으로 " + (ins || "강사") + "님께 상의해 주세요.";
 }
-const CALC = { "운송료": (t) => shipCost(t), "도착일": (t, o) => arrival(t, o.now), "수량": (t, o) => quantity(t, o.ins) };
+const CALC = { "운송료": (t, o, kb) => shipCost(t, cfgOf(kb, "운송료")), "도착일": (t, o, kb) => arrival(t, o.now, cfgOf(kb, "도착일")), "수량": (t, o, kb) => quantity(t, o.ins, cfgOf(kb, "수량")) };
 
 /* ---------- 답 ---------- */
 /** 질문 → { hit, guard, text, calc, ids } (hit 이 false 면 학습 자료에서 못 찾음) */
@@ -207,7 +247,7 @@ function answer(iid, q, opt) {
   if (r[1] && r[1].s >= (both ? MIN : Math.max(MIN, r[0].s * 0.6))) pick.push(r[1]);
   const calcs = [];
   const text = pick.map((x) => {
-    const sec = x.sec, c = sec.calc && CALC[sec.calc] ? CALC[sec.calc](t, opt) : "";
+    const sec = x.sec, c = sec.calc && CALC[sec.calc] ? CALC[sec.calc](t, opt, kb) : "";
     if (c) calcs.push(c);
     return (c ? c + "\n\n" + "기준 · ‘" + sec.title + "’" : "‘" + sec.title + "’ 안내예요.") + "\n" + sec.lines.join("\n");
   }).join("\n\n");
@@ -221,16 +261,23 @@ function info(iid) {
     cards: kb.sections.map((s) => ({ k: s.keys, r: s.res.map(rx), n: s.no.map(rx) })),
     avoid: kb.avoid ? rx(kb.avoid) : null,
     guard: GUARD.map(rx),
-    chips: kb.settings && kb.settings.chips && Array.isArray(kb.settings.chips.list) ? { title: String(kb.settings.chips.title || "학습 자료").slice(0, 20), list: kb.settings.chips.list.slice(0, 12).map((x) => String(x).slice(0, 60)) } : null
+    tabs: tabsOf(kb),
+    // 예전 화면(탭 하나)이 읽던 칸 — 첫 탭
+    chips: tabsOf(kb)[0] || null
   };
 }
-/** 학습 자료가 있는 강사들 → 카드 수 (배포 확인용) */
+/** 대화창 위 질문 탭 (tutor/<강사>.json 의 tabs · 예전 chips 하나도 읽어요) */
+function tabsOf(kb) {
+  const st = (kb && kb.settings) || {}, src = Array.isArray(st.tabs) ? st.tabs : st.chips ? [st.chips] : [];
+  return src.filter((x) => x && Array.isArray(x.list) && x.list.length).slice(0, 4).map((x) => ({ title: String(x.title || "학습 자료").slice(0, 20), list: x.list.slice(0, 14).map((q) => String(q).slice(0, 60)) }));
+}
+/** 학습 자료가 있는 강사들 → 카드 · 파일 · 탭 수 (배포 확인용) */
 function summary() {
   const out = {};
   let names = [];
   try { names = fs.readdirSync(DIR); } catch (e) {}
-  names.map((f) => f.replace(/\.(md|json)$/i, "")).filter((v, i, a) => a.indexOf(v) === i && /^[a-z0-9_-]{1,40}$/i.test(v)).forEach((iid) => { const kb = load(iid); if (kb.sections.length) out[iid] = { cards: kb.sections.length, files: kb.files.length }; });
+  names.map((f) => f.replace(/\.(md|json)$/i, "")).filter((v, i, a) => a.indexOf(v) === i && /^[a-z0-9_-]{1,40}$/i.test(v)).forEach((iid) => { const kb = load(iid); if (kb.sections.length) out[iid] = { cards: kb.sections.length, files: kb.files.length, tabs: tabsOf(kb).map((x) => x.title) }; });
   return out;
 }
 
-module.exports = { answer, info, load, summary, isGuard, GUARD_TEXT, MIN, _: { weightsIn, fee, shipCost, arrival, quantity, nzToday, parseList, norm } };
+module.exports = { answer, info, load, summary, isGuard, GUARD_TEXT, MIN, _: { weightsIn, fee, shipCost, arrival, quantity, nzToday, tzNow, tzInstant, parseList, norm } };
