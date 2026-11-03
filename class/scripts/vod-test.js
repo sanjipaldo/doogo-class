@@ -1355,6 +1355,13 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(mc && mc.coaches[0].track === "live" && mc.coaches[0].perms.join() === "reviews,coaching" && mc.coaches[1].track === "vod" && w.result.live === 1, "일회성: 문대표 코치 담당을 LIVE로 (담당이 비어 있는 코치만 · 메뉴 체크는 그대로)", w.result);
     w = OO.moonCoachesLive((k) => (k === "ins:moon" ? mc : null));
     ok(!Object.keys(w.writes).length, "일회성: 다시 돌려도 그대로", w.result);
+    // 강사 입점 문의: 예시 3건만 지우고 실제 문의는 그대로 (일회성 작업)
+    const INQ = { "inq:inq-demo-1": { id: "inq-demo-1", name: "박OO", email: "seoyeon.park@example.com", ref: "HAJIWON", status: "new" }, "inq:inq-demo-2": { id: "inq-demo-2", email: "doyoon@example.com", ref: "HAJIWON", status: "contact" },
+      "inq:inq-demo-3": { id: "inq-demo-3", email: "choi.class@example.com", ref: "HAJIWON", status: "done", iid: "choi" }, "inq:iq-real": { id: "iq-real", name: "신OO", email: "real@gmail.com", source: "partners", status: "new" },
+      "inq:iq-real2": { id: "iq-real2", email: "x@example.com", status: "new" }, "inq:inq-demo-9": { id: "inq-demo-9", email: "real@naver.com", status: "new" } };
+    w = OO.demoInqClear((k) => (INQ[k] ? JSON.parse(JSON.stringify(INQ[k])) : undefined), (pre) => Object.keys(INQ).filter((k) => k.indexOf(pre) === 0).sort());
+    ok(Object.keys(w.writes).sort().join() === "inq:inq-demo-1,inq:inq-demo-2,inq:inq-demo-3" && Object.values(w.writes).every((v) => v === null) && w.result.kept.length === 3, "일회성: 예시 입점 문의 3건(예시 id · @example.com)만 지우고 실제 문의(두고 파트너스 지원서 등)는 그대로", w.result);
+    ok(OO.OPS.some((x) => x.id === "2026-11-03-demo-inquiries-clear" && x.run === OO.demoInqClear), "일회성 작업 목록에 예시 문의 지우기가 있어요");
     ok(OO.OPS.some((x) => x.id === "2026-11-03-moon-coaches-live" && x.run === OO.moonCoachesLive), "일회성 작업 목록에 있어요 (코치 이름 없이 문대표 코치 전체 · 담당 빈 칸만)");
     // 문대표 전용 색(뉴질랜드)은 강사센터 · 코치센터에도
     const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
