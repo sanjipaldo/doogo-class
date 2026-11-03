@@ -623,6 +623,21 @@ function demoInqClear(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 예시(테스트) 파트너 계정 지우기 (2026-11) ----------
+ * 두고 파트너스(추천 파트너)에 남아 있던 예시 계정(id aff-demo · 추천 코드 HAJIWON 또는 아이디 partner)과 그 계정의 RS 지급 기록(aff-demo:…)만 지워요 (사용자 요청).
+ * 실제 파트너 계정은 그대로. 그 예시 파트너가 소개한 것으로 남은 입점 문의가 있으면 지우지 않고 결과에만 적어요 */
+const isDemoAff = (p) => isObj(p) && p.id === "aff-demo" && (p.code === "HAJIWON" || p.loginId === "partner");
+function demoPartnerClear(get, keys) {
+  const meta = get("meta");
+  if (!isObj(meta) || !Array.isArray(meta.affiliates)) return { writes: {}, result: { skipped: "파트너 목록 없음" } };
+  const gone = meta.affiliates.filter(isDemoAff), keep = meta.affiliates.filter((p) => !isDemoAff(p));
+  const po = isObj(meta.affPayouts) ? Object.assign({}, meta.affPayouts) : null, poGone = po ? Object.keys(po).filter((k) => k.indexOf("aff-demo:") === 0) : [];
+  poGone.forEach((k) => delete po[k]);
+  const result = { removed: gone.map((p) => p.id), payouts: poGone, keptPartners: keep.length, inqLinked: keys("inq:").filter((k) => isObj(get(k)) && get(k).affId === "aff-demo") };
+  if (!gone.length && !poGone.length) return { writes: {}, result: Object.assign(result, { skipped: "예시 파트너 없음" }) };
+  return { writes: { meta: Object.assign({}, meta, { affiliates: keep }, po ? { affPayouts: po } : {}) }, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -650,6 +665,7 @@ const OPS = [
   { id: "2026-11-03-plans-6-12-rebuy", note: "수강권 6개월 · 12개월 · 재수강 40% 할인: 클래스 FAQ · 고객센터 FAQ 예전 문구(180일 · 365일 · 3년 / 1년 연장권)만 새 문구로 + 재수강 할인 기본값", run: plans612 },
   { id: "2026-11-03-moon-coaches-live", note: "문대표 코치들을 LIVE 두잉고 담당으로 — 코치 메뉴를 LIVE · VOD로 나누기 (담당 칸이 비어 있을 때만 · 메뉴 체크는 그대로)", run: moonCoachesLive },
   { id: "2026-11-03-demo-inquiries-clear", note: "강사 입점 문의: 예시(테스트) 문의 3건 지우기 — 예시 id · 예시 파트너 추천 · @example.com 이메일만 (실제 문의는 그대로)", run: demoInqClear },
+  { id: "2026-11-03-demo-partner-clear", note: "두고 파트너스: 예시(테스트) 파트너 계정과 그 RS 지급 기록만 지우기 (실제 파트너는 그대로)", run: demoPartnerClear },
 ];
 
-module.exports = { OPS, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

@@ -1362,6 +1362,15 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     w = OO.demoInqClear((k) => (INQ[k] ? JSON.parse(JSON.stringify(INQ[k])) : undefined), (pre) => Object.keys(INQ).filter((k) => k.indexOf(pre) === 0).sort());
     ok(Object.keys(w.writes).sort().join() === "inq:inq-demo-1,inq:inq-demo-2,inq:inq-demo-3" && Object.values(w.writes).every((v) => v === null) && w.result.kept.length === 3, "일회성: 예시 입점 문의 3건(예시 id · @example.com)만 지우고 실제 문의(두고 파트너스 지원서 등)는 그대로", w.result);
     ok(OO.OPS.some((x) => x.id === "2026-11-03-demo-inquiries-clear" && x.run === OO.demoInqClear), "일회성 작업 목록에 예시 문의 지우기가 있어요");
+    // 예시 파트너 계정만 지우고 실제 파트너는 그대로 (일회성 작업)
+    const PM = { meta: { other: 1, affSettings: { rs: 20 }, affiliates: [{ id: "aff-demo", name: "하OO", loginId: "partner", code: "HAJIWON", instructors: [{ iid: "choi" }] }, { id: "aff-real", name: "김OO", loginId: "real01", code: "REAL" }, { id: "aff-x", loginId: "partner", code: "HAJIWON" }],
+      affPayouts: { "aff-demo:2026-09": { paidAt: "2026-10-10" }, "aff-real:2026-10": { paidAt: "2026-11-10" } } }, "inq:iq-real": { id: "iq-real", email: "r@gmail.com" } };
+    w = OO.demoPartnerClear((k) => (PM[k] ? JSON.parse(JSON.stringify(PM[k])) : undefined), (pre) => Object.keys(PM).filter((k) => k.indexOf(pre) === 0));
+    const pm2 = w.writes.meta;
+    ok(pm2 && pm2.affiliates.map((p) => p.id).join() === "aff-real,aff-x" && Object.keys(pm2.affPayouts).join() === "aff-real:2026-10" && pm2.other === 1 && pm2.affSettings.rs === 20 && w.result.removed.join() === "aff-demo" && !w.result.inqLinked.length,
+      "일회성: 예시 파트너(aff-demo)와 그 RS 기록만 지우고 실제 파트너 · 다른 설정은 그대로", w.result);
+    w = OO.demoPartnerClear((k) => (k === "meta" ? pm2 : undefined), () => []);
+    ok(!Object.keys(w.writes).length && OO.OPS.some((x) => x.id === "2026-11-03-demo-partner-clear"), "일회성: 다시 돌려도 그대로 · 작업 목록에 있어요", w.result);
     ok(OO.OPS.some((x) => x.id === "2026-11-03-moon-coaches-live" && x.run === OO.moonCoachesLive), "일회성 작업 목록에 있어요 (코치 이름 없이 문대표 코치 전체 · 담당 빈 칸만)");
     // 문대표 전용 색(뉴질랜드)은 강사센터 · 코치센터에도
     const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
