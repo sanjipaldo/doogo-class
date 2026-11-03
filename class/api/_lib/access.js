@@ -16,10 +16,10 @@
 "use strict";
 const VA = require("./vodaccess");
 const MD = require("./media");
+const COACH = require("../../coach-perms");
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const mask = (n) => { n = String(n || ""); return n ? n.slice(0, 1) + "OO" : "익명"; };
-const CONTENT_PERMS = ["brand", "guide", "curriculum", "missions", "schedule", "notices", "faq", "docs", "library", "motivation", "channels", "partners", "pages", "free", "landing"];
 
 function parseKey(k) {
   const p = String(k).split(":");
@@ -51,6 +51,8 @@ const adminOf = (ids, iid) => !!(ids.admin && (ids.admin.role === "master" || id
 const instructorOf = (ids, iid) => !!(ids.admin && (ids.admin.role === "master" || (ids.admin.role === "instructor" && ids.admin.iid === iid)));
 const coachOf = (ids, iid) => !!(ids.admin && ids.admin.role === "coach" && ids.admin.iid === iid);
 const coachCan = (ids, list) => (ids.admin.perms || []).some((x) => list.indexOf(x) !== -1);
+/** 코치가 이 문서 종류를 고칠 수 있는지 — 담당 두잉고(LIVE · VOD)에 맞는 메뉴만 (coach-perms.js · 화면과 같은 표) */
+const coachWrites = (ids, iid, type) => coachOf(ids, iid) && COACH.canWrite(type, ids.admin.perms || []);
 const ownerOf = (ids, iid) => !!(ids.admin && ids.admin.role === "instructor" && ids.admin.iid === iid);
 const studentOf = (ids, iid) => !!(ids.student && ids.student.iid === iid);
 const memberOf = (ids, iid) => adminOf(ids, iid) || studentOf(ids, iid);
@@ -75,7 +77,13 @@ function publicContent(c) {
   return o;
 }
 function publicIns(v) { const o = clone(v); delete o.phone4; delete o.coaches; return o; }
-function coachIns(v) { const o = clone(v); delete o.phone4; o.coaches = (o.coaches || []).map((c) => { const x = Object.assign({}, c); delete x.phone4; return x; }); return o; }
+/** 코치가 보는 강사 계정: 뒷자리(비밀번호)는 빼고, 정산 받을 정보(계좌 · 사업자번호 · 이메일)는 정산 유형만 남겨요 — 계좌 등록은 강사님만 */
+function coachIns(v) {
+  const o = clone(v); delete o.phone4;
+  o.coaches = (o.coaches || []).map((c) => { const x = Object.assign({}, c); delete x.phone4; return x; });
+  if (o.vodSettle && typeof o.vodSettle === "object") { const s = o.vodSettle; o.vodSettle = {}; ["type", "typeBy", "typeAt"].forEach((k) => { if (s[k] !== undefined) o.vodSettle[k] = s[k]; }); }
+  return o;
+}
 function publicCohorts(list) { return (list || []).map((c) => { const o = {}; Object.keys(c).forEach((k) => { if (!/url|link|zoom/i.test(k)) o[k] = c[k]; }); return o; }); }
 function maskedStudent(s) { return { id: s.id, instructorId: s.instructorId, cohortId: s.cohortId, name: mask(s.name), status: s.status, appliedAt: s.appliedAt }; }
 function questionsOnly(p) {
@@ -167,6 +175,8 @@ function writer(k, ids, creating) {
     case "meta":
       // 강사: 자기 VOD 클래스 커리큘럼 · 자기 제출 서류만 (나머지는 서버 값 그대로)
       if (!creating && ids.admin && ids.admin.role === "instructor") return { fix: (o, n) => VA.fixInstructorMeta(o, n, ids.admin.iid) };
+      // VOD 강의 · 수업 자료를 맡은 코치: 그 강사 VOD 클래스의 커리큘럼(강의 영상 · 자료 · 설명)만 (서류 · 두잉고 열기 · 가격은 못 고쳐요)
+      if (!creating && ids.admin && ids.admin.role === "coach" && COACH.canWrite("meta", ids.admin.perms || [])) return { fix: (o, n) => VA.fixInstructorMeta(o, n, ids.admin.iid, true) };
       if (!creating && ids.partner) return { fix: (o, n) => fixPartnerMeta(o, n, ids.partner.pid) };
       // 온드미디어: 자기 연락처 · 정산 계좌 · 비밀번호만 (나머지는 서버 값 그대로)
       if (!creating && ids.media) return { fix: (o, n) => MD.fixSelf(o, n, ids.media.id) };
@@ -178,11 +188,14 @@ function writer(k, ids, creating) {
     case "ins":
       if (creating) return null;
       if (instructorOf(ids, K.iid)) return { fix: (o, n) => (n == null ? clone(o) : keepSettleType(o, Object.assign(n, { id: K.iid, status: o.status, createdAt: o.createdAt }))) };
-      if (coachOf(ids, K.iid) && coachCan(ids, ["menus"])) return { fix: (o, n) => (n == null ? clone(o) : Object.assign(clone(o), { menu: n.menu })) };
+      // 코치: 메뉴 구성만 — LIVE 메뉴(menu) · VOD 강의실 메뉴(menuVod · menuVodBy)를 담당에 맞게
+      if (coachWrites(ids, K.iid, "ins")) return { fix: (o, n) => COACH.fixIns(o, n, ids.admin.perms || []) };
       return null;
     case "content":
       if (creating) return null;
-      if (instructorOf(ids, K.iid) || (coachOf(ids, K.iid) && coachCan(ids, CONTENT_PERMS))) return { fix: (o, n) => (n == null ? clone(o) : n) };
+      if (instructorOf(ids, K.iid)) return { fix: (o, n) => (n == null ? clone(o) : n) };
+      // 코치: LIVE 강의실 칸 / VOD 강의실(vod · vodBy) 중 맡은 쪽만
+      if (coachWrites(ids, K.iid, "content")) return { fix: (o, n) => COACH.fixContent(o, n, ids.admin.perms || []) };
       return null;
     case "cohorts":
       // 기존 기수 고치기는 자유, 새 기수 추가 · 기수 삭제는 마스터만 (다음 기수는 이용료 입금 뒤 마스터가 열어 준다)
@@ -195,7 +208,8 @@ function writer(k, ids, creating) {
       if (instructorOf(ids, K.iid) || (coachOf(ids, K.iid) && coachCan(ids, ["students"]))) return { fix: (o, n) => (n == null ? null : Object.assign(n, { id: K.sid, instructorId: K.iid })) };
       return null;
     case "prog":
-      if (instructorOf(ids, K.iid) || (coachOf(ids, K.iid) && coachCan(ids, ["reviews", "questions", "students"]))) return { fix: same };
+      // 과제 검수 · 1:1 요청 · 수강생 관리 · 1:1 코칭 답변(VOD 수강생 질문도 prog 에 있어요)
+      if (instructorOf(ids, K.iid) || coachWrites(ids, K.iid, "prog")) return { fix: same };
       if (ids.student && ids.student.sid === K.sid && ids.student.iid === K.iid) return { fix: (o, n) => (n == null ? clone(o) : keepStaffFields(o, n)) };
       return null;
   }

@@ -5,6 +5,7 @@
 "use strict";
 const crypto = require("crypto");
 const store = require("./store");
+const COACH = require("../../coach-perms");
 
 const COOKIE = { student: "dc_s", admin: "dc_a" };
 const MAX_AGE = 30 * 24 * 3600;
@@ -88,7 +89,8 @@ async function identify(req) {
         if (pa.r === "instructor") ids.admin = { role: "instructor", iid: pa.iid };
         else if (pa.r === "coach") {
           const co = (i.coaches || []).find((x) => x.id === pa.cid);
-          if (co && co.status === "active") ids.admin = { role: "coach", iid: pa.iid, cid: pa.cid, perms: co.perms || [] };
+          // 메뉴 권한은 담당 두잉고(LIVE · VOD)에 맞는 것만 — coach-perms.js (화면과 같은 표)
+          if (co && co.status === "active") ids.admin = { role: "coach", iid: pa.iid, cid: pa.cid, track: COACH.trackOf(co), perms: COACH.permsOf(co) };
         }
       }
     }

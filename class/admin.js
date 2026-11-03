@@ -39,27 +39,26 @@
     return { parts: path.split("/").filter(Boolean), params: new URLSearchParams(query || "") };
   }
   const IID = () => (S.role === "instructor" || S.role === "coach" ? S.instructorId : S.actingAs);
-  // 코치가 볼 수 있는 강사센터 메뉴 (강사가 ‘코치 관리’에서 고른다). 대시보드와 수강생 화면 미리보기는 늘 열려 있다
-  const COACH_PERMS = [
-    ["운영", [["vod-students", "VOD 수강생", "VOD 구매자 진도 · 두잉고 입장 (VOD 버전)"], ["students", "수강생 관리", "승인 · 기수 이동 · 탈퇴"], ["cohorts", "기수 관리", "기수 만들기 · 일정"], ["reviews", "과제 검수", "과제 피드백 · 승인 · 보완 요청"], ["questions", "1:1 요청 답변", "수강생 1:1 요청 · 오류 신고 답변"], ["coaching", "1:1 코칭 답변", "VOD 수강생 1:1 코칭 질문 답변 (코칭권)"], ["teatime", "TEA TIME 신청", "VOD 수강생 TEA TIME 일정 확정"]]],
-    ["수강생 화면 콘텐츠", [["vodlessons", "VOD 강의 · 수업 자료 (비메오 링크 · PDF)"], ["brand", "기본 정보 · 색상 · AI 조교"], ["menus", "메뉴 구성"], ["guide", "시작 가이드 · 빠른 이동"], ["curriculum", "주차별 강의 (커리큘럼)"], ["replays", "라이브 다시보기"], ["missions", "과제 · 미션"], ["showcase", "모범 과제"], ["notes", "학습 노트 질문"], ["schedule", "수업 캘린더"], ["notices", "클래스 소식 (공지)"], ["faq", "FAQ · 자주 묻는 질문"], ["docs", "실무 체크리스트"], ["glossary", "용어 사전"], ["library", "강의 자료함"], ["motivation", "응원 영상"], ["channels", "1:1 상담 채널"], ["partners", "제휴 혜택"], ["pages", "추가 메뉴"]]],
-    ["홍보", [["free", "무료강의 페이지"], ["landing", "강사 소개 페이지"]]]
-  ];
-  const COACH_DEFAULT = ["reviews", "questions"];
+  /** 그 강사 전용 강의실 색(예: 문대표 뉴질랜드)이면 강사센터 · 코치센터도 그 색으로 — admin.css body[data-ath] */
+  const athOf = (iid) => { const k = ((DB.content(iid) || {}).brand || {}).theme, t = DB.THEMES[k]; return t && Array.isArray(t.only) && t.only.indexOf(iid) >= 0 ? k : ""; };
+  /* 코치가 볼 수 있는 강사센터 메뉴 (강사가 ‘코치 관리’에서 고른다). 대시보드와 수강생 화면 미리보기는 늘 열려 있다
+   * 2026-11: 코치마다 담당 두잉고(LIVE · VOD · 둘 다)를 정하고, 메뉴도 LIVE 두잉고 / VOD 두잉고로 나눠서 골라요 — 표는 coach-perms.js (서버와 같이 써요) */
+  const CP = window.COACH;
   const isCoach = () => !!S && S.role === "coach";
   const ME_COACH = () => (isCoach() ? DB.coach(S.instructorId, S.coachId) : null);
-  /** 지금 계정이 이 메뉴(강사센터 경로 첫 칸)를 볼 수 있는지 */
-  const can = (key) => { if (!isCoach()) return true; if (!key || key === "ops-notices") return true; if (key === "coaches" || key === "contract") return false; const c = ME_COACH(); return !!c && (c.perms || []).indexOf(key) !== -1; };
+  const coachTrack = () => CP.trackOf(ME_COACH());
+  /** 지금 계정이 이 메뉴(강사센터 경로 첫 칸)를 볼 수 있는지 — 코치는 담당 두잉고에 맞는 열쇠로 (VOD 탭의 강의실 꾸미기 메뉴는 v- 열쇠) */
+  const can = (key) => { if (!isCoach()) return true; if (!key || key === "ops-notices") return true; if (key === "coaches" || key === "contract") return false; return CP.permsOf(ME_COACH()).indexOf(CP.keyFor(key, TRK() === "vod")) !== -1; };
   /** 검수 · 답변 기록에 남길 처리자 */
   const actor = () => { if (isCoach()) { const c = ME_COACH(); return { by: (c ? c.name : "코치") + " 코치", byId: S.coachId, role: "coach" }; } if (S && S.role === "master" && !S.actingAs) { const st = staffMe(); return { by: st ? st.name + " (운영팀)" : "두잉고 운영팀", byId: st ? st.id : "master", role: "master" }; } const i = INS(); return { by: (i ? i.name : "") + " 강사", byId: IID(), role: S.role === "master" ? "master" : "instructor" }; };
   const INS = () => DB.instructor(IID());
   /* 두잉고 버전: 강사센터에서 LIVE · 오프라인(기수 · 주차 · 과제) / VOD(DOOGO CLASS에서 VOD를 산 수강생)를 따로 세팅한다
    * VOD 버전이면 C()는 content.vod 를 고치고(기본 정보 · 색상은 함께), 메뉴는 "강사ID@vod" 메뉴를 고친다 */
   const TRK_KEY = "doinggo:center-track";
-  const VOD_COACH = ["vod-students", "coaching", "teatime", "vodlessons"];
-  const trackable = () => !!S && S.role !== "partner" && !(S.role === "master" && !S.actingAs) && (S.role !== "coach" || VOD_COACH.some((k) => can(k)));
+  // 코치: 담당이 ‘둘 다’일 때만 두잉고 ↔ DOOGO CLASS 탭을 오가요 (LIVE 코치는 두잉고 탭 · VOD 코치는 DOOGO CLASS 탭 고정)
+  const trackable = () => !!S && S.role !== "partner" && !(S.role === "master" && !S.actingAs) && (S.role !== "coach" || coachTrack() === "both");
   const trkKey = () => TRK_KEY + ":" + (S ? (S.coachId || S.role) + "@" + (IID() || "") : "");
-  const TRK = () => { const k = trkKey(); if (ui.track == null || ui.trackKey !== k) { ui.trackKey = k; try { ui.track = sessionStorage.getItem(k) === "vod" ? "vod" : "live"; } catch (e) { ui.track = "live"; } } return trackable() && ui.track === "vod" ? "vod" : "live"; };
+  const TRK = () => { if (isCoach() && coachTrack() !== "both") return coachTrack(); const k = trkKey(); if (ui.track == null || ui.trackKey !== k) { ui.trackKey = k; try { ui.track = sessionStorage.getItem(k) === "vod" ? "vod" : "live"; } catch (e) { ui.track = "live"; } } return trackable() && ui.track === "vod" ? "vod" : "live"; };
   // v15: VOD 버전은 VOD 상품마다 두잉고 강의실이 따로 — 지금 꾸미는 강의실(상품)을 고르면 메뉴 · 콘텐츠가 그 VOD 것으로 바뀌어요
   const vodProds = () => (window.VOD ? window.VOD.V().products.filter((p) => p.iid === IID() && window.VOD.typeOf(p) === "vod") : []);
   const VPK = () => "doinggo:center-vpid:" + IID();
@@ -291,7 +290,7 @@
   function coachCoursesLocal(name, phone4) {
     return DB.findCoachLogins(name, phone4).filter((h) => h.coach.status === "active").map((h) => {
       const b = Object.assign({}, h.ins.brand || {}, (DB.content(h.ins.id) || {}).brand || {}), ph = String(b.photo || "");
-      return { iid: h.ins.id, ins: h.ins.displayName || h.ins.name, title: b.courseTitle || b.name || "", photo: /^(assets\/|https:\/\/)/.test(ph) ? ph : "", perms: (h.coach.perms || []).length };
+      return { iid: h.ins.id, ins: h.ins.displayName || h.ins.name, title: b.courseTitle || b.name || "", photo: /^(assets\/|https:\/\/)/.test(ph) ? ph : "", perms: CP.permsOf(h.coach).length };
     });
   }
   // 지금 코치가 맡은 강의 (서버: 로그인 · 확인 때 받은 목록 / 로컬: 바로 계산)
@@ -393,7 +392,8 @@
     ].filter((x) => !x[3] || on(x[3])).filter((x) => !vod || LIVE_ONLY_PAGES.indexOf(x[0]) < 0).map((x) => (vod && VOD_NAV_LABEL[x[0]] ? [x[0], VOD_NAV_LABEL[x[0]], x[2]] : x.slice(0, 3)));
     if (vod) content.splice(2, 0, ["vodlink", "VOD 강의 연결", "circlePlay"], ["vodlessons", "VOD 강의 · 수업 자료", "paperclip"]);
     if (customPages(MID()).length) content.push(["pages", "추가 메뉴", "star"]);
-    const sales = isCoach() ? [] : [["DOOGO CLASS 판매", [["vod", "VOD 판매 내역", "monitorPlay"], ["vod-live", "무료 LIVE · 온/오프라인 판매", "calendar"], ["vod-settle", "판매 정산", "coins", vsNew() || ""], ["vod-cal", "정산 달력", "calendar"]]]];
+    // 코치는 강사가 열어 준 매출 메뉴만 (아래에서 can() 으로 걸러요)
+    const sales = [["DOOGO CLASS 판매", [["vod", "VOD 판매 내역", "monitorPlay"], ["vod-live", "무료 LIVE · 온/오프라인 판매", "calendar"], ["vod-settle", "판매 정산", "coins", vsNew() || ""], ["vod-cal", "정산 달력", "calendar"]]]];
     const groups = (vod ? [
       ["운영 · DOOGO CLASS", [["", "DOOGO CLASS 대시보드", "grid"], ["vod-students", "VOD 수강생", "users"], ["coaching", "1:1 코칭 답변", "message", n.coaching || ""], ["teatime", "TEA TIME 신청", "calendar", window.VOD ? window.VOD.teasOf(null, iid).filter((o) => o.status === "paid" && (o.tea || {}).st === "req").length || "" : ""]].concat(isCoach() ? [] : [["coaches", "코치 관리", "shieldCheck"]])],
       ["VOD 강의실 꾸미기", content]
@@ -500,6 +500,15 @@
   }
 
   /* ---------------- 강사: 대시보드 ---------------- */
+  /** 코치 대시보드 카드: 내가 맡은 메뉴 — 지금 탭(LIVE 두잉고 · VOD 두잉고) 메뉴는 바로 가기, 담당이 ‘둘 다’면 다른 탭 메뉴는 이름만 */
+  function coachMenusCard() {
+    const vod = TRK() === "vod", perms = CP.permsOf(ME_COACH()), mine = (groups) => groups.flatMap((g) => g[1]).filter((x) => perms.indexOf(x[0]) >= 0);
+    const here = mine(vod ? CP.VOD : CP.LIVE), there = coachTrack() === "both" ? mine(vod ? CP.LIVE : CP.VOD) : [];
+    const chip = (x) => '<a class="a-coach-chip" href="#/center/' + esc(x[0].replace(/^v-/, "")) + '">' + esc(x[1]) + icon("arrowRight", "xs") + "</a>";
+    return '<section class="a-card a-coach-menus"><div class="a-card-head"><h2>' + icon("shieldCheck", "sm") + " 내가 맡은 메뉴 · " + (vod ? "VOD 두잉고" : "LIVE 두잉고") + '</h2><span class="a-muted">강사님이 열어 준 메뉴예요. 더 필요하면 강사님께 요청해 주세요.</span></div>' +
+      (here.length ? '<div class="a-coach-chips">' + here.map(chip).join("") + "</div>" : '<p class="a-muted" style="margin:0">' + (vod ? "VOD" : "LIVE") + " 두잉고에서 열린 메뉴가 아직 없어요. 강사님께 요청해 주세요.</p>") +
+      (there.length ? '<p class="a-coach-other">' + icon("swap", "xs") + "<span>" + (vod ? "두잉고(LIVE)" : "DOOGO CLASS(VOD)") + " 탭 메뉴도 맡고 있어요 · " + there.map((x) => esc(x[1])).join(" · ") + " — 왼쪽 위 탭을 바꾸면 보여요.</span></p>" : "") + "</section>";
+  }
   // 코치 대시보드: 인사 + 맡은 메뉴의 할 일만
   function coachDashboard() {
     const iid = IID(), ins = INS(), c = C(), me = ME_COACH() || {};
@@ -507,7 +516,6 @@
     const subs = can("reviews") ? allSubmissions(iid, "all").filter((x) => x.review === "pending").slice(0, 6) : [];
     const reqs = can("questions") ? DB.requests(iid).filter((x) => !x.q.answer && (TRK() === "vod") === DB.isVodStudent(x.s)).slice(0, 5) : [];
     const pend = can("students") ? DB.studentsOf(iid).filter((s) => s.status === "pending").slice(0, 5) : [];
-    const myMenus = COACH_PERMS.flatMap((g) => g[1]).filter((x) => can(x[0]));
     const kpis = [];
     if (can("reviews")) kpis.push(kpi("검수 대기 과제", n.review + "개", "피드백 · 승인 · 보완 요청", "#/center/reviews", n.review ? "info" : ""));
     if (can("questions")) kpis.push(kpi("답변 대기 문의", n.questions + "건", "1:1 요청 · 오류 신고", "#/center/questions", n.questions ? "warn" : ""));
@@ -516,8 +524,7 @@
     const many = myCoachCourses();
     return head((me.name || "") + " 코치님, 안녕하세요", esc(ins.displayName) + " · " + esc(c.brand.courseTitle) + " 코치" + (me.memo ? " · " + esc(me.memo) : ""), many.length > 1 ? btn(icon("swap", "sm") + "다른 강의 코치센터 (" + many.length + "개)", "coach-switch", "a-btn-outline") : "") +
       '<div class="a-kpis">' + kpis.join("") + "</div>" +
-      '<section class="a-card a-coach-menus"><div class="a-card-head"><h2>' + icon("shieldCheck", "sm") + ' 내가 맡은 메뉴</h2><span class="a-muted">강사님이 열어 준 메뉴예요. 더 필요하면 강사님께 요청해 주세요.</span></div>' +
-        (myMenus.length ? '<div class="a-coach-chips">' + myMenus.map((x) => '<a class="a-coach-chip" href="#/center/' + x[0] + '">' + esc(x[1]) + icon("arrowRight", "xs") + "</a>").join("") + "</div>" : '<p class="a-muted" style="margin:0">아직 열린 메뉴가 없어요. 강사님께 요청해 주세요.</p>') + "</section>" +
+      coachMenusCard() +
       (can("reviews") ? '<section class="a-card"><div class="a-card-head"><h2>검수를 기다리는 과제</h2><a class="a-link" href="#/center/reviews">과제 검수 ' + icon("arrowRight", "xs") + "</a></div>" +
         (subs.length ? '<ul class="a-list">' + subs.map((x) => '<li class="clickable" data-action="review-open" data-sid="' + x.s.id + '" data-mid="' + x.m.id + '"><div class="a-who"><span class="a-avatar">' + esc(x.s.name.slice(0, 1)) + "</span><div><b>" + esc(x.s.name) + " · " + esc(x.m.title) + "</b><small>" + esc(cohortName(x.s.cohortId)) + " · " + x.w.no + "주차 · " + fmtStamp(x.sub.at) + "</small></div></div>" + reviewPill(x) + "</li>").join("") + "</ul>"
           : emptyBox("check", "검수를 기다리는 과제가 없어요.")) + "</section>" : "") +
@@ -1503,33 +1510,55 @@
     });
     return { rv, an };
   }
-  const permLabel = (k) => { for (const g of COACH_PERMS) for (const x of g[1]) if (x[0] === k) return x[1]; return k; };
+  const permLabel = (k) => CP.labelOf(k);
+  const TRACK_PILL = { live: ["LIVE 두잉고", "info"], vod: ["VOD 두잉고", "dark"], both: ["LIVE + VOD 두잉고", "ok"] };
+  /** 코치 목록: 열린 메뉴를 LIVE 두잉고 / VOD 두잉고로 나눠서 */
+  function coachPermChips(x) {
+    const ps = CP.permsOf(x);
+    const side = (k, label) => { const l = ps.filter((p) => CP.sideOf(p) === k); return l.length ? '<span class="a-coach-side ' + k + '"><em>' + label + "</em>" + l.map((p) => '<span class="a-perm">' + esc(permLabel(p)) + "</span>").join("") + "</span>" : ""; };
+    return side("live", "LIVE") + side("vod", "VOD") || '<span class="a-muted">열린 메뉴 없음 (대시보드만)</span>';
+  }
   function pageCoaches() {
     const iid = IID(), list = DB.coachesOf(iid);
-    return head("코치 관리", "코치는 강사센터 로그인 화면의 <b>‘코치’ 탭</b>에서 이름 + 전화번호 뒷자리로 로그인해요. 코치마다 볼 수 있는 메뉴를 정해 주면, 그 메뉴만 보이고 나머지는 들어갈 수 없어요.", btn(icon("userPlus", "sm") + "코치 추가", "coach-add", "a-btn-primary")) +
+    return head("코치 관리", "코치는 강사센터 로그인 화면의 <b>‘코치’ 탭</b>에서 이름 + 전화번호 뒷자리로 로그인해요. 코치마다 <b>담당 두잉고(LIVE · VOD)</b>와 볼 수 있는 메뉴를 정해 주면, 그 메뉴만 보이고 나머지는 들어갈 수 없어요.", btn(icon("userPlus", "sm") + "코치 추가", "coach-add", "a-btn-primary")) +
+      '<div class="a-ctrack-guide">' +
+        '<div><b><span class="a-ct-tag live">LIVE 두잉고</span> 코치</b><small>기수 · 주차 · 과제로 운영하는 프로그램 — 수강생 관리 · 과제 검수 · 1:1 요청 답변 · 강의실 꾸미기</small></div>' +
+        '<div><b><span class="a-ct-tag vod">VOD 두잉고</span> 코치</b><small>DOOGO CLASS에서 VOD를 산 수강생 — 1:1 코칭 답변 · TEA TIME · 매출 보기 · VOD 강의실 꾸미기 (강사님 대신 직원이 맡을 때)</small></div>' +
+      "</div>" +
       '<section class="a-card">' + (list.length ? '<ul class="a-items a-coach-list">' + list.map((x) => {
-        const st = coachStats(iid, x.id);
-        return '<li><span class="a-avatar a-coach-av">' + esc(x.name.slice(0, 1)) + '</span><div class="a-item-main"><b>' + esc(x.name) + ' 코치 <span class="a-muted num">· 뒷자리 ' + esc(x.phone4) + "</span></b>" +
+        const st = coachStats(iid, x.id), tp = TRACK_PILL[CP.trackOf(x)];
+        return '<li><span class="a-avatar a-coach-av">' + esc(x.name.slice(0, 1)) + '</span><div class="a-item-main"><b>' + esc(x.name) + ' 코치 <span class="a-muted num">· 뒷자리 ' + esc(x.phone4) + "</span> " + pill(tp[0], tp[1]) + "</b>" +
           "<small>" + esc([x.memo, "검수 " + st.rv + "건 · 답변 " + st.an + "건", x.lastLoginAt ? "최근 접속 " + fmtStamp(x.lastLoginAt) : "아직 접속 전"].filter(Boolean).join(" · ")) + "</small>" +
-          '<span class="a-coach-perms">' + ((x.perms || []).length ? x.perms.map((k) => '<span class="a-perm">' + esc(permLabel(k)) + "</span>").join("") : '<span class="a-muted">열린 메뉴 없음 (대시보드만)</span>') + "</span></div>" +
+          '<span class="a-coach-perms">' + coachPermChips(x) + "</span></div>" +
           (x.status === "active" ? pill("사용 중", "ok") : pill("중지", "mute")) +
           '<div class="a-row-actions">' + btn(icon("pen", "sm") + "수정", "coach-edit", "a-btn-ghost a-btn-sm", ' data-id="' + x.id + '"') + "</div></li>";
-      }).join("") + "</ul>" : emptyBox("shieldCheck", "아직 코치가 없어요. ‘코치 추가’로 과제 검수 · 문의 답변을 도와줄 코치 계정을 만들어 주세요.", btn(icon("userPlus", "sm") + "코치 추가", "coach-add", "a-btn-primary"))) + "</section>" +
-      '<p class="a-hint">' + icon("alert", "xs") + " 코치가 승인 · 보완 요청한 과제와 답변에는 처리한 코치 이름이 남아요. 코치 계정을 잠시 막으려면 ‘중지’로 바꾸면 돼요.</p>";
+      }).join("") + "</ul>" : emptyBox("shieldCheck", "아직 코치가 없어요. ‘코치 추가’로 과제 검수 · 문의 답변 · TEA TIME을 도와줄 코치 계정을 만들어 주세요.", btn(icon("userPlus", "sm") + "코치 추가", "coach-add", "a-btn-primary"))) + "</section>" +
+      '<p class="a-hint">' + icon("alert", "xs") + " 코치가 승인 · 보완 요청한 과제와 답변에는 처리한 코치 이름이 남아요. 매출 메뉴는 보기만 할 수 있고, 정산 계좌 · 세금계산서 · 계약 서류는 강사님만 다뤄요. 코치 계정을 잠시 막으려면 ‘중지’로 바꾸면 돼요.</p>";
   }
+  // 코치 수정 창의 메뉴 묶음 (LIVE 두잉고 / VOD 두잉고) — 빠른 선택 [이름, 열쇠들]
+  const COACH_PRESET = {
+    live: [["과제 · 문의만", ["reviews", "questions"]], ["운영 전체", ["students", "cohorts", "reviews", "questions"]], ["모두 선택", CP.LIVE_KEYS], ["모두 해제", []]],
+    vod: [["코칭 · TEA TIME만", ["coaching", "teatime"]], ["운영 + 매출", ["vod-students", "coaching", "teatime", "vod", "vod-live", "vod-settle", "vod-cal"]], ["모두 선택", CP.VOD_KEYS], ["모두 해제", []]]
+  };
   function coachForm(id) {
-    const iid = IID(), x = id ? DB.coach(iid, id) : { name: "", phone4: "", status: "active", perms: COACH_DEFAULT.slice(), memo: "" };
+    const iid = IID(), vod0 = TRK() === "vod";
+    const x = id ? DB.coach(iid, id) : { name: "", phone4: "", status: "active", track: vod0 ? "vod" : "live", perms: CP.DEFAULT[vod0 ? "vod" : "live"].slice(), memo: "" };
     if (!x) return;
-    const has = (k) => (x.perms || []).indexOf(k) !== -1;
+    const t = CP.trackOf(x), on = CP.permsOf(x).concat(x.perms || []), has = (k) => on.indexOf(k) !== -1;
+    const panel = (side, title, sub, groups) => '<div class="a-cpanel ' + side + '" data-side="' + side + '"><div class="a-cpanel-h"><span class="a-ct-tag ' + side + '">' + title + "</span><small>" + sub + "</small></div>" +
+      '<div class="a-perm-presets">' + COACH_PRESET[side].map((pr, i) => btn(pr[0], "coach-preset", "a-btn-ghost a-btn-sm", ' data-k="' + side + ":" + i + '"')).join("") + "</div>" +
+      groups.map((g) => '<fieldset class="a-perm-group"><legend>' + esc(g[0]) + "</legend>" + g[1].map((p) => '<label class="a-check"><input type="checkbox" name="perm" value="' + p[0] + '"' + (has(p[0]) ? " checked" : "") + "><span>" + esc(p[1]) + (p[2] ? ' <small class="a-muted">' + esc(p[2]) + "</small>" : "") + "</span></label>").join("") + "</fieldset>").join("") + "</div>";
     openModal(id ? x.name + " 코치 수정" : "코치 추가",
-      '<form id="coach-form" class="a-form" data-id="' + esc(id || "") + '" novalidate>' +
+      '<form id="coach-form" class="a-form" data-id="' + esc(id || "") + '" data-track="' + t + '" novalidate>' +
         '<div class="a-form-row"><div class="a-field"><label for="cf-cname">코치 이름 <small>(로그인 이름)</small></label><input class="a-input" id="cf-cname" name="cname" value="' + esc(x.name) + '" placeholder="예: 김하나"></div>' +
         '<div class="a-field"><label for="cf-cphone">전화번호 뒷자리 <small>(비밀번호)</small></label><input class="a-input" id="cf-cphone" name="cphone" inputmode="numeric" maxlength="4" value="' + esc(x.phone4) + '" placeholder="숫자 4자리"></div></div>' +
         '<div class="a-form-row"><div class="a-field"><label for="cf-cmemo">담당 업무 메모 <small>(선택 · 코치 대시보드에 보여요)</small></label><input class="a-input" id="cf-cmemo" name="cmemo" value="' + esc(x.memo || "") + '" placeholder="예: 과제 검수 · 1:1 문의 담당"></div>' +
         '<div class="a-field"><label for="cf-cstatus">상태</label><select class="a-input" id="cf-cstatus" name="cstatus"><option value="active"' + (x.status === "active" ? " selected" : "") + '>사용 중</option><option value="paused"' + (x.status !== "active" ? " selected" : "") + ">중지 (로그인 막기)</option></select></div></div>" +
+        '<div class="a-field"><span class="a-label" id="cf-ctrack-l">담당 두잉고 <small>(담당이 아닌 쪽 메뉴는 체크해도 열리지 않아요)</small></span>' +
+          '<div class="a-ctrack" role="radiogroup" aria-labelledby="cf-ctrack-l">' + CP.TRACKS.map((r) => '<label class="a-ctrack-o ' + r[0] + '"><input type="radio" name="ctrack" value="' + r[0] + '"' + (t === r[0] ? " checked" : "") + "><span><b>" + esc(r[1]) + "</b><small>" + esc(r[2]) + "</small></span></label>").join("") + "</div></div>" +
         '<div class="a-field"><span class="a-label">볼 수 있는 메뉴 <small>(대시보드 · 수강생 화면 보기는 늘 열려 있어요)</small></span>' +
-          '<div class="a-perm-presets">' + btn("과제 · 문의만", "coach-preset", "a-btn-ghost a-btn-sm", ' data-k="basic"') + btn("운영 전체", "coach-preset", "a-btn-ghost a-btn-sm", ' data-k="ops"') + btn("모두 선택", "coach-preset", "a-btn-ghost a-btn-sm", ' data-k="all"') + btn("모두 해제", "coach-preset", "a-btn-ghost a-btn-sm", ' data-k="none"') + "</div>" +
-          COACH_PERMS.map((g) => '<fieldset class="a-perm-group"><legend>' + esc(g[0]) + "</legend>" + g[1].map((p) => '<label class="a-check"><input type="checkbox" name="perm" value="' + p[0] + '"' + (has(p[0]) ? " checked" : "") + "><span>" + esc(p[1]) + (p[2] ? ' <small class="a-muted">' + esc(p[2]) + "</small>" : "") + "</span></label>").join("") + "</fieldset>").join("") +
+          panel("live", "LIVE 두잉고 메뉴", "기수 · 주차 · 과제로 운영하는 프로그램", CP.LIVE) +
+          panel("vod", "VOD 두잉고 메뉴", "DOOGO CLASS에서 VOD를 산 수강생 · 매출은 보기만 · 정산 계좌 · 세금계산서는 강사님만", CP.VOD) +
         '</div><p class="a-error" id="coach-error"></p></form>',
       (id ? btn(icon("trash", "sm") + "삭제", "coach-delete", "a-btn-ghost danger", ' data-id="' + esc(id) + '"') : "") + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="coach-form">저장</button>', "lg");
   }
@@ -1540,12 +1569,17 @@
     if (!/^\d{4}$/.test(phone4)) { err.textContent = "전화번호 뒷자리는 숫자 4자리로 입력해 주세요."; return; }
     const same = (a, b) => a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
     if (DB.data.instructors.some((ins) => same(ins.name, name) && ins.phone4 === phone4) || DB.data.instructors.some((ins) => (ins.coaches || []).some((c) => c.id !== id && same(c.name, name) && c.phone4 === phone4))) { err.textContent = "같은 이름 + 뒷자리 계정이 이미 있어요. 뒷자리나 이름을 바꿔 주세요."; return; }
-    const perms = Array.from(f.querySelectorAll("input[name=perm]:checked")).map((x) => x.value);
-    const data = { name, phone4, memo: f.cmemo.value.trim(), status: f.cstatus.value, perms };
+    // 담당 두잉고에 맞는 메뉴만 저장해요 (안 보이는 쪽에 체크가 남아 있어도 빼요)
+    const track = (f.querySelector("input[name=ctrack]:checked") || {}).value || "live";
+    const ok = track === "live" ? CP.LIVE_KEYS : track === "vod" ? CP.VOD_KEYS : CP.LIVE_KEYS.concat(CP.VOD_KEYS);
+    const perms = Array.from(f.querySelectorAll("input[name=perm]:checked")).map((x) => x.value).filter((k, i, a) => ok.indexOf(k) >= 0 && a.indexOf(k) === i);
+    const data = { name, phone4, memo: f.cmemo.value.trim(), status: f.cstatus.value, track, perms };
     if (id) Object.assign(DB.coach(iid, id), data);
     else list.push(Object.assign({ id: DB.uid("coach"), createdAt: todayStr() }, data));
-    commit(name + " 코치 계정을 저장했어요." + (id ? "" : " ‘코치’ 탭에서 이름 + 뒷자리로 로그인하면 돼요."));
+    commit(name + " 코치 계정을 저장했어요 · " + TRACK_PILL[track][0] + " 메뉴 " + perms.length + "개." + (id ? "" : " ‘코치’ 탭에서 이름 + 뒷자리로 로그인하면 돼요."));
   }
+  // 코치 수정 창: 담당 두잉고를 바꾸면 그쪽 메뉴 묶음만 보여요 (form[data-track] · admin.css)
+  document.addEventListener("change", (e) => { const t = e.target; if (!isActive() || t.name !== "ctrack" || !t.form || t.form.id !== "coach-form") return; t.form.dataset.track = t.value; });
   function pagePartners() {
     const c = C(), list = DB.partnersOf(c), G = DB.PARTNER_GROUPS;
     return head("제휴 혜택" + (TRK() === "vod" ? " · VOD 버전" : ""), "수강생 메뉴 ‘제휴 혜택’에 탭(전체보기 · 두고그룹 · 제휴사)으로 보여요. ‘맨 위에 크게’를 켠 곳(예: 두고 N카페)은 가장 위에 큰 카드와 ‘제휴 혜택 · 할인 코드 안내’ 띠로 보여요.", addBtn("partner", "제휴처 추가")) +
@@ -4560,7 +4594,7 @@
   /** 강사 대시보드: 내 수익 쉐어(종류별 강사 몫) · 이번 달 정산 예정 · 정산 달력 바로 가기 */
   function vdShareStrip(iid) {
     const X = VX(), r = X.rateOf(iid), ym = todayStr().slice(0, 7), st = vdStmt(iid, ym);
-    return '<section class="a-card vs-strip"><div class="a-card-head"><h2>' + icon("coins", "sm") + ' 내 수익 쉐어</h2><span class="a-muted">숫자는 강사님 몫이에요 · ' + (r.next ? "지금 비율 · 다음 비율 " + esc(vdRateNextTxt(r)) : r.at ? esc(fmtFull(DB.date.toStr(new Date(r.from || r.at)))) + "부터 마스터 확정" : "기본 계약 (강사 5 : 플랫폼 5)") + "</span>" +
+    return '<section class="a-card vs-strip"><div class="a-card-head"><h2>' + icon("coins", "sm") + (isCoach() ? " 강사님 수익 쉐어" : " 내 수익 쉐어") + '</h2><span class="a-muted">숫자는 강사님 몫이에요 · ' + (r.next ? "지금 비율 · 다음 비율 " + esc(vdRateNextTxt(r)) : r.at ? esc(fmtFull(DB.date.toStr(new Date(r.from || r.at)))) + "부터 마스터 확정" : "기본 계약 (강사 5 : 플랫폼 5)") + "</span>" +
       '<a class="a-link vda-ml" href="#/center/vod-cal">정산 달력 ' + icon("arrowRight", "xs") + '</a><a class="a-link" href="#/center/vod-settle">판매 정산 ' + icon("arrowRight", "xs") + "</a></div>" +
       '<div class="vs-strip-g">' + X.RATE_KEYS.map((x) => '<div class="vs-strip-i"><small>' + esc(x[1]) + "</small><b>" + r[x[0]] + "<em>%</em></b><span>강사 " + r[x[0]] + " : 플랫폼 " + (100 - r[x[0]]) + "</span></div>").join("") +
         '<div class="vs-strip-i vs-strip-now"><small>이번 달 정산 예정</small><b>' + won(Math.max(0, st.net)) + "</b><span>" + st.n + "건 판매 · " + esc(fmtFull(vdPayDate(ym))) + " 지급</span></div></div>" +
@@ -4582,22 +4616,25 @@
       ["library", "강의 자료함", "전자책 · 교재 · 보충 영상 올리기", nRes > 0],
       ["docs", "실습 체크리스트", "숙제 대신 따라 할 실습 단계 정리", (c.docsGuide || []).length > 0]
     ];
-    return head(ins.name + " 강사님 · VOD 두잉고", "DOOGO CLASS에서 " + esc(ins.displayName) + " 강사님 VOD를 산 수강생의 강의실이에요. 주차 · 과제 없이 자료 · 업데이트 소식 · FAQ로 운영하고, 1:1 코칭권 · TEA TIME을 산 수강생은 직접 챙겨요.", btn(icon("eye", "sm") + "VOD 수강생 화면 보기", "preview", "a-btn-outline")) +
+    // 코치: 강사가 열어 준 메뉴의 단계 · 할 일만 (매출 숫자는 매출 메뉴를 맡았을 때만)
+    const coach = isCoach(), me = ME_COACH() || {}, stepsV = coach ? steps.filter((x) => can(x[0])) : steps;
+    return head(coach ? (me.name || "") + " 코치님 · VOD 두잉고" : ins.name + " 강사님 · VOD 두잉고", coach ? "DOOGO CLASS에서 " + esc(ins.displayName) + " 강사님 VOD를 산 수강생의 강의실이에요. 강사님 대신 맡은 메뉴(1:1 코칭 · TEA TIME · 매출 · 강의실 꾸미기)만 보여요." + (me.memo ? " · " + esc(me.memo) : "") : "DOOGO CLASS에서 " + esc(ins.displayName) + " 강사님 VOD를 산 수강생의 강의실이에요. 주차 · 과제 없이 자료 · 업데이트 소식 · FAQ로 운영하고, 1:1 코칭권 · TEA TIME을 산 수강생은 직접 챙겨요.", (coach && myCoachCourses().length > 1 ? btn(icon("swap", "sm") + "다른 강의 코치센터 (" + myCoachCourses().length + "개)", "coach-switch", "a-btn-outline") : "") + btn(icon("eye", "sm") + "VOD 수강생 화면 보기", "preview", "a-btn-outline")) +
       '<div class="a-kpis">' +
         kpi("VOD 수강생", act.length + "명", "두잉고 입장 " + joined.length + "명 · 아직 " + (act.length - joined.length) + "명", "#/center/vod-students") +
         kpi("평균 진도율", avg + "%", "수강 중인 " + act.length + "명 기준", "#/center/vod-students") +
-        (isCoach() ? kpi("연결된 VOD", prods.filter((p) => p.dg !== false).length + "개", "DOOGO CLASS VOD 클래스", "#/center") : kpi("이번 달 VOD 판매", mon.filter(X.isAccess).length + "건", won(vdSum(mon)) + " (부가 " + won(vdSum(mon.filter((o) => !X.isAccess(o)))) + ") · 정산 " + won(vdSum(mon, vdInsAmt)), "#/center/vod", mon.length ? "ok" : "")) +
+        (coach && !can("vod") ? kpi("연결된 VOD", prods.filter((p) => p.dg !== false).length + "개", "DOOGO CLASS VOD 클래스", "#/center") : kpi("이번 달 VOD 판매", mon.filter(X.isAccess).length + "건", won(vdSum(mon)) + " (부가 " + won(vdSum(mon.filter((o) => !X.isAccess(o)))) + ") · 정산 " + won(vdSum(mon, vdInsAmt)), "#/center/vod", mon.length ? "ok" : "")) +
         kpi("완강한 수강생", act.filter((b) => b.pct >= 100).length + "명", "진도 100% · 후기 요청 대상", "#/center/vod-students") +
       "</div>" +
-      (isCoach() ? "" : vdShareStrip(iid)) +
-      '<section class="a-card a-vsteps"><div class="a-card-head"><h2>' + icon("sparkles", "sm") + " VOD 버전 세팅 순서</h2><span class=\"a-muted\">" + steps.filter((x) => x[3]).length + " / " + steps.length + " 완료 · 원하는 대로 바꿀 수 있어요</span></div><ol class=\"a-vstep-list\">" +
-        steps.map((x, i) => '<li class="' + (x[3] ? "ok" : "") + '"><span class="a-vstep-n">' + (x[3] ? icon("check", "xs") : i + 1) + '</span><div><b>' + esc(x[1]) + "</b><small>" + esc(x[2]) + '</small></div><a class="a-link" href="#/center/' + x[0] + '">' + (x[3] ? "고치기" : "하러 가기") + " " + icon("arrowRight", "xs") + "</a></li>").join("") +
-        '<li><span class="a-vstep-n">' + (steps.length + 1) + "</span><div><b>수강생 화면 미리보기</b><small>VOD 수강생 눈으로 한 번 둘러보기</small></div>" + btn("미리보기 " + icon("arrowRight", "xs"), "preview", "a-btn-ghost a-btn-sm") + "</li></ol></section>" + vodAddonTodo(iid, ids) +
+      (coach ? coachMenusCard() : "") +
+      (!coach || can("vod-settle") ? vdShareStrip(iid) : "") +
+      (coach && !stepsV.length ? "" : '<section class="a-card a-vsteps"><div class="a-card-head"><h2>' + icon("sparkles", "sm") + " VOD 버전 세팅 순서</h2><span class=\"a-muted\">" + stepsV.filter((x) => x[3]).length + " / " + stepsV.length + " 완료 · 원하는 대로 바꿀 수 있어요</span></div><ol class=\"a-vstep-list\">" +
+        stepsV.map((x, i) => '<li class="' + (x[3] ? "ok" : "") + '"><span class="a-vstep-n">' + (x[3] ? icon("check", "xs") : i + 1) + '</span><div><b>' + esc(x[1]) + "</b><small>" + esc(x[2]) + '</small></div><a class="a-link" href="#/center/' + x[0] + '">' + (x[3] ? "고치기" : "하러 가기") + " " + icon("arrowRight", "xs") + "</a></li>").join("") +
+        '<li><span class="a-vstep-n">' + (stepsV.length + 1) + "</span><div><b>수강생 화면 미리보기</b><small>VOD 수강생 눈으로 한 번 둘러보기</small></div>" + btn("미리보기 " + icon("arrowRight", "xs"), "preview", "a-btn-ghost a-btn-sm") + "</li></ol></section>") + vodAddonTodo(iid, ids) +
       '<div class="a-grid-2">' +
-        '<section class="a-card"><div class="a-card-head"><h2>연결된 VOD 클래스</h2><a class="a-link" href="#/center/vodlink">VOD 강의 연결 ' + icon("arrowRight", "xs") + "</a></div>" +
+        '<section class="a-card"><div class="a-card-head"><h2>연결된 VOD 클래스</h2>' + (can("vodlink") ? '<a class="a-link" href="#/center/vodlink">VOD 강의 연결 ' + icon("arrowRight", "xs") + "</a>" : "") + "</div>" +
           (prods.length ? '<ul class="a-list">' + prods.map((p) => { const bs = buyers.filter((b) => b.active && b.paid.some((x) => x.p.id === p.id)); return '<li><div class="vda-cl">' + vdThumb(p) + "<div><b>" + esc(p.title) + '</b><small class="a-memo">수강생 ' + bs.length + "명 · 강의 " + X.lessons(p).length + "개 · " + esc(X.accessTxt(p)) + "</small></div></div>" + (p.dg !== false ? pill("두잉고 열림", "ok") : pill("닫힘", "mute")) + "</li>"; }).join("") + "</ul>"
             : emptyBox("monitorPlay", "아직 DOOGO CLASS에 올라간 내 VOD가 없어요.", vdStoreBtn("#/vod", "DOOGO CLASS 둘러보기"))) + "</section>" +
-        '<section class="a-card"><div class="a-card-head"><h2>최근 VOD 수강생</h2><a class="a-link" href="#/center/vod-students">전체 ' + icon("arrowRight", "xs") + "</a></div>" +
+        '<section class="a-card"><div class="a-card-head"><h2>최근 VOD 수강생</h2>' + (can("vod-students") ? '<a class="a-link" href="#/center/vod-students">전체 ' + icon("arrowRight", "xs") + "</a>" : "") + "</div>" +
           (buyers.length ? '<ul class="a-list">' + buyers.slice(0, 6).map((b) => '<li><div class="a-who"><span class="a-avatar">' + esc(String(b.m.name).slice(0, 1)) + "</span><div><b>" + esc(vbName(b)) + "</b><small>" + esc(b.paid.map((x) => x.p.title).join(", ") || "환불") + " · " + esc(DB.date.toStr(new Date(b.paidAt))) + "</small></div></div>" +
               '<div class="a-vs-pc"><div class="a-bar"><span style="width:' + b.pct + '%"></span></div><small class="num">' + b.pct + "%</small></div>" + (b.st ? pill("입장", "ok") : b.active ? pill("아직", "mute") : pill("종료", "mute")) + "</li>").join("") + "</ul>"
             : emptyBox("users", "아직 VOD를 산 수강생이 없어요.")) + "</section>" +
@@ -4714,7 +4751,7 @@
     const view = btn(icon("file", "sm") + "명세서 보기", "vda-stm", "a-btn-primary a-btn-sm", at);
     if (s.k === "ready") return '<div class="vs-notice wait">' + icon("clock", "sm") + "<div><b>" + esc(vdYMtxt(st.ym)) + " 판매분 정산을 운영팀이 확정하고 있어요</b><small>확정되면 여기에 ‘이번 달 정산 명세서’가 열려요 · " + esc(payD) + " 지급 예정</small></div></div>";
     if (s.k === "paid") return '<div class="vs-notice ok">' + icon("check", "sm") + "<div><b>이번 달 정산을 지급했어요 · " + won(st.pay) + "</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 정산 명세서</small></div>" + view + "</div>";
-    return '<div class="vs-notice new">' + icon("file", "sm") + "<div><b>이번 달 정산 명세서가 나왔어요</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 · " + esc(payD) + " 지급 예정 · 받을 금액 <b>" + won(st.pay) + "</b>" + (st.biz ? (s.k === "invoiced" ? " · 세금계산서 확인 완료" : " · 세금계산서를 발행한 뒤 ‘세금계산서 발행 완료’를 눌러 주세요") : " · 3.3% 원천징수 뒤 금액") + "</small></div>" + view + (st.biz && (s.k === "confirmed" || s.k === "invreq") ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-ghost a-btn-sm", ' data-m="' + esc(st.ym) + '"') : "") + "</div>";
+    return '<div class="vs-notice new">' + icon("file", "sm") + "<div><b>이번 달 정산 명세서가 나왔어요</b><small>" + esc(vdYMtxt(st.ym)) + " 판매분 · " + esc(payD) + " 지급 예정 · 받을 금액 <b>" + won(st.pay) + "</b>" + (st.biz ? (s.k === "invoiced" ? " · 세금계산서 확인 완료" : " · 세금계산서를 발행한 뒤 ‘세금계산서 발행 완료’를 눌러 주세요") : " · 3.3% 원천징수 뒤 금액") + "</small></div>" + view + (st.biz && !isCoach() && (s.k === "confirmed" || s.k === "invreq") ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-ghost a-btn-sm", ' data-m="' + esc(st.ym) + '"') : "") + "</div>";
   }
   function vsPayCard(st, last) {
     const ss = vdStState(st), X = VX(), payD = vdPayDate(st.ym);
@@ -4724,7 +4761,7 @@
       '<ul class="fin-pnl">' +
         li("판매가 합계", won(st.base), "", st.n + "건") +
         (st.rs ? li("온드미디어 RS", "- " + won(st.rs), "neg", "YouTube 링크 판매 " + st.rsN + "건 · 나누기 전에 먼저 빼요") : "") +
-        li("내 정산액", won(st.ins), "", st.rs ? "(판매가 − 온드 RS) × 내 비율" : "판매가 × 내 비율") +
+        li((isCoach() ? "강사님" : "내") + " 정산액", won(st.ins), "", (st.rs ? "(판매가 − 온드 RS) × " : "판매가 × ") + (isCoach() ? "강사님" : "내") + " 비율") +
         (st.ded ? li("확정 뒤 환불 차감", "- " + won(st.ded), "neg", st.dedN + "건") : "") +
         li("광고비 분담", (st.adDed ? "- " : "") + won(st.adDed), "neg", st.adCost ? "이 달 광고비 " + won(st.adCost) + " × " + st.adPct + "%" : "이 달 광고비 없음") +
         (st.carry ? li("지난달 이월 차감", "- " + won(st.carry), "neg", "광고비가 정산액보다 많아 넘어온 금액") : "") +
@@ -4812,13 +4849,14 @@
     if (lm.rec && lm.rec.snap) vsMarkSeen(iid, last);
     const rate = (t, n, d, cls) => '<div class="vs-rate ' + (cls || "") + '"><b>' + n + "%</b><span>" + t + "</span><small>" + d + "</small></div>";
     const links = mine.filter((p) => p.status !== "hidden");
-    return head("판매 정산", "DOOGO CLASS에서 판매한 VOD · 전자책 · LIVE · 오프라인 강의의 정산이에요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.", vdStoreBtn()) +
+    const coach = isCoach();
+    return head("판매 정산", "DOOGO CLASS에서 판매한 VOD · 전자책 · LIVE · 오프라인 강의의 정산이에요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요." + (coach ? " 코치는 보기만 할 수 있어요 (정산 계좌 · 세금계산서는 강사님만)." : ""), vdStoreBtn()) +
       vsThisMonth(lm) +
       '<div class="a-kpis">' +
         kpi("이번 달 받을 금액", won(lm.pay), vdYMtxt(last) + " 판매분 · " + fmtMD(vdPayDate(last)) + " · " + (lm.n || lm.rec ? lm.s.t : "판매 없음"), "#/center/vod-settle", lm.n && lm.s.k !== "paid" ? "info" : "") +
         kpi("이번 달 판매 (집계 중)", won(Math.max(0, months[0].net)), vdYMtxt(ym) + " 판매 " + months[0].n + "건 · " + fmtMD(vdPayDate(ym)) + " 지급 예정", "#/center/vod-settle", "ok") +
         kpi("누적 지급 완료", won(paidOut), "지금까지 받은 정산", "#/center/vod-settle") +
-        kpi("정산 받을 정보", pf.account ? (pf.type === "biz" ? "사업자" : "개인") : "미등록", pf.account ? esc(pf.bank || "") + " · " + (pf.type === "biz" ? "세금계산서 발행" : "3.3% 원천징수") : "계좌를 등록해야 지급돼요", "#/center/vod-settle", pf.account ? "" : "warn") +
+        (coach ? kpi("정산 유형", pf.type === "biz" ? "사업자" : "개인", "정산 계좌 · 세금계산서는 강사님만 다뤄요", "#/center/vod-settle") : kpi("정산 받을 정보", pf.account ? (pf.type === "biz" ? "사업자" : "개인") : "미등록", pf.account ? esc(pf.bank || "") + " · " + (pf.type === "biz" ? "세금계산서 발행" : "3.3% 원천징수") : "계좌를 등록해야 지급돼요", "#/center/vod-settle", pf.account ? "" : "warn")) +
       "</div>" +
       '<div class="fin-grid vs-pays">' + vsPayCard(months[1], true) + vsPayCard(months[0], false) + "</div>" +
       vsRateCard(iid, mine) +
@@ -4827,14 +4865,14 @@
       '<section class="a-card"><div class="a-card-head"><h2>월별 정산 명세</h2><span class="a-muted">마스터가 확정하면 명세서가 고정돼요</span></div><div class="a-table-wrap"><table class="a-table vs-table"><thead><tr><th>판매 월</th><th>판매</th><th class="right">판매가 합계</th><th class="right">정산액</th><th class="right">차감</th><th class="right">광고비 분담</th><th class="right">세금</th><th class="right">지급액</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
         months.map((x) => { const at = ' data-k="' + esc(iid) + '" data-m="' + esc(x.ym) + '"'; return "<tr" + ((x.n || x.rec || x.adDed || x.carry) ? "" : ' class="a-dim"') + "><td><b>" + vdYMtxt(x.ym) + '</b><div class="vs-chs">' + vdChTags(x) + '</div></td><td class="num">' + x.n + '건</td><td class="right num">' + won(x.base) + (x.rs ? '<small class="vc-rs">온드 RS − ' + won(x.rs) + "</small>" : "") + '</td><td class="right num">' + won(x.ins) + '</td><td class="right num">' + (x.ded ? "- " + won(x.ded) : "0원") + '</td><td class="right num">' + vdAdCell(x) + '</td><td class="right num">' + (x.biz ? "+ " + won(x.vat) : x.wh ? "- " + won(x.wh) : "0원") + '</td><td class="right num"><b>' + won(x.pay) + "</b>" + vdNextTxt(x) + "</td><td>" + ((x.n || x.rec || x.adDed || x.carry) ? pill(x.s.t, x.s.c) : '<span class="a-muted">-</span>') + '</td><td class="right vs-acts">' + ((x.n || x.rec || x.adDed || x.carry) ? btn("명세서", "vda-stm", "a-btn-ghost a-btn-sm", at) : "") + (x.s.k === "confirmed" && x.biz ? btn("세금계산서 발행 완료", "vda-inv", "a-btn-primary a-btn-sm", ' data-m="' + esc(x.ym) + '"') : "") + "</td></tr>"; }).join("") +
       "</tbody></table></div></section>" +
-      '<section class="a-card"><div class="a-card-head"><h2>정산 받을 정보</h2><span class="a-muted">마스터에게만 보여요</span></div><form id="vs-prof-form" class="a-form" novalidate>' +
+      (coach ? "" : '<section class="a-card"><div class="a-card-head"><h2>정산 받을 정보</h2><span class="a-muted">마스터에게만 보여요</span></div><form id="vs-prof-form" class="a-form" novalidate>' +
         '<div class="vs-type' + (pf.typeBy === "master" ? " locked" : "") + '">' + [["person", "개인 (프리랜서)", "사업소득 3.3%를 떼고 지급해요"], ["biz", "사업자", X.taxMode() === "gross" ? "판매가 합계로 세금계산서를 발행해 주세요 · 수수료분은 두고홀딩스가 발행" : X.taxMode() === "net" ? "정산 금액(부가세 포함)으로 세금계산서를 발행해 주세요" : "정산 금액 + 부가세 10% · 세금계산서를 발행해 주세요"]].map((t) => '<label class="vb-kind-o"><input type="radio" name="type" value="' + t[0] + '"' + ((pf.type || "person") === t[0] ? " checked" : "") + (pf.typeBy === "master" ? " disabled" : "") + "><span><b>" + t[1] + "</b><small>" + t[2] + "</small></span></label>").join("") + "</div>" +
         (pf.typeBy === "master" ? '<p class="a-hint">' + icon("lock", "xs") + " 정산 유형(" + (pf.type === "biz" ? "사업자" : "개인") + ")은 운영팀이 정했어요. 바꾸려면 운영팀에 문의해 주세요.</p>" : "") +
         '<div class="a-form-row"><div class="a-field"><label for="vs-name">이름 · 상호</label><input class="a-input" id="vs-name" name="name" value="' + esc(pf.name || "") + '" maxlength="40"></div><div class="a-field"><label for="vs-biz">사업자등록번호 <small>(사업자만)</small></label><input class="a-input" id="vs-biz" name="bizNo" value="' + esc(pf.bizNo || "") + '" maxlength="12" inputmode="numeric" placeholder="000-00-00000"></div></div>' +
         '<div class="a-form-row"><div class="a-field"><label for="vs-bank">은행</label><input class="a-input" id="vs-bank" name="bank" value="' + esc(pf.bank || "") + '" maxlength="20" placeholder="국민은행"></div><div class="a-field"><label for="vs-acc">계좌번호</label><input class="a-input" id="vs-acc" name="account" value="' + esc(pf.account || "") + '" maxlength="30" inputmode="numeric"></div><div class="a-field"><label for="vs-hold">예금주</label><input class="a-input" id="vs-hold" name="holder" value="' + esc(pf.holder || "") + '" maxlength="30"></div></div>' +
         '<div class="a-field"><label for="vs-mail">정산 · 세금계산서 이메일</label><input class="a-input" id="vs-mail" name="email" type="email" value="' + esc(pf.email || "") + '" maxlength="80"></div>' +
         '<p class="a-muted p-small">' + icon("shieldCheck", "xs") + " 주민등록번호 같은 원천징수 신고 정보는 화면에 저장하지 않고, 첫 지급 전에 마스터가 따로 안전하게 받아요.</p>" +
-        '<p class="a-error" id="vs-error"></p><div class="a-form-actions"><button class="a-btn a-btn-primary" type="submit">정산 정보 저장</button></div></form></section>' +
+        '<p class="a-error" id="vs-error"></p><div class="a-form-actions"><button class="a-btn a-btn-primary" type="submit">정산 정보 저장</button></div></form></section>') +
       '<section class="a-card a-settle-note"><h2>' + icon("shieldCheck", "sm") + " 정산 기준</h2><ul>" +
         "<li>" + (X.taxMode() === "supply" ? "정산액 = 할인 전 판매가 ÷ 1.1(부가세를 뺀 공급가액) × 정산 비율." : "정산액 = 할인 전 판매가(부가세 포함) × 정산 비율. 예: 100만 원어치 팔리고 비율이 60%면 60만 원이에요.") + " 플랫폼이 발행한 쿠폰 · 포인트 할인과 카드 결제 수수료는 플랫폼이 부담해요.</li>" +
         "<li><b>온드미디어 RS</b>: 두고미디어 등 YouTube 채널(온드미디어)의 홍보 링크로 팔린 주문은 RS(판매가 × (1 − PG " + X.rsRules().pg + "%) × RS율 · 구독자 " + (X.rsRules().subs / 10000) + "만 이상 " + X.rsRules().hi + "% · 미만 " + X.rsRules().lo + "%)를 먼저 빼고 남은 금액을 내 비율로 나눠요. 어떤 채널 링크로 팔렸는지는 주문 · 정산 달력 · 명세서에 그대로 보여요. 링크 없이 팔린 주문은 RS가 없어요.</li>" +
@@ -4853,8 +4891,10 @@
     const next = tea.filter((o) => (o.tea || {}).st === "ok" && o.tea.when).sort((a, b) => String(a.tea.when).localeCompare(String(b.tea.when)))[0];
     const mon = v.orders.filter((o) => ids.indexOf(o.pid) >= 0 && o.status === "paid" && o.paidAt && vdYM(o.paidAt) === ym), kn = (k) => mon.filter((o) => X.kindOf(o) === k).length;
     const soon = X.buyersOf(iid).filter((b) => b.paid.some((x) => X.canRebuy(b.m.id, x.p.id))).length, rbN = mon.filter((o) => !!o.rebuy).length;
-    const rows = [[co, "답변 대기 1:1 코칭 질문", "코칭권을 산 수강생 질문이에요. 48시간 안에 답해 주세요", "#/center/coaching"], [req, "TEA TIME 일정 확정 대기", next ? "다음 TEA TIME · " + X.teaWhen(next.tea) : "희망 날짜를 보고 일정을 확정해 주세요", "#/center/teatime"], [soon, "수강 기간이 끝난 수강생", "상세 페이지 · 마이페이지에 재수강 " + X.rebuySet().pct + "% 할인 안내가 보여요 (다시 사면 ‘재결제’)", "#/center/vod-students"]];
-    return '<section class="a-card"><div class="a-card-head"><h2>' + icon("message", "sm") + ' 1:1 코칭 · TEA TIME · 재수강</h2><span class="a-muted">이번 달 코칭권 ' + kn("coach") + "건 · TEA TIME " + kn("tea") + "건 · 재결제 " + rbN + "건 · 부가 매출 " + won(vdSum(mon.filter((o) => !X.isAccess(o)))) + '</span></div><ul class="a-dc-todo">' +
+    // 코치는 맡은 메뉴의 할 일만 · 부가 매출 금액은 매출 메뉴를 맡았을 때만
+    const rows = [[co, "답변 대기 1:1 코칭 질문", "코칭권을 산 수강생 질문이에요. 48시간 안에 답해 주세요", "#/center/coaching", "coaching"], [req, "TEA TIME 일정 확정 대기", next ? "다음 TEA TIME · " + X.teaWhen(next.tea) : "희망 날짜를 보고 일정을 확정해 주세요", "#/center/teatime", "teatime"], [soon, "수강 기간이 끝난 수강생", "상세 페이지 · 마이페이지에 재수강 " + X.rebuySet().pct + "% 할인 안내가 보여요 (다시 사면 ‘재결제’)", "#/center/vod-students", "vod-students"]].filter((x) => can(x[4]));
+    if (!rows.length) return "";
+    return '<section class="a-card"><div class="a-card-head"><h2>' + icon("message", "sm") + ' 1:1 코칭 · TEA TIME · 재수강</h2><span class="a-muted">이번 달 코칭권 ' + kn("coach") + "건 · TEA TIME " + kn("tea") + "건 · 재결제 " + rbN + "건" + (can("vod") ? " · 부가 매출 " + won(vdSum(mon.filter((o) => !X.isAccess(o)))) : "") + '</span></div><ul class="a-dc-todo">' +
       rows.map((x) => '<li class="' + (x[0] ? "on" : "") + '"><b class="num">' + x[0] + "</b><div><strong>" + esc(x[1]) + "</strong><small>" + esc(x[2]) + '</small></div><a class="a-link" href="' + x[3] + '">바로 가기 ' + icon("arrowRight", "xs") + "</a></li>").join("") + "</ul></section>";
   }
   function pageCoaching() {
@@ -4866,7 +4906,7 @@
     const tabs = [["open", "답변 대기", open], ["done", "답변 완료", all.length - open], ["all", "전체", all.length]].map((t) => '<button type="button" class="a-tab' + (f === t[0] ? " on" : "") + '" data-action="co-tab" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + t[2] + "</span></button>").join("");
     return head("1:1 코칭 답변", "DOOGO CLASS에서 1:1 코칭권을 산 VOD 수강생이 두잉고 ‘1:1 코칭 질문’에 남긴 질문이에요. 질문 1개에 코칭권 1회가 차감되고, 답변하면 수강생 화면에 바로 보여요.", vdStoreBtn()) +
       '<div class="a-kpis">' + kpi("답변 대기", open + "건", "48시간 안에 답하기", "#/center/coaching", open ? "warn" : "") + kpi("사용 중인 코칭권", live.length + "장", "남은 질문 " + leftN + "회", "#/center/coaching") +
-        (isCoach() ? "" : kpi("이번 달 코칭권 판매", mon.length + "건", won(vdSum(mon)) + " · 정산 " + won(vdSum(mon, vdInsAmt)), "#/center/vod-settle", mon.length ? "ok" : "")) +
+        (can("vod") ? kpi("이번 달 코칭권 판매", mon.length + "건", won(vdSum(mon)) + " · 정산 " + won(vdSum(mon, vdInsAmt)), can("vod-settle") ? "#/center/vod-settle" : "#/center/vod", mon.length ? "ok" : "") : "") +
         kpi("코칭권 구성", c ? c.n + "회 · " + won(c.price) : "판매 안 함", c ? c.days + "일 · 1회 " + won(c.per) + " · 가격은 마스터와 정해요" : "판매하려면 마스터에게 요청해 주세요", "#/center/coaching") + "</div>" +
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" +
         (list.length ? '<div class="a-stack">' + list.map((x) => { const o = passes.find((y) => (y.coach.qs || []).indexOf(x.q.id) >= 0), no = o ? (o.coach.qs || []).indexOf(x.q.id) + 1 : 0;
@@ -4876,7 +4916,7 @@
             ((x.q.images || []).length ? '<div class="a-shots a-q-shots">' + x.q.images.map((im) => '<a class="a-shot" href="' + im.data + '" target="_blank" rel="noopener"><img src="' + im.data + '" alt="' + esc(im.name) + '"></a>').join("") + "</div>" : "") +
             '<form class="a-q-form" data-sid="' + x.s.id + '" data-qid="' + x.q.id + '"><textarea class="a-input" name="answer" rows="4" placeholder="예: 샘플 요청 메일에 단가를 같이 물어봐도 괜찮아요. ‘검토용’이라고 밝혀 두면 답장이 더 빨라요." aria-label="답변">' + esc(x.q.answer || "") + '</textarea><button class="a-btn a-btn-primary a-btn-sm" type="submit">' + (x.q.answer ? "답변 수정" : "답변 등록") + "</button></form></article>"; }).join("") + "</div>"
           : emptyBox("message", f === "open" ? "답변을 기다리는 코칭 질문이 없어요." : "코칭 질문이 없어요.")) + "</section>" +
-      '<p class="a-hint">' + icon("coins", "xs") + " 코칭권 매출은 내 코칭권 정산 비율(" + X.addonShare(IID()) + "%)로 정산돼요. 사용 기간이 끝난 코칭권의 남은 횟수는 사라져요.</p>";
+      '<p class="a-hint">' + icon("coins", "xs") + (can("vod") ? " 코칭권 매출은 " + (isCoach() ? "강사님" : "내") + " 코칭권 정산 비율(" + X.addonShare(IID()) + "%)로 정산돼요." : "") + " 사용 기간이 끝난 코칭권의 남은 횟수는 사라져요.</p>";
   }
   const slotStart = (s) => (/오전/.test(s || "") ? "10:00" : /저녁/.test(s || "") ? "19:00" : "14:00");
   function teaItem(o) {
@@ -4898,7 +4938,7 @@
     return head("TEA TIME 신청", "VOD 수강생이 DOOGO CLASS에서 결제하고 신청한 1:1 만남이에요. 희망 날짜를 보고 일정을 확정하면 수강생 마이페이지와 두잉고 화면에 바로 보여요.", vdStoreBtn()) +
       '<div class="a-kpis">' + kpi("확정 대기", cnt("req") + "건", "희망 날짜를 보고 확정해 주세요", "#/center/teatime", cnt("req") ? "warn" : "") +
         kpi("다가오는 TEA TIME", next ? X.teaWhen(next.tea) : "없음", next ? ((vdMember(next.mid) || {}).name || "") + (next.tea.where ? " · " + next.tea.where : "") : "확정된 일정이 없어요", "#/center/teatime") +
-        (isCoach() ? "" : kpi("이번 달 TEA TIME 매출", won(vdSum(mon)), mon.length + "건 · 정산 " + won(vdSum(mon, vdInsAmt)), "#/center/vod-settle", mon.length ? "ok" : "")) +
+        (can("vod") ? kpi("이번 달 TEA TIME 매출", won(vdSum(mon)), mon.length + "건 · 정산 " + won(vdSum(mon, vdInsAmt)), can("vod-settle") ? "#/center/vod-settle" : "#/center/vod", mon.length ? "ok" : "") : "") +
         kpi("TEA TIME 구성", t ? t.min + "분 · " + won(t.price) : "판매 안 함", t ? X.TEA_MODE[t.mode] : "판매하려면 마스터에게 요청해 주세요", "#/center/teatime") + "</div>" +
       '<div class="a-tabs">' + F.map((x) => '<button type="button" class="a-tab' + (f === x[0] ? " on" : "") + '" data-action="tea-f" data-k="' + x[0] + '">' + x[1] + " <b>" + cnt(x[0]) + "</b></button>").join("") + "</div>" +
       '<section class="a-card">' + (list.length ? '<div class="a-stack">' + list.map(teaItem).join("") + "</div>" : emptyBox("calendar", f === "req" ? "확정을 기다리는 TEA TIME이 없어요." : "이 조건의 TEA TIME이 없어요.")) + "</section>" +
@@ -7533,6 +7573,7 @@
 
   function render() {
     closeModal();
+    document.body.dataset.ath = "";
     const r = route();
     S = DB.session.admin();
     if (S && S.role === "instructor" && (DB.instructor(S.instructorId) || {}).status !== "active") { S = null; DB.session.setAdmin(null); }
@@ -7582,6 +7623,7 @@
     document.body.dataset.master = master ? "1" : "";
     if (isCoach()) coachListCheck();
     document.body.dataset.coach = isCoach() ? "1" : "";
+    document.body.dataset.ath = master ? "" : athOf(IID());
     renderShell(r);
     const main = document.getElementById("a-main");
     const k0 = r.parts[0] || "", offTrack = !master && ((TRK() === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (TRK() !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0));
@@ -7875,9 +7917,9 @@
       case "coach-edit": coachForm(d.id); break;
       case "coach-delete": { const iid = IID(), list = DB.coachesOf(iid), i = list.findIndex((x) => x.id === d.id); if (i < 0) break; const nm = list[i].name; confirmModal("코치 삭제", "‘" + esc(nm) + " 코치’ 계정을 삭제할까요?<br>지금까지 처리한 검수 · 답변 기록은 그대로 남아요.", "삭제", true, () => { list.splice(i, 1); commit("코치 계정을 삭제했어요."); }); break; }
       case "coach-preset": {
-        const f = document.getElementById("coach-form"); if (!f) break;
-        const set = { basic: ["reviews", "questions"], ops: ["students", "cohorts", "reviews", "questions"], all: COACH_PERMS.flatMap((g) => g[1].map((x) => x[0])), none: [] }[d.k] || [];
-        f.querySelectorAll("input[name=perm]").forEach((x) => { x.checked = set.indexOf(x.value) !== -1; });
+        // LIVE 두잉고 / VOD 두잉고 묶음 안의 체크만 바꿔요 (data-k="live:0")
+        const f = document.getElementById("coach-form"), pk = String(d.k || "").split(":"), pr = (COACH_PRESET[pk[0]] || [])[Number(pk[1])]; if (!f || !pr) break;
+        f.querySelectorAll('.a-cpanel[data-side="' + pk[0] + '"] input[name=perm]').forEach((x) => { x.checked = pr[1].indexOf(x.value) !== -1; });
         break;
       }
       case "ql-reset": confirmModal("빠른 이동", "기본 목록(윗줄: 클래스 소식 · FAQ 검색 · 실무 체크리스트 · 1:1 요청 / 아랫줄: 유튜브 · 네이버 카페 · 두고커넥트 · 두고푸드)으로 되돌릴까요?", "되돌리기", false, () => { delete C().quickLinks; commit("기본 목록으로 되돌렸어요."); }); break;

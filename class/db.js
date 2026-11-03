@@ -1469,7 +1469,6 @@
    * 로그인한 사람이 볼 수 있는 문서만 내려온다. */
   const R = { on: false, fresh: null, loading: false, me: { student: null, admin: null }, epoch: null, now: 0, ver: {}, snap: {}, last: {}, nope: {}, rej: {}, prog: {}, inq: {}, bill: {}, timer: null, busy: false, again: false, fails: 0, polling: false, lastPoll: 0, listeners: [] };
   const COLLS = ["instructors", "content", "cohorts", "students"];
-  const CONTENT_PERMS = ["brand", "guide", "curriculum", "missions", "schedule", "notices", "faq", "docs", "library", "motivation", "channels", "partners", "pages", "free", "landing", "replays", "showcase", "notes", "glossary"];
   const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
   const emit = (type, info) => R.listeners.forEach((fn) => { try { fn(type, info); } catch (e) { console.error(e); } });
 
@@ -1674,6 +1673,12 @@
     return doc;
   }
 
+  /** 로그인한 코치가 이 종류의 문서를 보낼 수 있는지 — 담당 두잉고(LIVE · VOD)에 맞는 메뉴만 (coach-perms.js · 서버와 같은 표) */
+  function coachCan(type) {
+    const a = R.me.admin; if (!a || a.role !== "coach" || !window.COACH) return false;
+    const ins = db.instructors.find((x) => x.id === a.iid), co = ins && (ins.coaches || []).find((x) => x.id === a.cid);
+    return window.COACH.canWrite(type, window.COACH.permsOf(co));
+  }
   /** 이 사람이 서버에 저장할 수 있는 문서인지 (서버도 똑같이 다시 확인한다) */
   function canWrite(k) {
     const a = R.me.admin, st = R.me.student, p = k.split(":");
@@ -1681,7 +1686,8 @@
     if (VOD_KEY.test(p[0]) && !(a && a.role === "master")) {
       const me = R.me.vod && R.me.vod.mid;
       if (p[0] === "vm") return !!me && me === p[1];
-      if (p[0] === "vo") { const o = docOf(k); return !!me && !!o && o.mid === me; }
+      // 주문: 산 회원 본인 · 그 클래스 강사와 TEA TIME 코치(TEA TIME 일정 칸만 — 서버 vodaccess fixStaffTea)
+      if (p[0] === "vo") { const o = docOf(k); if (o && o.tea && a && a.iid && o.iid === a.iid && (a.role === "instructor" || (a.role === "coach" && coachCan("vo")))) return true; return !!me && !!o && o.mid === me; }
       if (p[0] === "vr" || p[0] === "vpl") return !!me;
       if (p[0] === "vq") return !!me && me === p[1];
       if (p[0] === "vpo") return !!(a && a.role === "instructor" && "vpo:" + encodeURIComponent(a.iid) === k);
@@ -1690,21 +1696,13 @@
     if (a && a.role === "master") return true;
     // 강사는 meta 를 보내도 서버가 자기 VOD 커리큘럼 · 자기 제출 서류만 받아요 (나머지는 되돌림)
     // 파트너 · 온드미디어도 meta 를 보내면 서버가 자기 계정 칸(연락처 · 계좌 · 비밀번호)만 받아요
-    if (k === "meta") return !!(a && (a.role === "instructor" || a.role === "partner" || a.role === "media"));
+    if (k === "meta") return !!(a && (a.role === "instructor" || a.role === "partner" || a.role === "media" || (a.role === "coach" && coachCan("meta"))));
     if (p[0] === "inq") return !!(a && a.role === "partner");
     // 이용료 신청은 강사 본인만 (코치 · 수강생은 못 봄)
     if (p[0] === "bill") return !!(a && a.role === "instructor" && a.iid === p[1]);
     if (a && a.iid === p[1]) {
       if (a.role === "instructor") return true;
-      const ins = db.instructors.find((x) => x.id === a.iid);
-      const co = ins && (ins.coaches || []).find((x) => x.id === a.cid);
-      const perms = (co && co.perms) || [];
-      const any = (l) => perms.some((x) => l.indexOf(x) !== -1);
-      if (p[0] === "ins") return any(["menus"]);
-      if (p[0] === "content") return any(CONTENT_PERMS);
-      if (p[0] === "cohorts") return any(["cohorts"]);
-      if (p[0] === "stu") return any(["students"]);
-      if (p[0] === "prog") return any(["reviews", "questions", "students", "coaching"]);
+      if (a.role === "coach" && ["ins", "content", "cohorts", "stu", "prog"].indexOf(p[0]) >= 0) return coachCan(p[0]);
     }
     return !!(st && p[0] === "prog" && p[1] === st.iid && p[2] === st.sid);
   }

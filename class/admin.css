@@ -3347,3 +3347,92 @@ td .md-yt { display: flex; width: fit-content; }
   .p-track[style*="--n:5"] b { font-size: 10.5px; }
   .p-track[style*="--n:5"] small { font-size: 10px; }
 }
+
+/* ---------- 코치 메뉴: LIVE 두잉고 / VOD 두잉고 (2026-11) ----------
+ * 코치 수정 창: 담당 두잉고 고르기(라디오 카드) → 그쪽 메뉴 묶음만 보여요 (form[data-track]) · 코치 목록: 열린 메뉴를 LIVE / VOD로 나눠서 */
+.a-ct-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 6px; font-size: 12px; font-weight: 800; letter-spacing: .01em; white-space: nowrap; }
+.a-ct-tag.live { background: var(--m-primary-soft); color: var(--m-primary-deep); box-shadow: inset 0 0 0 1px var(--m-primary-200); }
+.a-ct-tag.vod { background: #111; color: #fff; }
+.a-ctrack { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
+.a-ctrack-o { position: relative; display: block; cursor: pointer; }
+.a-ctrack-o input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.a-ctrack-o span { display: grid; gap: 2px; height: 100%; padding: 10px 12px; border: 1.5px solid var(--m-hairline); border-radius: 12px; background: #fff; transition: border-color .15s, background .15s; }
+.a-ctrack-o b { font-size: 14px; font-weight: 800; color: var(--m-ink); }
+.a-ctrack-o small { font-size: 12px; font-weight: 600; color: var(--m-steel); line-height: 1.35; }
+.a-ctrack-o:hover span { border-color: var(--m-primary-500); }
+.a-ctrack-o input:checked + span { border-color: var(--m-primary); background: var(--m-primary-soft); box-shadow: 0 0 0 3px var(--m-primary-100); }
+.a-ctrack-o.vod input:checked + span { border-color: #111; background: #f6f6f7; box-shadow: 0 0 0 3px #ececee; }
+.a-ctrack-o input:focus-visible + span { outline: 2px solid var(--m-fb); outline-offset: 2px; }
+.a-cpanel { display: grid; gap: 10px; margin-top: 10px; padding: 14px; border: 1px solid var(--m-hairline-soft); border-top: 3px solid var(--m-primary); border-radius: 14px; background: #fff; }
+.a-cpanel.vod { border-top-color: #111; }
+.a-cpanel-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.a-cpanel-h small { font-size: 12.5px; font-weight: 600; color: var(--m-steel); }
+#coach-form[data-track="live"] .a-cpanel.vod, #coach-form[data-track="vod"] .a-cpanel.live { display: none; }
+.a-coach-side { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-right: 6px; }
+.a-coach-side em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; background: var(--m-primary-soft); color: var(--m-primary-deep); }
+.a-coach-side.vod em { background: #111; color: #fff; }
+.a-coach-side.vod .a-perm { background: #f4f4f5; border-color: #e4e4e7; color: #27272a; }
+.a-ctrack-guide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 0 14px; }
+.a-ctrack-guide > div { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--m-hairline-soft); border-radius: 12px; background: #fff; }
+.a-ctrack-guide b { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.a-ctrack-guide small { font-size: 12.5px; color: var(--m-slate); line-height: 1.45; }
+.a-coach-other { display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 0; font-size: 12.5px; color: var(--m-slate); line-height: 1.45; }
+.a-coach-other .icon { flex: none; margin-top: 2px; }
+@media (max-width: 720px) {
+  .a-ctrack { grid-template-columns: 1fr; }
+  .a-ctrack-o span { grid-template-columns: auto minmax(0, 1fr); align-items: baseline; column-gap: 8px; }
+  .a-ctrack-guide { grid-template-columns: 1fr; }
+}
+
+/* ---------- 강사 전용 색 (2026-11): 문대표(뉴질랜드 색) 강사센터 · 코치센터는 빨강 대신 국기 네이비 ----------
+ * body[data-ath="nz"] — 강의실 색이 그 강사 전용 색(db.js THEMES.nz · only)일 때 admin.js 가 붙여요. 오류 · 경고 · 일요일 빨강은 그대로 */
+body[data-mode="admin"][data-ath="nz"] {
+  --m-primary: #0b2a5b; --m-primary-deep: #071d42; --m-primary-soft: #f1f5fb; --m-primary-100: #e6edf8; --m-primary-200: #d9e3f2; --m-primary-500: #2f74c0; --m-fb: #2f74c0;
+  --m-hairline-soft: #e5e9f0; --m-surface: #f3f5f9;
+  background: #f8f9fc;
+}
+body[data-ath="nz"] .a-main { background: radial-gradient(900px 380px at 100% 0%, rgba(47, 116, 192, .06), transparent 70%); }
+body[data-ath="nz"] .a-card { box-shadow: 0 1px 2px rgba(11, 42, 91, .04); }
+body[data-ath="nz"] .a-side { background: linear-gradient(180deg, #fff 0%, #f6f8fc 100%); }
+/* 맨 위 국기 띠: 네이비 · 흰색 · 실버 펀 · 남십자성 레드 (수강생 화면 .th-nz .topbar 와 같은 띠) */
+body[data-ath="nz"] .a-top::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #0b2a5b 0 86%, #ffffff 86% 87.5%, #c9d2df 87.5% 95%, #c8102e 95% 100%); pointer-events: none; }
+body[data-ath="nz"] .a-kpis > .a-kpi:nth-child(4n+1) { --tone: #0b2a5b; --tone-wash: #eef2f9; }
+body[data-ath="nz"] .a-user-av { background: linear-gradient(135deg, #2f74c0, #0b2a5b); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 3px 8px -3px rgba(11, 42, 91, .6); }
+body[data-ath="nz"] .a-user-co .a-user-av { background: linear-gradient(135deg, #7cc7ff, #2f74c0); }
+body[data-ath="nz"] .a-logout:hover { border-color: #2f74c0; color: #0b2a5b; background: #f1f5fb; }
+body[data-ath="nz"] .a-toast .icon { color: #9cc3ee; }
+body[data-ath="nz"] .a-trk-sw.at-vod .a-trk-k { background: linear-gradient(135deg, #2f74c0, #0b2a5b); box-shadow: 0 4px 12px -3px rgba(11, 42, 91, .55); }
+/* 코치 화면의 초록 포인트도 네이비로 */
+body[data-ath="nz"][data-coach="1"] .a-logo-role { color: #0b2a5b; }
+body[data-ath="nz"] .a-coach-chip { border-color: #cbd8ec; background: #eef3fa; color: #0b2a5b; }
+body[data-ath="nz"] .a-coach-chip:hover { border-color: #2f74c0; background: #e2eaf6; }
+body[data-ath="nz"] .a-coach-av { background: #e2eaf6; color: #0b2a5b; }
+body[data-ath="nz"] .a-perm-group legend { color: #0b2a5b; }
+body[data-ath="nz"] .a-perm-group .a-check input { accent-color: #0b2a5b; }
+body[data-ath="nz"] .a-coach-note { background: #eef3fa; color: #0b2a5b; }
+body[data-ath="nz"] .a-by { color: #1f5fa8; }
+body[data-ath="nz"] .a-perm { background: #eef3fa; border-color: #cbd8ec; color: #0b2a5b; }
+body[data-ath="nz"] .a-chip-vod { background: #eef3fa !important; color: #0b2a5b !important; border-color: #cbd8ec !important; }
+body[data-ath="nz"] .cp-it:hover:not(:disabled) { box-shadow: 0 6px 18px -10px rgba(11, 42, 91, .45); }
+body[data-ath="nz"] .cp-av { background: #eef3fa; }
+/* 기수 달력 · 페이지 버튼 · 안내 상자 */
+body[data-ath="nz"] .t-start { background: #e6edf8; color: #0b2a5b; }
+body[data-ath="nz"] .t-plan { color: #0b2a5b; box-shadow: inset 0 0 0 1px #8fb3e0; }
+body[data-ath="nz"] .a-cal-legend i.t-plan, body[data-ath="nz"] .a-cal-dots i.t-plan { box-shadow: inset 0 0 0 2px #8fb3e0; }
+body[data-ath="nz"] .a-cal-legend i.t-start, body[data-ath="nz"] .a-cal-dots i.t-start { background: #0b2a5b; }
+body[data-ath="nz"] .a-cal-d:not(.out):hover { background: #f1f5fb; }
+body[data-ath="nz"] .a-rev-col.now .a-rev-bar { box-shadow: inset 0 0 0 2px #8fb3e0; }
+body[data-ath="nz"] .a-bill-alert { border-color: #d9e3f2; }
+body[data-ath="nz"] .a-bnote { border-color: #8fb3e0; background: #f1f5fb; }
+body[data-ath="nz"] .a-pg-b:hover:not(:disabled) { border-color: #0b2a5b; color: #0b2a5b; }
+body[data-ath="nz"] .a-pg-b.on { background: #0b2a5b; border-color: #0b2a5b; }
+body[data-ath="nz"] .a-pg-b:focus-visible { outline-color: #2f74c0; }
+body[data-ath="nz"] .vc-k-vod { --vc: #0b2a5b; }
+body[data-ath="nz"] .vs-ch-rs { background: #eef3fa; color: #0b2a5b; }
+body[data-ath="nz"] .ct-tpl-ic { background: #eef3fa; color: #0b2a5b; }
+/* VOD 탭: 꾸미는 강의실 고르기 · 지금 꾸미는 VOD 강의실 띠 */
+body[data-ath="nz"] .a-vpid { background: #f1f5fb; box-shadow: inset 0 0 0 1px #d9e3f2; }
+body[data-ath="nz"] .a-vpid small { color: #0b2a5b; }
+body[data-ath="nz"] .a-vpid select { border-color: #cbd8ec; }
+body[data-ath="nz"] .a-vpbar { background: #0b2a5b; }
+body[data-ath="nz"] .a-vpbar-t small { color: #9cc3ee; }

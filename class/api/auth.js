@@ -11,6 +11,7 @@ const { send, body, handler, ip } = require("./_lib/http");
 const store = require("./_lib/store");
 const auth = require("./_lib/auth");
 const MD = require("./_lib/media");
+const COACH = require("../coach-perms");
 
 const IP_LIMIT = 40, NAME_LIMIT = 8;
 const norm = auth.norm;
@@ -163,7 +164,7 @@ async function courseList(hits) {
   const docs = await store.getDocs(hits.map((h) => "content:" + h.i.id));
   return hits.map((h) => {
     const b = Object.assign({}, h.i.brand || {}, ((docs["content:" + h.i.id] || {}).v || {}).brand || {}), ph = String(b.photo || "");
-    return { iid: h.i.id, ins: String(h.i.displayName || h.i.name || ""), title: String(b.courseTitle || b.name || ""), photo: /^(assets\/|https:\/\/)/.test(ph) && ph.length < 300 ? ph : "", perms: (h.c.perms || []).length };
+    return { iid: h.i.id, ins: String(h.i.displayName || h.i.name || ""), title: String(b.courseTitle || b.name || ""), photo: /^(assets\/|https:\/\/)/.test(ph) && ph.length < 300 ? ph : "", perms: COACH.permsOf(h.c).length };
   });
 }
 /** 로그인한 코치 → 맡은 다른 강의로 옮기기 (지금 쿠키의 코치 자리와 같은 이름 + 뒷자리인 자리만) */

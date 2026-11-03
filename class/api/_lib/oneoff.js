@@ -596,6 +596,18 @@ function plans612(get) {
   return { writes: { meta: Object.assign({}, meta, { vod }) }, result: { faq: n, helpFaq: h, rebuyDefault: rb } };
 }
 
+/* ---------- 문대표 코치: 담당 두잉고를 LIVE 로 (2026-11) ----------
+ * 코치 메뉴를 LIVE 두잉고 / VOD 두잉고로 나누면서, 문대표가 만든 코치들은 LIVE 두잉고 코치로 (사용자 요청 · 담당 칸이 비어 있을 때만).
+ * 메뉴 체크는 그대로 둬요 — VOD 메뉴가 체크돼 있어도 LIVE 담당이면 열리지 않고, 나중에 ‘둘 다’로 바꾸면 다시 보여요 */
+function moonCoachesLive(get) {
+  const ins = get("ins:moon");
+  if (!isObj(ins) || !Array.isArray(ins.coaches) || !ins.coaches.length) return { writes: {}, result: { skipped: "문대표 코치 없음" } };
+  let n = 0;
+  const coaches = ins.coaches.map((c) => { if (!isObj(c) || c.track) return c; n++; return Object.assign({}, c, { track: "live" }); });
+  if (!n) return { writes: {}, result: { skipped: "이미 담당이 정해져 있음" } };
+  return { writes: { "ins:moon": Object.assign({}, ins, { coaches }) }, result: { live: n, total: coaches.length } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -621,6 +633,7 @@ const OPS = [
   { id: "2026-11-01-media-doogomd", note: "온드미디어 첫 계정 doogomd (비밀번호는 Vercel 환경 변수 MEDIA_INIT_PW · 해시로만 저장)", run: mediaDoogomd, when: () => !!String(process.env.MEDIA_INIT_PW || "").trim() },
   { id: "2026-11-02-media-doogomd-channel", note: "온드미디어 doogomd 채널: YouTube 돈맛스토리 주소 · 채널 이름 (비어 있거나 기본값일 때만)", run: mediaDoogomdChannel },
   { id: "2026-11-03-plans-6-12-rebuy", note: "수강권 6개월 · 12개월 · 재수강 40% 할인: 클래스 FAQ · 고객센터 FAQ 예전 문구(180일 · 365일 · 3년 / 1년 연장권)만 새 문구로 + 재수강 할인 기본값", run: plans612 },
+  { id: "2026-11-03-moon-coaches-live", note: "문대표 코치들을 LIVE 두잉고 담당으로 — 코치 메뉴를 LIVE · VOD로 나누기 (담당 칸이 비어 있을 때만 · 메뉴 체크는 그대로)", run: moonCoachesLive },
 ];
 
-module.exports = { OPS, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

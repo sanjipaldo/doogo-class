@@ -6,7 +6,7 @@
   "outputDirectory": ".",
   "functions": {
     "api/*.js": {
-      "includeFiles": "{data.js,db.js}"
+      "includeFiles": "{data.js,db.js,coach-perms.js}"
     }
   }
 }

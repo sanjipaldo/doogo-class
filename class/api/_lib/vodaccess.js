@@ -11,10 +11,15 @@
  * vme · vmk · vpay · vp · vcat 은 여기 없어서 /api/vod-* 로만 다뤄요. */
 "use strict";
 const store = require("./store");
+const COACH = require("../../coach-perms");
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const mask = (n) => { n = String(n || ""); return n ? n.slice(0, 1) + "OO" : "회원"; };
 const isMaster = (ids) => !!(ids.admin && ids.admin.role === "master");
+/** 강사센터 계정이 그 강사 클래스의 주문을 볼 수 있는지 — 강사 본인 · VOD 매출 · 운영 메뉴(VOD 수강생 · 1:1 코칭 · TEA TIME · 판매 내역 · 정산)를 맡은 코치 (LIVE 코치는 안 봐요) */
+const staffOrders = (ids) => !!(ids.admin && ids.admin.iid && (ids.admin.role !== "coach" || COACH.has(ids.admin.perms, COACH.VOD_ORDERS)));
+/** VOD 정산 내역(vpo)을 볼 수 있는지 — 그 강사 · 판매 정산 · 정산 달력을 맡은 코치 (코치는 보기만) */
+const staffPayouts = (ids, iid) => !!(ids.admin && ids.admin.iid === iid && (ids.admin.role === "instructor" || (ids.admin.role === "coach" && COACH.has(ids.admin.perms, ["vod-settle", "vod-cal"]))));
 const vodMid = (ids) => (ids.vod && ids.vod.mid) || "";
 
 function parse(p) {
@@ -102,7 +107,7 @@ function view(K, v, ids) {
     case "vo":
       if (v == null) return master ? null : undefined;
       if (master || (me && v.mid === me)) return v;
-      if (ids.admin && ids.admin.iid && v.iid === ids.admin.iid) return maskOrder(v);
+      if (staffOrders(ids) && v.iid === ids.admin.iid) return maskOrder(v);
       // 온드미디어: 자기 홍보 링크로 들어온 주문만 (회원 · 결제 정보 없이 판매 · RS 계산 칸만)
       if (ids.media && v.rs && v.rs.mid === ids.media.id) return require("./media").orderView(v);
       return undefined;
@@ -112,7 +117,7 @@ function view(K, v, ids) {
       if (master || (me && me === K.mid)) return v == null ? null : v;
       return undefined;
     case "vpo":
-      if (master || (ids.admin && ids.admin.role === "instructor" && ids.admin.iid === K.id)) return v == null ? null : v;
+      if (master || staffPayouts(ids, K.id)) return v == null ? null : v;
       return undefined;
   }
   return undefined;
@@ -124,10 +129,8 @@ function prefixes(ids) {
     p.push("vm:" + ids.vod.mid, "vq:" + ids.vod.mid + ":%");
     (ids.vod.nos || []).forEach((n) => p.push("vo:" + n));
   }
-  if (ids.admin && ids.admin.iid) {
-    p.push("vo:%");
-    if (ids.admin.role === "instructor") p.push("vpo:" + ids.admin.iid);
-  }
+  if (staffOrders(ids)) p.push("vo:%");
+  if (ids.admin && ids.admin.iid && staffPayouts(ids, ids.admin.iid)) p.push("vpo:" + ids.admin.iid);
   if (ids.media) p.push("vo:%");
   return p;
 }
@@ -169,6 +172,22 @@ function fixSelfOrder(o, n) {
   if (n.dlAt && !out.dlAt) out.dlAt = Date.now();
   return out;
 }
+/** 강사 · TEA TIME 코치가 자기 클래스 주문에서 고칠 수 있는 칸: TEA TIME 일정 확정(날짜 · Zoom 링크) · 진행 완료 · 다시 잡기
+ *  취소 · 환불 요청은 강사만 (canCancel). 결제 · 금액 · 회원 칸은 그대로 */
+const TEA_WHEN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+function fixStaffTea(o, n, canCancel) {
+  const out = clone(o);
+  if (!o || !o.tea || !n || !n.tea || o.status !== "paid") return out;
+  const st = o.tea.st || "req", to = n.tea.st;
+  if (st === "req" && to === "ok") {
+    const when = str(n.tea.when, 16);
+    if (!TEA_WHEN.test(when)) return out;
+    Object.assign(out.tea, { st: "ok", when, where: str(n.tea.where, 120).trim(), okAt: Date.now() });
+  } else if (st === "ok" && to === "done") Object.assign(out.tea, { st: "done", doneAt: Date.now() });
+  else if (st === "ok" && to === "req") out.tea.st = "req";
+  else if (canCancel && (st === "req" || st === "ok") && to === "cancel") { out.tea.st = "cancel"; if (!out.refundReq) out.refundReq = Date.now(); }
+  return out;
+}
 const REVIEW_STAFF = ["reply", "replyAt", "replyBy", "hidden", "best", "pin"];
 function writer(K, ids, creating, ctx) {
   const me = vodMid(ids), master = isMaster(ids);
@@ -182,9 +201,16 @@ function writer(K, ids, creating, ctx) {
     case "vm":
       if (!creating && me && me === K.id) return { fix: fixSelfMember };
       return null;
-    case "vo":
-      if (!creating && me) return { fix: (o, n) => (o && o.mid === me ? fixSelfOrder(o, n) : clone(o)) };
-      return null;
+    case "vo": {
+      // 강사 · TEA TIME 코치: 자기 클래스 TEA TIME 일정만 (2026-11 — 전에는 강사가 확정해도 서버에 저장되지 않았어요)
+      const ins = ids.admin && ids.admin.iid && (ids.admin.role === "instructor" || (ids.admin.role === "coach" && COACH.canWrite("vo", ids.admin.perms || [])));
+      if (creating || (!me && !ins)) return null;
+      return { fix: (o, n) => {
+        if (o && me && o.mid === me) return fixSelfOrder(o, n);
+        if (o && ins && o.iid === ids.admin.iid) return fixStaffTea(o, n, ids.admin.role === "instructor");
+        return clone(o);
+      } };
+    }
     case "vr":
       if (!me) return null;
       return { fix: (o, n) => {
@@ -251,7 +277,8 @@ function cleanUpds(list) {
     return out;
   });
 }
-function fixInstructorMeta(o, n, iid) {
+/** lessonsOnly: VOD 강의 · 수업 자료를 맡은 코치 — 커리큘럼 · 업데이트 기록만 (제출 서류는 강사만) */
+function fixInstructorMeta(o, n, iid, lessonsOnly) {
   const out = clone(o) || {};
   if (!n || !iid) return out;
   const mine = ((n.vod && n.vod.products) || []).filter((p) => p && p.iid === iid);
@@ -263,6 +290,7 @@ function fixInstructorMeta(o, n, iid) {
     if (np && Array.isArray(np.upds)) out.vod.products[i].upds = cleanUpds(np.upds);
     if (np && np.updatedAt !== undefined && (np.updatedAt === "" || /^\d{4}-\d{2}-\d{2}$/.test(String(np.updatedAt)))) out.vod.products[i].updatedAt = np.updatedAt;
   });
+  if (lessonsOnly) return out;
   const nc = n.contracts && n.contracts[iid];
   if (nc && nc.docs && typeof nc.docs === "object") { out.contracts = out.contracts || {}; out.contracts[iid] = Object.assign({}, out.contracts[iid] || {}, { docs: clone(nc.docs) }); }
   return out;

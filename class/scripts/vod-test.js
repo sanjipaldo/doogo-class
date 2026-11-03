@@ -5,7 +5,7 @@
 const fs = require("fs"), path = require("path"), os = require("os"), crypto = require("crypto");
 const ROOT = path.join(__dirname, ".."), TMP = fs.mkdtempSync(path.join(os.tmpdir(), "vodtest-"));
 fs.cpSync(path.join(ROOT, "api"), path.join(TMP, "class/api"), { recursive: true });
-fs.cpSync(path.join(ROOT, "data.js"), path.join(TMP, "class/data.js")); fs.cpSync(path.join(ROOT, "db.js"), path.join(TMP, "class/db.js"));
+fs.cpSync(path.join(ROOT, "data.js"), path.join(TMP, "class/data.js")); fs.cpSync(path.join(ROOT, "db.js"), path.join(TMP, "class/db.js")); fs.cpSync(path.join(ROOT, "coach-perms.js"), path.join(TMP, "class/coach-perms.js"));
 fs.symlinkSync(path.join(ROOT, "..", "node_modules"), path.join(TMP, "node_modules"), "dir"); // 공식 SDK (저장소 맨 위 npm install)
 const WH = crypto.randomBytes(24).toString("base64");
 Object.assign(process.env, { CLASS_SQLITE: path.join(TMP, "t.db"), SESSION_SECRET: "test-session", VOD_SERVER_AUTH: "1", PORTONE_STORE_ID: "store-test", PORTONE_API_SECRET: "ps-test", PORTONE_CHANNEL_CARD: "channel-key-card", PORTONE_CHANNEL_KAKAOPAY: "channel-key-kp", PORTONE_WEBHOOK_SECRET: "whsec_" + WH, KAKAO_REST_KEY: "rest-test", KAKAO_CLIENT_SECRET: "cs-test", KAKAO_REDIRECT_URI: "https://www.doogoclass.com/api/vod-kakao", KAKAO_ADMIN_KEY: "admin-test" });
@@ -1264,6 +1264,105 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(before.CLASS_LEGAL_NOTICE && before.CLASS_LEGAL_NOTICE.from === "2026-11-10" && /^## \[개정 안내\] 2026년 11월 10일부터 이용약관이 바뀝니다/.test(bt) && bt.indexOf("시행일: 2026년 10월 29일") > 0 && bt.indexOf("개정 이용약관 전문") > 0 && /^## \[개정 안내\]/.test(bp), "시행일 전: 개정 안내 + 지금 약관 + 개정 전문 (바닥 ‘개정 예정’ 표시)", bt.slice(0, 80));
     ok(after.CLASS_LEGAL_NOTICE === null && /^시행일: 2026년 11월 10일/.test(at) && at.indexOf("개정 안내") < 0 && at.indexOf("180일 · 365일 · 3년") < 0 && at.indexOf("(수강권 · 연장권)") < 0 && at.indexOf("연장권을 사면") < 0 && /"재수강"이란/.test(at) && /재수강 할인을 적용할 수 있으며/.test(at) && /구매한 연장권은 구매할 때 안내한 기간 그대로/.test(at) && /카카오 알림톡 · 문자 등으로 알릴 수 있습니다/.test(at) && /이 약관은 2026년 11월 10일부터 시행합니다/.test(at), "시행일부터: 새 약관만 (6개월 · 12개월 · 재수강 · 이미 산 연장권 유지 · 업데이트 안내 · 부칙)", at.slice(0, 80));
     ok(/^시행일: 2026년 11월 10일/.test(ap) && /두고 파트너스 지원자/.test(ap) && /누리고 주식회사\(솔라피\)/.test(ap) && /구매한 강의의 업데이트 안내/.test(ap) && ap.indexOf("2026년 11월 10일부터 적용되며") > 0 && after.CLASS_LEGAL.refund[1] === before.CLASS_LEGAL.refund[1], "개인정보처리방침: 지원서 항목 · 업데이트 안내 · 발송 위탁 (환불정책은 그대로)", ap.slice(0, 80));
+  }
+  {
+    console.log("22) 코치 메뉴 LIVE 두잉고 / VOD 두잉고 나누기 · VOD 코치(매출 보기 · TEA TIME · 1:1 코칭) · 문대표 색");
+    const CP = require(path.join(TMP, "class/coach-perms.js")), AC = require(path.join(TMP, "class/api/_lib/access.js")), OO = require(path.join(TMP, "class/api/_lib/oneoff.js"));
+    const st22 = require(path.join(TMP, "class/api/_lib/store.js"));
+    const OLD_CONTENT = ["brand", "guide", "curriculum", "missions", "schedule", "notices", "faq", "docs", "library", "motivation", "channels", "partners", "pages", "free", "landing", "replays", "showcase", "notes", "glossary"];
+    ok(!CP.LIVE_KEYS.some((k) => CP.VOD_KEYS.indexOf(k) >= 0) && CP.LIVE_CONTENT.slice().sort().join() === OLD_CONTENT.slice().sort().join() && CP.VOD_KEYS.indexOf("vod-settle") >= 0 && CP.VOD_KEYS.indexOf("teatime") >= 0 && CP.VOD_KEYS.indexOf("coaching") >= 0,
+      "메뉴 표: LIVE · VOD 열쇠가 겹치지 않고, LIVE 콘텐츠 메뉴는 예전 화면 목록 그대로 · VOD 쪽에 매출 · TEA TIME · 1:1 코칭", { live: CP.LIVE_KEYS, vod: CP.VOD_KEYS });
+    ok(CP.trackOf({ perms: ["reviews"] }) === "live" && CP.trackOf({ perms: ["reviews", "coaching"] }) === "both" && CP.trackOf({ track: "vod", perms: ["reviews"] }) === "vod" && CP.trackOf(null) === "live",
+      "담당 두잉고: 예전 코치는 VOD 메뉴가 있으면 둘 다 · 없으면 LIVE · 새 코치는 고른 대로");
+    ok(CP.permsOf({ track: "live", perms: ["reviews", "teatime", "v-notices", "zzz"] }).join() === "reviews" && CP.permsOf({ track: "vod", perms: ["students", "teatime", "vod"] }).join() === "teatime,vod" && CP.permsOf({ perms: ["notices", "coaching"] }).sort().join() === "coaching,notices,v-notices",
+      "열리는 메뉴: 담당 밖 · 모르는 열쇠는 빼요 · 예전 ‘둘 다’ 코치는 같은 이름 VOD 강의실 메뉴도 그대로");
+    ok(CP.keyFor("notices", true) === "v-notices" && CP.keyFor("notices", false) === "notices" && CP.keyFor("vodlessons", true) === "vodlessons" && CP.keyFor("teatime", true) === "teatime" && CP.keyFor("pages", true) === "v-pages",
+      "강사센터 메뉴 → 열쇠: VOD 탭의 강의실 꾸미기 메뉴만 v- 열쇠");
+    const c0 = { brand: { courseTitle: "A" }, notices: [{ id: "n1" }], vod: { notices: [{ id: "vn1" }] }, vodBy: { v5: { notices: [] } } };
+    const cN = { brand: { courseTitle: "B" }, notices: [{ id: "n2" }], vod: { notices: [{ id: "vn2" }] }, vodBy: { v5: { notices: [{ id: "x" }] } } };
+    let o = CP.fixContent(JSON.parse(JSON.stringify(c0)), JSON.parse(JSON.stringify(cN)), ["notices"]);
+    ok(o.notices[0].id === "n2" && o.brand.courseTitle === "B" && o.vod.notices[0].id === "vn1" && !o.vodBy.v5.notices.length, "LIVE 코치(클래스 소식): LIVE 강의실만 바뀌고 VOD 강의실(vod · vodBy)은 그대로", o);
+    o = CP.fixContent(JSON.parse(JSON.stringify(c0)), JSON.parse(JSON.stringify(cN)), ["v-notices"]);
+    ok(o.notices[0].id === "n1" && o.brand.courseTitle === "A" && o.vod.notices[0].id === "vn2" && o.vodBy.v5.notices.length === 1, "VOD 코치(업데이트 소식): VOD 강의실만 바뀌고 LIVE 칸 · 기본 정보는 그대로", o);
+    o = CP.fixContent(JSON.parse(JSON.stringify(c0)), JSON.parse(JSON.stringify(cN)), ["v-brand"]);
+    ok(o.brand.courseTitle === "B" && o.notices[0].id === "n1", "VOD 코치(기본 정보): 기본 정보(LIVE와 함께 쓰는 칸)만", o);
+    const i0 = { id: "choi", menu: { items: [1] }, menuVod: { items: [1] }, menuVodBy: { v5: { items: [1] } }, coaches: [{ id: "c" }] };
+    const iN = { id: "choi", menu: { items: [2] }, menuVod: { items: [2] }, menuVodBy: { v5: { items: [2] }, v9: { items: [9] } }, coaches: [] };
+    o = CP.fixIns(JSON.parse(JSON.stringify(i0)), JSON.parse(JSON.stringify(iN)), ["menus"]);
+    ok(o.menu.items[0] === 2 && o.menuVod.items[0] === 1 && !o.menuVodBy.v9 && o.coaches.length === 1, "LIVE 메뉴 구성 코치: LIVE 메뉴만 (코치 목록 · VOD 메뉴는 그대로)", o);
+    o = CP.fixIns(JSON.parse(JSON.stringify(i0)), JSON.parse(JSON.stringify(iN)), ["v-menus"]);
+    ok(o.menu.items[0] === 1 && o.menuVod.items[0] === 2 && o.menuVodBy.v5.items[0] === 2 && o.menuVodBy.v9.items[0] === 9 && o.coaches.length === 1, "VOD 메뉴 구성 코치: VOD 강의실 메뉴만", o);
+    o = CP.fixIns(JSON.parse(JSON.stringify(i0)), JSON.parse(JSON.stringify(iN)), ["v-faq"]);
+    ok(o.menu.items[0] === 1 && o.menuVod.items[0] === 1 && o.menuVodBy.v5.items[0] === 1 && o.menuVodBy.v9.items[0] === 9, "VOD 강의실 콘텐츠 코치: 처음 여는 VOD 강의실 메뉴(복사)만 만들 수 있고 있는 메뉴는 못 바꿔요", o);
+    const cw = (perms, k) => !!AC.writer(k, { admin: { role: "coach", iid: "choi", cid: "c", perms } }, false);
+    ok(cw(["coaching"], "prog:choi:s1") && !cw(["vod-settle"], "prog:choi:s1") && cw(["reviews"], "prog:choi:s1") && !cw(["coaching"], "prog:moon:s1"), "1:1 코칭 답변 코치는 수강생 기록(질문 답변)을 저장해요 · 매출만 맡은 코치 · 다른 강사 수강생은 안 돼요");
+    ok(cw(["vodlessons"], "meta") && !cw(["teatime"], "meta") && !cw(["v-notices"], "stu:choi:s1") && cw(["v-notices"], "content:choi") && !cw(["teatime"], "content:choi"), "코치 쓰기: VOD 강의 자료 → meta(커리큘럼만) · 강의실 메뉴 → content · 매출 · TEA TIME 코치는 콘텐츠를 못 고쳐요");
+    // VOD 강의 자료 코치 · 강사의 meta: 커리큘럼은 코치도, 두잉고 열기(dg) · 서류는 강사만
+    const m0 = { vod: { products: [{ id: "v5", iid: "choi", curriculum: [{ title: "1장" }] }, { id: "v6", iid: "moon", curriculum: [] }] }, contracts: { choi: { docs: { a: 1 } } } };
+    const mN = { vod: { products: [{ id: "v5", iid: "choi", dg: false, price: 1, curriculum: [{ title: "새 1장" }] }, { id: "v6", iid: "moon", curriculum: [{ title: "남의 것" }] }] }, contracts: { choi: { docs: { a: 2 } } } };
+    o = AC.writer("meta", { admin: { role: "coach", iid: "choi", cid: "c", perms: ["vodlessons"] } }, false).fix(JSON.parse(JSON.stringify(m0)), JSON.parse(JSON.stringify(mN)));
+    ok(o.vod.products[0].curriculum[0].title === "새 1장" && o.vod.products[0].dg === undefined && o.vod.products[0].price === undefined && !o.vod.products[1].curriculum.length && o.contracts.choi.docs.a === 1, "VOD 강의 자료 코치: 그 강사 VOD 커리큘럼만 (두잉고 열기 · 가격 · 다른 강사 · 서류는 그대로)", o);
+    o = AC.writer("meta", { admin: { role: "instructor", iid: "choi" } }, false).fix(JSON.parse(JSON.stringify(m0)), JSON.parse(JSON.stringify(mN)));
+    ok(o.vod.products[0].curriculum[0].title === "새 1장" && o.contracts.choi.docs.a === 2 && o.vod.products[0].price === undefined, "강사 meta: 커리큘럼 · 자기 서류는 그대로 받아요 (가격은 그대로)", o.vod.products[0]);
+    // 코치가 보는 강사 계정: 정산 계좌는 빼요
+    const insV = { id: "choi", status: "active", phone4: "1111", coaches: [{ id: "c", phone4: "2222" }], vodSettle: { type: "biz", bank: "국민", account: "123-45", bizNo: "1", email: "a@b.c", typeBy: "master" } };
+    const cv = AC.view("ins:choi", JSON.parse(JSON.stringify(insV)), { admin: { role: "coach", iid: "choi", cid: "c", perms: ["vod-settle"] } }), iv = AC.view("ins:choi", JSON.parse(JSON.stringify(insV)), { admin: { role: "instructor", iid: "choi" } });
+    ok(JSON.stringify(cv.vodSettle) === JSON.stringify({ type: "biz", typeBy: "master" }) && !cv.phone4 && !cv.coaches[0].phone4 && iv.vodSettle.account === "123-45", "코치가 받는 강사 계정: 정산 유형만 (계좌 · 사업자번호 · 이메일 · 뒷자리 빼고) · 강사는 그대로", cv.vodSettle);
+    // 실제 서버로: VOD 코치 · LIVE 코치 · 강사
+    useJar({ dc_a: auth.sign({ r: "master" }) });
+    j = await boot();
+    const ci = docOf(j, "ins:choi");
+    ci.coaches = (ci.coaches || []).filter((x) => x.id !== "coach-vod").concat([{ id: "coach-vod", name: "박OO", phone4: "2020", status: "active", track: "vod", perms: ["teatime", "coaching", "vod-settle", "vod", "v-notices", "students"], createdAt: "2026-11-03" }]);
+    r = await sync([{ k: "ins:choi", base: verOf(j, "ins:choi"), put: ci }]);
+    ok(r.results && !r.results[0].error, "마스터: 초이 강사에 VOD 코치 추가", r.results);
+    const tea = (no, st) => ({ no, id: no, mid: "m-tea", iid: "choi", pid: "v5", kind: "tea", title: "TEA TIME", status: "paid", amount: 50000, paidAt: Date.now(), buyer: { name: "홍길동", phone: "010-1234-5678" }, tea: { st, d1: "2026-12-01", slot: "오후", mode: "zoom", topic: "상담", min: 60 } });
+    await st22.writeDoc("vo:TEA-1", tea("TEA-1", "req"), null); await st22.writeDoc("vo:TEA-2", tea("TEA-2", "req"), null);
+    await st22.writeDoc("vpo:choi", [{ id: "po1", key: "choi", ym: "2026-10", st: "ready", amount: 1000 }], null);
+    const idsOf = async (tok) => auth.identify({ headers: { cookie: "dc_a=" + encodeURIComponent(auth.sign(tok)) } });
+    const vIds = await idsOf({ r: "coach", iid: "choi", cid: "coach-vod" }), lIds = await idsOf({ r: "coach", iid: "choi", cid: "coach-hana" });
+    ok(vIds.admin && vIds.admin.track === "vod" && vIds.admin.perms.indexOf("students") < 0 && vIds.admin.perms.indexOf("teatime") >= 0 && lIds.admin.track === "live" && lIds.admin.perms.indexOf("teatime") < 0, "서버 신원: 코치 메뉴는 담당 두잉고에 맞는 것만 (VOD 코치에 체크된 ‘수강생 관리’는 빠져요)", { v: vIds.admin, l: lIds.admin });
+    useJar({ dc_a: auth.sign({ r: "coach", iid: "choi", cid: "coach-vod" }) });
+    j = await boot();
+    const vo1 = docOf(j, "vo:TEA-1");
+    ok(vo1 && vo1.tea && vo1.buyer && vo1.buyer.name === "홍OO" && !vo1.buyer.phone && Array.isArray(docOf(j, "vpo:choi")), "VOD 코치: 그 강사 주문(이름 가림) · 정산 내역을 봐요", { vo1, vpo: docOf(j, "vpo:choi") });
+    r = await sync([{ k: "vo:TEA-1", base: verOf(j, "vo:TEA-1"), put: Object.assign({}, vo1, { amount: 1, status: "refunded", tea: Object.assign({}, vo1.tea, { st: "ok", when: "2026-12-01T14:00", where: "https://zoom.us/j/1" }) }) }]);
+    let sv = (await st22.getDoc("vo:TEA-1")).v;
+    ok(!r.results[0].error && sv.tea.st === "ok" && sv.tea.when === "2026-12-01T14:00" && sv.tea.where === "https://zoom.us/j/1" && sv.tea.okAt && sv.amount === 50000 && sv.status === "paid" && sv.buyer.name === "홍길동", "VOD 코치: TEA TIME 일정 확정이 서버에 저장 (금액 · 상태 · 회원 칸은 그대로)", { r: r.results, sv });
+    j = await boot();
+    r = await sync([{ k: "vo:TEA-1", base: verOf(j, "vo:TEA-1"), put: Object.assign({}, docOf(j, "vo:TEA-1"), { tea: Object.assign({}, docOf(j, "vo:TEA-1").tea, { st: "cancel" }) }) }]);
+    sv = (await st22.getDoc("vo:TEA-1")).v;
+    ok(sv.tea.st === "ok" && !sv.refundReq, "VOD 코치: TEA TIME 취소 · 환불 요청은 못 해요 (강사만)", sv.tea);
+    r = await sync([{ k: "vpo:choi", base: verOf(j, "vpo:choi"), put: [{ id: "po1", key: "choi", ym: "2026-10", st: "ready", amount: 1000, invReqAt: 5, invNo: "X" }] }]);
+    ok(r.results[0].error === "forbidden" && !(await st22.getDoc("vpo:choi")).v[0].invNo, "VOD 코치: 정산 내역은 보기만 (세금계산서 칸 못 고침)", r.results);
+    useJar({ dc_a: auth.sign({ r: "coach", iid: "choi", cid: "coach-hana" }) });
+    j = await boot();
+    ok(!(j.docs || []).some((d) => /^vo:|^vpo:/.test(d[0])), "LIVE 코치: VOD 주문 · 정산 내역은 안 내려와요", (j.docs || []).filter((d) => /^vo:|^vpo:/.test(d[0])).map((d) => d[0]));
+    r = await sync([{ k: "vo:TEA-2", base: 1, put: Object.assign(tea("TEA-2", "req"), { tea: Object.assign(tea("TEA-2", "req").tea, { st: "ok", when: "2026-12-02T14:00" }) }) }]);
+    ok(r.results[0].error === "forbidden" && (await st22.getDoc("vo:TEA-2")).v.tea.st === "req", "LIVE 코치: TEA TIME은 못 고쳐요", r.results);
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "choi" }) });
+    j = await boot();
+    r = await sync([{ k: "vo:TEA-1", base: verOf(j, "vo:TEA-1"), put: Object.assign({}, docOf(j, "vo:TEA-1"), { tea: Object.assign({}, docOf(j, "vo:TEA-1").tea, { st: "done" }) }) }]);
+    sv = (await st22.getDoc("vo:TEA-1")).v;
+    ok(!r.results[0].error && sv.tea.st === "done" && sv.tea.doneAt, "강사: TEA TIME 진행 완료가 서버에 저장 (전에는 강사 화면에만 남았어요)", sv.tea);
+    r = await sync([{ k: "vo:TEA-2", base: verOf(j, "vo:TEA-2"), put: Object.assign({}, docOf(j, "vo:TEA-2"), { tea: Object.assign({}, docOf(j, "vo:TEA-2").tea, { st: "cancel" }) }) }]);
+    sv = (await st22.getDoc("vo:TEA-2")).v;
+    ok(sv.tea.st === "cancel" && sv.refundReq, "강사: TEA TIME 취소 → 마스터에게 환불 요청", sv);
+    r = await sync([{ k: "vo:TEA-2", base: verOf(j, "vo:TEA-2"), put: Object.assign({}, docOf(j, "vo:TEA-2"), { tea: Object.assign({}, docOf(j, "vo:TEA-2").tea, { st: "ok", when: "bad" }) }) }]);
+    ok((await st22.getDoc("vo:TEA-2")).v.tea.st === "cancel", "취소한 TEA TIME은 다시 확정하지 못해요", (await st22.getDoc("vo:TEA-2")).v.tea);
+    // 문대표 코치를 LIVE 담당으로 (일회성 작업)
+    let w = OO.moonCoachesLive((k) => (k === "ins:moon" ? { id: "moon", coaches: [{ id: "a", perms: ["reviews", "coaching"] }, { id: "b", track: "vod", perms: ["teatime"] }] } : null));
+    const mc = w.writes["ins:moon"];
+    ok(mc && mc.coaches[0].track === "live" && mc.coaches[0].perms.join() === "reviews,coaching" && mc.coaches[1].track === "vod" && w.result.live === 1, "일회성: 문대표 코치 담당을 LIVE로 (담당이 비어 있는 코치만 · 메뉴 체크는 그대로)", w.result);
+    w = OO.moonCoachesLive((k) => (k === "ins:moon" ? mc : null));
+    ok(!Object.keys(w.writes).length, "일회성: 다시 돌려도 그대로", w.result);
+    ok(OO.OPS.some((x) => x.id === "2026-11-03-moon-coaches-live" && x.run === OO.moonCoachesLive), "일회성 작업 목록에 있어요 (코치 이름 없이 문대표 코치 전체 · 담당 빈 칸만)");
+    // 문대표 전용 색(뉴질랜드)은 강사센터 · 코치센터에도
+    const dbsrc = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
+    ok(/nz: \{ label: "뉴질랜드", only: \["moon"\]/.test(dbsrc) && /dataset\.ath = master \? "" : athOf\(IID\(\)\)/.test(adsrc) && /body\[data-mode="admin"\]\[data-ath="nz"\] \{\s*--m-primary: #0b2a5b/.test(css) && /<script src="coach-perms\.js"><\/script>\s*<script src="db\.js">/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),
+      "문대표 강사센터 · 코치센터: 강의실 전용 색(뉴질랜드 네이비)으로 · 화면이 권한표(coach-perms.js)를 db.js 보다 먼저 읽어요");
+    const vj22 = JSON.parse(fs.readFileSync(path.join(ROOT, "..", "vercel.json"), "utf8"));
+    ok(/coach-perms\.js/.test(String(((vj22.functions || {})["api/*.js"] || {}).includeFiles || "")), "배포 함수에 권한표(coach-perms.js)가 실려요");
+    useJar({});
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
