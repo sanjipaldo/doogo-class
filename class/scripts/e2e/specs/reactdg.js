@@ -7,7 +7,8 @@ const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강의실 화면 주소 (shared/screens.js 의 dg-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 const DG = ["/home", "/curriculum", "/missions", "/missions?kind=required", "/missions?kind=challenge", "/missions?kind=mind", "/missions/1", "/missions/2", "/missions/9", "/curriculum/nope",
   "/schedule", "/notices", "/notices/nope", "/qna", "/qna?tab=request", "/qna/requests", "/qna/requests/new", "/qna/requests/nope",
-  "/docs", "/library", "/library/ebook", "/library/file", "/library/file?tool=calculator", "/library/vod", "/library/vod/nope", "/library/senior", "/library/lesson", "/library/nope", "/bot"];
+  "/docs", "/library", "/library/ebook", "/library/file", "/library/file?tool=calculator", "/library/vod", "/library/vod/nope", "/library/senior", "/library/lesson", "/library/nope", "/bot",
+  "/motivation", "/channels", "/partners", "/partners?tab=nope", "/certificate", "/replays", "/replays/nope", "/showcase", "/showcase?w=1", "/notes", "/glossary", "/glossary?q=%EB%A7%88", "/page/nope"];
 // 강의 한 편은 데이터에서 골라요 (열린 주차 첫 강의 · 잠긴 주차 강의)
 async function shapes(page, base, L, list) {
   const bad = []; let lines = 0;
@@ -41,7 +42,11 @@ module.exports = {
           .concat(X.myRequests().filter((x) => x.s.id === S.me.id).slice(0, 2).map((x) => "/qna/requests/" + x.q.id))
           .concat(X.myRequests().filter((x) => x.s.id !== S.me.id).slice(0, 1).map((x) => "/qna/requests/" + x.q.id))
           // 자료 하나씩 (VOD · 시니어 가이드 — 처음 · 마지막)
-          .concat(["vod", "senior"].flatMap((k) => { const l = S.D.resources[k] || []; return l.length ? ["/library/" + k + "/" + l[0].id, "/library/" + k + "/" + l[l.length - 1].id] : []; })).filter(Boolean);
+          .concat(["vod", "senior"].flatMap((k) => { const l = S.D.resources[k] || []; return l.length ? ["/library/" + k + "/" + l[0].id, "/library/" + k + "/" + l[l.length - 1].id] : []; }))
+          // 제휴채널 탭 · 다시보기 하나씩 (최근 · 처음) · 추가 메뉴
+          .concat(window.DB.PARTNER_GROUPS.map((g) => "/partners?tab=" + g.key))
+          .concat(((r) => (r.length ? ["/replays/" + r[0].id, "/replays/" + r[r.length - 1].id] : []))(X.replaysSorted()))
+          .concat(X.NAV().filter((x) => x.id === "page" && x.sub).map((x) => "/page/" + x.sub)).filter(Boolean);
       });
       const list = DG.concat(extra);
       const { bad, lines } = await shapes(page, base, L, list);
@@ -221,6 +226,53 @@ module.exports = {
       const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean), gd = L.shapeDiff(a.gate.open.shape, b.gate.open.shape);
       await run.check(!d.length && !gd && a.out.length === b.out.length && b.out.length >= 6 && b.stay && b.gate.open.cls && !b.gate.closed.cls && !b.gate.closed.html && JSON.stringify(a.t) === JSON.stringify(b.t),
         "서류 · 자료실 · 계산기 · AI 조교(React): 이용 안내 팝업 · 서류 체크 · 계산 · 내 제품 저장 · 불러오기 · 지우기 · 질문 · 대화 지우기 — 누를 때마다 예전 화면과 같은 모양 · 같은 알림 (" + b.out.length + "번)", d.slice(0, 1).concat([{ gd, gate: [a.gate.closed, b.gate.closed, a.gate.open.cls, b.gate.open.cls], t: [a.t, b.t], n: [a.out.length, b.out.length] }]), page);
+      await page.context().close();
+    }
+    // 1-6) 동기부여 · 다시보기 · 모범 과제 · 학습 노트 · 용어 사전 누르기: 영상 고르기 · 주차 칩 · 다 봤어요 · 사진 크게 보기 · 회고 적기 · 용어 분류 · 검색
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "강의실 동기부여 · 다시보기 · 노트 · 용어");
+      await FL.student(page, base, info);
+      const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 350); out.push(await L.domShape(page)); };
+      const go = async (h) => { await page.evaluate((x) => { window.ROUTE.hash = x; }, h); await page.waitForTimeout(500); };
+      const flow = async (mode) => {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/home");
+        const keep = await page.evaluate(() => { const P = window.DGA.st().P; return JSON.stringify({ r: P.replays || {}, j: P.journal || {} }); });
+        await page.evaluate(() => { window.__e2eStay = 1; });
+        const out = [], t = [], modal = [];
+        await go("#/motivation");
+        if ((await page.$$("[data-action='mv-pick']")).length > 1) await step(out, () => page.$$eval("[data-action='mv-pick']", (els) => els[1].click()));
+        await go("#/replays");
+        const rk = await page.$$("[data-action='rp-week']"); if (rk.length > 1) { await step(out, () => page.$$eval("[data-action='rp-week']", (els) => els[1].click())); await step(out, () => page.click("[data-action='rp-week'][data-k='all']")); }
+        if (await page.$(".rp-card")) {
+          await page.click(".rp-card"); await page.waitForTimeout(500); out.push(await L.domShape(page));
+          await step(out, () => page.click("[data-action='toggle-replay']")); t.push(await L.toasts(page));
+          await step(out, () => page.click("[data-action='toggle-replay']"));
+        }
+        await go("#/showcase");
+        if ((await page.$$("[data-action='sc-week']")).length > 1) { await step(out, () => page.$$eval("[data-action='sc-week']", (els) => els[1].click())); await step(out, () => page.click("[data-action='sc-week'][data-k='all']")); }
+        if (await page.$("[data-action='sc-zoom']")) {
+          await page.click("[data-action='sc-zoom']"); await page.waitForTimeout(400); modal.push(await L.domShape(page, "modal-root"));
+          await page.click("#modal-root .modal-actions [data-action='modal-close']"); await page.waitForTimeout(300); modal.push(await page.evaluate(() => document.getElementById("modal-root").innerHTML.trim()));
+        }
+        await go("#/notes");
+        if (await page.$("[data-journal]")) {
+          await step(out, () => page.fill("[data-journal]", "E2E 회고 한 줄"), 1000);
+          await step(out, () => page.fill("[data-journal]", ""), 1000);
+        }
+        await go("#/glossary");
+        if ((await page.$$("[data-action='gl-cat']")).length > 1) await step(out, () => page.$$eval("[data-action='gl-cat']", (els) => els[1].click()));
+        await step(out, () => page.fill("#gl-search", "마"), 400);
+        await step(out, () => page.fill("#gl-search", ""), 400);
+        if (await page.$("[data-action='gl-cat'][data-cat='전체']")) await step(out, () => page.click("[data-action='gl-cat'][data-cat='전체']"));
+        await page.evaluate((k) => { const S = window.DGA.st(), o = JSON.parse(k); S.P.replays = o.r; S.P.journal = o.j; window.DGA.saveProgress(); }, keep);
+        await L.flushed(page);
+        return { out, t, modal, stay: await page.evaluate(() => window.__e2eStay === 1) };
+      };
+      const a = await flow("off"), b = await flow("all");
+      const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean), md = a.modal[0] && b.modal[0] ? L.shapeDiff(a.modal[0], b.modal[0]) : null;
+      await run.check(!d.length && !md && a.out.length === b.out.length && b.out.length >= 6 && b.stay && JSON.stringify(a.t) === JSON.stringify(b.t) && a.modal.length === b.modal.length && (b.modal[1] || "") === "",
+        "동기부여 · 다시보기 · 모범 과제 · 노트 · 용어(React): 영상 고르기 · 주차 칩 · 다 봤어요 · 사진 크게 보기 · 회고 적기 · 분류 · 검색 — 누를 때마다 예전 화면과 같은 모양 (" + b.out.length + "번)", d.slice(0, 1).concat([{ md, t: [a.t, b.t], n: [a.out.length, b.out.length], m: [a.modal.length, b.modal.length, b.modal[1]] }]), page);
       await page.context().close();
     }
     {

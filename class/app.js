@@ -2156,6 +2156,8 @@
       '<text x="60" y="56" text-anchor="middle" font-size="12" font-weight="900" letter-spacing="2" fill="#5a3d05">COMPLETE</text><text x="60" y="76" text-anchor="middle" font-size="18" font-weight="900" fill="#5a3d05">수 료</text></svg>';
   }
   const certNumber = () => DB.certNo(me);
+  /** 수료증 PDF 로 내려받기 (안 되면 인쇄) */
+  function certPrint(a) { const el = document.querySelector(".cert-wrap .cert") || document.querySelector(".cert"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "수료증-" + ((me && me.name) || "수강생") + ".pdf", { margin: 8, title: "수료증" }, (msg) => toast(msg)); else window.print(); }
   function pageCertificate() {
     const o = overallStats();
     const earned = o.reqTotal > 0 && o.reqDone === o.reqTotal;
@@ -2232,6 +2234,8 @@
         }).join("") + "</div>"
         : '<section class="card">' + empty("monitorPlay", mainLec() ? "아직 올라온 보충 강의가 없어요." : "아직 올라온 다시보기 영상이 없어요.") + "</section>") + "</div>";
   }
+  /** 다 봤어요 표시 · 취소 — 표시했으면 true */
+  function replayFlip(id) { P.replays = P.replays || {}; if (P.replays[id]) delete P.replays[id]; else P.replays[id] = Date.now(); saveProgress(); return !!P.replays[id]; }
   function pageReplay(id) {
     const all = replaysSorted(), i = all.findIndex((x) => x.id === id), x = all[i];
     if (!x) return notFound();
@@ -2304,6 +2308,16 @@
             : '<p class="tiny nt-hint">' + icon("pen", "xs") + " 강의 화면의 ‘내 메모’에 적은 내용도 여기에 모여요.</p>") +
         "</details>";
       }).join("") : '<section class="card">' + empty("notebookPen", "주차가 열리면 노트를 쓸 수 있어요.") + "</section>") + "</div>";
+  }
+  /** 주차 회고 저장 — 그 주차 칸(data-journal)에 적힌 그대로 */
+  function journalSave(wk) {
+    P.journal = P.journal || {};
+    const j = P.journal[wk] = P.journal[wk] || { a: {} };
+    j.a = j.a || {};
+    document.querySelectorAll('[data-journal="' + wk + '"]').forEach((el) => { if (el.value.trim()) j.a[el.dataset.q] = el.value; else delete j.a[el.dataset.q]; });
+    j.at = Date.now();
+    if (!Object.keys(j.a).length) delete P.journal[wk];
+    saveProgress();
   }
   function exportNotes() {
     const J = P.journal || {}, N = P.notes || {}, lines = [D.brand.courseTitle + " · " + me.name + "님의 " + ML("notes"), ""];
@@ -2627,7 +2641,7 @@
       case "cert-preview": certPreview = !certPreview; document.getElementById("main").innerHTML = pageCertificate(); if (certPreview) { const c = document.querySelector(".cert-wrap"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } break;
       case "rp-week": rpWeek = a.dataset.k; { const y = window.scrollY; render(); window.scrollTo(0, y); } break;
       case "sc-week": scWeek = a.dataset.k; { const y = window.scrollY; render(); window.scrollTo(0, y); } break;
-      case "toggle-replay": { const id = a.dataset.id; P.replays = P.replays || {}; if (P.replays[id]) delete P.replays[id]; else P.replays[id] = Date.now(); saveProgress(); render(); if (P.replays[id]) toast("다 본 영상으로 표시했어요."); break; }
+      case "toggle-replay": if (replayFlip(a.dataset.id)) { render(); toast("다 본 영상으로 표시했어요."); } else render(); break;
       case "sc-zoom": showcaseZoom(a.dataset.id, a.dataset.i); break;
       case "notes-export": exportNotes(); break;
       case "gl-cat": glCat = a.dataset.cat; { const i = document.getElementById("gl-search"); document.getElementById("gl-list").innerHTML = glossaryList(i ? i.value : ""); document.querySelectorAll("[data-action=gl-cat]").forEach((b) => b.classList.toggle("on", b.dataset.cat === glCat)); } break;
@@ -2648,7 +2662,7 @@
           '<a class="video-out" href="https://www.youtube.com/watch?v=' + esc(box.dataset.yid) + '" target="_blank" rel="noopener">재생이 안 되면 유튜브에서 보기 ' + icon("arrowUpRight", "xs") + "</a>";
         break;
       }
-      case "print": { const el = document.querySelector(".cert-wrap .cert") || document.querySelector(".cert"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "수료증-" + ((me && me.name) || "수강생") + ".pdf", { margin: 8, title: "수료증" }, (msg) => toast(msg)); else window.print(); break; }
+      case "print": certPrint(a); break;
       case "calc-load": { const it = calcLoad(a.dataset.id); if (!it) break; render(); const c = document.getElementById("calc"); if (c) c.scrollIntoView({ block: "start", behavior: "smooth" }); toast("‘" + it.name + "’ 숫자를 계산기에 불러왔어요."); break; }
       case "vod-mode": { try { localStorage.setItem(VMODE_KEY, vodMode() === "dark" ? "light" : "dark"); } catch (e2) {} applyTheme(); a.innerHTML = modeInner(); toast(vodMode() === "dark" ? "블랙 화면으로 바꿨어요." : "화이트 화면으로 바꿨어요."); break; }
       case "vt-tab": {
@@ -2771,13 +2785,7 @@
       if (st) st.textContent = "저장 중…";
       clearTimeout(journalTimer);
       journalTimer = setTimeout(() => {
-        P.journal = P.journal || {};
-        const j = P.journal[wk] = P.journal[wk] || { a: {} };
-        j.a = j.a || {};
-        document.querySelectorAll('[data-journal="' + wk + '"]').forEach((el) => { if (el.value.trim()) j.a[el.dataset.q] = el.value; else delete j.a[el.dataset.q]; });
-        j.at = Date.now();
-        if (!Object.keys(j.a).length) delete P.journal[wk];
-        saveProgress();
+        journalSave(wk);
         const s2 = document.getElementById("nt-state-" + wk); if (s2) s2.textContent = "방금 저장됨";
       }, 600);
       return;
@@ -2855,6 +2863,13 @@
     noteSave: (id, v) => { P.notes = P.notes || {}; if (String(v).trim()) P.notes[id] = v; else delete P.notes[id]; saveProgress(); },
     // 서류 준비 체크 · 자료실(분류 · 자료 · 수업 자료 모음 · 열람자 표시 · 이용 안내) · 수업 자료 미리보기/내려받기
     docToggle, resOf, lessonFiles, vtFiles, matClick, libNotice: () => DB.libNoticeOf(D),
+    // 동기부여(고른 영상 · 자동 재생) · 수료증(미리보기 · 도장 · 메달 · 번호 · PDF) · 다시보기 · 모범 과제(주차 칩) · 학습 노트 · 용어 사전 · 추가 메뉴
+    mv: (id) => { if (id !== undefined) { mvSel = id; mvAuto = true; } return { sel: mvSel, auto: mvAuto }; },
+    certPv: (flip) => { if (flip) certPreview = !certPreview; return certPreview; }, certSeal, certRosette, certNo: certNumber, certPrint, allMissions,
+    replaysSorted, rpWeek: (k) => { if (k !== undefined) rpWeek = k; return rpWeek; }, replayFlip,
+    scWeek: (k) => { if (k !== undefined) scWeek = k; return scWeek; },
+    promptsOf, journalSave, exportNotes, glCat: (c) => { if (c !== undefined) glCat = c; return glCat; }, initialOf,
+    customOf: (key) => { const item = DB.menuConfig(MID()).items.find((x) => x.key === key); return item ? { item, pg: D.pages[item.key] || {} } : null; },
     wmLabel: () => (me.name || "") + " · " + (CO ? CO.name : "") + " · " + fmtStamp(Date.now()),
     // 마진 계산기: 숫자(다시 그려도 남아요) · 고치는 제품 · 내 제품 마진표 · 계산 · 저장 · 불러오기 · 새 제품 · 지우기
     calc: () => ({ vals: calcVals, edit: calcEdit, mine: calcMine(), items: calcItems() }), CALC_F, calcOf, roasBox, won,

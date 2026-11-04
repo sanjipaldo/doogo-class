@@ -154,6 +154,8 @@ const domShape = (page, id) => page.evaluate((id) => {
   // 남은 시간(1초마다 바뀜)은 마감 시각으로 · 못 불러오면 스스로 지우는 그림(유튜브 미리보기 · 네트워크에 따라 다름)은 빼요
   c.querySelectorAll("[data-cd]").forEach((el) => { el.textContent = el.dataset.cd; });
   c.querySelectorAll('img[onerror="this.remove()"]').forEach((el) => el.remove());
+  // 강의실 썸네일도 못 불러오면 예전 코드가 지워요 (app.js error 처리 — 네트워크 · 시각에 따라 다름)
+  c.querySelectorAll(".lesson-thumb img, .video img, .vod-thumb img, .mv-tile-img img").forEach((el) => el.remove());
   c.querySelectorAll("*").forEach((el) => {
     if (el.classList.contains("site-sw")) { ["ready", "no-anim", "at-dg", "at-vod"].forEach((k) => el.classList.remove(k)); el.style.removeProperty("--kx"); el.style.removeProperty("--kw"); }
     ["is-sc", "mo", "stuck", "is-in", "pop"].forEach((k) => el.classList.remove(k));

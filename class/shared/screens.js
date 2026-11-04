@@ -43,7 +43,9 @@
     // 일정 · 공지 · Q&A(FAQ · 1:1 요청 · 코칭 질문)
     ["dg-board", /^\/(schedule|notices(\/[^/]+)?|qna(\/requests(\/[^/]+)?)?)\/?$/, "두잉고 강의실 일정 · 공지 · Q&A"],
     // 서류 준비 · 자료실(분류 · 자료 · 마진 계산기) · AI 조교 전체 화면
-    ["dg-lib", /^\/(docs|library(\/[^/]+(\/[^/]+)?)?|bot)\/?$/, "두잉고 강의실 서류 · 자료실 · AI 조교"]
+    ["dg-lib", /^\/(docs|library(\/[^/]+(\/[^/]+)?)?|bot)\/?$/, "두잉고 강의실 서류 · 자료실 · AI 조교"],
+    // 동기부여 · 소통채널 · 제휴채널 · 수료증 · 다시보기 · 모범 과제 · 학습 노트 · 용어 사전 · 추가 메뉴
+    ["dg-more", /^\/(motivation|channels|partners|certificate|replays(\/[^/]+)?|showcase|notes|glossary|page\/[^/]+)\/?$/, "두잉고 강의실 동기부여 · 채널 · 수료증 · 다시보기 · 모범 과제 · 노트 · 용어 · 추가 메뉴"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);
