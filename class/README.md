@@ -312,6 +312,7 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 | `vod-auth` | `/vod/login` · `/vod/signup` · `/vod/dg` | 두고클래스 로그인 · 회원가입(탭 [두잉고 · 두고클래스] · 두잉고 강사 고르기 · 카카오 · 비밀번호 찾기 · 자주 묻는 질문 · 봇 막기) · 두잉고 VOD 강의실 고르기 | 미리보기 · 운영은 꺼짐 |
 | `vod-order` | `/vod/order/<번호>` | 주문 확인 (결제 · 신청 · 입금 대기 완료 · 휴대폰 결제에서 돌아오기) | 미리보기 · 운영은 꺼짐 |
 | `vod-checkout` | `/vod/checkout/<클래스>` | 주문 · 결제 (수강권 · 코칭권 · TEA TIME · 종이책 · 무료 신청 — 금액 다시 계산 · 결제는 예전 함수 `coPaint` · `doPay` 그대로) | 미리보기 · 운영은 꺼짐 |
+| `vod-learn` | `/vod/learn/<클래스>/<강의>` | VOD 강의실(영상 · 강의 노트 · 첨부 · 커리큘럼 · 완료하기 — 두잉고 강의실이 열린 VOD 는 두잉고로) · 전자책(표지 · 목차 · PDF) · LIVE · 오프라인 입장 안내(남은 시간) | 미리보기 · 운영은 꺼짐 |
 
 ## 결제 시험 환경 (Next.js 전환 4단계 · 4-2 · 2026-11-04)
 

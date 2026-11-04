@@ -4043,6 +4043,8 @@
     // 로그인 · 가입 · 두잉고 강의실 고르기 (4-4)
     authReady, doAuth, doDgLogin, kakaoStart, dgList, dgCard,
     // 주문 · 결제 (4-4)
-    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, bankBox, shipBox, planRow, doPay });
+    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, bankBox, shipBox, planRow, doPay,
+    // VOD 강의실 · 전자책 · 입장 안내 (4-4)
+    logStudy, eventTime, cdTxt, vimeoSrc });
   window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };
 })();

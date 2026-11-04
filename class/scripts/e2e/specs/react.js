@@ -8,7 +8,9 @@ const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 const SHAPES = ["/vod/my", "/vod/my/classes", "/vod/my/classes?st=done", "/vod/my/free", "/vod/my/vod", "/vod/my/addons", "/vod/my/ebooks", "/vod/my/live", "/vod/my/alarm", "/vod/my/likes", "/vod/my/likes?t=topics",
   "/vod/my/pending", "/vod/my/orders", "/vod/my/orders?t=refund", "/vod/my/ship", "/vod/my/ship?st=claim", "/vod/my/coupons", "/vod/my/coupons?st=used", "/vod/my/points", "/vod/my/reviews", "/vod/my/posts", "/vod/my/badges", "/vod/my/account", "/vod/my/devices", "/vod/my/help", "/vod/my/help?t=list",
   // 주문 · 결제 (수강권 · 수강권 + 코칭권 · 종이책 · 무료 신청 · 1:1 코칭권 · TEA TIME)
-  "/vod/checkout/v8", "/vod/checkout/v8?plan=180&coach=1", "/vod/checkout/b1", "/vod/checkout/fl-choi", "/vod/checkout/v5?item=coach", "/vod/checkout/v5?item=tea"];
+  "/vod/checkout/v8", "/vod/checkout/v8?plan=180&coach=1", "/vod/checkout/b1", "/vod/checkout/fl-choi", "/vod/checkout/v5?item=coach", "/vod/checkout/v5?item=tea",
+  // VOD 강의실 (두잉고 강의실이 없는 VOD 플레이어) · 전자책
+  "/vod/learn/v14", "/vod/learn/v11"];
 module.exports = {
   title: "React 화면 · 스위치 · 예전 화면과 같은 모양 · 오가기",
   async run({ base, info, browser, run, L }) {
@@ -90,6 +92,14 @@ module.exports = {
     await page.waitForTimeout(600); await L.flushed(page);
     const iq = await page.evaluate(() => ({ path: location.pathname + location.search, items: Array.from(document.querySelectorAll(".vd-iq-it b")).map((x) => x.textContent) }));
     await run.check(/t=list/.test(iq.path) && iq.items.indexOf("React 화면 시험 문의") >= 0 && cnt === iqText.length + " / 1000", "1:1 문의: 글자 수가 세지고 · 남기면 내 문의 내역에 보여요", { iq, cnt }, page);
+    // VOD 강의실(React): ‘완료하고 다음 강의’ → 새로 불러오지 않고 다음 강의 · 진도가 올라가요
+    await L.open(page, base, "/vod/learn/v14");
+    await page.evaluate(() => { window.__e2eStay = 1; });
+    const pl0 = { react: await isReact(page), h1: await L.text(page, ".vd-pl-info h1"), pc: await L.text(page, ".vd-pl-prog") };
+    await page.click(".vd-pl-btns [data-v='done']").catch(() => {}); await page.waitForTimeout(500);
+    const pl1 = await page.evaluate(() => ({ stay: window.__e2eStay === 1, path: location.pathname, h1: (document.querySelector(".vd-pl-info h1") || {}).textContent, pc: (document.querySelector(".vd-pl-prog") || {}).textContent }));
+    await run.check(pl0.react && pl1.stay && /^\/vod\/learn\/v14\/./.test(pl1.path) && pl1.h1 && pl1.h1 !== pl0.h1 && pl1.pc !== pl0.pc, "VOD 강의실(React): 완료하고 다음 강의 → 새로 불러오지 않고 다음 강의 · 진도율이 올라가요", { pl0, pl1 }, page);
+    await L.open(page, base, "/vod/my");
     // 주문 만들기 (API — 결제 화면은 4-4 다음 차례): 무통장 주문 2건 · 하나는 회원이 React 화면에서 취소, 하나는 마스터가 입금 확인
     const mkOrder = (i) => page.evaluate((k) => { const X = window.VOD, mm = X.me(), ps = X.listed().filter((x) => (X.typeOf(x) === "vod" || X.typeOf(x) === "ebook") && x.status === "on" && X.priceOf(x) > 0 && !X.owns(mm.id, x.id)), p = ps[k]; if (!p) return { none: true };
       const pl = X.defPlan ? X.defPlan(p) : null;
