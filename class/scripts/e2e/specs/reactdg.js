@@ -6,7 +6,8 @@ const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강의실 화면 주소 (shared/screens.js 의 dg-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 const DG = ["/home", "/curriculum", "/missions", "/missions?kind=required", "/missions?kind=challenge", "/missions?kind=mind", "/missions/1", "/missions/2", "/missions/9", "/curriculum/nope",
-  "/schedule", "/notices", "/notices/nope", "/qna", "/qna?tab=request", "/qna/requests", "/qna/requests/new", "/qna/requests/nope"];
+  "/schedule", "/notices", "/notices/nope", "/qna", "/qna?tab=request", "/qna/requests", "/qna/requests/new", "/qna/requests/nope",
+  "/docs", "/library", "/library/ebook", "/library/file", "/library/file?tool=calculator", "/library/vod", "/library/vod/nope", "/library/senior", "/library/lesson", "/library/nope", "/bot"];
 // 강의 한 편은 데이터에서 골라요 (열린 주차 첫 강의 · 잠긴 주차 강의)
 async function shapes(page, base, L, list) {
   const bad = []; let lines = 0;
@@ -38,7 +39,9 @@ module.exports = {
           // 공지 하나씩 (사진 · 영상이 있는 공지 먼저) · 내 1:1 요청 (답변 있는 것 · 없는 것) · 남의 요청 (비공개)
           .concat(S.D.notices.slice().sort((a, b) => X.noticeVideos(b).length + (b.images || []).length - X.noticeVideos(a).length - (a.images || []).length).slice(0, 3).map((n) => "/notices/" + n.id))
           .concat(X.myRequests().filter((x) => x.s.id === S.me.id).slice(0, 2).map((x) => "/qna/requests/" + x.q.id))
-          .concat(X.myRequests().filter((x) => x.s.id !== S.me.id).slice(0, 1).map((x) => "/qna/requests/" + x.q.id)).filter(Boolean);
+          .concat(X.myRequests().filter((x) => x.s.id !== S.me.id).slice(0, 1).map((x) => "/qna/requests/" + x.q.id))
+          // 자료 하나씩 (VOD · 시니어 가이드 — 처음 · 마지막)
+          .concat(["vod", "senior"].flatMap((k) => { const l = S.D.resources[k] || []; return l.length ? ["/library/" + k + "/" + l[0].id, "/library/" + k + "/" + l[l.length - 1].id] : []; })).filter(Boolean);
       });
       const list = DG.concat(extra);
       const { bad, lines } = await shapes(page, base, L, list);
@@ -163,6 +166,61 @@ module.exports = {
       const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
       await run.check(!d.length && a.out.length === b.out.length && b.out.length >= 12 && b.stay && JSON.stringify(a.t) === JSON.stringify(b.t) && /요청을 취소/.test(b.t[3]) && b.path === "/qna/requests",
         "일정 · 공지 · Q&A(React): 달력 앞뒤 · 날짜 · 오늘 · 모두 읽음 · FAQ 분류 · 검색 · 사진 올리기 · 지우기 · 빈칸 · 등록 · 취소 — 누를 때마다 예전 화면과 같은 모양 · 같은 알림 (" + b.out.length + "번)", d.slice(0, 1).concat([{ t: [a.t, b.t], n: [a.out.length, b.out.length], path: [a.path, b.path] }]), page);
+      await page.context().close();
+    }
+    // 1-5) 서류 · 자료실 · 계산기 · AI 조교 전체 화면: 이용 안내 팝업(모양 · 확인) · 서류 체크 · 계산기 숫자 · 내 제품 저장 · 불러오기 · 새 제품 · 지우기 · 질문 · 대화 지우기
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "강의실 서류 · 자료실 · 조교");
+      page.on("dialog", (d) => d.accept());
+      await FL.student(page, base, info);
+      const T = (x) => x.replace(/\d{1,2}\/\d{1,2} 저장/g, "M/D 저장").replace(/"cp[a-z0-9]{6,}"/g, '"CPID"');
+      const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 350); out.push(T(await L.domShape(page))); };
+      const go = async (h) => { await page.evaluate((x) => { window.ROUTE.hash = x; }, h); await page.waitForTimeout(500); };
+      const flow = async (mode) => {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/home");
+        const keep = await page.evaluate(() => { const P = window.DGA.st().P; return JSON.stringify({ c: P.calcItems || [], d: P.docs || {}, ch: P.chat || [] }); });
+        await page.evaluate(() => { window.__e2eStay = 1; });
+        const out = [], gate = {};
+        // 자료실: 들어올 때 이용 안내 팝업 → 확인
+        await go("#/library");
+        gate.open = { shape: await L.domShape(page, "modal-root"), cls: await page.evaluate(() => document.body.classList.contains("lib-gated")) };
+        if (await page.$("#modal-root .lib-gate-ok")) await page.click("#modal-root .lib-gate-ok");
+        await page.waitForTimeout(300);
+        gate.closed = { html: await page.evaluate(() => document.getElementById("modal-root").innerHTML.trim()), cls: await page.evaluate(() => document.body.classList.contains("lib-gated")) };
+        out.push(await L.domShape(page));
+        // 서류 준비: 체크 → 다시 (처음 그대로)
+        await go("#/docs");
+        if (await page.$("[data-action='toggle-doc']")) { await step(out, () => page.click("[data-action='toggle-doc']")); await step(out, () => page.click("[data-action='toggle-doc']")); }
+        // 마진 계산기
+        await go("#/library/file?tool=calculator");
+        if (await page.$("#modal-root .lib-gate-ok")) await page.click("#modal-root .lib-gate-ok");
+        await step(out, () => page.fill("#c-price", "50000"));
+        await step(out, () => page.fill("#c-ad", "60"));
+        await step(out, () => page.fill("#c-ad", "0"));
+        let t = [];
+        if (await page.$("#calc-save")) {
+          await step(out, () => page.click("#calc-save button[type='submit']")); t.push(await L.toasts(page));
+          await page.fill("#c-name", "E2E 제품");
+          await step(out, () => page.click("#calc-save button[type='submit']"), 500); t.push(await L.toasts(page));
+          await step(out, () => page.fill("#c-price", "90000"));
+          await step(out, () => page.click("#calc-save button[type='submit']"), 500);
+          await step(out, () => page.click("[data-action='calc-new']"));
+          await step(out, () => page.click("[data-action='calc-load']"), 500);
+          await step(out, () => page.click("[data-action='calc-del']"), 500); t.push(await L.toasts(page));
+        }
+        // AI 조교 전체 화면: 질문 칩 → 대화 지우기
+        await go("#/bot");
+        if (await page.$(".bot-full .chip")) await step(out, () => page.$eval(".bot-full .chip", (el) => el.click()), 2500);
+        await step(out, () => page.click(".bot-full ~ p [data-action='clear-chat']"), 400);
+        await page.evaluate((k) => { const S = window.DGA.st(), o = JSON.parse(k); S.P.calcItems = o.c; S.P.docs = o.d; S.P.chat = o.ch; window.DGA.saveProgress(); }, keep);
+        await L.flushed(page);
+        return { out, gate, t, stay: await page.evaluate(() => window.__e2eStay === 1) };
+      };
+      const a = await flow("off"), b = await flow("all");
+      const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean), gd = L.shapeDiff(a.gate.open.shape, b.gate.open.shape);
+      await run.check(!d.length && !gd && a.out.length === b.out.length && b.out.length >= 6 && b.stay && b.gate.open.cls && !b.gate.closed.cls && !b.gate.closed.html && JSON.stringify(a.t) === JSON.stringify(b.t),
+        "서류 · 자료실 · 계산기 · AI 조교(React): 이용 안내 팝업 · 서류 체크 · 계산 · 내 제품 저장 · 불러오기 · 지우기 · 질문 · 대화 지우기 — 누를 때마다 예전 화면과 같은 모양 · 같은 알림 (" + b.out.length + "번)", d.slice(0, 1).concat([{ gd, gate: [a.gate.closed, b.gate.closed, a.gate.open.cls, b.gate.open.cls], t: [a.t, b.t], n: [a.out.length, b.out.length] }]), page);
       await page.context().close();
     }
     {

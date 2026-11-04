@@ -41,7 +41,9 @@
     // 강의(커리큘럼 · 강의 한 편) · 과제(전체 · 종류별 · 주차 · 과제 하나 제출)
     ["dg-learn", /^\/(curriculum(\/[^/]+)?|missions(\/\d+(\/[^/]+)?)?)\/?$/, "두잉고 강의실 강의 · 과제"],
     // 일정 · 공지 · Q&A(FAQ · 1:1 요청 · 코칭 질문)
-    ["dg-board", /^\/(schedule|notices(\/[^/]+)?|qna(\/requests(\/[^/]+)?)?)\/?$/, "두잉고 강의실 일정 · 공지 · Q&A"]
+    ["dg-board", /^\/(schedule|notices(\/[^/]+)?|qna(\/requests(\/[^/]+)?)?)\/?$/, "두잉고 강의실 일정 · 공지 · Q&A"],
+    // 서류 준비 · 자료실(분류 · 자료 · 마진 계산기) · AI 조교 전체 화면
+    ["dg-lib", /^\/(docs|library(\/[^/]+(\/[^/]+)?)?|bot)\/?$/, "두잉고 강의실 서류 · 자료실 · AI 조교"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

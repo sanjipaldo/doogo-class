@@ -141,8 +141,10 @@ async function flushed(page, ms) {
 async function reactCookie(page, base, v) { await page.context().addCookies([{ name: "dc_next", value: v, url: base }]); }
 /** #root 구조를 글로 (태그 · 속성 · 글자) — 예전 화면과 React 화면이 똑같은지 비교해요.
  *  움직임용으로 그린 뒤 붙는 표시(서비스 바꾸기 손잡이 위치 · 내려가면 생기는 그림자 · 움직임 시작)와 아이콘 그림 내용은 빼요 */
-const domShape = (page) => page.evaluate(() => {
-  const c = document.getElementById("root").cloneNode(true); c.normalize();
+const domShape = (page, id) => page.evaluate((id) => {
+  const c = document.getElementById(id || "root").cloneNode(true); c.normalize();
+  // 자료실 열람자 표시(이름 · 기수 · 지금 시각)는 시각만 빼요
+  c.querySelectorAll(".lib-wm span").forEach((el) => { el.textContent = el.textContent.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}$/, "M/D hh:mm"); });
   // 예전 강의실이 #root 에 붙이는 ‘누가 그린 틀인지’ 표시(data-who)는 화면 모양이 아니라서 빼요
   c.removeAttribute("data-who");
   // 한국 · 뉴질랜드 시계(15초마다)는 시각만 빼요
@@ -168,7 +170,7 @@ const domShape = (page) => page.evaluate(() => {
     n.childNodes.forEach((x) => walk(x, d + 1));
   })(c, 0);
   return out.join("\n");
-});
+}, id || "");
 /** 두 구조가 처음 다른 곳 (같으면 null) */
 function shapeDiff(a, b) { const A = a.split("\n"), B = b.split("\n"); let i = 0; while (i < A.length && A[i] === B[i]) i++; return i >= A.length && i >= B.length ? null : { at: i, old: A.slice(Math.max(0, i - 2), i + 4), new: B.slice(Math.max(0, i - 2), i + 4) }; }
 

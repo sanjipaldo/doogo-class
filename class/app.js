@@ -950,6 +950,13 @@
     return h;
   }
   const extOf = (n) => (String(n || "").match(/\.([a-z0-9]{2,5})$/i) || [])[1] || "file";
+  /** 수업 자료 미리보기 · 내려받기 (예전 vt-mat · vt-dl — React 화면도 같이 씀) */
+  function matClick(a) {
+    if (a.dataset.action === "vt-dl") { toast("수업 자료를 내려받고 있어요. 안 열리면 ‘미리보기’에서 저장할 수 있어요."); return; }
+    if (a.dataset.m === "dl") { const st = DB.session.student(), vm = (me && me.vodMid) || (st && st.vodMid), mp = /^#\/vodclass\/([^/?]+)/.exec(ROUTE.hash); if (vm && mp && VX().markMat) VX().markMat(vm, decodeURIComponent(mp[1])); }
+    VX().matOpen({ url: a.dataset.u, name: a.dataset.n }, a.dataset.m).then((ok) => { if (!ok) toast("이 브라우저에 저장된 파일이 아니에요. 강사님이 다시 올리면 받을 수 있어요.", "warn"); else if (a.dataset.m === "dl") toast("수업 자료를 내려받았어요."); });
+  }
+  const docToggle = (id) => { if (P.docs[id]) delete P.docs[id]; else P.docs[id] = Date.now(); saveProgress(); };
   function vtFiles(files) {
     return '<ul class="vt-files">' + files.map((f) => { const ext = extOf(f.name).toLowerCase(), has = !!f.url;
       return '<li class="vt-file"><span class="vt-fic e-' + esc(ext) + '">' + esc(ext.toUpperCase()) + '</span><div class="vt-file-t"><b>' + esc(f.name || "수업 자료") + "</b><small>" + esc(ext.toUpperCase()) + (f.size ? " · " + (f.size >= 1024 ? (f.size / 1024).toFixed(1) + "MB" : f.size + "KB") : "") + (has ? "" : " · 강사님이 곧 올려 드려요") + "</small></div>" +
@@ -2030,12 +2037,15 @@
     const out = document.getElementById("calc-out");
     if (!out) return;
     CALC_F.forEach((x) => { const el = document.getElementById("c-" + x[0]); if (el) calcVals[x[0]] = el.value; });
+    if (document.body.dataset.react) return; // React 화면은 숫자만 읽고 결과는 React 가 그려요
     const r = calcOf(calcVals);
     out.innerHTML = '<div><span class="stat-label">원가 (상품+배송)</span><div class="stat-value" style="font-size:22px">' + won(r.cost) + "</div></div>" +
       '<div><span class="stat-label">수수료 + 광고비</span><div class="stat-value" style="font-size:22px">' + won(r.fees) + "</div></div>" +
       '<div class="hl"><span class="stat-label" style="color:#b8bdb2">순이익 · 마진율</span><div class="stat-value" style="font-size:22px">' + won(r.profit) + " · " + r.margin.toFixed(1) + "%</div></div>";
     const rb = document.getElementById("calc-roas"); if (rb) rb.innerHTML = roasBox(r, calcVals);
   }
+  function calcLoad(id) { const it = calcItems().find((x) => x.id === id); if (!it) return null; calcVals = Object.assign({}, CALC_DEF, it.v); calcEdit = it.id; return it; }
+  function calcDel(id) { const it = calcItems().find((x) => x.id === id); if (!it || !confirm("‘" + it.name + "’을 내 제품 마진표에서 지울까요?")) return false; P.calcItems = calcItems().filter((x) => x !== it); if (calcEdit === it.id) calcEdit = ""; return saveProgress(); }
   function saveCalc(f) {
     const name = f.name.value.trim();
     if (!name) { toast("제품 이름을 적어 주세요.", "warn"); f.name.focus(); return; }
@@ -2604,7 +2614,7 @@
       case "guide-close": { P.guideClosed = P.guideClosed || {}; P.guideClosed[a.dataset.wk] = Date.now(); saveProgress(); render(); toast(Number(a.dataset.wk) === 1 ? "시작 가이드를 완료했어요! 이제 1주차 과제를 시작해 보세요." : a.dataset.wk + "주차 시작 가이드를 완료했어요!"); break; }
       case "toggle-guide": { const g = a.dataset.id, before = guideGroup(); P.guide = P.guide || {}; if (P.guide[g]) delete P.guide[g]; else P.guide[g] = Date.now(); saveProgress(); render(); guideDoneCheck(before); break; }
       case "read-all": P.readNotices = P.readNotices || {}; D.notices.forEach((n) => { P.readNotices[n.id] = Date.now(); }); saveProgress(); render(); break;
-      case "toggle-doc": { const s = a.dataset.id; if (P.docs[s]) delete P.docs[s]; else P.docs[s] = Date.now(); saveProgress(); render(); break; }
+      case "toggle-doc": docToggle(a.dataset.id); render(); break;
       case "chip": sendChat(a.dataset.q); break;
       case "chip-tab": chipTab = /^\d$/.test(a.dataset.k) ? a.dataset.k : "class"; refreshChipRows(); break;
       case "chip-nav": { const el = a.parentElement && a.parentElement.querySelector("[data-chip-scroll]"); if (el) el.scrollBy({ left: (Number(a.dataset.d) || 1) * Math.max(160, el.clientWidth * 0.7), behavior: "smooth" }); break; }
@@ -2639,7 +2649,7 @@
         break;
       }
       case "print": { const el = document.querySelector(".cert-wrap .cert") || document.querySelector(".cert"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "수료증-" + ((me && me.name) || "수강생") + ".pdf", { margin: 8, title: "수료증" }, (msg) => toast(msg)); else window.print(); break; }
-      case "calc-load": { const it = calcItems().find((x) => x.id === a.dataset.id); if (!it) break; calcVals = Object.assign({}, CALC_DEF, it.v); calcEdit = it.id; render(); const c = document.getElementById("calc"); if (c) c.scrollIntoView({ block: "start", behavior: "smooth" }); toast("‘" + it.name + "’ 숫자를 계산기에 불러왔어요."); break; }
+      case "calc-load": { const it = calcLoad(a.dataset.id); if (!it) break; render(); const c = document.getElementById("calc"); if (c) c.scrollIntoView({ block: "start", behavior: "smooth" }); toast("‘" + it.name + "’ 숫자를 계산기에 불러왔어요."); break; }
       case "vod-mode": { try { localStorage.setItem(VMODE_KEY, vodMode() === "dark" ? "light" : "dark"); } catch (e2) {} applyTheme(); a.innerHTML = modeInner(); toast(vodMode() === "dark" ? "블랙 화면으로 바꿨어요." : "화이트 화면으로 바꿨어요."); break; }
       case "vt-tab": {
         vtTab = a.dataset.k;
@@ -2684,8 +2694,7 @@
       case "vt-note-copy": { const txt = notesText("all"); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("노트를 복사했어요. 메모장 · 카톡에 붙여 넣어 보세요."), () => toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn")); else toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn"); break; }
       case "vt-print": { const el = document.querySelector(".page.vn") || document.querySelector(".page"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "내노트_" + todayStr() + ".pdf", { width: 820, title: "내 노트" }, (msg) => toast(msg)); else window.print(); break; }
       case "req-cancel": { const i = (P.questions || []).findIndex((x) => x.id === a.dataset.id && !x.answer); if (i < 0) break; if (a.dataset.arm !== "1") { a.dataset.arm = "1"; a.textContent = "한 번 더 누르면 취소돼요"; setTimeout(() => { if (a.isConnected) { a.dataset.arm = ""; a.textContent = "취소하기"; } }, 3000); break; } reqCancel(a.dataset.id); break; }
-      case "vt-mat": if (a.dataset.m === "dl") { const st = DB.session.student(), vm = (me && me.vodMid) || (st && st.vodMid), mp = /^#\/vodclass\/([^/?]+)/.exec(ROUTE.hash); if (vm && mp && VX().markMat) VX().markMat(vm, decodeURIComponent(mp[1])); } VX().matOpen({ url: a.dataset.u, name: a.dataset.n }, a.dataset.m).then((ok) => { if (!ok) toast("이 브라우저에 저장된 파일이 아니에요. 강사님이 다시 올리면 받을 수 있어요.", "warn"); else if (a.dataset.m === "dl") toast("수업 자료를 내려받았어요."); }); break;
-      case "vt-dl": toast("수업 자료를 내려받고 있어요. 안 열리면 ‘미리보기’에서 저장할 수 있어요."); break;
+      case "vt-mat": case "vt-dl": matClick(a); break;
       case "vt-fs": { const st = document.getElementById("vt-stage"); if (!st) break; const d = document; if (d.fullscreenElement) d.exitFullscreen && d.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast("이 화면에서는 전체 화면을 쓸 수 없어요.", "warn")); else if (st.webkitRequestFullscreen) st.webkitRequestFullscreen(); break; }
       case "vod-done": {
         const X = VX(); if (!X || !me.vodMid) break;
@@ -2696,7 +2705,7 @@
         break;
       }
       case "calc-new": calcEdit = ""; render(); { const n = document.getElementById("c-name"); if (n) n.focus(); } break;
-      case "calc-del": { const it = calcItems().find((x) => x.id === a.dataset.id); if (!it || !confirm("‘" + it.name + "’을 내 제품 마진표에서 지울까요?")) break; P.calcItems = calcItems().filter((x) => x !== it); if (calcEdit === it.id) calcEdit = ""; if (saveProgress()) { render(); toast("지웠어요."); } break; }
+      case "calc-del": if (calcDel(a.dataset.id)) { render(); toast("지웠어요."); } break;
     }
   });
   // 강의실 노트: 임시 저장 · Ctrl + Enter 저장 · 노트 칸을 누르면 영상 시간 채우기 / 내 노트 검색
@@ -2844,6 +2853,12 @@
     reqDraft: () => reqDraft, addReqFiles, reqRemove: (i) => { reqDraft.splice(Number(i), 1); }, submitRequest, reqCancel,
     qSeen: (id) => { const q = (P.questions || []).find((y) => y.id === id); if (q && q.answer && (q.answeredAt || 1) > (q.seenAt || 0)) { q.seenAt = Date.now(); saveProgress(); return true; } return false; },
     noteSave: (id, v) => { P.notes = P.notes || {}; if (String(v).trim()) P.notes[id] = v; else delete P.notes[id]; saveProgress(); },
+    // 서류 준비 체크 · 자료실(분류 · 자료 · 수업 자료 모음 · 열람자 표시 · 이용 안내) · 수업 자료 미리보기/내려받기
+    docToggle, resOf, lessonFiles, vtFiles, matClick, libNotice: () => DB.libNoticeOf(D),
+    wmLabel: () => (me.name || "") + " · " + (CO ? CO.name : "") + " · " + fmtStamp(Date.now()),
+    // 마진 계산기: 숫자(다시 그려도 남아요) · 고치는 제품 · 내 제품 마진표 · 계산 · 저장 · 불러오기 · 새 제품 · 지우기
+    calc: () => ({ vals: calcVals, edit: calcEdit, mine: calcMine(), items: calcItems() }), CALC_F, calcOf, roasBox, won,
+    calcSet: (k, v) => { calcVals[k] = v; }, saveCalc, calcLoad, calcNew: () => { calcEdit = ""; }, calcDel,
     // 시작 가이드 체크 · 완료 · VOD 블랙/화이트
     guideToggle: (g) => { const before = guideGroup(); P.guide = P.guide || {}; if (P.guide[g]) delete P.guide[g]; else P.guide[g] = Date.now(); saveProgress(); return before; },
     guideClose: (wk) => { P.guideClosed = P.guideClosed || {}; P.guideClosed[wk] = Date.now(); saveProgress(); },
