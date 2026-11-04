@@ -148,6 +148,7 @@
     : '<svg class="bmark ' + (cls || "") + '" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#fee500"/><path d="M52 15c19.9 0 36 13.7 36 30.5S71.9 76 52 76c-3.4 0-6.7-.4-9.8-1.1L26 86l3.6-16.7C21 63.8 16 55.1 16 45.5 16 28.7 32.1 15 52 15z" fill="#231815"/>' +
       '<text x="52" y="56.5" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="29" font-weight="800" fill="#fee500" letter-spacing="-1">Ch</text></svg>';
   const kebab = (n) => String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+  window.ICON_PATHS = ICONS; // React 화면(ui/lib/Icon.jsx)이 같은 그림을 써요 (Next.js 전환 4-4)
   window.icon = (name, cls) => '<svg class="icon lucide lucide-' + kebab(name) + " " + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>";
 })();
 

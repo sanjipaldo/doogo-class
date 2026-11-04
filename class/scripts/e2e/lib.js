@@ -115,7 +115,11 @@ async function ready(page, ms) {
   await page.waitForFunction(() => { const r = document.getElementById("root"); return !!(r && r.children.length && !r.querySelector(".boot-wait")); }, null, { timeout: ms || 15000 });
   await page.waitForTimeout(300);
 }
-async function open(page, base, p) { await page.goto(base + p, { waitUntil: "load" }); await ready(page); }
+async function open(page, base, p) {
+  // E2E_REACT=1: 모든 테스트를 React 화면을 켠 채로 (이 창에 dc_next 쿠키가 아직 없을 때만 all — React 화면 테스트가 고른 값은 그대로)
+  if (process.env.E2E_REACT === "1" && !(await page.context().cookies(base)).some((c) => c.name === "dc_next")) await page.context().addCookies([{ name: "dc_next", value: "all", url: base }]);
+  await page.goto(base + p, { waitUntil: "load" }); await ready(page);
+}
 const text = (page, sel) => page.evaluate((s) => { const e = document.querySelector(s); return e ? e.textContent.replace(/\s+/g, " ").trim() : null; }, sel);
 const toasts = (page) => page.evaluate(() => Array.from(document.querySelectorAll("#toast-root .toast")).map((t) => t.textContent.trim()).join(" | "));
 const bodyText = (page) => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
@@ -132,4 +136,31 @@ async function flushed(page, ms) {
   await page.waitForTimeout(300);
 }
 
-module.exports = { ROOT, MASTER_PW, cleanEnv, freePort, sleep, waitHttp, startServer, runNode, chromium, makeRun, newPage, ready, open, text, toasts, bodyText, me, fresh, flushed, tmp: () => fs.mkdtempSync(path.join(os.tmpdir(), "doogo-e2e-")) };
+/* ---------- React 화면 (Next.js 전환 4-4 ~) ---------- */
+/** 이 창에서 React 화면 스위치 (쿠키 dc_next = all · off · 화면 키) — 서버(proxy.js)가 보고 그 화면을 보내요 */
+async function reactCookie(page, base, v) { await page.context().addCookies([{ name: "dc_next", value: v, url: base }]); }
+/** #root 구조를 글로 (태그 · 속성 · 글자) — 예전 화면과 React 화면이 똑같은지 비교해요.
+ *  움직임용으로 그린 뒤 붙는 표시(서비스 바꾸기 손잡이 위치 · 내려가면 생기는 그림자 · 움직임 시작)와 아이콘 그림 내용은 빼요 */
+const domShape = (page) => page.evaluate(() => {
+  const c = document.getElementById("root").cloneNode(true); c.normalize();
+  c.querySelectorAll("*").forEach((el) => {
+    if (el.classList.contains("site-sw")) { ["ready", "no-anim", "at-dg", "at-vod"].forEach((k) => el.classList.remove(k)); el.style.removeProperty("--kx"); el.style.removeProperty("--kw"); }
+    ["is-sc", "mo", "stuck"].forEach((k) => el.classList.remove(k));
+    if (el.getAttribute("class") === "") el.removeAttribute("class");
+    if (el.getAttribute("style") === "") el.removeAttribute("style");
+  });
+  const out = [];
+  (function walk(n, d) {
+    if (n.nodeType === 3) { const t = n.textContent.replace(/\s+/g, " ").trim(); if (t) out.push("  ".repeat(d) + "#" + t); return; }
+    if (n.nodeType !== 1) return;
+    const at = Array.from(n.attributes).map((a) => { let v = a.value; if (a.name === "style") v = v.split(";").map((x) => x.trim().replace(/\s*:\s*/, ":")).filter(Boolean).join(";"); if (a.name === "class") v = v.split(/\s+/).filter(Boolean).sort().join(" "); return a.name + "=" + JSON.stringify(v); }).sort();
+    out.push("  ".repeat(d) + "<" + n.tagName.toLowerCase() + (at.length ? " " + at.join(" ") : "") + ">");
+    if (n.tagName.toLowerCase() === "svg") { out.push("  ".repeat(d + 1) + "[svg " + n.innerHTML.length + "]"); return; }
+    n.childNodes.forEach((x) => walk(x, d + 1));
+  })(c, 0);
+  return out.join("\n");
+});
+/** 두 구조가 처음 다른 곳 (같으면 null) */
+function shapeDiff(a, b) { const A = a.split("\n"), B = b.split("\n"); let i = 0; while (i < A.length && A[i] === B[i]) i++; return i >= A.length && i >= B.length ? null : { at: i, old: A.slice(Math.max(0, i - 2), i + 4), new: B.slice(Math.max(0, i - 2), i + 4) }; }
+
+module.exports = { reactCookie, domShape, shapeDiff, ROOT, MASTER_PW, cleanEnv, freePort, sleep, waitHttp, startServer, runNode, chromium, makeRun, newPage, ready, open, text, toasts, bodyText, me, fresh, flushed, tmp: () => fs.mkdtempSync(path.join(os.tmpdir(), "doogo-e2e-")) };

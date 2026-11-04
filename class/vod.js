@@ -1412,6 +1412,11 @@
   }
   const CHIP = { vod: "VOD 클래스", ebook: "전자책", book: "종이책", live: "LIVE 클래스", offline: "오프라인 클래스" };
   function cardMetaHtml(p) {
+    const x = cardMetaParts(p), chip = x.chip, parts = x.parts;
+    return '<span class="vd-cmeta"><span class="vd-kchip vd-kchip-' + chip[1] + '">' + esc(chip[0]) + '</span><span class="vd-cm">' + parts.filter(Boolean).map((y) => "<span>" + esc(y) + "</span>").join("") + "</span></span>";
+  }
+  /** 카드 종류 칩 [글자, 색] · 기간 · 분량 조각 — React 카드(ui/store/Card.jsx)도 같이 써요 */
+  function cardMetaParts(p) {
     const t = typeOf(p), pr = priceOf(p), left = seatsLeft(p);
     const chip = p.status === "soon" ? ["오픈 예정", "soon"] : pr === 0 ? [t === "live" ? "무료 LIVE" : "무료 특강", "free"] : [CHIP[t] || "클래스", t];
     const parts = p.status === "soon" ? [p.openAt ? fmtOpen(p.openAt) : "오픈 예정", "알림 받으면 오픈 할인"]
@@ -1420,7 +1425,7 @@
       : t === "live" ? [fmtLive(p.eventAt), viaOf(p) + " " + durTxt(Number(p.eventMin) || totalMin(p))].concat(p.replayDays ? ["다시보기"] : []).concat(left != null ? ["잔여 " + left + "석"] : pr === 0 ? ["누구나"] : [])
       : t === "offline" ? [fmtLive(p.eventAt), placeShort(p.place) || "현장"].concat(left != null ? ["잔여 " + left + "석"] : [])
       : [y365(p) ? "12개월 수강권" : accessTxt(p).replace(" 시청", ""), aboutTxt(totalMin(p)), String(p.level || "입문").split(/\s*·\s*/)[0]];
-    return '<span class="vd-cmeta"><span class="vd-kchip vd-kchip-' + chip[1] + '">' + esc(chip[0]) + '</span><span class="vd-cm">' + parts.filter(Boolean).map((x) => "<span>" + esc(x) + "</span>").join("") + "</span></span>";
+    return { chip, parts };
   }
   const likeBtn = (p, m) => '<button type="button" class="vd-like' + (liked(m && m.id, p.id) ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '" aria-label="' + (p.status === "soon" ? "오픈 알림 받기" : "찜하기") + '">' + icon("heart", "sm") + "</button>";
   // 둥근 썸네일(찜) → 제목 → 강사 | ♡ 찜 | ★ 후기 → 월 가격 → 종류 · 기간 → ‘OO님이 찜했어요’
@@ -3401,6 +3406,8 @@
 
   /* ================= 그리기 · 이벤트 ================= */
   function render() {
+    // React 화면 틀에서는 예전 화면을 그리지 않고 React 에 다시 그리라고만 알려요 — 예전 처리 함수(doCoupon · doAcct …)를 React 화면이 그대로 빌려 써요 (Next.js 전환 4-4)
+    if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
     const r = route(), [a, b, c] = r.path;
     clearInterval(ui.timer); clearInterval(ui.cd); if (ui.fb) { ui.fb.disconnect(); ui.fb = null; }
     syncFreeLive();
@@ -3506,12 +3513,27 @@
     const b = f.querySelector("button[type=submit]"); if (b) b.disabled = !ok;
     const all = f.querySelector("[data-v='agree-all']"); if (all) all.checked = f.agree.checked && f.mkt.checked;
   }
-  const isActive = () => document.body.dataset.mode === "vod";
-  const closeModal = () => { document.getElementById("modal-root").innerHTML = ""; if (pgWait) pgWait(false, true); };
+  // React 화면(Next.js 전환 4-4 · <body data-react>)에서는 이 파일은 계산(로직)만 빌려 주고, 화면 · 이벤트는 React 가 맡아요
+  const isActive = () => document.body.dataset.mode === "vod" && !document.body.dataset.react;
+  const closeModal = () => { if (document.body.dataset.react && window.ReactApp && window.ReactApp.closeModal) { window.ReactApp.closeModal(); return; } document.getElementById("modal-root").innerHTML = ""; if (pgWait) pgWait(false, true); };
   // 팝업은 X(또는 취소 · 닫기 버튼)를 눌러야만 닫혀요 — 바깥을 누르거나 ESC 로는 닫히지 않아요 (2026-11)
   // 예외: 전체 메뉴 · 내 계정 메뉴는 펼침 메뉴라 바깥을 누르거나 ESC 로 닫혀요
   const MENU_MODAL = ["vd-modal-drawer", "vd-modal-acct"];
   const isMenuModal = (el) => !!el && MENU_MODAL.some((c) => el.classList.contains(c));
+  /** 찜 바꾸기 (데이터만) → { added, soon, p } · 관심 부업 바꾸기 → 켰으면 true · 로그아웃 (서버 쿠키 · 화면 세션) — 예전 화면 · React 화면(Next.js 전환 4-4)이 같이 써요 */
+  function likeFlip(m, id) { const L2 = (V().likes[m.id] = V().likes[m.id] || []), i = L2.indexOf(id), p = product(id); if (i >= 0) L2.splice(i, 1); else L2.push(id); likeBump(id, i < 0); save(); return { added: i < 0, soon: !!(p && p.status === "soon"), p }; }
+  function topicFlip(k) { const mine = myTopics().slice(), i = mine.indexOf(k), tv = (V().topicVotes = V().topicVotes || {}); if (i >= 0) { mine.splice(i, 1); if (!SRV()) tv[k] = Math.max(0, (tv[k] || 1) - 1); } else { mine.push(k); if (!SRV()) tv[k] = (tv[k] || 0) + 1; } setTopics(mine); return i < 0; }
+  function logoutAll() {
+    if (SRV()) return Promise.resolve(DB.remote.flush && DB.remote.flush()).catch(() => {}).then(() => authApi("logout")).then(() => DB.remote.logout("student")).catch(() => {}).then(() => { try { DB.session.setStudent(null); } catch (e) {} return DB.remote.refresh(); });
+    setMe(null); return Promise.resolve();
+  }
+  /** 약관 팝업 내용 { href(바깥 주소면) · title · html } */
+  function legalDoc(k) {
+    const S = DB.siteInfo ? DB.siteInfo() : {}, href = k === "terms" ? S.terms : k === "privacy" ? S.privacy : "";
+    if (/^https?:\/\//i.test(href || "")) return { href };
+    const Lg = (window.CLASS_LEGAL || {})[k];
+    return { title: Lg ? Lg[0] : "약관", html: Lg ? (window.CLASS_LEGAL_HTML ? window.CLASS_LEGAL_HTML(Lg[1]) : esc(Lg[1])) : "정식 오픈 때 올려요." };
+  }
   function modal(title, body, cls) {
     document.getElementById("modal-root").innerHTML = '<div class="vd-modal-bg' + (cls ? " " + cls : "") + '"' + (MENU_MODAL.indexOf(cls) >= 0 ? ' data-v="close"' : "") + '><div class="vd-modal" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="vd-modal-h"><b>' + esc(title) + '</b><button type="button" data-v="close" aria-label="닫기">' + icon("x", "sm") + "</button></div>" + body + "</div></div>";
   }
@@ -3639,10 +3661,7 @@
     if (v === "like") {
       e.preventDefault(); e.stopPropagation();
       if (!m) { toast("로그인하면 찜할 수 있어요.", "warn"); ROUTE.hash = "#/vod/login?next=" + encodeURIComponent(ROUTE.hash); return; }
-      const L2 = (V().likes[m.id] = V().likes[m.id] || []), i = L2.indexOf(t.dataset.id), p = product(t.dataset.id);
-      if (i >= 0) L2.splice(i, 1); else L2.push(t.dataset.id);
-      likeBump(t.dataset.id, i < 0);
-      save(); const soon = p && p.status === "soon";
+      const lf = likeFlip(m, t.dataset.id), i = lf.added ? -1 : 0, p = lf.p, soon = lf.soon;
       if (i < 0) document.querySelectorAll('[data-v="like"][data-id="' + t.dataset.id + '"]').forEach((x) => { x.classList.remove("pop"); void x.offsetWidth; x.classList.add("pop"); });
       if (/^#\/vod\/(p|my)\b/.test(ROUTE.hash)) keepScroll();
       else {
@@ -3653,9 +3672,8 @@
       return;
     }
     if (v === "topic") {
-      const k = t.dataset.t, mine = myTopics().slice(), i = mine.indexOf(k), tv = (V().topicVotes = V().topicVotes || {});
-      if (i >= 0) { mine.splice(i, 1); if (!SRV()) tv[k] = Math.max(0, (tv[k] || 1) - 1); } else { mine.push(k); if (!SRV()) tv[k] = (tv[k] || 0) + 1; }
-      setTopics(mine); document.querySelectorAll('[data-v="topic"]').forEach((x) => { if (x.dataset.t !== k) return; x.classList.toggle("on", i < 0); x.setAttribute("aria-pressed", String(i < 0)); });
+      const k = t.dataset.t, i = topicFlip(k) ? -1 : 0;
+      document.querySelectorAll('[data-v="topic"]').forEach((x) => { if (x.dataset.t !== k) return; x.classList.toggle("on", i < 0); x.setAttribute("aria-pressed", String(i < 0)); });
       if (route().path[0] === "my") keepScroll();
       toast(i >= 0 ? "‘" + k + "’ 찜을 풀었어요." : "‘" + k + "’ 클래스가 열리면 알려 드릴게요."); return;
     }
@@ -3673,15 +3691,15 @@
     if (v === "kk-off") { kakaoUnlink(t); return; }
     if (v === "logout") {
       // 보내지 못한 변경(진도 · 찜 등)을 먼저 서버에 보내고 로그아웃해요 — 로그아웃 뒤에 보내면 서버가 거절해서 기록이 사라졌어요
-      if (SRV()) { closeModal(); Promise.resolve(DB.remote.flush && DB.remote.flush()).catch(() => {}).then(() => authApi("logout")).then(() => DB.remote.logout("student")).catch(() => {}).then(() => { try { DB.session.setStudent(null); } catch (e) {} return DB.remote.refresh(); }).then(() => { toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); }); return; }
-      setMe(null); closeModal(); toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); return;
+      if (SRV()) { closeModal(); logoutAll().then(() => { toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); }); return; }
+      logoutAll(); closeModal(); toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); return;
     }
     if (v === "print") { window.print(); return; }
     if (v === "jump") { const s = document.getElementById(t.dataset.to); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 130, behavior: "smooth" }); return; }
     if (v === "copy") { const tx = t.dataset.t || ""; (navigator.clipboard ? navigator.clipboard.writeText(tx) : Promise.reject()).then(() => toast("계좌번호를 복사했어요. " + tx), () => toast("계좌번호: " + tx)); return; }
     if (v === "share") { const u = location.href; if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("주소를 복사했어요."), () => toast("주소: " + u)); else toast("주소: " + u); return; }
     if (v === "refund") { modal("환불 규정", '<div class="vd-modal-b">' + refundHtml() + "</div>"); return; }
-    if (v === "legal") { const S = DB.siteInfo ? DB.siteInfo() : {}, k = t.dataset.k, href = k === "terms" ? S.terms : k === "privacy" ? S.privacy : ""; if (/^https?:\/\//i.test(href || "")) { window.open(href, "_blank", "noopener"); return; } const Lg = (window.CLASS_LEGAL || {})[k]; modal(Lg ? Lg[0] : "약관", '<div class="vd-modal-b vd-legal">' + (Lg ? (window.CLASS_LEGAL_HTML ? window.CLASS_LEGAL_HTML(Lg[1]) : esc(Lg[1])) : "정식 오픈 때 올려요.") + "</div>"); return; }
+    if (v === "legal") { const lg = legalDoc(t.dataset.k); if (lg.href) { window.open(lg.href, "_blank", "noopener"); return; } modal(lg.title, '<div class="vd-modal-b vd-legal">' + lg.html + "</div>"); return; }
     if (v === "pl-up") { if (!m) { toast("로그인하면 공감할 수 있어요.", "warn"); return; } const x = V().pledges.find((y) => y.id === t.dataset.id); if (!x) return; x.upBy = x.upBy || []; const i = x.upBy.indexOf(m.id); if (i >= 0) { x.upBy.splice(i, 1); x.up = Math.max(0, (x.up || 1) - 1); } else { x.upBy.push(m.id); x.up = (x.up || 0) + 1; } save(); keepScroll(); return; }
     if (v === "pl-del") { const x = V().pledges.find((y) => y.id === t.dataset.id); if (!x || !m || x.mid !== m.id) return; V().pledges.splice(V().pledges.indexOf(x), 1); save(); keepScroll(); toast("다짐을 지웠어요."); return; }
     if (v === "pw-eye") { const inp = t.parentNode.querySelector("input"); if (!inp) return; const show = inp.type === "password"; inp.type = show ? "text" : "password"; t.innerHTML = icon(show ? "eyeOff" : "eye", "sm"); t.setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기"); return; }
@@ -3996,5 +4014,10 @@
   }
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
+  // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+    // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
+    //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
+    reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }) });
   window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };
 })();

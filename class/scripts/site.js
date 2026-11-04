@@ -33,7 +33,10 @@ const VER = (process.env.VERCEL_GIT_COMMIT_SHA || Date.now().toString(36)).slice
 const ver = (html) => html.replace(/(\s(?:src|href)="\/[^"?#]+\.(?:js|css))"/g, "$1?v=" + VER + '"');
 // 화면 나눠 받기 끄기 (4단계): DC_SPLIT_OFF=1 이면 <html data-split="off"> — areas.js 가 예전처럼 모든 화면 파일을 받아요
 const splitOff = (html) => (process.env.DC_SPLIT_OFF === "1" ? String(html).replace(/<html lang="ko">/, '<html lang="ko" data-split="off">') : html);
-fs.writeFileSync(IDX, splitOff(ver(require("./index-abs")(fs.readFileSync(IDX, "utf8")))));
+// React 화면 스위치 (Next.js 전환 4-4 · shared/screens.js): DC_NEXT · DC_NEXT_OFF 를 <html data-next · data-next-off> 로 — 화면(main.js)이 서버(proxy.js)와 같은 규칙으로 판단해요
+const attr = (v) => String(v || "").replace(/[^A-Za-z0-9,\- ]/g, "");
+const nextSw = (html) => { const on = attr(process.env.DC_NEXT), off = attr(process.env.DC_NEXT_OFF); return on || off ? String(html).replace(/<html lang="ko"([^>]*)>/, (m0, rest) => '<html lang="ko"' + rest + (on ? ' data-next="' + on + '"' : "") + (off ? ' data-next-off="' + off + '"' : "") + ">") : html; };
+fs.writeFileSync(IDX, nextSw(splitOff(ver(require("./index-abs")(fs.readFileSync(IDX, "utf8"))))));
 console.log("[site] 화면 파일 " + n + "개 → " + path.relative(REPO, OUT));
 
 /* 공유 미리보기 사진 (Next.js 전환 3단계): 카카오톡은 webp 를 못 읽어서, 강사 사진 · 클래스 사진 · 책 표지 폴더의 webp 를

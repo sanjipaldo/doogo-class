@@ -1921,6 +1921,27 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "화면: 마스터 환불은 결제 설정을 받았는지와 상관없이 포트원 결제 주문이면 포트원 취소를 거쳐요 · 강사센터를 열 때 결제 설정을 받아요 · 서버가 결제 칸을 잠가요");
   }
 
+  {
+    console.log("35) React 화면 스위치 (Next.js 전환 4-4 · shared/screens.js · proxy.js)");
+    const S = require(path.join(ROOT, "shared/screens.js"));
+    ok(S.match("/vod/my") === "vod-my" && S.match("/vod/my/") === "vod-my" && S.match("/vod/my?x=1") === "vod-my" && S.match("/vod/my/classes") === "vod-my" && S.match("/vod/my/likes") === "vod-my" && S.match("/vod/my/orders") === null && S.match("/vod/my/classesx") === null && S.match("/") === null && S.match("/vodx/my") === null,
+      "주소 → 화면 키: 옮긴 화면(마이페이지 홈 · 내 강의실 · 찜 …)만 · 아직 안 옮긴 메뉴(주문 · 결제 …) · 다른 주소는 예전 화면");
+    ok(S.enabled({}).length === 0 && S.enabled({ env: "all" }).join() === S.KEYS.join() && S.enabled({ cookie: "vod-my" }).join() === "vod-my" && S.enabled({ env: "all", off: "vod-my" }).indexOf("vod-my") < 0 && S.enabled({ env: "all", cookie: "off" }).length === 0 && S.enabled({ env: "all", off: "all" }).length === 0,
+      "켜기: 기본은 모두 꺼짐 · DC_NEXT=all 또는 쿠키로 켬 · DC_NEXT_OFF 는 쿠키보다 셈 · 쿠키 off 는 이 브라우저만 모두 끔");
+    ok(S.validPick("all") && S.validPick("off") && S.validPick("vod-my") && !S.validPick("evil") && !S.validPick(""), "?dc_next= 값은 all · off · 있는 화면 키만 쿠키로 남겨요");
+    const px = fs.readFileSync(path.join(ROOT, "../proxy.js"), "utf8"), mj = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), idx35 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8"), vj35 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), st35 = fs.readFileSync(path.join(ROOT, "scripts/site.js"), "utf8");
+    ok(/matcher: \["\/\(\(\?!api\/\|_next\/\|\.\*\\\\\.\[A-Za-z0-9\]\+\$\)\.\*\)"\]/.test(px) && /to\.pathname = "\/n" \+ p/.test(px) && /process\.env\.DC_NEXT, off: process\.env\.DC_NEXT_OFF/.test(px),
+      "proxy.js: API · 파일 · Next.js 내부 파일은 건너뛰고, 켜진 화면만 /n/… 로 넘겨요 (같은 규칙 · 같은 환경 변수)");
+    ok(/const rk = reactKey\(h\);\s*if \(!!rk !== REACT_PAGE\) \{ moveArea\(next, true\); return; \}/.test(mj) && /if \(REACT_PAGE\) \{ window\.ReactApp\.go\(rk, h, changed\); return; \}/.test(mj) && /window\.DC_REACT_WAIT/.test(mj) && /<script src="shared\/screens\.js"><\/script>/.test(idx35),
+      "main.js: React 화면 ↔ 예전 화면이 바뀌면 새로 불러요 · React 화면 틀에서는 그리기만 React 에 맡겨요 · 화면 목록은 늘 받아요");
+    ok(/const isActive = \(\) => document\.body\.dataset\.mode === "vod" && !document\.body\.dataset\.react;/.test(vj35) && /data-next/.test(st35),
+      "React 화면 틀(<body data-react>)에서는 예전 스토어 화면 이벤트가 돌지 않아요 · 빌드가 스위치 값을 <html data-next> 로");
+    const app35 = fs.readFileSync(path.join(ROOT, "../ui/App.jsx"), "utf8");
+    ok(/reactBoot: \(\) => loadCfg\(\)\.then\(\(\) => \{ kkReturn\(\); pgReturn\(\); tsMount\(\); \}\)/.test(vj35) && /X\.reactBoot \? X\.reactBoot\(\)/.test(app35) && /Screen && ready \?/.test(app35) &&
+      /if \(document\.body\.dataset\.react\) \{ if \(window\.ReactApp && window\.ReactApp\.redraw\) window\.ReactApp\.redraw\(\); return; \}/.test(vj35) && /sessionStorage\.setItem\("dc:toasts"/.test(mj) && /function carryToasts\(\)/.test(mj),
+      "React 화면: 결제 · 로그인 설정(vod-config)을 받은 뒤 처음 그려요(안 받으면 쿠폰 · 결제가 서버를 안 거쳐요) · 예전 처리 함수의 ‘다시 그리기’는 React 로 · 새로 불러도 알림이 이어져요");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

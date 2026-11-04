@@ -1,0 +1,50 @@
+"use client";
+/* React 화면 뿌리 (Next.js 전환 4-4 ~ 6단계)
+ *  · main.js 가 서버 연결 · 데이터 받기를 끝내면 window.ReactApp.go(화면 키, 주소) 로 그리라고 알려요 (주소를 옮길 때 · 다른 사람이 바꾼 내용이 들어올 때도)
+ *  · 화면은 키로 고르고(class/shared/screens.js 목록), 그릴 때마다 지금 데이터로 다시 계산해요 (예전 화면 render() 와 같음)
+ *  · 첫 로딩 화면 · 연결 실패 화면은 예전과 같은 모양 */
+import { useEffect, useRef, useState } from "react";
+import MyPage from "./store/MyPage.jsx";
+
+const SCREENS = { "vod-my": MyPage };
+
+const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
+function Boot() {
+  return <div className="boot-wait" role="status" aria-live="polite">{LOGO}<span className="boot-bar" aria-hidden="true"><i /></span><p className="boot-txt">로딩중입니다<span className="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>;
+}
+function BootFail() {
+  return <div className="boot-wait boot-err" role="alert">{LOGO}<b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onClick={() => location.reload()}>다시 시도</button></div>;
+}
+
+export default function App() {
+  const [st, setSt] = useState({ k: null, h: "", n: 0, moved: false, keep: null, fail: false });
+  // 화면 영역의 처음 할 일(스토어: 결제 · 로그인 설정 받기)을 마친 뒤에 그려요 — 설정 없이 그리면 버튼이 서버를 거치지 않아요
+  const [ready, setReady] = useState(false);
+  const booted = useRef(false);
+  useEffect(() => {
+    // /n/… 를 직접 열었으면 원래 주소로 (proxy.js 가 넘겨 준 게 아니라서 주소창이 /n/… 이에요)
+    if (/^\/n(\/|$)/.test(location.pathname)) { location.replace((location.pathname.slice(2) || "/") + location.search); return; }
+    window.ReactApp = {
+      go(k, h, changed) {
+        if (!booted.current) {
+          booted.current = true;
+          const X = window.VOD, b = X && X.reactBoot ? X.reactBoot() : null;
+          Promise.resolve(b).catch((e) => console.error("[react] 처음 할 일", e)).then(() => setReady(true));
+        }
+        setSt((s) => {
+          const moved = changed || s.h.split("?")[0] !== String(h || "").split("?")[0];
+          // 마이페이지 안에서 메뉴만 바꿀 때는 보던 자리 · 메뉴 줄 가로 위치를 기억해 둬요 (예전 vod.js myKeep)
+          const my = (x) => /^#\/vod\/my(\/|$)/.test(x || ""), nav = document.querySelector(".vd-my-nav");
+          const keep = moved && my(s.h) && my(h) && nav ? { y: window.scrollY, left: nav.scrollLeft } : null;
+          return { k, h, n: s.n + 1, moved, keep, fail: false };
+        });
+      },
+      // 예전 처리 함수가 끝에 부르는 ‘다시 그리기’ (vod.js render) — 보던 자리 그대로
+      redraw() { setSt((s) => Object.assign({}, s, { n: s.n + 1, moved: false, keep: null })); },
+      fail() { setSt((s) => Object.assign({}, s, { fail: true })); }
+    };
+    if (window.__dcReactReady) window.__dcReactReady();
+  }, []);
+  const Screen = st.k ? SCREENS[st.k] : null;
+  return <div id="root">{st.fail ? <BootFail /> : Screen && ready ? <Screen n={st.n} h={st.h} moved={st.moved} keep={st.keep} /> : <Boot />}</div>;
+}

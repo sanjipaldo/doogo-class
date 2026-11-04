@@ -4,6 +4,12 @@
 (function () {
   "use strict";
   let mode = null;
+  /* React 화면 (Next.js 전환 4-4 ~ 6단계 · shared/screens.js): 이 페이지가 React 화면 틀(app/(react)/layout.js)이면 REACT_PAGE.
+   * 주소를 옮겼는데 React 화면 ↔ 예전 화면이 바뀌면 페이지를 새로 불러요 — 서버(proxy.js)가 맞는 쪽을 보내요.
+   * React 화면 틀에서도 서버 연결 · 로그인 맞추기 · 자동 로그아웃 · 다시 그리기는 이 파일이 그대로 해요 (그리기만 window.ReactApp) */
+  const REACT_PAGE = !!window.DC_REACT_PAGE;
+  let reactSkip = false;
+  const reactKey = (h) => { if (reactSkip || !window.DC_SCREENS) return null; const p = h && h.indexOf("#/") === 0 ? h.slice(1) : "/"; return window.DC_SCREENS.onHere(p); };
   const isRoot = (h) => h === "" || h === "#" || h === "#/";
   // 저장하지 않은 편집이 있으면 화면을 옮기기 전에 한 번 묻기 (강사센터 페이지 편집기가 정해 둠) — 영역을 옮기려고 새로 불러올 때는 이미 물어봤어요
   let leaving = false;
@@ -24,23 +30,29 @@
   }
   /* 화면 나눠 받기 (4단계): 옮겨 갈 영역의 화면 파일이 아직 없으면 페이지를 새로 불러요 — 새 페이지가 그 영역 파일만 받아요.
    * 저장 중인 내용은 먼저 보내고, 같은 주소로 15초 안에 또 새로 부르게 되면(혹시 모를 되풀이) 그 자리에서 파일을 받아 그려요 */
-  function moveArea(next) {
+  function moveArea(next, react) {
     const key = "dc:area-reload", here = location.pathname + location.search + location.hash, now = Date.now();
     let last = null;
     try { last = JSON.parse(sessionStorage.getItem(key) || "null"); } catch (e) { last = null; }
     if (last && last.u === here && now - last.t < 15000) {
+      // React 화면 ↔ 예전 화면을 바꾸려고 새로 불렀는데 또 같은 쪽이 왔으면(서버 스위치와 이 브라우저 판단이 다름): 예전 화면 틀이면 예전 화면으로 그리고, React 화면 틀이면 안내만
+      if (react) { if (REACT_PAGE) { if (window.ReactApp) window.ReactApp.fail(); return; } reactSkip = true; }
       window.DC_AREA.ensure(next).then(() => go(true), bootFail);
       return;
     }
     try { sessionStorage.setItem(key, JSON.stringify({ u: here, t: now })); } catch (e) { /* 되풀이 막기만 못 해요 */ }
     leaving = true;
-    root.innerHTML = bootHtml();
+    // 떠 있는 알림(로그아웃했어요 · 오래 사용하지 않아 로그아웃 …)은 새로 부른 페이지에서 이어서 보여요 (React 화면 ↔ 예전 화면 · 영역 옮기기)
+    try { const ts = Array.from(document.querySelectorAll("#toast-root .toast")).map((t) => ({ c: t.className, h: t.innerHTML })); if (ts.length) sessionStorage.setItem("dc:toasts", JSON.stringify(ts.slice(-2))); } catch (e) { /* 알림만 못 이어요 */ }
+    if (!REACT_PAGE) root.innerHTML = bootHtml();
     Promise.resolve(DB.remote.on ? DB.remote.flush() : null).catch(() => {}).then(() => new Promise((ok) => setTimeout(ok, 150))).then(() => location.reload());
   }
   function go(resumed) {
     if (!resumed && window.__leaveGuard && !window.__leaveGuard(ROUTE.hash)) return;
     const p = pick(), h = p.h, next = p.next;
     if (p.fix !== null) ROUTE.replace(p.fix);
+    const rk = reactKey(h);
+    if (!!rk !== REACT_PAGE) { moveArea(next, true); return; }
     if (!window.DC_AREA.ready(next)) { moveArea(next); return; }
     const changed = next !== mode;
     mode = next;
@@ -48,6 +60,7 @@
     if (next === "admin") window.applyStudentTheme(null); else document.body.dataset.master = "";
     // 소개 화면에서 내려가며 검정으로 바뀐 휴대폰 주소창 색을 다른 화면에서는 원래대로
     if (next !== "home") { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", "#ffffff"); }
+    if (REACT_PAGE) { window.ReactApp.go(rk, h, changed); return; } // 팝업 닫기 · 화면 그리기는 React 가
     document.getElementById("modal-root").innerHTML = "";
     const app = next === "admin" ? window.AdminApp : next === "vod" ? window.VodApp : next === "landing" ? window.LandingApp : next === "home" ? window.HomeApp : window.StudentApp;
     if (changed) app.mount(); else app.render();
@@ -168,8 +181,17 @@
   // 강사센터 등은 화면을 켜 둔 채 30분 동안 동작이 없어도 로그아웃 (1분마다 확인)
   setInterval(() => { if (document.visibilityState === "visible") idleCheck(); }, 60e3);
 
+  /** 새로 부르기 전에 떠 있던 알림 다시 보여 주기 (moveArea 가 남겨요 · 이 탭에서 이 사이트가 만든 알림만) */
+  function carryToasts() {
+    let ts = null;
+    try { ts = JSON.parse(sessionStorage.getItem("dc:toasts") || "null"); sessionStorage.removeItem("dc:toasts"); } catch (e) { ts = null; }
+    const box = document.getElementById("toast-root");
+    if (!box || !Array.isArray(ts)) return;
+    ts.forEach((x) => { if (!x || typeof x.h !== "string") return; const t = document.createElement("div"); t.className = String(x.c || "toast"); t.innerHTML = x.h; box.appendChild(t); setTimeout(() => t.remove(), 4000); });
+  }
   function start(server) {
     DB.load();
+    carryToasts();
     idleMsg();
     started = true;
     if (server) { reconcile(); markSigned(); setTimeout(idleCheck, 0); DB.remote.listen((type, info) => { if (type === "change") markSigned(); onRemote(type, info); }); }
@@ -237,14 +259,15 @@
   function bootHtml() { return '<div class="boot-wait" role="status" aria-live="polite">' + LOGO + '<span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>'; }
   function bootFail(err) {
     console.error(err);
+    if (REACT_PAGE) { if (window.ReactApp) window.ReactApp.fail(); return; }
     root.innerHTML = '<div class="boot-wait boot-err" role="alert">' + LOGO + '<b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onclick="location.reload()">다시 시도</button></div>';
   }
-  if (!root.querySelector(".boot-wait")) root.innerHTML = bootHtml();
+  if (!REACT_PAGE && !root.querySelector(".boot-wait")) root.innerHTML = bootHtml();
   // 이 주소 영역의 화면 파일(areas.js)은 서버 연결과 같이 받기 시작해요 — 둘 다 끝나면 그려요
   const files0 = window.DC_AREA.ensure(pick().next);
   files0.catch(() => {}); // 실패는 아래에서 한 번만 알려요
   const boot0 = idleOver();
-  (boot0.admin || boot0.student ? idleLogout(boot0, true) : Promise.resolve()).then(() => DB.remote.connect()).then((server) => files0.then(() => server)).then(start, bootFail);
+  (boot0.admin || boot0.student ? idleLogout(boot0, true) : Promise.resolve()).then(() => DB.remote.connect()).then((server) => files0.then(() => window.DC_REACT_WAIT).then(() => server)).then(start, bootFail);
 })();
 
 /* 두잉고 시안: 아래 탭 막대 — 지금 화면에 맞는 탭 표시 (수강생 강의실 · 강사센터 둘 다)
