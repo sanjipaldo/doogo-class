@@ -6,6 +6,8 @@
 const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강사센터 화면 주소 (shared/screens.js 의 ct-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
+// 마스터 화면 주소
+const CTM = ["/center/master", "/center/master/instructors", "/center/master/students"];
 const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
   "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
   "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand",
@@ -104,6 +106,32 @@ module.exports = {
       const a = await flow("off"), b = await flow("all");
       const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean), md = a.modal.map((x, i) => L.shapeDiff(x, b.modal[i])).filter(Boolean);
       await run.check(!d.length && !md.length && a.out.length === b.out.length && b.out.length >= 15 && b.stay, "강사센터 운영 화면(React): 수강생 탭 · 기수 · 검색 · 체크 · 과제 검수 탭 · 주차 · 1:1 요청 탭 · 팝업 — 누를 때마다 예전 화면과 같은 모양 (" + b.out.length + "번)", d.slice(0, 1).concat(md.slice(0, 1), [{ n: [a.out.length, b.out.length], m: [a.modal.length, b.modal.length] }]), page);
+      await page.context().close();
+    }
+    // 2-3) 마스터: 화면 모양 (PC · 휴대폰) + 강사 · 상태 고르기 · 강사 수정 팝업
+    for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      const page = await L.newPage(browser, { viewport: vp });
+      run.watch(page, "마스터 모양 " + vp.width);
+      await FL.master(page, base, info);
+      const { bad, lines } = await shapes(page, base, L, CTM);
+      let d = [], m = null;
+      if (vp.width === 1280) {
+        const out = {};
+        for (const mode of ["off", "all"]) {
+          await L.reactCookie(page, base, mode); await L.open(page, base, "/center/master/students");
+          const o = [];
+          const iv = await page.$$eval("#m-ins option", (os) => os.map((x) => x.value));
+          if (iv[1]) { await page.selectOption("#m-ins", iv[1]); await page.waitForTimeout(350); o.push(await L.domShape(page)); }
+          await page.selectOption("#m-status", "pending"); await page.waitForTimeout(350); o.push(await L.domShape(page));
+          await page.selectOption("#m-ins", "all"); await page.selectOption("#m-status", "all"); await page.waitForTimeout(350); o.push(await L.domShape(page));
+          await L.open(page, base, "/center/master/instructors");
+          await page.click('[data-action="ins-edit"]'); await page.waitForTimeout(350); o.push("M " + (await L.domShape(page, "modal-root")));
+          await page.click('#modal-root .a-modal-head [data-action="modal-close"]'); await page.waitForTimeout(200);
+          out[mode] = o;
+        }
+        d = out.off.map((x, i) => L.shapeDiff(x, out.all[i])).filter(Boolean); m = [out.off.length, out.all.length];
+      }
+      await run.check(!bad.length && !d.length, "마스터 " + CTM.length + "개 화면 " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요" + (m ? " · 강사 · 상태 고르기 · 수정 팝업도" : ""), bad.slice(0, 2).concat(d.slice(0, 1), [{ m }]), page);
       await page.context().close();
     }
     // 3) 버튼은 예전 이벤트가 그대로: 수강생 추가 팝업 · 과제 열기 팝업 · 휴대폰 메뉴 · 로그아웃

@@ -17,6 +17,7 @@ import Brand from "./Brand.jsx";
 import { VodStudents, VodLink, InsVod, InsVodLive } from "./VodPages.jsx";
 import { InsVodCal, InsVodSettle, Coaching, TeaTime, OpsNotices } from "./VodPages2.jsx";
 import { Coaches, Partners, Library, Motivation, Replays, Showcase, Glossary, NotePrompts } from "./Content2.jsx";
+import { MasterHome, MasterInstructors, MasterStudents } from "./Master.jsx";
 import { ADM, Isl } from "./bits.jsx";
 
 // 강사센터 메뉴(주소 첫 칸) → 본문 — 옮긴 화면만 (screens.js 에 없는 주소는 React 로 오지 않아요)
@@ -24,6 +25,9 @@ const PAGES = { "": Dashboard, students: Students, cohorts: Cohorts, reviews: Re
   curriculum: Curriculum, missions: Missions, schedule: Schedule, notices: Notices, faq: Faq, guide: Guide, docs: Docs, channels: Channels,
   coaches: Coaches, partners: Partners, library: Library, motivation: Motivation, replays: Replays, showcase: Showcase, glossary: Glossary, notes: NotePrompts, brand: Brand,
   "vod-students": VodStudents, vodlink: VodLink, vod: InsVod, "vod-live": InsVodLive, "vod-cal": InsVodCal, "vod-settle": InsVodSettle, coaching: Coaching, teatime: TeaTime, "ops-notices": OpsNotices };
+
+// 마스터 메뉴(주소 둘째 칸) → 본문 — 옮긴 화면만
+const MPAGES = { "": MasterHome, instructors: MasterInstructors, students: MasterStudents };
 
 export default function Center({ n, h }) {
   const A = ADM(), p = A.last || A.prep();
@@ -33,11 +37,12 @@ export default function Center({ n, h }) {
     A.labelTables(main); A.ktInit(main);
     if (window.VOD && window.VOD.hydrate) window.VOD.hydrate(main);
     if (p.area === "partner") A.notifyPartnerSide();
-    if (p.area === "center") { if (p.master) { A.notifyBills(); A.notifyPartnerMsgs(); } A.vdurFill(p.master); }
+    if (p.area === "center") { if (p.master) { if (A.staffMe()) A.staffStrip(main); A.notifyBills(); A.notifyPartnerMsgs(); } A.vdurFill(p.master); }
     document.title = A.pageTitle(p.area, p.master);
   }, [n, h]); // eslint-disable-line react-hooks/exhaustive-deps
   if (p.login) return <CenterLogin />;
-  const r = p.r, k0 = p.k0 || "", Page = p.area === "center" && !p.master && !p.offTrack ? PAGES[k0] : null;
+  // 운영자(스태프) 계정은 맡지 않은 버튼을 예전 코드가 빼서(staffStrip) — 그 화면은 예전 본문 그대로 (React 가 그린 칸을 지우지 않게)
+  const r = p.r, k0 = p.k0 || "", Page = p.area === "center" && !p.offTrack ? (p.master ? (A.staffMe() ? null : MPAGES[r.parts[1] || ""]) : PAGES[k0]) : null;
   const strip = p.area === "center" && !p.master && !p.offTrack && A.TRK() === "vod" && A.VP_PAGES.indexOf(k0) >= 0;
   // 아직 옮기지 않은 화면 · 다른 영역 안내 화면은 예전 본문 HTML 그대로 (React 틀 안에)
   if (!Page) return <Shell r={r} pageHtml={A.legacyPage(p)} />;
