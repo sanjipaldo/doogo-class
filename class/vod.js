@@ -1649,11 +1649,13 @@
       "<b>" + esc(t.name || "") + "</b><small>" + esc(t.tag || t.cats.join(" · ")) + '</small><span class="vd-tc-cat">' + esc(t.cats.slice(0, 2).join(" · ")) + "</span></a>" +
       '<span class="vd-tc-sns">' + sns.map((x) => '<a href="' + esc(x[0]) + '" target="_blank" rel="noopener" aria-label="' + esc(t.name) + " " + x[2] + '">' + icon(x[1], "xs") + "</a>").join("") + '<a href="' + tHref(t.iid) + '" aria-label="' + esc(t.name) + ' 강사 페이지">' + icon("arrowUpRight", "xs") + "</a></span></div>";
   }
+  // 홈 강사진 좌우 화살표 (한 줄 슬라이드) — 누를 때만 한 화면씩 넘겨요 (자동으로 넘어가지 않아요) · 처음 · 끝에서는 그쪽 화살표가 꺼져요
+  const teachArr = (id) => '<button type="button" class="vd-teach-arr prev" data-v="rail" data-r="' + id + '" data-d="-1" data-arr="' + id + '" aria-label="이전 강사">' + icon("chevLeft", "sm") + '</button><button type="button" class="vd-teach-arr next" data-v="rail" data-r="' + id + '" data-d="1" data-arr="' + id + '" aria-label="다음 강사">' + icon("chevRight", "sm") + "</button>";
   // 홈 강사진: ‘강사진’ 글씨를 누르면 강사진 페이지로
   function teachers(r) {
     const list = teachHome(r || homeRails().find((x) => x.k === "teach")).slice(0, 8);
     if (!list.length) return "";
-    return '<section class="vd-sec vd-teach"><div class="vd-teach-h"><a class="vd-teach-link" href="#/vod/teachers"><h2 data-eg>강사진</h2><span data-rv="fade">Teachers</span>' + icon("chevRight", "sm") + '</a><p data-rv="fade">직접 해서 번 사람만 가르쳐요.</p><a class="vd-more vd-teach-more" href="#/vod/teachers">강사진 전체보기' + icon("chevRight", "xs") + '</a></div><div class="vd-teach-g vd-teach-rail" id="vd-r-teach" data-rv-kids>' + list.map(tcCard).join("") + '</div><div class="vd-teach-prog" data-prog="vd-r-teach" aria-hidden="true"><i></i></div></section>';
+    return '<section class="vd-sec vd-teach"><div class="vd-teach-h"><a class="vd-teach-link" href="#/vod/teachers"><h2 data-eg>강사진</h2><span data-rv="fade">Teachers</span>' + icon("chevRight", "sm") + '</a><p data-rv="fade">직접 해서 번 사람만 가르쳐요.</p><a class="vd-more vd-teach-more" href="#/vod/teachers">강사진 전체보기' + icon("chevRight", "xs") + '</a></div><div class="vd-teach-box"><div class="vd-teach-g vd-teach-rail" id="vd-r-teach" data-rv-kids data-drag>' + list.map(tcCard).join("") + "</div>" + teachArr("vd-r-teach") + '</div><div class="vd-teach-prog" data-prog="vd-r-teach" aria-hidden="true"><i></i></div></section>';
   }
   // 강사진 페이지에 쓰는 값 (예전 화면 · React 화면 같이 씀) — 고른 분야가 지금 없는 분야면 풀어요
   function teachersView() {
@@ -3558,22 +3560,23 @@
   let railDrag = null;
   function dragEnd() {
     const d = railDrag; railDrag = null; if (!d || !d.moved) return;
-    d.el.classList.remove("drag"); d.el.__moved = true; setTimeout(() => { d.el.__moved = false; }, 0);
+    delete d.el.dataset.dragging; d.el.__moved = true; setTimeout(() => { d.el.__moved = false; }, 0);
     const r = railStep(d.el); if (r.step) d.el.scrollTo({ left: Math.round(d.el.scrollLeft / r.step) * r.step, behavior: "smooth" });
   }
-  function wireDrag() {
+  function dragWire(el) {
     if (!window.__vdDrag) {
       window.__vdDrag = true;
-      window.addEventListener("pointermove", (e) => { const d = railDrag; if (!d) return; const dx = e.clientX - d.x0; if (!d.moved && Math.abs(dx) > 6) { d.moved = true; d.el.classList.add("drag"); } if (d.moved) d.el.scrollLeft = d.s0 - dx; });
+      window.addEventListener("pointermove", (e) => { const d = railDrag; if (!d) return; const dx = e.clientX - d.x0; if (!d.moved && Math.abs(dx) > 6) { d.moved = true; d.el.dataset.dragging = "1"; } if (d.moved) d.el.scrollLeft = d.s0 - dx; });
       window.addEventListener("pointerup", dragEnd); window.addEventListener("pointercancel", dragEnd);
     }
-    document.querySelectorAll("[data-drag]").forEach((el) => {
-      if (el.__drag) return; el.__drag = true;
-      el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.button !== 0 || el.scrollWidth <= el.clientWidth) return; railDrag = { el, x0: e.clientX, s0: el.scrollLeft, moved: false }; });
-      el.addEventListener("click", (e) => { if (el.__moved) { e.preventDefault(); e.stopPropagation(); el.__moved = false; } }, true);
-      el.addEventListener("dragstart", (e) => e.preventDefault());
-    });
+    if (!el || el.__drag) return; el.__drag = true;
+    el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.button !== 0 || el.scrollWidth <= el.clientWidth) return; railDrag = { el, x0: e.clientX, s0: el.scrollLeft, moved: false }; });
+    el.addEventListener("click", (e) => { if (el.__moved) { e.preventDefault(); e.stopPropagation(); el.__moved = false; } }, true);
+    el.addEventListener("dragstart", (e) => e.preventDefault());
   }
+  function wireDrag() { document.querySelectorAll("[data-drag]").forEach(dragWire); }
+  // 가로 줄이 처음 · 끝인지 (좌우 화살표 끄기) — 넘칠 게 없으면 둘 다 처음이자 끝
+  const railEnds = (el) => { const max = el.scrollWidth - el.clientWidth; return { start: max <= 2 || el.scrollLeft <= 2, end: max <= 2 || el.scrollLeft >= max - 2 }; };
   function wireRails() {
     wireDrag();
     document.querySelectorAll("[data-prog]").forEach((bar) => {
@@ -3581,6 +3584,13 @@
       const upd = () => { const sw = el.scrollWidth, cw = el.clientWidth, w = sw > cw + 2 ? cw / sw : 1; bar.classList.toggle("one", w >= 1); i.style.width = (w * 100).toFixed(2) + "%"; i.style.left = (sw > cw ? (el.scrollLeft / sw) * 100 : 0).toFixed(2) + "%"; };
       el.addEventListener("scroll", upd, { passive: true }); upd();
       if (!bar.__ro && "ResizeObserver" in window) { bar.__ro = new ResizeObserver(upd); bar.__ro.observe(el); }
+    });
+    const arrs = {}; document.querySelectorAll("[data-arr]").forEach((b) => { (arrs[b.dataset.arr] = arrs[b.dataset.arr] || []).push(b); });
+    Object.keys(arrs).forEach((id) => {
+      const el = document.getElementById(id); if (!el) return;
+      const upd = () => { const e = railEnds(el); arrs[id].forEach((b) => { b.disabled = Number(b.dataset.d) < 0 ? e.start : e.end; }); };
+      if (!el.__arr) { el.__arr = true; el.addEventListener("scroll", () => { clearTimeout(el.__ta); el.__ta = setTimeout(upd, 60); }, { passive: true }); if ("ResizeObserver" in window) new ResizeObserver(upd).observe(el); }
+      upd();
     });
     document.querySelectorAll("[data-pager]").forEach((pg) => {
       const el = document.getElementById(pg.dataset.pager); if (!el) return;
@@ -4152,7 +4162,7 @@
     // 두고 파트너스 지원서
     ptIssues, ptSubmit, ptDraft, ptSaveDraft, ptSecNow, ptSetSec: (n) => ss.set(PT_SEC, String(n)), PT_SECS, PT_EXP, PT_READY, PT_WHEN, PT_FROM, PT_CTIME, PT_REACH, PT_FILM, PT_PRICE, ptKinds, PT_MS,
     // 소개 화면: 슬라이드 몇 번째 · 흐르는 줄 멈춤 (다른 화면에 다녀와도 남아요 — 예전 화면과 같은 값)
-    abUi: (o) => { if (o && o.slide !== undefined) ui.abSlide = o.slide; if (o && o.paused !== undefined) ui.abPaused = o.paused; return { slide: ui.abSlide || 0, paused: !!ui.abPaused }; }, allView, listView, ALL_TABN, allUrl, SORTS, GSEC, railInfo, railStep,
+    abUi: (o) => { if (o && o.slide !== undefined) ui.abSlide = o.slide; if (o && o.paused !== undefined) ui.abPaused = o.paused; return { slide: ui.abSlide || 0, paused: !!ui.abPaused }; }, allView, listView, ALL_TABN, allUrl, SORTS, GSEC, railInfo, railStep, railEnds, dragWire,
     // 강사진 검색어 · 분야 (다시 그려도 · 다른 화면에 다녀와도 남아요 — 예전 화면과 같은 값)
     tpg: (q, c) => { if (q !== undefined) tpgQ = q; if (c !== undefined) tpgC = c; return { q: tpgQ, c: tpgC }; } });
   window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };

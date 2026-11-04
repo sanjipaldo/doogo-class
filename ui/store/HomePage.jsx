@@ -155,12 +155,31 @@ function Prog({ id }) {
   }, [id]);
   return <div className={"vd-teach-prog" + (st.one ? " one" : "")} data-prog={id} aria-hidden="true"><i style={{ width: st.w, left: st.l }} /></div>;
 }
+/** 홈 강사진 좌우 화살표 (한 줄 슬라이드 · 예전 teachArr + wireRails) — 누를 때만 한 화면씩 넘겨요 · 처음 · 끝에서는 그쪽 화살표가 꺼져요
+ *  · 마우스로 끌어 넘기기도 같이 묶어요 (예전 dragWire 그대로 — 끄는 동안 표시는 data-dragging 이라 React 가 그린 class 는 그대로) */
+function TeachArrows({ id }) {
+  const [st, setSt] = useState({ start: true, end: true });
+  useEffect(() => {
+    const el = document.getElementById(id); if (!el) return undefined;
+    const upd = () => { const e = VOD().railEnds(el); setSt((s) => (s.start === e.start && s.end === e.end ? s : { start: e.start, end: e.end })); };
+    let t = 0; const onSc = () => { clearTimeout(t); t = setTimeout(upd, 60); };
+    el.addEventListener("scroll", onSc, { passive: true }); upd();
+    const ro = "ResizeObserver" in window ? new ResizeObserver(upd) : null; if (ro) ro.observe(el);
+    VOD().dragWire(el);
+    return () => { el.removeEventListener("scroll", onSc); clearTimeout(t); if (ro) ro.disconnect(); };
+  }, [id]);
+  const move = (d) => { const el = document.getElementById(id); if (el) { const r = VOD().railStep(el); el.scrollBy({ left: d * r.step * r.per, behavior: "smooth" }); } };
+  return <>
+    <button type="button" className="vd-teach-arr prev" data-v="rail" data-r={id} data-d="-1" data-arr={id} aria-label="이전 강사" disabled={st.start} onClick={() => move(-1)}><Icon n="chevLeft" c="sm" /></button>
+    <button type="button" className="vd-teach-arr next" data-v="rail" data-r={id} data-d="1" data-arr={id} aria-label="다음 강사" disabled={st.end} onClick={() => move(1)}><Icon n="chevRight" c="sm" /></button>
+  </>;
+}
 function Teach({ r }) {
   const list = VOD().teachHome(r).slice(0, 8);
   if (!list.length) return null;
   return (
     <section className="vd-sec vd-teach"><div className="vd-teach-h"><a className="vd-teach-link" href="#/vod/teachers"><Eg as="h2">강사진</Eg><span data-rv="fade">Teachers</span><Icon n="chevRight" c="sm" /></a><p data-rv="fade">직접 해서 번 사람만 가르쳐요.</p><a className="vd-more vd-teach-more" href="#/vod/teachers">강사진 전체보기<Icon n="chevRight" c="xs" /></a></div>
-      <div className="vd-teach-g vd-teach-rail" id="vd-r-teach" data-rv-kids="">{list.map((t, i) => <TcCard key={t.iid} t={t} i={i} />)}</div><Prog id="vd-r-teach" /></section>
+      <div className="vd-teach-box"><div className="vd-teach-g vd-teach-rail" id="vd-r-teach" data-rv-kids="" data-drag="">{list.map((t, i) => <TcCard key={t.iid} t={t} i={i} />)}</div><TeachArrows id="vd-r-teach" /></div><Prog id="vd-r-teach" /></section>
   );
 }
 

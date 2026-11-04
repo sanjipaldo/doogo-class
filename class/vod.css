@@ -3465,16 +3465,39 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .vd-rfq-kind { grid-template-columns: 1fr; }
 }
 
-/* ---------- 강사진: 홈은 휴대폰에서 옆으로 넘기는 줄(세 번째 카드가 살짝 보여 ‘넘기면 더 있다’를 알려요) · 강사진 페이지는 검색 · 분야 ---------- */
+/* ---------- 강사진: 홈은 PC · 태블릿 · 휴대폰 모두 한 줄 슬라이드 · 강사진 페이지는 검색 · 분야 (격자 그대로) ----------
+ *  · PC 는 4명 · 좁은 PC 는 3명이 보이고 나머지는 옆으로 — 좌우 화살표 · 마우스로 끌기 · 손가락으로 밀 때만 움직여요 (자동으로 넘어가지 않아요)
+ *  · 휴대폰 · 태블릿은 다음 카드가 살짝 보여 ‘넘기면 더 있다’를 알려요 · 화살표는 사진 가운데 높이 (100cqw = 줄 너비) */
 .vd-tc[hidden] { display: none; }
+.vd-teach-box { position: relative; container-type: inline-size; }
+.vd-teach-g.vd-teach-rail { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 60px) / 4); gap: 20px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.vd-teach-g.vd-teach-rail::-webkit-scrollbar { display: none; }
+.vd-teach-rail > .vd-tc { scroll-snap-align: start; }
+.vd-teach-rail[data-dragging] { scroll-snap-type: none; cursor: grabbing; }
+@media (hover: hover) and (pointer: fine) { .vd-teach-rail[data-drag] { cursor: grab; } }
+.vd-teach-arr { position: absolute; z-index: 3; top: calc((100cqw - 60px) / 4 * 0.625); display: grid; place-items: center; width: 44px; height: 44px; margin-top: -22px; border-radius: 50%; background: #fff; color: var(--on1); box-shadow: 0 4px 14px rgba(17, 20, 24, .16), inset 0 0 0 1px var(--ln10); cursor: pointer; transition: opacity .2s ease, transform .2s ease; }
+.vd-teach-arr.prev { left: -22px; }
+.vd-teach-arr.next { right: -22px; }
+.vd-teach-arr .icon { width: 20px; height: 20px; }
+.vd-teach-arr:disabled { opacity: 0; pointer-events: none; }
+@media (hover: hover) { .vd-teach-arr:hover { transform: scale(1.07); } }
+@media (max-width: 1023px) {
+  .vd-teach-g.vd-teach-rail { grid-auto-columns: calc((100% - 40px) / 3); }
+  .vd-teach-arr { top: calc((100cqw - 40px) / 3 * 0.625); }
+}
 @media (max-width: 860px) {
-  .vd-teach-g.vd-teach-rail { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 24px) / 3.3); gap: 12px; margin: 0 -24px; padding: 0 24px 4px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding: 0 24px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .vd-teach-g.vd-teach-rail::-webkit-scrollbar { display: none; }
-  .vd-teach-rail > .vd-tc { scroll-snap-align: start; }
+  .vd-teach-g.vd-teach-rail { grid-auto-columns: calc((100% - 24px) / 3.3); gap: 12px; margin: 0 -24px; padding: 0 24px 4px; scroll-padding: 0 24px; }
+  .vd-teach-arr { top: calc((100cqw - 24px) / 3.3 * 0.625); width: 40px; height: 40px; margin-top: -20px; }
+  .vd-teach-arr.prev { left: -14px; }
+  .vd-teach-arr.next { right: -14px; }
 }
 @media (max-width: 639px) {
   .vd-teach-g.vd-teach-rail { grid-auto-columns: calc((100% - 12px) / 2.28); margin: 0 -16px; padding: 0 16px 4px; scroll-padding: 0 16px; }
   .vd-teach-rail .vd-tc small { white-space: nowrap; }
+  .vd-teach-arr { top: calc((100cqw - 12px) / 2.28 * 0.625); width: 36px; height: 36px; margin-top: -18px; }
+  .vd-teach-arr .icon { width: 18px; height: 18px; }
+  .vd-teach-arr.prev { left: -8px; }
+  .vd-teach-arr.next { right: -8px; }
 }
 .vd-tpg-bar { display: grid; gap: 14px; margin: -8px 0 28px; }
 .vd-tpg-q { flex: none; width: 100%; max-width: 560px; height: 52px; margin: 0; padding: 0 6px 0 16px; border-radius: 12px; background: var(--s1); box-shadow: none; }
@@ -3498,7 +3521,7 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .vd-tpg-cats { margin: 0 -16px; padding: 0 16px; }
 }
 
-/* ---------- 홈 강사진 아래 진행 막대 (휴대폰 · 태블릿 가로 슬라이드) — PC 는 처음처럼 4칸 카드 ---------- */
+/* ---------- 홈 강사진 아래 진행 막대 (한 줄 슬라이드 · 넘길 카드가 있을 때만) ---------- */
 .vd-teach-prog { position: relative; height: 2px; margin-top: 18px; background: #ececf0; overflow: hidden; }
 .vd-teach-prog i { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--vd-pri); transition: left .2s ease, width .2s ease; }
 .vd-teach-prog.one { display: none; }
