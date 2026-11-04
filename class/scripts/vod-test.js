@@ -1883,6 +1883,44 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "화면: 결제를 끝내지 않은 · 결제가 안 된 카드 주문은 회원 주문 내역 · 배송 조회에서 빼고, 마스터 주문 목록에는 ‘결제 안 끝남 · 결제 안 됨’으로 (예전엔 ‘결제 완료’로 보였어요)");
   }
 
+  {
+    console.log("34) 포트원 결제 주문: 화면 저장(sync)으로는 결제 · 환불 상태를 못 바꿔요 · 환불은 포트원 취소를 거쳐서만 (2026-11-04 시험 결제에서 찾음)");
+    const st34 = require(path.join(TMP, "class/api/_lib/store.js"));
+    const t34 = String(Date.now()).slice(-6), mid = "vm-pgl" + t34, no = "DC261104" + t34, no2 = "DC261105" + t34, no3 = "DC261106" + t34, pid = "pay-pgl-" + t34, pid2 = "pay-pgl2-" + t34;
+    const base34 = { mid, pid: "v5", kind: "course", days: 365, title: "카드 결제 시험", list: 5000, sale: 5000, amount: 5000, method: "card", ch: "web", createdAt: Date.now(), at: Date.now() };
+    await st34.writeDoc("vm:" + mid, { id: mid, name: "결OO", email: "pgl" + t34 + "@example.com", orderNos: [no, no2, no3], coupons: [], points: 0 }, null);
+    paidLike(pid, 5000);
+    await st34.writeDoc("vo:" + no, Object.assign({ id: "vo-" + no, no, status: "paid", paidAt: Date.now(), paymentId: pid, pg: { st: "paid", paymentId: pid, txId: "tx_" + pid } }, base34), null);
+    await st34.writeDoc("vo:" + no2, Object.assign({ id: "vo-" + no2, no: no2, status: "ready", paymentId: pid2 }, base34), null);
+    await st34.writeDoc("vo:" + no3, Object.assign({ id: "vo-" + no3, no: no3, status: "paid", paidAt: Date.now(), pg: { st: "mock", at: Date.now() } }, base34), null);
+    useJar({ dc_a: auth.sign({ r: "master" }) });
+    const ver34 = async (k) => (await st34.getDoc(k)).ver;
+    // 예전 마스터 화면이 한 일: 포트원 취소 없이 ‘환불’로 저장 (상태 · 환불 금액 · 결제 정보를 바꿔서)
+    r = await sync([{ k: "vo:" + no, base: await ver34("vo:" + no), ops: [{ p: ["status"], v: "refunded" }, { p: ["refundAmount"], v: 4290 }, { p: ["refundedAt"], v: Date.now() }, { p: ["refundKind"], v: "partial" }, { p: ["pg", "st"], v: "mock" }, { p: ["amount"], v: 1 }, { p: ["paymentId"], v: "evil" }, { p: ["refundMemo"], v: "메모는 저장돼요" }, { p: ["ship"], v: null }] }]);
+    let o34 = (await st34.getDoc("vo:" + no)).v;
+    ok(o34.status === "paid" && o34.refundAmount === undefined && o34.refundedAt === undefined && o34.amount === 5000 && o34.paymentId === pid && o34.pg.st === "paid" && o34.refundMemo === "메모는 저장돼요" && PG[pid].status === "PAID",
+      "포트원 결제 완료 주문: 마스터 화면 저장으로 상태 · 환불 금액 · 금액 · 결제 정보는 안 바뀌고 메모 같은 다른 칸만 저장돼요", { r, o: o34 });
+    r = await sync([{ k: "vo:" + no2, base: await ver34("vo:" + no2), ops: [{ p: ["status"], v: "paid" }, { p: ["paidAt"], v: Date.now() }, { p: ["pg"], v: { st: "paid" } }] }]);
+    const o34b = (await st34.getDoc("vo:" + no2)).v;
+    ok(o34b.status === "ready" && !o34b.paidAt && !o34b.pg, "결제창만 연 카드 주문(결제 안 끝남): 화면 저장으로 ‘결제 완료’를 만들 수 없어요 (포트원 결제 확인만)", o34b);
+    r = await sync([{ k: "vo:" + no3, base: await ver34("vo:" + no3), ops: [{ p: ["status"], v: "refunded" }, { p: ["refundAmount"], v: 5000 }] }]);
+    const o34c = (await st34.getDoc("vo:" + no3)).v;
+    ok(o34c.status === "refunded" && o34c.refundAmount === 5000, "시안 화면의 시험 결제(pg mock · 포트원 없음)는 예전처럼 화면에서 환불 기록", o34c);
+    // 포트원을 거치는 환불(/api/vod-pay refund)은 그대로
+    r = await call("vod-pay", { body: { action: "refund", no, amount: 4290, reason: "시험 환불" } });
+    o34 = (await st34.getDoc("vo:" + no)).v;
+    ok(r.json.ok && PG[pid].lastCancel && PG[pid].lastCancel.amount === 4290 && o34.status === "refunded" && o34.refundAmount === 4290 && o34.refundKind === "partial" && o34.refundMemo === "메모는 저장돼요",
+      "마스터 환불(/api/vod-pay): 포트원에 4,290원 취소 → 주문 환불 4,290원 (포트원 취소 금액과 같아요)", { r: r.json, o: o34, pg: PG[pid] });
+    r = await sync([{ k: "vo:" + no, base: await ver34("vo:" + no), ops: [{ p: ["status"], v: "paid" }, { p: ["refundAmount"], v: 0 }] }]);
+    o34 = (await st34.getDoc("vo:" + no)).v;
+    ok(o34.status === "refunded" && o34.refundAmount === 4290, "환불한 포트원 주문도 화면 저장으로 ‘결제 완료’로 되돌릴 수 없어요", o34);
+    // 화면(마스터): 포트원 결제인지는 주문 기록으로 · 강사센터를 열 때 결제 설정을 받아요
+    const aj34 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), va34 = fs.readFileSync(path.join(ROOT, "api/_lib/vodaccess.js"), "utf8");
+    ok(/const vdPgReal = \(o\) => !!\(vdSrv\(\) && vdIsPg\(o\) && \(o\.paymentId \|\| \(o\.pg \|\| \{\}\)\.paymentId\)\);/.test(aj34) && /const real = !!\(vdPgReal\(o\) && o\.pg && o\.pg\.paymentId\);/.test(aj34) && /function mount\(\) \{\s*\/\/[^\n]*\n\s*if \(window\.VOD && window\.VOD\.loadCfg\) window\.VOD\.loadCfg\(\);/.test(aj34) && !/const real = !!\(VX\(\)\.payServer/.test(aj34) &&
+      /if \(K\.type === "vo"\) return \{ fix: \(o, n\) => keepServer\(o, n, isPgOrder\(o\) \? PG_LOCK : \["paymentId"\]\) \};/.test(va34),
+      "화면: 마스터 환불은 결제 설정을 받았는지와 상관없이 포트원 결제 주문이면 포트원 취소를 거쳐요 · 강사센터를 열 때 결제 설정을 받아요 · 서버가 결제 칸을 잠가요");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

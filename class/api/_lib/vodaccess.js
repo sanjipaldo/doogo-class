@@ -189,12 +189,18 @@ function fixStaffTea(o, n, canCancel) {
   return out;
 }
 const REVIEW_STAFF = ["reply", "replyAt", "replyBy", "hidden", "best", "pin"];
+/* 포트원으로 결제한 주문(카드 · 간편결제 · 계좌이체 · 가상계좌): 결제 · 환불 상태는 포트원을 거치는 /api/vod-pay(환불 · 바로 취소 · 입금 전 취소)로만 바뀌어요.
+ * 화면 저장(sync)으로는 상태 · 금액 · 환불 금액 · 결제 정보가 바뀌지 않아요 — 메모 · 배송 · 클레임 같은 다른 칸은 그대로 저장돼요.
+ * (2026-11-04 시험 결제에서 찾음: 결제 설정을 아직 못 받은 마스터 화면이 카드 결제를 포트원 취소 없이 ‘환불’로 저장했어요 · 4단계) */
+const PG_LOCK = ["paymentId", "status", "amount", "paidAt", "refundedAt", "refundAmount", "refundKind", "pg", "vbank", "dueAt", "canceledAt"];
+//  · 서버가 결제창을 연 주문(결제 안 끝남 · 결제 안 됨 · 결제 완료 · 가상계좌 발급)이 모두 해당 — 시안 화면이 만든 ‘시험 결제’(pg.st mock)는 빼요
+const isPgOrder = (o) => !!(o && o.paymentId && require("./portone").PG_METHOD_KEYS.indexOf(o.method) >= 0 && !(o.pg && (o.pg.st === "mock" || o.pg.st === "free")));
 function writer(K, ids, creating, ctx) {
   const me = vodMid(ids), master = isMaster(ids);
   if (master) {
     if (K.type === "vstat") return null;
     if (K.type === "vm") return { fix: (o, n) => keepServer(o, n, ["pwHash", "paidPays", "orderNos", "kakaoId"]) };
-    if (K.type === "vo") return { fix: (o, n) => keepServer(o, n, ["paymentId"]) };
+    if (K.type === "vo") return { fix: (o, n) => keepServer(o, n, isPgOrder(o) ? PG_LOCK : ["paymentId"]) };
     return { fix: (o, n) => n };
   }
   switch (K.type) {

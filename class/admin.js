@@ -3157,7 +3157,9 @@
   // 포트원(PG)으로 결제한 주문 (카드 · 간편결제 · 계좌이체 · 가상계좌)
   const VD_PG = ["card", "kakao", "naver", "toss", "transfer", "vbank"];
   const vdIsPg = (o) => VD_PG.indexOf(o.method) >= 0 && !(o.pg && o.pg.st === "mock");
-  const vdPgReal = (o) => !!(VX().payServer && VX().payServer() && vdIsPg(o) && (o.paymentId || (o.pg || {}).paymentId));
+  // 포트원 결제인지는 주문 기록으로 정해요 — 예전에는 결제 설정(vod-config)을 받았는지로 정해서, 스토어를 거치지 않고 연 마스터 화면에서는
+  // 카드 결제를 포트원 취소 없이 ‘환불’로 저장했어요 (2026-11-04 시험 결제에서 찾음 · 서버도 막아요: vodaccess PG_LOCK)
+  const vdPgReal = (o) => !!(vdSrv() && vdIsPg(o) && (o.paymentId || (o.pg || {}).paymentId));
   const vdAcctTxt = (a) => (a ? [VX().bankName(a.bank), a.number, a.holder].filter(Boolean).join(" ") : "");
   /** 주문 · 결제 상세 (주문번호를 누르면) */
   function vdOrderModal(o) {
@@ -4445,7 +4447,7 @@
     // 함께 결제한 코칭권: 쓴 횟수만큼 빼고 환불
     const grpAmt = (x) => { const used = x.coach ? Number(x.coach.used) || 0 : 0, per = x.coach && x.coach.n ? Math.round(x.amount / x.coach.n) : 0; return x.coach ? Math.max(0, x.amount - used * per) : x.amount; };
     const grp = f.withGrp && f.withGrp.checked ? v.orders.filter((x) => x.grp === o.no && x.status === "paid") : [];
-    const real = !!(VX().payServer && VX().payServer() && o.pg && o.pg.paymentId);
+    const real = !!(vdPgReal(o) && o.pg && o.pg.paymentId); // 포트원 결제 주문은 늘 포트원 취소를 거쳐요 (설정을 받았는지와 상관없이)
     const by = (staffMe() || {}).name || "ADMIN";
     // 무통장 · 가상계좌: 돌려줄 계좌 (금액이 0원이면 필요 없어요)
     let acct = null;
@@ -7921,7 +7923,11 @@
       });
     });
   }
-  function mount() { root.innerHTML = ""; render(); window.scrollTo(0, 0); }
+  function mount() {
+    // 결제 설정(포트원 · 카카오 연결 여부)을 미리 받아 둬요 — 스토어를 거치지 않고 바로 연 강사센터 · 마스터 화면에서도 (화면 나눠 받기 뒤로는 늘 이렇게 열려요)
+    if (window.VOD && window.VOD.loadCfg) window.VOD.loadCfg();
+    root.innerHTML = ""; render(); window.scrollTo(0, 0);
+  }
 
   function openPreview(cohortId) {
     const iid = IID();
