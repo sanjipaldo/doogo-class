@@ -11,6 +11,15 @@ const SHAPES = ["/vod/my", "/vod/my/classes", "/vod/my/classes?st=done", "/vod/m
   "/vod/checkout/v8", "/vod/checkout/v8?plan=180&coach=1", "/vod/checkout/b1", "/vod/checkout/fl-choi", "/vod/checkout/v5?item=coach", "/vod/checkout/v5?item=tea",
   // VOD 강의실 (두잉고 강의실이 없는 VOD 플레이어) · 전자책
   "/vod/learn/v14", "/vod/learn/v11"];
+// 스토어 공개 화면 (로그인 전 · 후 둘 다 비교) — 약관 · 강사진 · 강사 페이지(없는 강사 포함)
+const PUB = ["/terms", "/privacy", "/refund", "/vod/legal/privacy", "/vod/teachers", "/vod/teachers/moon", "/vod/teachers/yuna", "/vod/teachers/nobody",
+  // 클래스 목록: 전체 · 종류 탭 · 정렬 · 분야 · 분야 + 종류 · 꺼진 종류 · 오픈 예정 · BEST · 새로 열린 · 무료 특강 · 없는 분야 · 검색(빈 · 있음 · 없음)
+  "/vod/c/all", "/vod/c", "/vod/c/all?tab=vod", "/vod/c/all?tab=ebook&sort=low", "/vod/c/all?tab=premium", "/vod/c/all?tab=free", "/vod/c/commerce", "/vod/c/ai?tab=vod&sort=new", "/vod/c/money",
+  "/vod/c/soon", "/vod/c/best", "/vod/c/new?sort=like", "/vod/c/free", "/vod/c/nothing", "/vod/search", "/vod/search?q=%EC%87%BC%ED%95%91", "/vod/search?q=zzqq",
+  // 소개 · 두고 파트너스 · 지원서 · 스토어 홈 (대표 주소 · /vod)
+  "/vod/about", "/vod/partners", "/vod/partners/apply", "/", "/vod",
+  // 클래스 상세: VOD(수강권 · 코칭) · 오픈 예정 · 전자책 · LIVE · 무료 LIVE · 강사 없는 VOD · 종이책 · 숨긴 클래스 · 없는 클래스
+  "/vod/p/v2", "/vod/p/v3", "/vod/p/v4", "/vod/p/v5", "/vod/p/v8", "/vod/p/v9", "/vod/p/v11", "/vod/p/v12", "/vod/p/fl-choi", "/vod/p/fl-farmer-0", "/vod/p/v14", "/vod/p/b1", "/vod/p/v1", "/vod/p/nope"];
 module.exports = {
   title: "React 화면 · 스위치 · 예전 화면과 같은 모양 · 오가기",
   async run({ base, info, browser, run, L }) {
@@ -23,7 +32,7 @@ module.exports = {
       await F.member(page, base, em, pw);
       const bad = [];
       let lines = 0;
-      for (const u of SHAPES) {
+      for (const u of SHAPES.concat(PUB)) {
         const sh = {};
         for (const mode of ["off", "all"]) {
           await L.reactCookie(page, base, mode);
@@ -34,7 +43,7 @@ module.exports = {
         lines += sh.all.shape.split("\n").length;
         if (sh.off.react || !sh.all.react || d) bad.push({ u, off: sh.off.react, all: sh.all.react, d });
       }
-      await run.check(!bad.length, "마이페이지 " + SHAPES.length + "개 화면 " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요", bad.slice(0, 2), page);
+      await run.check(!bad.length, "회원 화면 " + SHAPES.length + "개 · 공개 화면 " + PUB.length + "개 " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요", bad.slice(0, 2), page);
       await page.context().close();
     }
     // 2) 오가기 · 버튼 (React 화면 켬)
@@ -174,12 +183,12 @@ module.exports = {
       await run.check(!bad.length, "주문 확인 화면 3가지(결제 완료 · 취소 · 없는 주문): 예전 화면 = React 화면", bad.slice(0, 2), page);
       await L.open(page, base, "/vod/my");
     }
-    // React 화면 → 예전 화면 (전체 클래스는 아직 예전 화면): 새로 불러 예전 화면으로
-    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.click(".vd-nav a[href='#/vod/c/all']")]);
+    // React 화면 → 예전 화면 (두잉고 소개는 아직 예전 화면 — 옮기면 아직 안 옮긴 다른 화면으로 바꿔요): 새로 불러 예전 화면으로
+    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.evaluate(() => { window.ROUTE.hash = "#/doinggo"; })]);
     await L.ready(page);
-    await run.check(!(await isReact(page)) && new URL(page.url()).pathname === "/vod/c/all", "React → 예전 화면(전체 클래스): 새로 불러 예전 화면으로", { url: page.url() }, page);
-    // 예전 화면 → React 화면 (머리띠 ‘내 강의실’)
-    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.click(".vd-top a.vd-tl")]);
+    await run.check(!(await isReact(page)) && new URL(page.url()).pathname === "/doinggo", "React → 예전 화면(두잉고 소개): 새로 불러 예전 화면으로", { url: page.url() }, page);
+    // 예전 화면 → React 화면 (내 강의실)
+    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.evaluate(() => { window.ROUTE.hash = "#/vod/my/classes"; })]);
     await L.ready(page);
     await run.check((await isReact(page)) && new URL(page.url()).pathname === "/vod/my/classes", "예전 화면 → React 화면(내 강의실): 새로 불러 React 화면으로", { url: page.url() }, page);
     // /n/… 를 직접 열면 원래 주소로
@@ -204,7 +213,7 @@ module.exports = {
       const pg = await L.newPage(browser);
       run.watch(pg, "React 로그인");
       await L.fresh(pg, base);
-      const AUTH = ["/vod/login", "/vod/signup", "/vod/login?tab=dg", "/vod/signup?tab=dg", "/vod/login?next=%23%2Fvod%2Fdg"];
+      const AUTH = ["/vod/login", "/vod/signup", "/vod/login?tab=dg", "/vod/signup?tab=dg", "/vod/login?next=%23%2Fvod%2Fdg"].concat(PUB);
       const bad = []; let lines = 0;
       for (const u of AUTH) {
         const sh = {};
@@ -212,7 +221,17 @@ module.exports = {
         const d = L.shapeDiff(sh.off.shape, sh.all.shape); lines += sh.all.shape.split("\n").length;
         if (sh.off.react || !sh.all.react || d) bad.push({ u, off: sh.off.react, all: sh.all.react, d });
       }
-      await run.check(!bad.length, "로그인 · 회원가입 " + AUTH.length + "개 화면: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요", bad.slice(0, 2), pg);
+      await run.check(!bad.length, "로그인 전: 로그인 · 회원가입 · 공개 화면 " + AUTH.length + "개 화면: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요", bad.slice(0, 2), pg);
+      // 공개 화면(약관)의 검색 · 공유 미리보기: React 화면도 서버가 같은 제목 · 설명 · 대표 주소 · 검색 허용 · 검색용 안내 글을 넣어요
+      const ent = (x) => String(x || "").replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      const meta = (h) => ({ title: ent((h.match(/<title>([^<]*)<\/title>/) || [])[1]), canon: (h.match(/<link rel="canonical" href="([^"]+)"/) || [])[1], robots: (h.match(/<meta name="robots" content="([^"]+)"/) || [])[1], desc: ent((h.match(/<meta name="description" content="([^"]+)"/) || [])[1]), ogt: ent((h.match(/<meta property="og:title" content="([^"]+)"/) || [])[1]), seo: /class="seo-static"/.test(h), react: /DC_REACT_PAGE/.test(h) });
+      const seoBad = [];
+      for (const u of PUB) {
+        const a = meta(await (await fetch(base + u, { headers: { cookie: "dc_next=off" } })).text()), b = meta(await (await fetch(base + u, { headers: { cookie: "dc_next=all" } })).text());
+        if (a.react || !b.react || a.title !== b.title || a.canon !== b.canon || a.robots !== b.robots || a.desc !== b.desc || a.ogt !== b.ogt || !b.seo || !/index/.test(b.robots || "") || /noindex/.test(b.robots || "")) seoBad.push({ u, a, b });
+      }
+      const priv = meta(await (await fetch(base + "/vod/my", { headers: { cookie: "dc_next=all" } })).text());
+      await run.check(!seoBad.length && priv.react && /noindex/.test(priv.robots || ""), "공개 화면 " + PUB.length + "개: React 화면도 서버가 같은 제목 · 설명 · 대표 주소 · 공유 제목 · 검색 허용 · 검색용 안내 글 / 마이페이지(React)는 검색 제외(noindex)", seoBad.slice(0, 1).concat([{ priv }]), pg);
       // 탭 바꾸기: 새로 불러오지 않고 그 자리에서 · 주소는 ?tab=dg
       await L.reactCookie(pg, base, "all");
       await L.open(pg, base, "/vod/login");
@@ -251,6 +270,175 @@ module.exports = {
       await pg.waitForTimeout(800);
       const su = { agreed, me: !!(((await F.serverMe(pg)) || {}).vod), toast: await L.toasts(pg) };
       await run.check(su.agreed && su.me, "회원가입(React 화면): 전체 동의로 필수 · 선택이 같이 켜지고 · 가입하면 서버 로그인", su, pg);
+      await pg.context().close();
+    }
+    // 4) 스토어 공개 화면: 같은 순서로 눌렀을 때 예전 화면(off) = React 화면(all) — 누를 때마다 #root 구조 비교 · React 는 새로 불러오지 않아요
+    {
+      const pg = await L.newPage(browser);
+      run.watch(pg, "React 공개 화면");
+      await F.member(pg, base, em, pw);
+      const step = async (out, fn, wait) => { await fn(); await pg.waitForTimeout(wait || 250); out.push(await L.domShape(pg)); };
+      const stayOn = () => pg.evaluate(() => { window.__e2eStay = 1; });
+      const stayed = () => pg.evaluate(() => window.__e2eStay === 1);
+      // 강사진: 검색(이름 · 없는 이름) → 지우기 X → 분야 → 없는 이름 + ‘전체 보기’ → 분야 고른 채로 강사 페이지 → 뒤로 (검색 · 분야가 남아요)
+      const tpg = async (mode) => {
+        await L.reactCookie(pg, base, mode); await L.open(pg, base, "/vod/teachers"); await stayOn();
+        const t0 = await pg.evaluate(() => { const v = window.VOD.teachersView(); return { name: v.list[0].name, cat: v.cats[v.cats.length - 1], n: v.list.length }; });
+        const out = [];
+        await step(out, () => pg.fill("[data-tpg-q]", t0.name));
+        await step(out, () => pg.fill("[data-tpg-q]", "zzqq"));
+        await step(out, () => pg.click(".vd-tpg-x"));
+        const focus = await pg.evaluate(() => document.activeElement && document.activeElement.matches("[data-tpg-q]"));
+        await step(out, () => pg.click(".vd-tpg-cats [data-tpg-cat='" + t0.cat.replace(/'/g, "\\'") + "']"));
+        await step(out, () => pg.fill("[data-tpg-q]", "zzqq"));
+        await step(out, () => pg.click("[data-v='tpg-reset']"));
+        await step(out, () => pg.click(".vd-tpg-cats [data-tpg-cat='" + t0.cat.replace(/'/g, "\\'") + "']"));
+        const href = await pg.evaluate(() => { const a = Array.from(document.querySelectorAll(".vd-tpg-g .vd-tc")).find((x) => !x.hidden); return a ? a.querySelector(".vd-tc-main").getAttribute("href") : ""; });
+        await step(out, () => pg.click(".vd-tpg-g .vd-tc:not([hidden]) .vd-tc-main"), 500);
+        const tp = await pg.evaluate(() => ({ path: location.pathname, h1: (document.querySelector(".vd-tp-info h1 .vd-sr") || document.querySelector(".vd-tp-info h1") || {}).textContent }));
+        await step(out, () => pg.goBack(), 600);
+        const back = await pg.evaluate(() => ({ path: location.pathname, on: (document.querySelector(".vd-tpg-cats .vd-pill.on") || {}).textContent, vis: Array.from(document.querySelectorAll(".vd-tpg-g .vd-tc")).filter((x) => !x.hidden).length }));
+        return { out, focus, href, tp, back, stay: await stayed(), t0 };
+      };
+      const a1 = await tpg("off"), b1 = await tpg("all");
+      const d1 = a1.out.map((x, i) => L.shapeDiff(x, b1.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
+      await run.check(!d1.length && b1.out.length === 9, "강사진(React): 검색 · 지우기 · 분야 · 전체 보기 · 강사 페이지 · 뒤로 — 누를 때마다 예전 화면과 같은 모양 (" + b1.out.length + "번)", d1.slice(0, 1), pg);
+      await run.check(b1.focus && b1.stay && !!b1.tp.h1 && /^\/vod\/teachers\/.+/.test(b1.tp.path) && b1.back.path === "/vod/teachers" && b1.back.on === b1.t0.cat && b1.back.vis > 0,
+        "강사진(React): 지우면 검색 칸에 커서 · 강사 페이지는 새로 불러오지 않고 · 뒤로 오면 고른 분야가 그대로", { focus: b1.focus, stay: b1.stay, tp: b1.tp, back: b1.back }, pg);
+      // 클래스 목록: 전체 → 종류 탭 → 정렬 → 분야 → 넘기기(다음) · 머리 검색 → 큰 검색 칸
+      const lst = async (mode) => {
+        await L.reactCookie(pg, base, mode); await L.open(pg, base, "/vod/c/all"); await stayOn();
+        const out = [];
+        const pager = await pg.$(".vd-pager:not(.one) button[data-d='1']");
+        if (pager) await step(out, () => pager.click(), 900);
+        await step(out, () => pg.click(".vd-gtabs a[href='#/vod/c/all?tab=vod']"), 400);
+        await step(out, () => pg.click(".vd-sorts a[href$='sort=low']"), 400);
+        await step(out, () => pg.click(".vd-pills a[href='#/vod/c/commerce?tab=vod']"), 400);
+        await step(out, () => pg.click(".vd-tp-bc a"), 400);
+        await step(out, async () => { await pg.fill(".vd-top form.vd-search input[name=q]", "쇼핑"); await pg.press(".vd-top form.vd-search input[name=q]", "Enter"); }, 500);
+        await step(out, async () => { await pg.fill(".vd-list form.vd-search-lg input[name=q]", "zzqq"); await pg.press(".vd-list form.vd-search-lg input[name=q]", "Enter"); }, 500);
+        return { out, pager: !!pager, path: await pg.evaluate(() => location.pathname + location.search), stay: await stayed() };
+      };
+      const a2 = await lst("off"), b2 = await lst("all");
+      const d2 = a2.out.map((x, i) => L.shapeDiff(x, b2.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
+      await run.check(!d2.length && a2.out.length === b2.out.length && b2.out.length >= 6, "클래스 목록(React): " + (b2.pager ? "넘기기 · " : "") + "종류 탭 · 정렬 · 분야 · 위치 · 머리 검색 · 큰 검색 칸 — 누를 때마다 예전 화면과 같은 모양 (" + b2.out.length + "번)", d2.slice(0, 1), pg);
+      await run.check(b2.stay && /^\/vod\/search\?q=zzqq$/.test(b2.path), "클래스 목록(React): 탭 · 정렬 · 분야 · 검색을 옮겨도 새로 불러오지 않아요 · 주소는 /vod/search?q=zzqq", { stay: b2.stay, path: b2.path }, pg);
+      // 찜 (React · 카드 하트): 담으면 하트 켜짐 · 찜 수 +1 · 알림 → 다시 누르면 풀려요
+      await L.open(pg, base, "/vod/c/all?tab=vod");
+      const lk = await pg.evaluate(() => { const b = document.querySelector(".vd-grid .vd-card .vd-like:not(.on)"); if (!b) return null; const id = b.dataset.id; return { id, n: Number((document.querySelector('[data-hc="' + id + '"]') || {}).textContent) || 0 }; });
+      let lk1 = null, lk2 = null;
+      if (lk) {
+        await pg.click('.vd-grid .vd-like[data-id="' + lk.id + '"]'); await pg.waitForTimeout(400);
+        lk1 = await pg.evaluate((id) => ({ on: document.querySelector('.vd-like[data-id="' + id + '"]').classList.contains("on"), n: Number(document.querySelector('[data-hc="' + id + '"]').textContent) || 0, liked: window.VOD.liked(window.VOD.me().id, id) }), lk.id);
+        const t1 = await L.toasts(pg);
+        await pg.click('.vd-grid .vd-like[data-id="' + lk.id + '"]'); await pg.waitForTimeout(400);
+        lk2 = await pg.evaluate((id) => ({ on: document.querySelector('.vd-like[data-id="' + id + '"]').classList.contains("on"), liked: window.VOD.liked(window.VOD.me().id, id) }), lk.id);
+        lk1.toast = t1;
+      }
+      // 소개: 슬라이드 다음 · 다음 · 이전 · 흐르는 줄 멈춤 / 두고 파트너스: 자주 묻는 질문(하나만 열림) / 지원서: 빈 채로 다음 → 빨간 안내 · 채우고 다음 · 이전 · 다 채워 보내기 → 완료 카드
+      const more = async (mode) => {
+        await L.reactCookie(pg, base, mode); await L.open(pg, base, "/vod/about"); await stayOn();
+        const out = [];
+        await step(out, () => pg.click(".ab-car-ctl button[data-d='1']"));
+        await step(out, () => pg.click(".ab-car-ctl button[data-d='1']"));
+        await step(out, () => pg.click(".ab-car-ctl button[data-d='-1']"));
+        await step(out, () => pg.click(".ab-mq button[data-v='ab-mq']"));
+        await step(out, () => pg.click(".ab-mq button[data-v='ab-mq']"));
+        await step(out, () => pg.click(".ab-mq button[data-v='ab-mq']"));
+        await step(out, () => pg.click(".vd-nav-r a[href='#/vod/about']"), 400);
+        await step(out, () => pg.click(".vd-top a.vd-ptl"), 500);
+        // 자주 묻는 질문은 스크롤 없이 눌러요 (눌러서 스크롤되면 브라우저의 스크롤 고정이 위치를 조금씩 다르게 잡아요 — 화면 모양과 상관없이)
+        await step(out, () => pg.$eval(".pt-faq-it:nth-child(3) summary", (el) => el.click()));
+        await step(out, () => pg.$eval(".pt-faq-it:nth-child(5) summary", (el) => el.click()));
+        await step(out, () => pg.click(".pt-hero a[href='#/vod/partners/apply']"), 500);
+        await pg.evaluate(() => { try { sessionStorage.removeItem("dc:pt-draft"); sessionStorage.removeItem("dc:pt-sec"); } catch (e) { /* 없어도 돼요 */ } });
+        await L.open(pg, base, "/vod/partners/apply"); await stayOn();
+        await step(out, async () => { await pg.fill("#pt-name", ""); await pg.click(".pt-gf-sec:not([hidden]) .pt-gf-next"); }, 600);
+        await step(out, async () => { await pg.fill("#pt-name", "지원자"); await pg.fill("#pt-phone", "12"); await pg.fill("#pt-email", "x"); await pg.click(".pt-gf-sec:not([hidden]) .pt-gf-next"); }, 600);
+        await step(out, async () => { await pg.fill("#pt-phone", "010-1234-5678"); await pg.fill("#pt-email", "apply@example.com"); await pg.click(".pt-gf-sec:not([hidden]) .pt-gf-next"); }, 600);
+        await step(out, () => pg.click(".pt-gf-sec:not([hidden]) .pt-gf-prev"), 600);
+        await step(out, async () => { await pg.click(".pt-gf-sec:not([hidden]) .pt-gf-next"); await pg.waitForTimeout(400); await pg.click(".pt-gf-sec:not([hidden]) .pt-gf-next"); }, 600);
+        // 섹션 3: 분야 · 주제 · 노하우 → 4 → 5 → 동의 없이 보내기 → 동의하고 보내기
+        await step(out, async () => { await pg.check(".pt-gf-sec[data-sec='3'] input[name=cat] >> nth=0", { force: true }); await pg.fill("#pt-topic", "시험 주제"); await pg.fill("#pt-course", "시험 노하우"); await pg.click(".pt-gf-sec:not([hidden]) .pt-gf-next"); await pg.waitForTimeout(400); await pg.click(".pt-gf-sec:not([hidden]) .pt-gf-next"); }, 600);
+        // 다시 불러도 쓰던 내용 · 보던 섹션이 그대로
+        await pg.reload({ waitUntil: "load" }); await L.ready(pg); await pg.waitForTimeout(300); out.push(await L.domShape(pg));
+        await step(out, () => pg.click(".pt-gf-sec:not([hidden]) button[type=submit]"), 600);
+        await step(out, async () => { await pg.check(".pt-gf-sec[data-sec='5'] input[name=agree]", { force: true }); await pg.click(".pt-gf-sec:not([hidden]) button[type=submit]"); await pg.waitForSelector(".pt-done", { timeout: 8000 }).catch(() => {}); }, 400);
+        const draft = await pg.evaluate(() => { try { return sessionStorage.getItem("dc:pt-draft"); } catch (e) { return "x"; } });
+        return { out, done: !!(await pg.$(".pt-done")), draft };
+      };
+      // 스토어 홈: 자동 넘김 멈춤 → 다음 · 다음 · 이전 · 점 → 다시 켬 · 끔 → 분야 탭 · 다루는 부업 찜 · 줄 넘기기
+      const home = async (mode) => {
+        await L.reactCookie(pg, base, mode); await L.open(pg, base, "/vod"); await stayOn();
+        const out = [];
+        const hero = !!(await pg.$(".vd-hero"));
+        if (hero) {
+          await step(out, () => pg.click(".vd-hero-ctl [data-v='pause']"));
+          await step(out, () => pg.click(".vd-hero-ctl [data-v='slide'][data-d='1']"), 900);
+          await step(out, () => pg.click(".vd-hero-ctl [data-v='slide'][data-d='1']"), 900);
+          await step(out, () => pg.click(".vd-hero-ctl [data-v='slide'][data-d='-1']"), 900);
+          await step(out, () => pg.click(".vd-dots button:last-child"), 900);
+          await step(out, () => pg.click(".vd-hero-ctl [data-v='slide'][data-d='1']"), 900);
+        }
+        const tabs = await pg.$$eval(".vd-hcat-tabs button", (b) => b.length);
+        if (tabs > 1) await step(out, () => pg.click(".vd-hcat-tabs button:nth-child(2)"), 400);
+        const chip = await pg.$(".vd-topics .vd-tchip:not([aria-hidden])");
+        // 흐르는 줄이라 멈춰 있지 않아요 — 움직이는 채로 눌러요
+        if (chip) { await step(out, () => chip.click({ force: true }), 400); await step(out, () => pg.click(".vd-topics .vd-tchip:not([aria-hidden])", { force: true }), 400); }
+        const pager = await pg.$(".vd-sec .vd-pager:not(.one) button[data-d='1']");
+        if (pager) await step(out, () => pager.click(), 900);
+        return { out, hero, tabs, chip: !!chip, pager: !!pager, stay: await stayed() };
+      };
+      const a4 = await home("off"), b4 = await home("all");
+      const d4 = a4.out.map((x, i) => L.shapeDiff(x, b4.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
+      await run.check(!d4.length && a4.out.length === b4.out.length && b4.out.length >= 3 && b4.stay, "스토어 홈(React): " + (b4.hero ? "배너 멈춤 · 넘기기 · 점 · " : "") + (b4.tabs > 1 ? "분야 탭 · " : "") + (b4.chip ? "부업 찜 · " : "") + (b4.pager ? "줄 넘기기 " : "") + "— 누를 때마다 예전 화면과 같은 모양 (" + b4.out.length + "번) · 새로 불러오지 않아요", d4.slice(0, 1).concat([{ hero: b4.hero, tabs: b4.tabs, chip: b4.chip, pager: b4.pager, stay: b4.stay }]), pg);
+      // 클래스 상세: 수강권 고르기 · 코칭권 · 미리보기 창(다른 강의 고르기 · 닫기) · 쿠폰 창(열기 · 닫기) · 소개 더보기 · 코멘트 더보기 · 탭 · 아래 막대 옵션 창
+      const pdp = async (mode) => {
+        await L.reactCookie(pg, base, mode); await L.open(pg, base, "/vod/p/v8"); await stayOn();
+        const out = [], has = async (sel) => !!(await pg.$(sel));
+        if (await has("#vd-pdt-info [data-plan][value='180']")) await step(out, () => pg.check("#vd-pdt-info [data-plan][value='180']", { force: true }));
+        if (await has("#vd-pdt-info [data-plan-coach]")) await step(out, () => pg.check("#vd-pdt-info [data-plan-coach]", { force: true }));
+        if (await has(".vd-pdt-play")) {
+          await step(out, () => pg.click(".vd-pdt-play"), 500);
+          if (await has(".vd-pvm-l button:nth-of-type(2)")) await step(out, () => pg.click(".vd-pvm-l button:nth-of-type(2)"), 500);
+          await step(out, () => pg.click("#modal-root .vd-modal-h button"), 300);
+        }
+        if (await has(".vd-cpdl")) { await step(out, () => pg.click(".vd-cpdl"), 400); await step(out, () => pg.click("#modal-root .vd-modal-h button"), 300); }
+        if (await has(".vd-pitch-more")) await step(out, () => pg.click(".vd-pitch-more"));
+        if (await has(".vd-cmt-more")) await step(out, () => pg.click(".vd-cmt-more"));
+        await step(out, () => pg.$eval(".vd-faq summary", (el) => el.click()));
+        await step(out, () => pg.click(".vd-pd-tabs button:last-child"), 1500);
+        await pg.evaluate(() => window.scrollTo(0, 0)); await pg.waitForTimeout(400);
+        const shot = async () => pg.evaluate(() => { const r = document.getElementById("root").cloneNode(true); return r.querySelectorAll(".vd-pd-tabs .on").length; });
+        return { out, stay: await stayed(), tabsOn: await shot(), co: await pg.evaluate(() => (document.querySelector("#vd-pdt-info a[data-co-link]") || {}).getAttribute ? document.querySelector("#vd-pdt-info a[data-co-link]").getAttribute("href") : "") };
+      };
+      const a5 = await pdp("off"), b5 = await pdp("all");
+      const d5 = a5.out.map((x, i) => L.shapeDiff(x, b5.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
+      await run.check(!d5.length && a5.out.length === b5.out.length && b5.out.length >= 3 && b5.stay && a5.co === b5.co, "클래스 상세(React): 수강권 · 코칭권 · 미리보기 · 쿠폰 창 · 더보기 · 자주 묻는 질문 · 탭 — 누를 때마다 예전 화면과 같은 모양 (" + b5.out.length + "번) · 결제 버튼 주소도 같아요 (" + b5.co + ")", d5.slice(0, 1).concat([{ co: [a5.co, b5.co] }]), pg);
+      // 클래스 상세(React)에서만: 쿠폰 받기 · 다짐 남기기 · 공감 · 지우기 · 찜
+      await L.open(pg, base, "/vod/p/v8");
+      let cp = null;
+      if (await pg.$(".vd-cpdl:not(.got)")) {
+        await pg.click(".vd-cpdl"); await pg.waitForTimeout(300);
+        const btn = await pg.$("#modal-root [data-v='cp-get']");
+        if (btn) { await btn.click(); await pg.waitForTimeout(1500); }
+        cp = { toast: await L.toasts(pg), got: await pg.$$eval("#modal-root .vd-cpm-b.done", (x) => x.length), srv: await pg.evaluate(() => fetch("/api/bootstrap", { credentials: "same-origin" }).then((r) => r.json()).then((j) => { const d = (j.docs || []).find((x) => /^vm:/.test(x[0])); return d ? (d[1].coupons || []).length : -1; })) };
+        await pg.click("#modal-root .vd-modal-h button").catch(() => {});
+      }
+      await pg.fill("[data-vd-pledge] textarea[name=text]", "리액트 상세에서 다짐해요");
+      const plN = await L.text(pg, "[data-pl-n]");
+      await pg.click("[data-vd-pledge] button[type=submit]"); await pg.waitForTimeout(500);
+      const pl1 = await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); return li ? { up: li.querySelector("[data-v='pl-up']").textContent.trim(), del: !!li.querySelector("[data-v='pl-del']") } : null; });
+      if (pl1) { await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); li.querySelector("[data-v='pl-up']").click(); }); await pg.waitForTimeout(400); }
+      const pl2 = await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); return li ? li.querySelector("[data-v='pl-up']").className + "|" + li.querySelector("[data-v='pl-up']").textContent.trim() : null; });
+      if (pl1) { await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); li.querySelector("[data-v='pl-del']").click(); }); await pg.waitForTimeout(400); }
+      const pl3 = await pg.evaluate(() => !Array.from(document.querySelectorAll(".vd-pls li")).some((x) => /리액트 상세에서 다짐해요/.test(x.textContent)));
+      await run.check(plN === String("리액트 상세에서 다짐해요".length) && pl1 && pl1.del && pl2 === "on|공감 1" && pl3 && (!cp || (cp.got >= 1 && /쿠폰 \d장을 받았어요/.test(cp.toast) && cp.srv > 0)), "클래스 상세(React): " + (cp ? "쿠폰 받기(서버에 저장) · " : "") + "다짐 남기기(글자 수) · 공감 · 지우기", { cp, plN, pl1, pl2, pl3 }, pg);
+      const a3 = await more("off"), b3 = await more("all");
+      const d3 = a3.out.map((x, i) => L.shapeDiff(x, b3.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
+      await run.check(!d3.length && a3.out.length === b3.out.length, "소개 · 두고 파트너스 · 지원서(React): 슬라이드 · 흐르는 줄 · 자주 묻는 질문 · 섹션 확인 · 다시 불러도 그대로 · 보내기 — 누를 때마다 예전 화면과 같은 모양 (" + b3.out.length + "번)", d3.slice(0, 1), pg);
+      await run.check(b3.done && !b3.draft && a3.done, "지원서(React): 다 채워 보내면(서버가 받으면) 완료 카드 · 쓰던 내용은 지워요", { done: b3.done, draft: b3.draft }, pg);
+      await run.check(lk && lk1.on && lk1.liked && lk1.n === lk.n + 1 && /찜한 강의에 담았어요|오픈하면/.test(String(lk1.toast)) && !lk2.on && !lk2.liked, "목록 찜(React): 하트 켜짐 · 찜 수 +1 · 알림 → 다시 누르면 풀려요", { lk, lk1, lk2 }, pg);
       await pg.context().close();
     }
   }

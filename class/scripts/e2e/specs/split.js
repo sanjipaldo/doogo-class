@@ -43,10 +43,12 @@ module.exports = {
       await L.ready(page);
     };
     await L.open(page, base, "/");
+    // React 화면을 켠 채로(E2E_REACT=1)면 스토어는 React 화면 · 두잉고 로그인은 아직 예전 화면이라 새로 불러요 (React 화면 ↔ 예전 화면)
+    const reactStore = await page.evaluate(() => !!window.DC_REACT_PAGE);
     await mark();
-    await moveTo("#/login", false);
+    await moveTo("#/login", reactStore);
     let s = await st();
-    await run.check((await marked()) && s.mode === "student" && s.path === "/login" && !!(await page.$("#lg-name, [data-action='svc-tab']")), "스토어 → 두잉고 로그인: 같은 파일이라 새로 부르지 않고 바로 (화면 그대로)", s, page);
+    await run.check((reactStore ? !(await marked()) : await marked()) && s.mode === "student" && s.path === "/login" && !!(await page.$("#lg-name, [data-action='svc-tab']")), reactStore ? "스토어(React 화면) → 두잉고 로그인(예전 화면): 새로 불러 예전 화면으로" : "스토어 → 두잉고 로그인: 같은 파일이라 새로 부르지 않고 바로 (화면 그대로)", s, page);
     await moveTo("#/center/login", true);
     s = await st();
     await run.check(!(await marked()) && s.mode === "admin" && s.path === "/center/login" && s.apps.indexOf("AdminApp") >= 0 && !!(await page.$("#al-id")), "두잉고 로그인 → 강사센터: 새로 불러 강사센터 파일을 받아요", s, page);

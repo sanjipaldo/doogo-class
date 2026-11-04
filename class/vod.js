@@ -1552,7 +1552,7 @@
       '</div></div><div class="vd-wrap vd-hero-ctl"><div class="vd-dots">' + bs.map((b, i) => '<button type="button" class="' + (i === ui.slide ? "on" : "") + '" data-v="slide-to" data-i="' + i + '" aria-label="' + (i + 1) + '번째 배너"></button>').join("") + '</div><button type="button" class="vd-ctl" data-v="pause" aria-label="' + (ui.paused ? "자동 넘김 켜기" : "자동 넘김 멈추기") + '">' + (ui.paused ? icon("play", "xs") : PAUSE) + '</button><span class="vd-hero-cnt"><b>' + (ui.slide + 1) + "</b> / " + bs.length + '</span><button type="button" class="vd-ctl" data-v="slide" data-d="-1" aria-label="이전 배너">' + icon("chevLeft", "sm") + '</button><button type="button" class="vd-ctl" data-v="slide" data-d="1" aria-label="다음 배너">' + icon("chevRight", "sm") + "</button></div></section>" : "";
     const tl = (V().tiles || []).filter((t) => t.on !== false && t.label && tileBiz(t));
     const tiles = '<nav class="vd-tiles" aria-label="카테고리 바로가기" style="--n:' + Math.min(12, Math.max(6, tl.length)) + ";--c:" + Math.max(4, Math.ceil(tl.length / 2)) + '">' + tl.map((t, i) => '<a class="vd-tile" href="' + esc(t.href || "#/vod/c/all") + '" style="--d:' + (i * 0.035).toFixed(3) + 's"><span class="vd-tile-ic">' + (t.img ? "<img " + imgAttr(t.img, "src") + ' alt="" width="56" height="56" draggable="false">' : icon("grid")) + (t.badge ? "<em>" + esc(t.badge) + "</em>" : "") + "</span><b>" + esc(t.label) + "</b></a>").join("") + "</nav>";
-    const pills = tl.length ? tiles : '<nav class="vd-pills" aria-label="분야" data-rv-kids><a class="vd-pill on" href="#/vod/c/all">전체</a>' + cats().map((c) => '<a class="vd-pill" href="#/vod/c/' + esc(c.key) + '">' + esc(c.label) + "</a>").join("") + '' + (bizOn("ebook") ? '<a class="vd-pill" href="#/vod/c/all?tab=ebook">전자책</a>' : "") + (bizOn("live") ? '<a class="vd-pill" href="#/vod/c/all?tab=premium">LIVE · 오프라인 강의</a>' : "") + '<a></nav>';
+    const pills = tl.length ? tiles : '<nav class="vd-pills" aria-label="분야" data-rv-kids><a class="vd-pill on" href="#/vod/c/all">전체</a>' + cats().map((c) => '<a class="vd-pill" href="#/vod/c/' + esc(c.key) + '">' + esc(c.label) + "</a>").join("") + '' + (bizOn("ebook") ? '<a class="vd-pill" href="#/vod/c/all?tab=ebook">전자책</a>' : "") + (bizOn("live") ? '<a class="vd-pill" href="#/vod/c/all?tab=premium">LIVE · 오프라인 강의</a>' : "") + "</nav>";
     return shell("home", hero + '<div class="vd-wrap">' + pills +
       homeRails().filter((r) => r.on && (!r.biz || bizOn(r.biz))).map((r) => (r.k === "why" ? whyBand(r) : r.k === "cat" ? catSec(r) : r.k === "topics" ? topicsSec(r) : r.k === "teach" ? teachers(r) : rail("vd-r-" + (r.k === "best" ? "now" : r.k), r.tag, r.color, r.t, r.more, railItems(r), r.rank ? { rank: true } : null))).join("") +
       "</div>", "home");
@@ -1641,8 +1641,10 @@
     const c = document.querySelector("[data-tpg-cnt]"); if (c) { c.hidden = !q && !tpgC; c.innerHTML = tpgCntTxt(n); }
   }
   const tpgCntTxt = (n) => (tpgC ? "<em>" + esc(tpgC) + "</em> " : "") + (tpgQ ? "‘" + esc(tpgQ.trim()) + "’ " : "") + "강사님 <b>" + n + "명</b>";
+  // 강사 카드에 쓰는 값 (예전 화면 · React 화면 ui/store/TeachersPage.jsx 같이 씀)
+  const tcView = (t, i) => ({ ph: t.ph || insPhoto(t.iid), sns: snsOf(t.iid), href: tHref(t.iid), c: ACC[(i + 1) % ACC.length], hay: tqHay(t), hit: tpgHit(t) });
   function tcCard(t, i) {
-    const ph = t.ph || insPhoto(t.iid), sns = snsOf(t.iid);
+    const v = tcView(t, i), ph = v.ph, sns = v.sns;
     return '<div class="vd-tc" style="--c:' + ACC[(i + 1) % ACC.length] + '" data-tq="' + esc(tqHay(t)) + '" data-tc="' + esc(t.cats.join("|")) + '"' + (tpgHit(t) ? "" : " hidden") + '><a class="vd-tc-main" href="' + tHref(t.iid) + '"><span class="vd-tc-ph vd-tc-s' + (i % 4) + '"><i class="vd-tc-bg" aria-hidden="true"></i>' + (ph ? '<img src="' + esc(ph) + '" alt="" loading="lazy">' : "<em>" + esc((t.name || "D").slice(0, 1)) + "</em>") + '<span class="vd-tc-n">클래스 ' + t.ps.length + "</span></span>" +
       "<b>" + esc(t.name || "") + "</b><small>" + esc(t.tag || t.cats.join(" · ")) + '</small><span class="vd-tc-cat">' + esc(t.cats.slice(0, 2).join(" · ")) + "</span></a>" +
       '<span class="vd-tc-sns">' + sns.map((x) => '<a href="' + esc(x[0]) + '" target="_blank" rel="noopener" aria-label="' + esc(t.name) + " " + x[2] + '">' + icon(x[1], "xs") + "</a>").join("") + '<a href="' + tHref(t.iid) + '" aria-label="' + esc(t.name) + ' 강사 페이지">' + icon("arrowUpRight", "xs") + "</a></span></div>";
@@ -1653,10 +1655,15 @@
     if (!list.length) return "";
     return '<section class="vd-sec vd-teach"><div class="vd-teach-h"><a class="vd-teach-link" href="#/vod/teachers"><h2 data-eg>강사진</h2><span data-rv="fade">Teachers</span>' + icon("chevRight", "sm") + '</a><p data-rv="fade">직접 해서 번 사람만 가르쳐요.</p><a class="vd-more vd-teach-more" href="#/vod/teachers">강사진 전체보기' + icon("chevRight", "xs") + '</a></div><div class="vd-teach-g vd-teach-rail" id="vd-r-teach" data-rv-kids>' + list.map(tcCard).join("") + '</div><div class="vd-teach-prog" data-prog="vd-r-teach" aria-hidden="true"><i></i></div></section>';
   }
-  function pageTeachers() {
+  // 강사진 페이지에 쓰는 값 (예전 화면 · React 화면 같이 씀) — 고른 분야가 지금 없는 분야면 풀어요
+  function teachersView() {
     const list = teacherList(), n = list.reduce((a, t) => a + t.ps.length, 0), cats = [];
     list.forEach((t) => t.cats.forEach((c) => { if (cats.indexOf(c) < 0) cats.push(c); }));
     if (tpgC && cats.indexOf(tpgC) < 0) tpgC = "";
+    return { list, n, cats };
+  }
+  function pageTeachers() {
+    const { list, n, cats } = teachersView();
     const hits = list.filter(tpgHit).length, filtered = !!(tpgC || tqNorm(tpgQ));
     const bar = '<div class="vd-tpg-bar"><label class="vd-search vd-tpg-q">' + icon("search", "sm") + '<input type="search" data-tpg-q value="' + esc(tpgQ) + '" placeholder="강사 이름 · 분야로 찾기 (초성도 돼요)" aria-label="강사 검색" autocomplete="off" enterkeyhint="search"><button type="button" class="vd-tpg-x" data-v="tpg-clear" aria-label="검색어 지우기"' + (tpgQ ? "" : " hidden") + ">" + icon("x", "xs") + "</button></label>" +
       (cats.length > 1 ? '<nav class="vd-pills vd-tpg-cats" aria-label="분야">' + [["", "전체"]].concat(cats.map((c) => [c, c])).map((c) => '<button type="button" class="vd-pill' + (c[0] === tpgC ? " on" : "") + '" data-v="tpg-cat" data-tpg-cat="' + esc(c[0]) + '" aria-pressed="' + (c[0] === tpgC) + '">' + esc(c[1]) + "</button>").join("") + "</nav>" : "") + "</div>";
@@ -1666,10 +1673,11 @@
         '<div data-tpg-none' + (hits ? " hidden" : "") + ">" + emptyBox("search", "찾는 강사님이 없어요", "이름이나 분야를 다시 확인해 보세요.", '<button type="button" class="vd-btn vd-btn-line" data-v="tpg-reset">강사진 전체 보기</button>') + "</div>"
         : emptyBox("users", "강사진을 준비하고 있어요", "곧 새로운 강사님이 찾아와요.", "")) + "</div>", "");
   }
-  function pageTeacher(iid) {
+  // 강사 페이지에 쓰는 값 (예전 화면 · React 화면 같이 씀) — 없는 강사면 null
+  function teacherView(iid) {
     iid = tFromSlug(iid);
     const list = teacherList(), i = list.findIndex((x) => x.iid === iid), t = list[i];
-    if (!t) return shell("teachers", '<div class="vd-wrap vd-tpg">' + emptyBox("users", "찾는 강사님이 없어요", "지금 DOOGO CLASS에서 강의하는 강사님을 확인해 보세요.", '<a class="vd-btn vd-btn-p" href="#/vod/teachers">강사진 보기</a>') + "</div>", "");
+    if (!t) return null;
     const b = insBrand(iid), ph = t.ph || insPhoto(iid), sns = snsOf(iid), lp = insLanding(iid);
     const career = lp && lp.about && Array.isArray(lp.about.career) ? lp.about.career.slice(0, 5).map((x) => (typeof x === "string" ? x : x.text || x.title || "")).filter(Boolean) : [];
     const rv = t.ps.reduce((a, p) => { const r = ratingOf(p.id); return { n: a.n + r.n, s: a.s + r.avg * r.n }; }, { n: 0, s: 0 });
@@ -1677,6 +1685,12 @@
     const G = [["vod", "VOD 강의", (p) => p.status === "on" && typeOf(p) === "vod"], ["ebook", "전자책 · 종이책", (p) => p.status === "on" && (typeOf(p) === "ebook" || isBook(p))], ["event", "LIVE · 오프라인", (p) => p.status === "on" && isEvent(p)], ["soon", "오픈 예정", (p) => p.status === "soon"]];
     const groups = G.map((g) => [g, t.ps.filter(g[2]).sort((a, c) => soldOf(c) - soldOf(a))]).filter((x) => x[1].length);
     const others = list.filter((x) => x !== t);
+    return { iid, i, t, b, ph, sns, career, rv, bio, groups, others, c: ACC[(i + 1) % ACC.length] };
+  }
+  function pageTeacher(iid) {
+    const tv = teacherView(iid);
+    if (!tv) return shell("teachers", '<div class="vd-wrap vd-tpg">' + emptyBox("users", "찾는 강사님이 없어요", "지금 DOOGO CLASS에서 강의하는 강사님을 확인해 보세요.", '<a class="vd-btn vd-btn-p" href="#/vod/teachers">강사진 보기</a>') + "</div>", "");
+    const { i, t, b, ph, sns, career, rv, bio, groups, others } = tv;
     return shell("teachers", '<div class="vd-tp">' +
       '<section class="vd-tp-hero" style="--c:' + ACC[(i + 1) % ACC.length] + '"><div class="vd-wrap vd-tp-in"><nav class="vd-tp-bc" aria-label="위치"><a href="#/vod/teachers">강사진</a>' + icon("chevRight", "xs") + "<span>" + esc(t.name) + "</span></nav>" +
         '<div class="vd-tp-ph" data-rv><i class="vd-tp-bg" aria-hidden="true"></i>' + (ph ? '<img src="' + esc(ph) + '" alt="' + esc(t.name) + ' 강사">' : "<em>" + esc((t.name || "D").slice(0, 1)) + "</em>") + "</div>" +
@@ -1697,17 +1711,24 @@
   const gItems = (k) => (k === "flive" ? freeLives().concat(liveItems()) : k === "eb" ? ebItems() : k === "free" ? vodItems(true) : k === "premium" ? typeItems("event").concat(premiumItems()) : k === "ebook" ? typeItems("ebook") : vodItems(false));
   const sortItems = (it, s) => sortList(it.filter((x) => !x.ext).map((x) => x.p), s).map((p) => ({ href: "#/vod/p/" + p.id, p })).concat(it.filter((x) => x.ext));
   /** 전체 클래스 (#/vod/c/all) · 분야 (#/vod/c/<분야>) — 분야를 골라도 ‘전체 클래스’ 안에서 VOD · 전자책 … 종류별로 묶어 보여요 */
-  function pageAll(ck) {
+  const ALL_TABN = { vod: "VOD 강의", ebook: "전자책", flive: "무료 LIVE", eb: "얼리버드", premium: "LIVE · 오프라인", free: "무료강의" };
+  const allUrl = (t, c, srt) => "#/vod/c/" + (c || "all") + (t && t !== "all" ? "?tab=" + t : "") + (srt ? (t && t !== "all" ? "&" : "?") + "sort=" + srt : "");
+  const SORTS = [["pop", "인기순"], ["like", "찜 많은 순"], ["new", "최신순"], ["sale", "할인율순"], ["low", "낮은 가격순"]];
+  // 전체 클래스 · 분야 화면에 쓰는 값 (예전 화면 · React 화면 ui/store/ListPage.jsx 같이 씀) — secs: 종류별 [키, 카드 목록]
+  function allView(ck) {
     const qs = route().qs, cat = ck && cats().some((c) => c.key === ck) ? ck : "", want = qs.get("tab");
     const avail = ["vod", "ebook", "flive", "eb", "premium", "free"].filter((k) => (!GBIZ[k] || bizOn(GBIZ[k])) && (k !== "eb" || want === "eb" || ebItems().length));
     const tab = avail.indexOf(want) >= 0 ? want : "all", keys = tab === "all" ? avail : [tab], s = qs.get("sort") || "pop";
-    const TABN = { vod: "VOD 강의", ebook: "전자책", flive: "무료 LIVE", eb: "얼리버드", premium: "LIVE · 오프라인", free: "무료강의" };
-    const url = (t, c, srt) => "#/vod/c/" + (c || "all") + (t && t !== "all" ? "?tab=" + t : "") + (srt ? (t && t !== "all" ? "&" : "?") + "sort=" + srt : "");
-    const offNote = want && GSEC[want] && avail.indexOf(want) < 0 ? '<div class="vd-biz-off">' + icon("bell", "sm") + "<div><b>" + GSEC[want][0] + "는 지금 준비 중이에요</b><p>지금 DOOGO CLASS는 VOD" + (bizOn("ebook") ? " · 전자책" : "") + " 클래스로 만나요. 열리면 가장 먼저 알려 드릴게요.</p></div></div>" : "";
+    const off = !!(want && GSEC[want] && avail.indexOf(want) < 0);
     let total = 0;
-    const body = keys.map((k) => {
-      let it = gItems(k); if (cat) it = it.filter((x) => !x.ext && x.p.cat === cat); if (tab !== "all") it = sortItems(it, s);
-      total += it.length; const sid = "vd-g-" + k;
+    const secs = keys.map((k) => { let it = gItems(k); if (cat) it = it.filter((x) => !x.ext && x.p.cat === cat); if (tab !== "all") it = sortItems(it, s); total += it.length; return [k, it]; });
+    return { cat, want, avail, tab, keys, s, off, secs, total };
+  }
+  function pageAll(ck) {
+    const { cat, want, avail, tab, s, off, secs, total } = allView(ck), TABN = ALL_TABN, url = allUrl;
+    const offNote = off ? '<div class="vd-biz-off">' + icon("bell", "sm") + "<div><b>" + GSEC[want][0] + "는 지금 준비 중이에요</b><p>지금 DOOGO CLASS는 VOD" + (bizOn("ebook") ? " · 전자책" : "") + " 클래스로 만나요. 열리면 가장 먼저 알려 드릴게요.</p></div></div>" : "";
+    const body = secs.map(([k, it]) => {
+      const sid = "vd-g-" + k;
       if (!it.length) return tab === "all" ? "" : emptyBox(GSEC[k][2], (cat ? catOf(cat).label + " 분야에는 아직 " + GSEC[k][0] + "가 없어요" : "지금 열린 강의가 없어요"), "다른 분야를 보거나 오픈 예정 클래스에서 알림을 받아 보세요.", '<a class="vd-btn vd-btn-o" href="' + url(tab, "") + '">전체 분야 보기</a><a class="vd-btn vd-btn-o" href="#/vod/c/soon">오픈 예정 보기</a>');
       return '<section class="vd-gsec"><div class="vd-gsec-h"><span class="vd-tag vd-tag-' + GSEC[k][3] + '">' + GSEC[k][1] + "</span><h2>" + (cat ? esc(catOf(cat).label) + " · " : "") + GSEC[k][0] + '</h2><span class="vd-gsec-n">' + it.length + "개</span>" + (tab === "all" ? '<a class="vd-more" href="' + url(k, cat) + '">전체보기' + icon("chevRight", "xs") + "</a>" : "") + "</div>" +
         '<div class="' + (tab === "all" ? "vd-row" : "vd-grid") + '" id="' + sid + '">' + it.map((x) => anyCard(x)).join("") + "</div>" + (tab === "all" && it.length > 3 ? pager(sid) : "") + "</section>"; }).join("");
@@ -1716,7 +1737,7 @@
     return shell(tab === "all" || cat ? "all" : tab, '<div class="vd-wrap vd-all">' + (cat ? '<nav class="vd-tp-bc vd-all-bc" aria-label="위치"><a href="' + url(tab, "") + '">전체 클래스</a>' + icon("chevRight", "xs") + "<span>" + esc(catOf(cat).label) + "</span></nav>" : "") + '<h1 class="vd-h1">' + title + "</h1>" + offNote +
       '<nav class="vd-gtabs" aria-label="강의 종류"><a href="' + url("all", cat) + '" class="' + (tab === "all" ? "on" : "") + '">전체</a>' + avail.map((k) => '<a href="' + url(k, cat) + '" class="' + (tab === k ? "on" : "") + '">' + TABN[k] + "</a>").join("") + "</nav>" +
       '<nav class="vd-pills" aria-label="분야"><a class="vd-pill' + (cat ? "" : " on") + '" href="' + url(tab, "") + '">전체</a>' + cats().map((c) => '<a class="vd-pill' + (c.key === cat ? " on" : "") + '" href="' + url(tab, c.key) + '">' + esc(c.label) + "</a>").join("") + "</nav>" +
-      (tab !== "all" ? '<div class="vd-sorts">' + [["pop", "인기순"], ["like", "찜 많은 순"], ["new", "최신순"], ["sale", "할인율순"], ["low", "낮은 가격순"]].map((x) => '<a class="' + (s === x[0] ? "on" : "") + '" href="' + url(tab, cat, x[0]) + '">' + x[1] + "</a>").join("") + "</div>" : "") +
+      (tab !== "all" ? '<div class="vd-sorts">' + SORTS.map((x) => '<a class="' + (s === x[0] ? "on" : "") + '" href="' + url(tab, cat, x[0]) + '">' + x[1] + "</a>").join("") + "</div>" : "") +
       body + empty + "</div>", "all");
   }
   /* ---------- 오픈 예정 · 분야 · 검색 ---------- */
@@ -1724,7 +1745,8 @@
     const by = { pop: (a, b) => soldOf(b) - soldOf(a), new: (a, b) => b.createdAt - a.createdAt, low: (a, b) => priceOf(a) - priceOf(b), sale: (a, b) => pctOf(b) - pctOf(a), like: (a, b) => likeCount(b) - likeCount(a) };
     return list.slice().sort(by[s] || by.pop);
   }
-  function listPage(key, q) {
+  // 오픈 예정 · BEST · 새로 열린 · 무료 특강 · 검색 화면에 쓰는 값 (예전 화면 · React 화면 같이 씀)
+  function listView(key, q) {
     let list = listed(), title = "", nav = "all", sub = "";
     if (q != null) { const k = q.trim().toLowerCase(); title = k ? "‘" + q.trim() + "’ 검색 결과" : "클래스 검색"; list = k ? products().filter(bizShow).filter((p) => (p.title + " " + p.sub + " " + p.creator + " " + catOf(p.cat).label + " " + (p.hook || "") + " " + TYPE[typeOf(p)][0]).toLowerCase().indexOf(k) >= 0) : list; nav = ""; }
     else if (key === "soon") { title = "오픈 예정"; sub = "알림을 신청하면 오픈할 때 할인가로 가장 먼저 알려 드려요."; list = V().products.filter((p) => p.status === "soon" && bizShow(p)); nav = "soon"; }
@@ -1736,7 +1758,10 @@
     const known = q == null && cats().some((c) => c.key === key);
     const s = route().qs.get("sort") || (key === "new" ? "new" : "pop"); list = sortList(list, s);
     const base = q != null ? "#/vod/search?q=" + encodeURIComponent(q) + "&" : "#/vod/c/" + key + "?";
-    const sorts = [["pop", "인기순"], ["like", "찜 많은 순"], ["new", "최신순"], ["sale", "할인율순"], ["low", "낮은 가격순"]];
+    return { list, title, nav, sub, known, s, base };
+  }
+  function listPage(key, q) {
+    const { list, title, nav, sub, known, s, base } = listView(key, q), sorts = SORTS;
     return shell(nav, '<div class="vd-wrap vd-list">' +
       (q != null ? '<form class="vd-search vd-search-lg" data-vd-search><input name="q" type="search" value="' + esc(q) + '" placeholder="클래스 · 크리에이터 · 부업으로 찾기" aria-label="클래스 검색"><button type="submit" aria-label="검색">' + icon("search", "sm") + "</button></form>" : "") +
       '<div class="vd-list-h"><div><h1 class="vd-h1">' + esc(title) + " <small>" + list.length + "개</small></h1>" + (sub ? "<p>" + sub + "</p>" : "") + "</div></div>" +
@@ -1755,9 +1780,14 @@
     ["ai", "24시간 AI 조교", "막히는 순간, 밤 12시에도 바로 질문", "강의 내용을 아는 AI 조교가 바로 답해요. 더 깊은 고민은 1:1 코칭권으로 강사님께 직접 물어볼 수 있어요."],
     ["coach", "강사님 1:1 코칭 · TEA TIME", "강의를 만든 강사님께, 내 사업을 직접 물어봐요", "1:1 코칭권으로 내 상품 · 내 상황에 맞는 답을 받고, TEA TIME으로 강사님을 직접 만나요. 영상만 보고 혼자 헤매지 않게, 막히는 지점에서 사람이 답해요."]
   ];
-  function pageAbout() {
-    const sl = ui.abSlide || 0, ps = listed(), tl = teacherList();
+  // 소개 화면 숫자 (예전 화면 · React 화면 ui/store/AboutPage.jsx 같이 씀)
+  function aboutView() {
+    const ps = listed(), tl = teacherList();
     const learners = V().products.reduce((a, p) => a + soldOf(p), 0), rv = (V().reviews || []).filter((r) => Number(r.rating) > 0), avg = rv.length ? rv.reduce((x, r) => x + Number(r.rating), 0) / rv.length : 0;
+    return { ps, tl, learners, avg };
+  }
+  function pageAbout() {
+    const sl = ui.abSlide || 0, { ps, tl, learners, avg } = aboutView();
     const mq = '<span>따라 하면</span><i>✳</i><span>바로 쓰는</span><i>✳</i><span>실전 노하우</span><i>✳</i><span class="en">DOOGO CLASS</span><i>✳</i>';
     const dot = (t) => '<p class="ab-dot"><i></i>' + t + "</p>";
     const stat = (n, unit, label) => '<div><b><i data-count="' + n + '">' + Number(n).toLocaleString() + "</i>" + unit + "</b><span>" + label + "</span></div>";
@@ -2015,10 +2045,15 @@
       '<p class="vd-buy-note">' + icon("shieldCheck", "xs") + (refundKey(p) === "vod" ? "결제 후 " + rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : refundKey(p) === "ebook" ? "내려받기 전 7일 이내 전액 환불" : refundKey(p) === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : refundKey(p) === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강") + ' <button type="button" class="vd-link" data-v="jump" data-to="vd-s-refund">환불 규정</button></p></div>';
   }
   // 아래로 내리면 따라오는 결제 막대 + 누르면 위로 열리는 옵션 창 (패스트캠퍼스 하단 구매 박스)
-  function fbarHtml(p) {
+  // 아래 결제 막대에 쓰는 값 (예전 화면 · React 화면 같이 씀)
+  function fbarView(p) {
     const m = me(), c = ctaOf(p, m), pr = priceOf(p), pct = pctOf(p), pvs = previewsOf(p), own = m && owns(m.id, p.id), end = own ? "" : saleEndOf(p);
     const rbB = m && !own && p.status === "on" ? rebuyOf(m.id, p) : 0, best = m && pr > 0 && p.status === "on" && !rbB ? usableCoupons(m.id, p)[0] : null, toCheckout = !!c.co || (!!c.href && /checkout\/[^?]*$/.test(c.href));
     const fy = plansOf(p).length ? (() => { const ps = plansFor(p, m && !own ? m.id : ""); return ps.find((x) => x.d === 365) || ps[0]; })() : null;
+    return { m, c, pr, pct, pvs, own, end, rbB, best, toCheckout, fy };
+  }
+  function fbarHtml(p) {
+    const { m, c, pr, pct, pvs, own, end, rbB, best, toCheckout, fy } = fbarView(p);
     return '<div class="vd-fbar" id="vd-fbar">' +
       (toCheckout ? '<div class="vd-fbar-panel" id="vd-fbar-panel"><div class="vd-wrap vd-fbp"><div class="vd-fbp-h"><b>수강 옵션 선택</b><button type="button" data-v="fbar" aria-label="옵션 창 닫기">' + icon("x", "sm") + "</button></div>" +
         (plansOf(p).length ? planBox(p, "b") : '<label class="vd-fbp-opt"><input type="radio" checked><span><b>' + esc(TYPE[typeOf(p)][0]) + " · " + esc(accessTxt(p)) + "</b><small>" + esc(metaOf(p).join(" · ")) + "</small></span><strong>" + won(pr) + "</strong></label>") +
@@ -2047,8 +2082,8 @@
     // 2026-11-02: 숫자 상자 대신 이름 오른쪽 알약 — 누르면 강사 페이지(다른 클래스)로
     return mine.length ? '<a class="vd-crd-cnt" href="' + tHref(p.iid) + '" aria-label="' + esc(p.creator || "") + ' 강사 클래스 ' + mine.length + '개 보기">' + icon("monitorPlay", "xs") + "<span>클래스</span><b>" + mine.length + "</b></a>" : "";
   }
-  function pageProduct(id) {
-    const p = product(id); if (!p || p.status === "hidden" || !insShown(p)) return shell("", '<div class="vd-wrap">' + emptyBox("alert", "판매 중인 클래스가 아니에요", "", '<a class="vd-btn vd-btn-o" href="#/vod">홈으로</a>') + "</div>");
+  // 클래스 상세에 쓰는 값 (예전 화면 · React 화면 ui/store/ProductPage.jsx 같이 씀)
+  function productView(p) {
     const m = me(), own = m && owns(m.id, p.id), rt = ratingOf(p.id), rs = reviewsOf(p.id), lz = lessons(p), cat = catOf(p.cat), pls = pledgesOf(p.id), t = typeOf(p), ev = isEvent(p), pvs = previewsOf(p);
     const ins = p.iid && DB.instructor ? DB.instructor(p.iid) : null, insB = p.iid ? insBrand(p.iid) : {}, lp = insLanding(p.iid);
     const career = lp && lp.about && Array.isArray(lp.about.career) ? lp.about.career.slice(0, 5).map((x) => (typeof x === "string" ? x : x.text || x.title || "")).filter(Boolean) : [];
@@ -2068,6 +2103,11 @@
     const tabs = [["intro", bk ? "책 소개" : "클래스 소개"]].concat(noCur ? [] : [["curri", curName]]).concat([["reviews", (bk ? "독자 후기" : "후기") + (rs.length ? " " + rs.length : "")], ["info", bk ? "도서 · 배송 안내" : "이용 안내"]]);
     const pains = pdText(p, "pains"), before = pdText(p, "before"), after = pdText(p, "after"), dm = detailModeOf(p), dimg = detailImgsHtml(p);
     const info = bk ? [["도서명", p.title], ["종류", "종이책 (택배 배송)"]].concat(bookRows(p)).concat([["교환 · 반품", "받은 날부터 7일 이내 (파손 · 파본은 3개월 이내)"]]) : [["강의명", p.title], ["크리에이터", p.creator + (p.tagline ? " · " + p.tagline : "")], ["강의 종류", TYPE[t][0] + " (" + TYPE[t][2] + ")"]].concat(infoRows(p)).concat([["강의 자료", lz.some((l) => (l.files || []).length) ? "강의 노트 · 첨부 자료 제공" : t === "ebook" ? "PDF 파일" : "강의 노트 제공"], ["수강 기기", "PC · 모바일 · 태블릿 (스트리밍 · 기기 4대)"]].concat(t === "vod" ? [["수강 기간", periodTxt(p)]] : []).concat(dgOpen(p) ? [["강의실", p.creator + " 강사 두잉고 강의실 (강의 영상 · 교재 · 업데이트 소식)"]] : []).concat([["환불", refundTbl()[refundKey(p)][0][0] + " " + refundTbl()[refundKey(p)][0][1]]]));
+    return { m, own, rt, rs, lz, cat, pls, t, ev, pvs, ins, insB, lp, career, pool, related, usedIns, mine, dist, canReview, hl, myNick, sec, bk, noCur, curName, unit, faq, tabs, pains, before, after, dm, dimg, info };
+  }
+  function pageProduct(id) {
+    const p = product(id); if (!p || p.status === "hidden" || !insShown(p)) return shell("", '<div class="vd-wrap">' + emptyBox("alert", "판매 중인 클래스가 아니에요", "", '<a class="vd-btn vd-btn-o" href="#/vod">홈으로</a>') + "</div>");
+    const { m, own, rt, rs, lz, cat, pls, t, ev, pvs, ins, insB, lp, career, pool, related, usedIns, mine, dist, canReview, hl, myNick, sec, bk, noCur, curName, unit, faq, tabs, pains, before, after, dm, dimg, info } = productView(p);
     return shell("", '<div class="vd-pd5">' +
       '<section class="vd-pdt vd-pdt7"><div class="vd-wrap"><nav class="vd-crumbs"><a href="#/vod">홈</a>' + icon("chevRight", "xs") + '<a href="#/vod/c/' + esc(p.cat) + '">' + esc(cat.label) + "</a>" + icon("chevRight", "xs") + '<a href="#/vod/c/all?tab=' + (ev ? "premium" : bk ? "ebook" : t) + '">' + esc(TYPE[t][0]) + "</a></nav>" +
         '<div class="vd-pdt-banner vd-th-' + t + '">' + bannerArt(p) + (pvs.length ? '<button type="button" class="vd-pdt-play" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '"><i>' + icon("play") + "</i><span>미리보기 <b>" + pvs.length + "개</b></span></button>" : "") + "</div>" +
@@ -2181,8 +2221,13 @@
     return '<label class="vd-plan' + (on ? " on" : "") + '"><input type="radio" name="' + name + '" value="' + y.d + '"' + (attr ? " " + attr : "") + (on ? " checked" : "") + '><span class="vd-plan-t"><b>' + y.label + " 수강권</b>" + (y.d === 365 ? "<em>추천</em>" : "") +
       "<small>총 " + won(y.sale) + " · " + (sub || y.d + "일 수강") + "</small></span><span class=\"vd-plan-p\">" + (was ? "<s>" + won(was) + "</s>" : "") + '<span class="vd-plan-mo">' + (off ? "<em>" + off + "%</em>" : "") + "<strong>" + won(y.month) + "<small>/월</small></strong></span></span></label>";
   }
-  function planBox(p, sfx) {
+  // 수강권 선택 상자에 쓰는 값 (예전 화면 · React 화면 같이 씀)
+  function planView(p) {
     const m = me(), ps = plansFor(p, m && m.id), s = PSEL[p.id] || {}, sel = ps.find((x) => x.d === Number(s.d)) || ps.find((x) => x.d === 365) || ps[0], c = coachOf(p), on = !!(s.coach && c), rb = sel.rb || 0;
+    return { m, ps, s, sel, c, on, rb };
+  }
+  function planBox(p, sfx) {
+    const { m, ps, s, sel, c, on, rb } = planView(p);
     return '<div class="vd-plans" data-plans="' + esc(p.id) + '"><p class="vd-plans-h"><b>' + icx("ticket", "xs") + "수강권 선택" + (ebOf(p) ? '<em class="vd-eb-tag">얼리버드</em>' : "") + (rb ? '<em class="vd-rb-tag">재수강 ' + rb + "%</em>" : "") + "</b><small>" + (rb ? "수강 기간이 끝난 강의라 할인가로 다시 들어요" : "12개월이 한 달 가격이 가장 낮아요") + "</small></p>" +
       ps.map((y) => planRow(y, "vd-plan-" + sfx, y.d === sel.d, "data-plan")).join("") +
       (c ? '<label class="vd-addon' + (on ? " on" : "") + '"><input type="checkbox" value="1" data-plan-coach' + (on ? " checked" : "") + '><span class="vd-addon-t"><b>1:1 코칭권 ' + c.n + "회 함께 사기</b><small>" + c.days + "일 동안 강사에게 직접 질문 · 1회 " + won(c.per) + "</small></span><strong>+" + won(c.price) + "</strong></label>" : "") +
@@ -2217,14 +2262,27 @@
   const cpAmt = (p) => (defPlan(p) || {}).sale || priceOf(p);
   const dlCoupons = (p) => (V().coupons || []).filter((c) => c.on !== false && (c.dl || c.auto === "signup") && (!c.endAt || c.endAt >= today()) && couponOff(c, p, cpAmt(p)) > 0);
   const hasCp = (mid, c) => ((V().memberCoupons || {})[mid] || []).some((x) => x.cid === c.id);
+  /** 상세 쿠폰 받기 (cid 하나 또는 "all" = 아직 안 받은 쿠폰 모두) → 받은 장수 — 서버가 켜져 있으면 서버가 줘요 (예전 화면 · React 화면 같이 씀) */
+  function cpGet(p, cid) {
+    const m = me(); if (!m) return Promise.resolve(0);
+    const list = cid === "all" ? dlCoupons(p).filter((c) => !hasCp(m.id, c)) : dlCoupons(p).filter((c) => c.id === cid);
+    if (srvOn()) return list.reduce((pr, c) => pr.then((n) => payApi("claim", { cid: c.id }).then((r) => (r && r.ok ? n + 1 : n))), Promise.resolve(0)).then((n) => DB.remote.refresh().then(() => n));
+    const got = list.filter((c) => issueCoupon(m.id, c)); save();
+    return Promise.resolve(got.length);
+  }
   function cpDlBtn(p, m) {
     if (!(priceOf(p) > 0) || p.status !== "on" || isBook(p) || (m && owns(m.id, p.id))) return "";
     const cs = dlCoupons(p), left = m ? cs.filter((c) => !hasCp(m.id, c)).length : cs.length;
     if (!cs.length) return "";
     return '<button type="button" class="vd-cpdl' + (left ? "" : " got") + '" data-v="cp-open" data-p="' + esc(p.id) + '">' + icon(left ? "download" : "check", "xs") + (left ? "사용 가능한 쿠폰이 있어요!" : "받은 쿠폰 " + cs.length + "장 · 결제할 때 적용돼요") + "</button>";
   }
-  function cpModalBody(p) {
+  // 쿠폰 받기 창에 쓰는 값 (예전 화면 · React 화면 같이 씀)
+  function cpView(p) {
     const m = me(), cs = dlCoupons(p), amt = cpAmt(p), left = m ? cs.filter((c) => !hasCp(m.id, c)) : [];
+    return { m, cs, amt, left };
+  }
+  function cpModalBody(p) {
+    const { m, cs, amt, left } = cpView(p);
     const big = (c) => (c.kind === "pct" ? c.value + "<small>%</small>" : Number(c.value) >= 10000 && Number(c.value) % 10000 === 0 ? Number(c.value) / 10000 + "<small>만 원</small>" : Number(c.value).toLocaleString() + "<small>원</small>");
     return '<div class="vd-modal-b vd-cpm"><p class="vd-cpm-lead">' + esc(p.title) + "<br><small>" + (plansOf(p).length ? "12개월 수강권 " : "") + won(amt) + " 기준 할인 금액이에요</small></p><ul>" + cs.map((c) => {
       const got = m && hasCp(m.id, c), off = couponOff(c, p, amt);
@@ -2235,10 +2293,15 @@
         : '<a class="vd-btn vd-btn-p vd-btn-xl vd-cpm-all" href="#/vod/login?next=' + encodeURIComponent("#/vod/p/" + p.id) + '">로그인하고 쿠폰 받기</a><p class="vd-cpm-note">아직 회원이 아니라면 가입만 해도 <b>5,000원 할인 쿠폰</b>을 바로 드려요 (30일 동안 사용).</p>') +
       '<p class="vd-cpm-note">쿠폰은 결제 1건에 1장만 쓸 수 있어요. 받은 쿠폰은 마이페이지 › 쿠폰에서 볼 수 있어요.</p></div>';
   }
-  function buyCard(p) {
+  // 가격 카드에 쓰는 값 (예전 화면 · React 화면 같이 씀)
+  function buyView(p) {
     const m = me(), own = m && owns(m.id, p.id), pr = priceOf(p), pct = pctOf(p), left = seatsLeft(p), isLiked = liked(m && m.id, p.id), pvs = previewsOf(p);
     const end = saleEndOf(p), cps = m && pr > 0 && p.status === "on" ? usableCoupons(m.id, p) : [], best = cps[0], mo = monthOf(p), eb = ebOf(p);
     const ps = plansOf(p), rb = !own && !!m && ps.length > 0 && p.status === "on" ? rebuyOf(m.id, p) : 0;
+    return { m, own, pr, pct, left, isLiked, pvs, end, cps, best, mo, eb, ps, rb };
+  }
+  function buyCard(p) {
+    const { m, own, pr, pct, left, isLiked, pvs, end, cps, best, mo, eb, ps, rb } = buyView(p);
     const cd = end && !own ? '<div class="vd-cd' + (eb ? " vd-cd-eb" : "") + '">' + icon("clock", "xs") + "<span>" + (eb ? "얼리버드 마감까지" : "할인 마감까지") + '</span><b data-cd="' + esc(end) + '">' + cdTxt(end) + "</b><span>남음</span></div>" : "";
     const price = p.status === "soon" ? '<div class="vd-pc-top"><span class="vd-pc-lab">오픈 예정가</span><strong>' + (pr ? won(pr) : "무료") + "</strong></div>" + (p.openAt ? '<p class="vd-buy-mo">' + fmtOpen(p.openAt) + " · 알림 신청하면 오픈 할인을 알려 드려요</p>" : "")
       : pr === 0 ? '<div class="vd-pc-top"><span class="vd-pc-lab">수강료</span><strong class="free">무료</strong></div>'
@@ -2257,8 +2320,13 @@
       '<p class="vd-buy-note">' + icon("shieldCheck", "xs") + (refundKey(p) === "vod" ? "결제 후 " + rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : refundKey(p) === "ebook" ? "내려받기 전 7일 이내 전액 환불" : refundKey(p) === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : refundKey(p) === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강") + ' <button type="button" class="vd-link" data-v="jump" data-to="vd-s-refund">환불 규정</button></p></aside>';
   }
   /** 이미 수강 중일 때 가격 자리: 남은 기간 · 진도 · 남은 코칭 */
-  function ownBox(p, m) {
+  // 수강 중 상자에 쓰는 값 (예전 화면 · React 화면 같이 씀)
+  function ownView(p, m) {
     const e = accessEnd(m.id, p.id), dl = daysLeft(m.id, p.id), c = coachOf(p), cl = c ? coachLeft(m.id, p.iid) : 0, tz = teaOf(p) ? teasOf(m.id, p.iid).filter((o) => (o.tea || {}).st === "ok" || (o.tea || {}).st === "req") : [];
+    return { e, dl, c, cl, tz };
+  }
+  function ownBox(p, m) {
+    const { e, dl, c, cl, tz } = ownView(p, m);
     return '<div class="vd-pc-own"><span class="vd-tag vd-tag-blue">수강 중</span><b>' + (e === Infinity ? "기간 제한 없음" : DB.date.fmtFull(DB.date.toStr(new Date(e))) + "까지") + "</b>" + (e !== Infinity ? "<small>D-" + Math.max(0, dl) + "</small>" : "") + "</div>" +
       '<dl class="vd-pc-rows"><div><dt>진도율</dt><dd><b>' + pctDone(m.id, p.id) + "%</b></dd></div>" + (c ? "<div><dt>1:1 코칭권</dt><dd>" + (cl ? "남은 <b>" + cl + "회</b>" : "없음") + "</dd></div>" : "") + (tz.length ? "<div><dt>TEA TIME</dt><dd>" + esc(TEA_ST[(tz[0].tea || {}).st || "req"][0]) + "</dd></div>" : "") + "</dl>";
   }
@@ -3110,8 +3178,14 @@
     ["다른 곳에서 강의하고 있어도 괜찮나요?", "괜찮아요. 지금 활동하는 곳을 지원서에 적어 주시면, 상담에서 주제 · 구성이 겹치지 않게 함께 정해요."],
     ["지원서를 보내면 언제 연락이 오나요?", "담당자가 지원서를 꼼꼼히 읽고 남겨 주신 연락처로 연락드려요. 지원이 많을 때는 조금 늦어질 수 있어요."]
   ];
+  // 두고 파트너스 화면에 쓰는 값 (예전 화면 · React 화면 ui/store/PartnersPage.jsx 같이 씀)
+  function partnersView() {
+    const ts = teacherList().slice(0, 4), cs = cats(), ps = listed(), p0 = ps.find((p) => typeOf(p) === "vod" && p.thumb) || ps[0];
+    const kinds = [["monitorPlay", "VOD 강의", "6개월 · 12개월 수강권으로 판매해요. 수강 기간이 끝나면 재수강 할인으로 다시 만나요."], ["book", "전자책 · 종이책", "PDF 전자책은 바로 내려받고, 종이책은 택배로 보내요."], bizOn("live") && ["calendar", "LIVE · 오프라인 강의", "실시간 온라인 강의 · 오프라인 특강으로 수강생을 직접 만나요."], ["message", "1:1 코칭권 · TEA TIME", "VOD 수강생에게 1:1 피드백 · 줌 TEA TIME을 더해 함께 판매해요."]].filter(Boolean);
+    return { ts, cs, ps, p0, kinds };
+  }
   function pagePartners() {
-    const ts = teacherList().slice(0, 4), cs = cats(), ps = listed();
+    const { ts, cs, p0, kinds } = partnersView();
     const phT = (t) => t.ph || insPhoto(t.iid);
     const sec = (id, eb, h, sub, body, cls) => '<section class="pt-sec' + (cls ? " " + cls : "") + '"' + (id ? ' id="' + id + '"' : "") + '><div class="vd-wrap"><div class="pt-sec-h" data-rv><small>' + eb + "</small><h2>" + h + "</h2>" + (sub ? "<p>" + sub + "</p>" : "") + "</div>" + body + "</div></section>";
     const hero = '<section class="pt-hero"><i class="pt-hero-bg" aria-hidden="true"><b></b><b></b></i><div class="vd-wrap pt-hero-in">' +
@@ -3134,7 +3208,6 @@
     // 왜 DOOGO CLASS? — 화면 모양(목업)은 숫자 없이 그림으로만 (실제 정산 · 판매 숫자처럼 보이지 않게)
     // 그림 칸(data-rv="open")은 화면에 들어올 때 하나씩 ‘열려요’: 칸이 가운데서 양옆으로 열리고 → 카드가 떠오르고 → 안쪽 항목(--k 순서)이 차례로
     const mkMake = '<div class="pt-mock pt-mk-make"><b>클래스 제작 진행</b><ol>' + [["기획 회의 · 커리큘럼", "done"], ["스튜디오 촬영", "done"], ["편집 · 자막", "done"], ["썸네일 · 상세페이지", "now"], ["오픈", ""]].map((x, k) => '<li class="' + x[1] + '" style="--k:' + k + '"><i>' + (x[1] === "done" ? icon("check", "xs") : "") + "</i>" + x[0] + (x[1] === "now" ? "<em>진행 중</em>" : "") + "</li>").join("") + '</ol><div class="pt-mk-bar"><i></i></div></div>';
-    const p0 = ps.find((p) => typeOf(p) === "vod" && p.thumb) || ps[0];
     const mkSell = '<div class="pt-mock pt-mk-sell">' + (p0 ? '<div class="pt-mk-card"><span class="pt-mk-th">' + thumbArt(p0) + "</span><b>" + esc(p0.title) + "</b><small>" + esc(p0.creator || "") + "</small></div>" : "") + '<div class="pt-mk-tags"><span class="pt-mk-tag t1">' + icon("bell", "xs") + "오픈 알림</span><span class=\"pt-mk-tag t2\">" + icon("gift", "xs") + "쿠폰</span><span class=\"pt-mk-tag t3\">" + icon("users", "xs") + "강사 페이지</span><span class=\"pt-mk-tag t4\">" + icon("megaphone", "xs") + "광고</span></div></div>";
     const mkRoom = '<div class="pt-mock pt-mk-room"><div class="pt-mk-prog"><span>진도율</span><i><b></b></i></div><ul>' + [["file", "수업 자료 내려받기"], ["bot", "AI 조교에게 바로 질문"], ["message", "1:1 코칭권으로 피드백"], ["star", "끝까지 듣고 후기 남기기"]].map((x, k) => '<li style="--k:' + k + '">' + icon(x[0], "xs") + x[1] + "</li>").join("") + "</ul></div>";
     const mkPay = '<div class="pt-mock pt-mk-pay"><div class="pt-mk-ph"><b>판매 · 정산 달력</b><span class="vd-fresh vd-fresh-upd">UPDATE<small>' + String(today()).slice(2, 7).replace("-", ".") + '</small></span></div><div class="pt-mk-bars">' + [38, 62, 45, 80, 56, 92, 70].map((h, k) => '<i style="--h:' + h + '%;--k:' + k + '"></i>').join("") + '</div><div class="pt-mk-row"><span>' + icon("calendar", "xs") + "정산 예정</span><span>" + icon("refresh", "xs") + "재수강 할인</span></div></div>";
@@ -3146,7 +3219,6 @@
       feat(3, "04 · 정산 · 업데이트", "정산은 투명하게,<br>강의는 늘 최신으로.", "강사센터에서 날짜별 판매 · 정산 예정 · 정산 내역을 언제든 확인해요. 바뀐 내용은 그 부분만 다시 찍어 업데이트하고, 수강 기간이 끝난 수강생은 재수강 할인으로 다시 만나요.", mkPay) + "</div>", "pt-why");
     const who = sec("", "WHO WE LOOK FOR", "이런 분을 찾고 있어요", "", '<div class="pt-who" data-rv-kids>' + [["trophy", "직접 해서 결과를 낸 분", "매출 · 수익 · 성장처럼 숫자로 보여 줄 수 있는 경험이 있어요."], ["users", "알려 주는 게 즐거운 분", "내가 걸어온 길을 처음 시작하는 사람에게 차근차근 알려 줄 수 있어요."], ["refresh", "꾸준히 다듬어 갈 분", "시장이 바뀌면 강의도 바뀌어요. 최신 내용으로 업데이트할 수 있어요."], ["sparkles", "채널이 없어도 괜찮아요", "유튜브 · 블로그 · 인스타가 있으면 좋지만, 없어도 지원할 수 있어요."]].map((x) => '<div class="pt-who-c"><span>' + icon(x[0], "sm") + "</span><b>" + x[1] + "</b><p>" + x[2] + "</p></div>").join("") + "</div>" +
       '<div class="pt-cats" data-rv><b>이런 분야를 찾고 있어요</b>' + ptCatRows(cs) + '<span class="pt-cat pt-cat-etc">' + icon("plus", "xs") + "그 밖의 분야도 환영해요</span></div>", "pt-whos");
-    const kinds = [["monitorPlay", "VOD 강의", "6개월 · 12개월 수강권으로 판매해요. 수강 기간이 끝나면 재수강 할인으로 다시 만나요."], ["book", "전자책 · 종이책", "PDF 전자책은 바로 내려받고, 종이책은 택배로 보내요."], bizOn("live") && ["calendar", "LIVE · 오프라인 강의", "실시간 온라인 강의 · 오프라인 특강으로 수강생을 직접 만나요."], ["message", "1:1 코칭권 · TEA TIME", "VOD 수강생에게 1:1 피드백 · 줌 TEA TIME을 더해 함께 판매해요."]].filter(Boolean);
     const types = sec("", "WHAT YOU CAN OPEN", "이런 클래스를 열 수 있어요", "하나로 시작해도 되고, 함께 열면 수강생이 이어서 들어요.", '<div class="pt-kinds pt-kinds-' + kinds.length + '" data-rv-kids>' + kinds.map((x) => '<div class="pt-kind">' + icon(x[0], "sm") + "<b>" + x[1] + "</b><p>" + x[2] + "</p></div>").join("") + "</div>", "pt-types");
     const flow = sec("pt-flow", "HOW IT WORKS", "지원부터 오픈까지, 이렇게 진행돼요", "", '<ol class="pt-flow" data-rv-kids>' + PT_FLOW.map((x, i) => '<li><span class="pt-fl-n">' + String(i + 1).padStart(2, "0") + '</span><span class="pt-fl-ic">' + icon(x[2], "sm") + "</span><b>" + x[0] + "</b><p>" + x[1] + "</p></li>").join("") + "</ol>" + '<div class="pt-flow-cta" data-rv>' + ptCta("vd-btn-xl", "지원서 쓰러 가기") + "</div>", "pt-flows");
     const faq = '<section class="pt-faqs" id="pt-faq"><div class="vd-wrap pt-faq-w"><img class="pt-faq-ms" data-rv="pop" src="' + PT_MS + 'mascot-faq.webp" alt="" width="380" height="408" loading="lazy"><h2 class="pt-faq-h" data-rv>자주 묻는 질문</h2>' +
@@ -3225,10 +3297,10 @@
     return shell("partners", '<div class="pt pt-gf"><div class="pt-gf-w" id="pt-ap-main">' + ban + title + prog + form + foot + "</div></div>", "", "vd-pt-page vd-pt-gf");
   }
   /** 섹션의 * 질문이 다 채워졌는지 — 빈 질문 카드는 빨갛게, 첫 번째로 이동. 맞으면 true */
-  function ptCheck(f, n, quiet) {
-    const secEl = f.querySelector('.pt-gf-sec[data-sec="' + n + '"]'); if (!secEl) return true;
-    let first = null;
-    secEl.querySelectorAll(".pt-gf-q").forEach((q) => {
+  // 섹션 n 의 질문마다 맞는지 (화면은 바꾸지 않고 결과만 — 예전 화면 · React 화면 같이 씀) → [{ q: 질문 카드, name, ok, msg }]
+  function ptIssues(f, n) {
+    const secEl = f.querySelector('.pt-gf-sec[data-sec="' + n + '"]'); if (!secEl) return [];
+    return Array.prototype.map.call(secEl.querySelectorAll(".pt-gf-q"), (q) => {
       const name = q.dataset.q, el = f.elements[name]; let ok = true, msg = "이 질문에 답해 주세요";
       const v = el && el.value != null && !el.length ? String(el.value).trim() : "";
       if (q.hasAttribute("data-req")) {
@@ -3238,6 +3310,12 @@
       if (ok && v && name === "phone" && !/^[0-9+\-() ]{8,}$/.test(v)) { ok = false; msg = "연락처를 숫자로 적어 주세요 (예: 010-0000-0000)"; }
       if (ok && v && name === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { ok = false; msg = "이메일 주소를 확인해 주세요"; }
       if (name === "agree" && !ok) msg = "개인정보 수집 · 이용에 동의해 주세요";
+      return { q, name, ok, msg };
+    });
+  }
+  function ptCheck(f, n, quiet) {
+    let first = null;
+    ptIssues(f, n).forEach(({ q, ok, msg }) => {
       q.classList.toggle("bad", !ok);
       const e = q.querySelector(".pt-gf-err span"); if (e) e.textContent = msg;
       const inpEl = q.querySelector("input:not([type=radio]):not([type=checkbox]), textarea"); if (inpEl) inpEl.setAttribute("aria-invalid", ok ? "false" : "true");
@@ -3262,16 +3340,13 @@
     if (pn) pn.textContent = n; if (pt) pt.textContent = PT_SECS[n - 1][0]; if (pb) { pb.style.width = n * 20 + "%"; pb.parentElement.setAttribute("aria-valuenow", n); }
     const h = f.querySelector('.pt-gf-sec[data-sec="' + n + '"] h2'); if (h) { h.setAttribute("tabindex", "-1"); setTimeout(() => h.focus({ preventScroll: true }), 350); }
   }
-  async function doPartnerApply(f) {
-    const err = document.getElementById("pt-err"), v = (n) => (f[n] && f[n].value != null && !f[n].length ? String(f[n].value).trim() : ""), pick = (n) => Array.from(f.querySelectorAll('input[name="' + n + '"]:checked')).map((x) => x.value);
-    // 모든 섹션 확인 — 빈 * 질문이 있는 섹션으로 데려가요
-    for (let i = 1; i <= 5; i++) if (!ptCheck(f, i, true)) { ptShow(f, i); ptCheck(f, i); err.textContent = "섹션 " + i + " · " + PT_SECS[i - 1][0] + "에 답하지 않은 질문이 있어요."; return; }
-    err.textContent = "";
-    const btn = f.querySelector("button[type=submit]"); btn.disabled = true; btn.classList.add("is-busy");
+  /** 지원서 보내기 (예전 화면 · React 화면 같이 씀) — 다 맞는지는 먼저 확인한 뒤에 · 보내면 쓰던 내용을 지워요
+   *  → { ok: true, sum: 완료 카드 내용 } · { ok: false, err: 안내 글 } */
+  async function ptSubmit(f) {
+    const v = (n) => (f[n] && f[n].value != null && !f[n].length ? String(f[n].value).trim() : ""), pick = (n) => Array.from(f.querySelectorAll('input[name="' + n + '"]:checked')).map((x) => x.value);
     const kinds = pick("kinds"), cat = pick("cat")[0] || "", one = (n) => pick(n)[0] || "";
     const form = { nick: v("nick"), cat, kinds, topic: v("topic"), result: v("result"), exp: one("exp"), ready: one("ready"), when: one("when"), link2: v("link2"), from: one("from"),
       ctime: one("ctime"), career: v("career"), reach: one("reach"), target: v("target"), curri: v("curri"), film: one("film"), price: one("price") };
-    const bad = (msg) => { btn.disabled = false; btn.classList.remove("is-busy"); err.textContent = msg; };
     try {
       const r = await DB.applyPartner({
         name: v("name"), phone: v("phone"), email: v("email"), source: "partners", form,
@@ -3279,8 +3354,21 @@
         where: "[두고 파트너스] " + (v("where") || "-"), course: "[" + (kinds.join(", ") || "VOD 강의") + " / " + cat + "] " + v("topic") + "\n" + v("course"), link: v("link"),
         message: v("message"), agree: true
       });
-      if (!r || r.error || r.ok === false) return bad(r && r.error === "locked" ? "지원이 많이 들어와 잠시 막혔어요. 조금 뒤에 다시 보내 주세요." : "보내지 못했어요. 입력한 내용을 확인하고 잠시 후 다시 시도해 주세요.");
+      if (!r || r.error || r.ok === false) return { ok: false, err: r && r.error === "locked" ? "지원이 많이 들어와 잠시 막혔어요. 조금 뒤에 다시 보내 주세요." : "보내지 못했어요. 입력한 내용을 확인하고 잠시 후 다시 시도해 주세요." };
       ss.set(PT_DRAFT, null); ss.set(PT_SEC, null);
+      return { ok: true, sum: { name: v("name"), topic: v("topic"), cat, kinds, phone: v("phone"), email: v("email") } };
+    } catch (e) { return { ok: false, err: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." }; }
+  }
+  async function doPartnerApply(f) {
+    const err = document.getElementById("pt-err");
+    // 모든 섹션 확인 — 빈 * 질문이 있는 섹션으로 데려가요
+    for (let i = 1; i <= 5; i++) if (!ptCheck(f, i, true)) { ptShow(f, i); ptCheck(f, i); err.textContent = "섹션 " + i + " · " + PT_SECS[i - 1][0] + "에 답하지 않은 질문이 있어요."; return; }
+    err.textContent = "";
+    const btn = f.querySelector("button[type=submit]"); btn.disabled = true; btn.classList.add("is-busy");
+    const res = await ptSubmit(f);
+    if (!res.ok) { btn.disabled = false; btn.classList.remove("is-busy"); err.textContent = res.err; return; }
+    const S = res.sum, v = (k) => S[k], cat = S.cat, kinds = S.kinds;
+    {
       const box = document.getElementById("pt-ap-main");
       if (box) {
         box.innerHTML = '<div class="pt-gf-ban pt-gf-ban-done" aria-hidden="true"><div class="pt-gf-ban-tx"><small>DOOGO PARTNERS</small><b>지원해 주셔서<br>고마워요!</b></div><img src="' + PT_MS + 'mascot-cheer.webp" alt="" width="420" height="454"></div>' +
@@ -3290,7 +3378,7 @@
           '<div class="pt-done-btns"><a class="vd-btn vd-btn-p" href="#/vod">DOOGO CLASS 둘러보기</a>' + kkBtn("vd-btn vd-btn-o", "카카오톡 문의하기") + "</div></div>";
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
-    } catch (e) { bad("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."); }
+    }
   }
 
   /* ---------- 미리보기 창 (클래스101처럼: 왼쪽 영상 · 오른쪽 미리보기 목록 · 아래 수강신청) ---------- */
@@ -3663,19 +3751,11 @@
     if (v === "cp-open") { const p = product(t.dataset.p); if (p) modal("사용 가능한 쿠폰", cpModalBody(p), "vd-modal-cp"); return; }
     if (v === "cp-get") {
       const p = product(t.dataset.p); if (!p || !m) return;
-      const list = t.dataset.c === "all" ? dlCoupons(p).filter((c) => !hasCp(m.id, c)) : dlCoupons(p).filter((c) => c.id === t.dataset.c);
-      if (srvOn()) {
-        list.reduce((pr, c) => pr.then((n) => payApi("claim", { cid: c.id }).then((r) => (r && r.ok ? n + 1 : n))), Promise.resolve(0)).then((n) => DB.remote.refresh().then(() => n)).then((n) => {
-          const mb2 = document.querySelector(".vd-cpm"); if (mb2) mb2.outerHTML = cpModalBody(p);
-          const pc2 = document.querySelector(".vd-cpdl"); if (pc2) pc2.outerHTML = cpDlBtn(p, me());
-          toast(n ? "쿠폰 " + n + "장을 받았어요. 결제할 때 바로 쓸 수 있어요." : "이미 받은 쿠폰이에요.");
-        });
-        return;
-      }
-      const got = list.filter((c) => issueCoupon(m.id, c)); save();
-      const mb = document.querySelector(".vd-cpm"); if (mb) mb.outerHTML = cpModalBody(p);
-      toast(got.length ? "쿠폰 " + got.length + "장을 받았어요. 결제할 때 바로 쓸 수 있어요." : "이미 받은 쿠폰이에요.");
-      const pc = document.querySelector(".vd-cpdl"); if (pc) pc.outerHTML = cpDlBtn(p, m);
+      cpGet(p, t.dataset.c).then((n) => {
+        const mb = document.querySelector(".vd-cpm"); if (mb) mb.outerHTML = cpModalBody(p);
+        const pc = document.querySelector(".vd-cpdl"); if (pc) pc.outerHTML = cpDlBtn(p, me());
+        toast(n ? "쿠폰 " + n + "장을 받았어요. 결제할 때 바로 쓸 수 있어요." : "이미 받은 쿠폰이에요.");
+      });
       return;
     }
     if (v === "pitch-more") { const c = t.closest(".vd-pitch"); if (c) { c.classList.toggle("open"); t.innerHTML = (c.classList.contains("open") ? "접기" : "더보기") + icon("chevDown", "xs"); } return; }
@@ -3725,8 +3805,8 @@
     if (v === "share") { const u = location.href; if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("주소를 복사했어요."), () => toast("주소: " + u)); else toast("주소: " + u); return; }
     if (v === "refund") { modal("환불 규정", '<div class="vd-modal-b">' + refundHtml() + "</div>"); return; }
     if (v === "legal") { const lg = legalDoc(t.dataset.k); if (lg.href) { window.open(lg.href, "_blank", "noopener"); return; } modal(lg.title, '<div class="vd-modal-b vd-legal">' + lg.html + "</div>"); return; }
-    if (v === "pl-up") { if (!m) { toast("로그인하면 공감할 수 있어요.", "warn"); return; } const x = V().pledges.find((y) => y.id === t.dataset.id); if (!x) return; x.upBy = x.upBy || []; const i = x.upBy.indexOf(m.id); if (i >= 0) { x.upBy.splice(i, 1); x.up = Math.max(0, (x.up || 1) - 1); } else { x.upBy.push(m.id); x.up = (x.up || 0) + 1; } save(); keepScroll(); return; }
-    if (v === "pl-del") { const x = V().pledges.find((y) => y.id === t.dataset.id); if (!x || !m || x.mid !== m.id) return; V().pledges.splice(V().pledges.indexOf(x), 1); save(); keepScroll(); toast("다짐을 지웠어요."); return; }
+    if (v === "pl-up") { if (!m) { toast("로그인하면 공감할 수 있어요.", "warn"); return; } if (plUp(t.dataset.id)) keepScroll(); return; }
+    if (v === "pl-del") { if (plDel(t.dataset.id)) { keepScroll(); toast("다짐을 지웠어요."); } return; }
     if (v === "pw-eye") { const inp = t.parentNode.querySelector("input"); if (!inp) return; const show = inp.type === "password"; inp.type = show ? "text" : "password"; t.innerHTML = icon(show ? "eyeOff" : "eye", "sm"); t.setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기"); return; }
     if (v === "kakao") { kakaoStart(); return; }
     if (v === "svc") { e.preventDefault(); svcSwitch(t.dataset.k); return; }
@@ -3990,6 +4070,17 @@
     save(); render(); toast("후기를 남겨 주셔서 고마워요!" + (pt ? " " + pt.toLocaleString() + "P를 드렸어요." : ""));
     setTimeout(() => { const s = document.getElementById("vd-s-reviews"); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 130 }); }, 30);
   }
+  /** 다짐 공감 켜고 끄기 · 내 다짐 지우기 (예전 화면 · React 화면 같이 씀) → 바꿨으면 true */
+  function plUp(id) {
+    const m = me(), x = m && V().pledges.find((y) => y.id === id); if (!x) return false;
+    x.upBy = x.upBy || []; const i = x.upBy.indexOf(m.id);
+    if (i >= 0) { x.upBy.splice(i, 1); x.up = Math.max(0, (x.up || 1) - 1); } else { x.upBy.push(m.id); x.up = (x.up || 0) + 1; }
+    save(); return true;
+  }
+  function plDel(id) {
+    const m = me(), x = V().pledges.find((y) => y.id === id); if (!x || !m || x.mid !== m.id) return false;
+    V().pledges.splice(V().pledges.indexOf(x), 1); save(); return true;
+  }
   function doPledge(f) {
     const m = me(), text = f.text.value.trim();
     if (!m) { toast("로그인하면 다짐을 남길 수 있어요.", "warn"); ROUTE.hash = "#/vod/login?next=" + encodeURIComponent(ROUTE.hash); return; }
@@ -4045,6 +4136,24 @@
     // 주문 · 결제 (4-4)
     psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, bankBox, shipBox, planRow, doPay,
     // VOD 강의실 · 전자책 · 입장 안내 (4-4)
-    logStudy, eventTime, cdTxt, vimeoSrc });
+    logStudy, eventTime, cdTxt, vimeoSrc,
+    // 스토어 공개 화면
+    legalBody, teachersView, teacherView, tcView, tqNorm, aboutView, AB_SLIDES, partnersView,
+    // 스토어 홈: 배너 몇 번째 · 자동 넘김 멈춤 · 분야 탭 (다시 그려도 · 다른 화면에 다녀와도 남아요 — 예전 화면과 같은 값) · 학습 시스템 그림 · 카테고리 아이콘
+    homeUi: (o) => { if (o && o.slide !== undefined) ui.slide = o.slide; if (o && o.paused !== undefined) ui.paused = o.paused; if (o && o.hcat !== undefined) ui.hcat = o.hcat; return { slide: ui.slide || 0, paused: !!ui.paused, hcat: ui.hcat || "" }; },
+    SYS, tileBiz,
+    // 그림 주소: 미리보기(파일)에서 이 기기에 넣어 둔 그림(idb:)은 빈 그림 → hydrate 가 채워요 (예전 imgAttr 과 같음)
+    imgSrcOf: (u) => (/^idb:/.test(u || "") ? (IMGC[u] ? { v: IMGC[u] } : { v: PX, idb: u }) : { v: u || "" }),
+    // 그리기 전에: 무료 LIVE 일정(두잉고 무료강의 페이지)을 스토어 클래스에 맞춰요 — 예전 render() 가 그릴 때마다 하던 일
+    syncFreeLive,
+    // 클래스 상세
+    productView, buyView, planView, fbarView, ownView, cpView, cpGet, plUp, plDel, doReview, doPledge, tHref, pselSet: (id, o) => { PSEL[id] = o; },
+    bannerArt, pvThumb, crdStats, flNote, badgesOf, ctaOf, freshBand, freshCnt, freshOf, freshTag, detailImgsHtml, accOf, previewsOf, chapOf, useNotes, infoRows, refundTable, refundKey, rfSet, periodTxt, normalDays, isLifetime, dlCoupons, hasCp, couponOff, couponCond, durTxt, totalMin, TYPE, icx, priceHtml, insShown, nickOf, cdTxt, saleEndOf, rebuySet, plansOf, coachOf, teaOf, extendOf, canExtend, accessEnd, daysLeft, pctDone, TEA_ST, TEA_MODE,
+    // 두고 파트너스 지원서
+    ptIssues, ptSubmit, ptDraft, ptSaveDraft, ptSecNow, ptSetSec: (n) => ss.set(PT_SEC, String(n)), PT_SECS, PT_EXP, PT_READY, PT_WHEN, PT_FROM, PT_CTIME, PT_REACH, PT_FILM, PT_PRICE, ptKinds, PT_MS,
+    // 소개 화면: 슬라이드 몇 번째 · 흐르는 줄 멈춤 (다른 화면에 다녀와도 남아요 — 예전 화면과 같은 값)
+    abUi: (o) => { if (o && o.slide !== undefined) ui.abSlide = o.slide; if (o && o.paused !== undefined) ui.abPaused = o.paused; return { slide: ui.abSlide || 0, paused: !!ui.abPaused }; }, allView, listView, ALL_TABN, allUrl, SORTS, GSEC, railInfo, railStep,
+    // 강사진 검색어 · 분야 (다시 그려도 · 다른 화면에 다녀와도 남아요 — 예전 화면과 같은 값)
+    tpg: (q, c) => { if (q !== undefined) tpgQ = q; if (c !== undefined) tpgC = c; return { q: tpgQ, c: tpgC }; } });
   window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };
 })();

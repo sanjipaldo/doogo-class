@@ -9,7 +9,7 @@ export function Av({ nick, cls }) {
   const a = VOD().avOf(nick);
   return <i className={"vd-av " + (cls || "")} style={{ "--c": a.c }}>{a.t}</i>;
 }
-function CrName({ p }) {
+export function CrName({ p }) {
   const ph = VOD().crPhoto(p);
   return <span className="vd-crn">{ph ? <img src={ph} alt="" loading="lazy" /> : <i>{(p.creator || "D").slice(0, 1)}</i>}<b>{p.creator || ""}</b></span>;
 }
@@ -39,3 +39,18 @@ export default function Card({ p, o, onLike }) {
       </div></a>
   );
 }
+
+/** 두잉고 기수 강의 · 무료 LIVE 카드 (예전 xcard — 다른 사이트 주소로 가는 카드) */
+export function XCard({ it }) {
+  const X = VOD(), p = it.p;
+  return (
+    <a className="vd-card" href={it.href}><div className={"vd-thumb vd-th-" + X.typeOf(p)}><RawOne html={X.thumbArt(p)} /></div>
+      <div className="vd-card-b"><b className="vd-title">{p.title}</b><span className="vd-cr"><CrName p={p} /><i /><span className="vd-xcat">{p.catLabel || ""}</span></span>
+        <div className="vd-price">{p.priceTxt ? <strong>{p.priceTxt}</strong> : null}</div><span className="vd-cmeta"><span className="vd-kchip vd-kchip-cohort">{p.catLabel || "두잉고"}</span><span className="vd-cm">{(p.meta || []).map((x, i) => <span key={i}>{x}</span>)}</span></span></div></a>
+  );
+}
+/** 예전 anyCard — 두잉고 카드면 XCard, 아니면 클래스 카드 */
+export function AnyCard({ it, o, onLike }) {
+  return it.ext ? <XCard it={it} /> : <Card p={it.p || it} o={o} onLike={onLike} />;
+}
+

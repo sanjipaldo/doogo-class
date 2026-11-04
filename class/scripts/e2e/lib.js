@@ -143,9 +143,14 @@ async function reactCookie(page, base, v) { await page.context().addCookies([{ n
  *  움직임용으로 그린 뒤 붙는 표시(서비스 바꾸기 손잡이 위치 · 내려가면 생기는 그림자 · 움직임 시작)와 아이콘 그림 내용은 빼요 */
 const domShape = (page) => page.evaluate(() => {
   const c = document.getElementById("root").cloneNode(true); c.normalize();
+  // 움직임: 숫자 올라가기는 도는 중인 값 대신 최종 숫자 · 화면에 들어온 표시(is-in)는 스크롤 · 시간에 따라 달라서 빼요
+  c.querySelectorAll("[data-count]").forEach((el) => { el.textContent = el.dataset.count; });
+  // 남은 시간(1초마다 바뀜)은 마감 시각으로 · 못 불러오면 스스로 지우는 그림(유튜브 미리보기 · 네트워크에 따라 다름)은 빼요
+  c.querySelectorAll("[data-cd]").forEach((el) => { el.textContent = el.dataset.cd; });
+  c.querySelectorAll('img[onerror="this.remove()"]').forEach((el) => el.remove());
   c.querySelectorAll("*").forEach((el) => {
     if (el.classList.contains("site-sw")) { ["ready", "no-anim", "at-dg", "at-vod"].forEach((k) => el.classList.remove(k)); el.style.removeProperty("--kx"); el.style.removeProperty("--kw"); }
-    ["is-sc", "mo", "stuck"].forEach((k) => el.classList.remove(k));
+    ["is-sc", "mo", "stuck", "is-in", "pop"].forEach((k) => el.classList.remove(k));
     if (el.getAttribute("class") === "") el.removeAttribute("class");
     if (el.getAttribute("style") === "") el.removeAttribute("style");
   });

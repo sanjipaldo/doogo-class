@@ -11,7 +11,7 @@
   else root.DC_SCREENS = factory();
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
-  // [키, 주소 규칙, 설명]
+  // [키, 주소 규칙, 설명, { pub: 검색 · 공유용 공개 화면 — 서버가 미리보기 정보(제목 · 설명 · 사진 · 검색용 안내 글)를 넣어요 }]
   const LIST = [
     // 마이페이지: 메뉴 전부 (홈 · 강의장 · 구매 · 활동 · 계정)
     ["vod-my", /^\/vod\/my(\/(classes|free|vod|addons|ebooks|live|alarm|likes|pending|orders|ship|coupons|points|reviews|posts|badges|account|devices|help))?\/?$/, "두고클래스 마이페이지 (메뉴 전부)"],
@@ -22,7 +22,20 @@
     // 주문 · 결제 (수강권 · 1:1 코칭권 · TEA TIME · 종이책 · 무료 신청)
     ["vod-checkout", /^\/vod\/checkout\/[^/]+\/?$/, "두고클래스 주문 · 결제"],
     // VOD 강의실 · 전자책 · LIVE · 오프라인 입장 안내
-    ["vod-learn", /^\/vod\/learn\/[^/]+(\/[^/]+)?\/?$/, "두고클래스 VOD 강의실 · 전자책 · 입장 안내"]
+    ["vod-learn", /^\/vod\/learn\/[^/]+(\/[^/]+)?\/?$/, "두고클래스 VOD 강의실 · 전자책 · 입장 안내"],
+    // 약관 · 정책 (공개 화면)
+    ["vod-legal", /^\/((terms|privacy|refund)|vod\/legal\/(terms|privacy|refund))\/?$/, "약관 및 정책 (이용약관 · 개인정보처리방침 · 환불정책)", { pub: true }],
+    // 강사진 · 강사 페이지 (공개 화면)
+    ["vod-teachers", /^\/vod\/teachers(\/[^/]+)?\/?$/, "강사진 · 강사 페이지", { pub: true }],
+    // 클래스 목록: 전체 클래스 · 분야 · 오픈 예정 · BEST · 새로 열린 · 무료 특강 · 검색 (공개 화면)
+    ["vod-list", /^\/vod\/(c(\/[^/]+)?|search)\/?$/, "클래스 목록 · 분야 · 오픈 예정 · 검색", { pub: true }],
+    // DOOGO CLASS 소개 · 두고 파트너스 (강사 모집) · 지원서 (공개 화면)
+    ["vod-about", /^\/vod\/about\/?$/, "DOOGO CLASS 소개", { pub: true }],
+    ["vod-partners", /^\/vod\/partners(\/apply)?\/?$/, "두고 파트너스 · 지원서", { pub: true }],
+    // 스토어 홈 (대표 주소 / · /vod — 공개 화면)
+    ["vod-home", /^\/(vod\/?)?$/, "스토어 홈", { pub: true }],
+    // 클래스 상세 (공개 화면 — 클래스마다 제목 · 설명 · 사진 미리보기)
+    ["vod-product", /^\/vod\/p\/[^/]+\/?$/, "클래스 상세", { pub: true }]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);
@@ -39,6 +52,8 @@
     const x = LIST.find((s) => s[1].test(p));
     return x ? x[0] : null;
   }
+  /** 검색 · 공유용 공개 화면인지 (React 화면 틀이 noindex 대신 서버 미리보기 정보를 넣어요) */
+  const isPublic = (key) => { const x = LIST.find((s) => s[0] === key); return !!(x && x[3] && x[3].pub); };
   /** ?dc_next= 값이 맞는지 (all · off · 화면 키들) */
   const validPick = (v) => { const l = parse(v); return l.length > 0 && l.every((k) => k === "all" || k === "off" || KEYS.indexOf(k) >= 0); };
   /* 화면(브라우저)에서: <html data-next · data-next-off>(빌드 때 환경 변수) + 쿠키 dc_next */
@@ -54,5 +69,5 @@
   }
   /** 이 브라우저에서 이 경로가 React 화면인지 → 키 또는 null */
   function onHere(pathname) { const k = match(pathname); return k && here().indexOf(k) >= 0 ? k : null; }
-  return { LIST, KEYS, parse, enabled, match, validPick, here, onHere };
+  return { LIST, KEYS, parse, enabled, match, isPublic, validPick, here, onHere };
 });

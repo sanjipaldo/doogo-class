@@ -24,7 +24,10 @@ export function proxy(req) {
   if (on.indexOf(key) < 0) return NextResponse.next();
   const to = url.clone();
   to.pathname = "/n" + p;
-  const res = NextResponse.rewrite(to);
+  // React 화면 틀(layout)이 원래 주소로 미리보기 정보(공개 화면)를 만들 수 있게 알려 줘요
+  const h = new Headers(req.headers);
+  h.set("x-dc-path", p + url.search);
+  const res = NextResponse.rewrite(to, { request: { headers: h } });
   res.headers.set("x-dc-screen", key);
   return res;
 }
