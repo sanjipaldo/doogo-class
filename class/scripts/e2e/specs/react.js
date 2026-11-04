@@ -5,7 +5,7 @@
 const F = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 화면 주소 (shared/screens.js 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
-const SHAPES = ["/vod/my", "/vod/my/classes", "/vod/my/classes?st=done", "/vod/my/free", "/vod/my/vod", "/vod/my/ebooks", "/vod/my/live", "/vod/my/alarm", "/vod/my/likes", "/vod/my/likes?t=topics",
+const SHAPES = ["/vod/my", "/vod/my/classes", "/vod/my/classes?st=done", "/vod/my/free", "/vod/my/vod", "/vod/my/addons", "/vod/my/ebooks", "/vod/my/live", "/vod/my/alarm", "/vod/my/likes", "/vod/my/likes?t=topics",
   "/vod/my/coupons", "/vod/my/coupons?st=used", "/vod/my/points", "/vod/my/reviews", "/vod/my/posts", "/vod/my/badges", "/vod/my/account", "/vod/my/devices", "/vod/my/help", "/vod/my/help?t=list"];
 module.exports = {
   title: "React 화면 · 스위치 · 예전 화면과 같은 모양 · 오가기",
