@@ -18,9 +18,10 @@ import HomePage from "./store/HomePage.jsx";
 import ProductPage from "./store/ProductPage.jsx";
 import Classroom from "./dg/Classroom.jsx";
 import DgLogin from "./dg/Login.jsx";
+import Center from "./center/Center.jsx";
 
 // 화면 키 → 화면 (키 · 주소 규칙은 class/shared/screens.js)
-const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin };
+const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin, "ct-login": Center, "ct-dash": Center, "ct-ops": Center };
 
 const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
 function Boot() {
@@ -44,12 +45,16 @@ export default function App() {
       const X = window.VOD;
       if (/^vod-/.test(k || "") && X && X.syncFreeLive) { try { X.syncFreeLive(); } catch (e) { console.error("[react] 무료 LIVE 맞추기", e); } }
       if (/^dg-/.test(k || "") && window.DGA) { const to = window.DGA.prep(); if (to) { window.ROUTE.redirect(to); return false; } }
+      //  · 강사센터 · 마스터(ct-*): 예전 render() 처음의 세션 · 로그인 · 역할별 주소 (ADM.prep) — 결과는 화면이 쓰게 ADM.last 에
+      if (/^ct-/.test(k || "") && window.ADM) { const p = window.ADM.prep(); window.ADM.last = p; if (p.to) { if (p.warn) window.ADM.toast(p.warn, "warn"); window.ROUTE.redirect(p.to); return false; } }
       return true;
     };
     let curK = null;
     window.ReactApp = {
       go(k, h, changed) {
         curK = k;
+        // 강사센터 · 마스터: 화면을 옮기면 열려 있던 예전 팝업은 닫아요 (예전 render 처음)
+        if (/^ct-/.test(k || "") && window.ADM) window.ADM.closeModal();
         if (pre(k) === false) return;
         if (!booted.current) {
           booted.current = true;

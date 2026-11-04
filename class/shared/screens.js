@@ -49,7 +49,12 @@
     // VOD 버전: 강의 목록 · 극장형 강의실(영상 · 내 노트 · 목차 · 자료) · 내 노트 모음
     ["dg-vod", /^\/vodclass(\/[^/]+(\/[^/]+)?)?\/?$/, "두잉고 강의실 VOD 강의 · 극장형 강의실 · 내 노트"],
     // 강의실 로그인 (강사 고르기 · 이름 + 뒷자리 · 두고클래스 VOD 회원 · 수강 신청)
-    ["dg-login", /^\/login\/?$/, "두잉고 강의실 로그인"]
+    ["dg-login", /^\/login\/?$/, "두잉고 강의실 로그인"],
+    // ---- 6단계: 강사센터 · 코치센터 · 마스터 (admin.js) ----
+    ["ct-login", /^\/center\/login\/?$/, "강사센터 로그인 (강사 · 코치 · 마스터 · 파트너)"],
+    ["ct-dash", /^\/center\/?$/, "강사센터 · 코치센터 대시보드 (두잉고 · VOD)"],
+    // 강사 운영: 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
+    ["ct-ops", /^\/center\/(students|cohorts|reviews|questions|billing)\/?$/, "강사센터 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

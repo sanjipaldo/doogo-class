@@ -179,6 +179,7 @@
 
   /* ---------------- 로그인 ---------------- */
   function renderLogin() {
+    if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
     const coachTab = loginTab === "coach", ins = loginTab === "instructor" || coachTab, partnerTab = loginTab === "partner";
     document.title = (coachTab ? "코치센터" : ins ? "강사센터" : partnerTab ? "파트너센터" : "마스터 관리자") + " · 로그인";
     const L = partnerTab
@@ -7830,8 +7831,9 @@
   });
   document.addEventListener("focusin", (e) => { if (isActive() && e.target.matches && e.target.matches("[data-md-sel]")) e.target.select(); });
 
-  function render() {
-    closeModal();
+  /** 그리기 전에 한 번 — 세션 · 로그인 확인 · 역할별 주소 맞추기 (예전 render 처음 · React 화면도 같이 씀)
+   *  → { to: 옮길 주소, warn?: 알림, login?: 로그인 화면 } 또는 { area: "partner" | "media" | "center", master, offTrack, k0, r } */
+  function prep() {
     document.body.dataset.ath = "";
     const r = route();
     S = DB.session.admin();
@@ -7843,56 +7845,66 @@
       document.body.dataset.master = loginTab === "master" ? "1" : "";
       // 로그인 후 원래 가려던 화면(예: 무료강의 페이지 편집)으로 돌아간다
       if (r.parts[0] !== "login" && r.parts.length) DB.store.set("moonclass:after-login", ROUTE.hash);
-      if (r.parts[0] !== "login") ROUTE.replace("#/center/login");
-      renderLogin();
-      return;
+      return r.parts[0] !== "login" ? { to: "#/center/login", login: true } : { login: true };
     }
-    if (S.role === "partner") {
-      const me = affOf(S.partnerId);
-      if (!me || me.status !== "active") { S = null; DB.session.setAdmin(null); return render(); }
-      if (r.parts[0] !== "partner") { ROUTE.replace("#/center/partner"); return render(); }
+    if (S.role === "partner" || S.role === "media") {
+      const pt = S.role === "partner", me = pt ? affOf(S.partnerId) : mdOf(S.mediaId);
+      if (!me || me.status !== "active") { S = null; DB.session.setAdmin(null); return prep(); }
+      if (r.parts[0] !== S.role) return { to: "#/center/" + S.role };
       document.body.dataset.master = ""; document.body.dataset.coach = "";
+      return { area: S.role, r };
+    }
+    if (r.parts[0] === "login") return { to: S.role === "master" && !S.actingAs ? "#/center/master" : "#/center" };
+    const master = S.role === "master" && !S.actingAs;
+    if (master && r.parts[0] !== "master") return { to: "#/center/master" };
+    if (master) { const k1 = r.parts[1] || ""; if (DC_ROUTES.indexOf(k1) >= 0) ui.mtab = "dc"; else ui.mtab = "dg"; if (k1 === "partners" && ui.inqFilter === "vod") ui.inqFilter = "all"; }
+    if (!master && r.parts[0] === "master") return { to: "#/center" };
+    if (master && r.parts[1] && (r.parts[1] === "staff" ? !!staffMe() : !staffCan("master/" + r.parts[1]))) return { to: "#/center/master", warn: "이 메뉴는 내 운영자 계정에 열려 있지 않아요. 최고 관리자에게 요청해 주세요." };
+    if (!master && !can(r.parts[0] || "")) return { to: "#/center", warn: "이 메뉴는 코치 계정에 열려 있지 않아요. 필요하면 강사님께 요청해 주세요." };
+    document.body.dataset.master = master ? "1" : "";
+    if (isCoach()) coachListCheck();
+    document.body.dataset.coach = isCoach() ? "1" : "";
+    document.body.dataset.ath = master ? "" : athOf(IID());
+    const k0 = r.parts[0] || "", pt0 = pageTrack(k0), offTrack = !master && ((pt0 && !OPEN()[pt0]) || (TRK() === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (TRK() !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0));
+    return { area: "center", master, offTrack, k0, r };
+  }
+  /** 화면 제목 (역할마다) */
+  const pageTitle = (area, master) => (area === "partner" ? "파트너센터 · 두잉고" : area === "media" ? "온드미디어 센터 · DOOGO CLASS" : (master ? "마스터" : isCoach() ? "코치센터" : "강사센터") + " · 두잉고");
+  function render() {
+    // React 화면 틀에서는 예전 화면을 그리지 않고 React 에 다시 그리라고만 알려요 (팝업은 예전처럼 지금 닫아요)
+    if (document.body.dataset.react) { closeModal(); if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
+    closeModal();
+    const p = prep();
+    if (p.to) { if (p.warn) toast(p.warn, "warn"); ROUTE.replace(p.to); if (!p.login) return render(); }
+    if (p.login) { renderLogin(); return; }
+    const r = p.r;
+    if (p.area === "partner") {
       renderShell(r);
       const pm = document.getElementById("a-main");
       pm.innerHTML = '<div class="a-page">' + (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r) + "</div>";
       notifyPartnerSide(); ktInit();
       labelTables(pm);
-      document.title = "파트너센터 · 두잉고";
+      document.title = pageTitle("partner");
       return;
     }
-    if (S.role === "media") {
-      const me = mdOf(S.mediaId);
-      if (!me || me.status !== "active") { S = null; DB.session.setAdmin(null); return render(); }
-      if (r.parts[0] !== "media") { ROUTE.replace("#/center/media"); return render(); }
-      document.body.dataset.master = ""; document.body.dataset.coach = "";
+    if (p.area === "media") {
       renderShell(r);
       const mm = document.getElementById("a-main");
       mm.innerHTML = '<div class="a-page">' + (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r) + "</div>";
       labelTables(mm);
-      document.title = "온드미디어 센터 · DOOGO CLASS";
+      document.title = pageTitle("media");
       return;
     }
-    if (r.parts[0] === "login") { ROUTE.replace(S.role === "master" && !S.actingAs ? "#/center/master" : "#/center"); return render(); }
-    const master = S.role === "master" && !S.actingAs;
-    if (master && r.parts[0] !== "master") { ROUTE.replace("#/center/master"); return render(); }
-    if (master) { const k1 = r.parts[1] || ""; if (DC_ROUTES.indexOf(k1) >= 0) ui.mtab = "dc"; else ui.mtab = "dg"; if (k1 === "partners" && ui.inqFilter === "vod") ui.inqFilter = "all"; }
-    if (!master && r.parts[0] === "master") { ROUTE.replace("#/center"); return render(); }
-    if (master && r.parts[1] && (r.parts[1] === "staff" ? !!staffMe() : !staffCan("master/" + r.parts[1]))) { ROUTE.replace("#/center/master"); toast("이 메뉴는 내 운영자 계정에 열려 있지 않아요. 최고 관리자에게 요청해 주세요.", "warn"); return render(); }
-    if (!master && !can(r.parts[0] || "")) { ROUTE.replace("#/center"); toast("이 메뉴는 코치 계정에 열려 있지 않아요. 필요하면 강사님께 요청해 주세요.", "warn"); return render(); }
-    document.body.dataset.master = master ? "1" : "";
-    if (isCoach()) coachListCheck();
-    document.body.dataset.coach = isCoach() ? "1" : "";
-    document.body.dataset.ath = master ? "" : athOf(IID());
+    const master = p.master, offTrack = p.offTrack, k0 = p.k0;
     renderShell(r);
     const main = document.getElementById("a-main");
-    const k0 = r.parts[0] || "", pt0 = pageTrack(k0), offTrack = !master && ((pt0 && !OPEN()[pt0]) || (TRK() === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (TRK() !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0));
     const fn = master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : offTrack ? trackOffPage : (PAGES[k0] || pageDashboard);
     main.innerHTML = '<div class="a-page">' + (!master && !offTrack && TRK() === "vod" && VP_PAGES.indexOf(k0) >= 0 ? vpidStrip() : "") + fn(r) + "</div>";
     labelTables(main); ktInit(main);
     if (window.VOD && VOD.hydrate) VOD.hydrate(main);
     if (master) { staffStrip(main); notifyBills(); notifyPartnerMsgs(); }
     vdurFill(master);
-    document.title = (master ? "마스터" : isCoach() ? "코치센터" : "강사센터") + " · 두잉고";
+    document.title = pageTitle("center", master);
   }
   /* 영상 길이 자동 채우기 — 고칠 수 있는 강의 중 영상은 있는데 실제 길이(durSec)가 없거나 영상이 바뀐 것은
    * 서버에서 실제 길이를 받아 조용히 저장해요 (분 칸도 맞춰요). 마스터: DOOGO CLASS 모든 클래스 ·
@@ -7947,7 +7959,7 @@
     const d = a.dataset;
     switch (d.action) {
       case "login-tab": loginTab = d.tab; document.body.dataset.master = loginTab === "master" ? "1" : ""; renderLogin(); break;
-      case "toggle-pw": { const inp = document.getElementById("al-pw"); const show = inp.type === "password"; inp.type = show ? "text" : "password"; a.innerHTML = icon(show ? "eyeOff" : "eye", "sm"); break; }
+      case "toggle-pw": { if (document.body.dataset.react) break; const inp = document.getElementById("al-pw"); const show = inp.type === "password"; inp.type = show ? "text" : "password"; a.innerHTML = icon(show ? "eyeOff" : "eye", "sm"); break; }
       case "logout": logout(); break;
       case "coach-go": coachGo(d.iid, a); break;
       case "coach-switch": coachSwitchOpen(); break;
@@ -8485,4 +8497,25 @@
   });
 
   window.AdminApp = { render, mount };
+  /* React 화면(Next.js 전환 6단계 · ui/center/*)이 같이 쓰는 창구 — 계산 · 저장 · 처리는 이 파일 그대로.
+   *  버튼 · 입력 처리(data-action · 폼)는 이 파일의 document 이벤트가 React 화면에서도 그대로 받아요 (끝에 render() → React 가 다시 그려요) */
+  window.ADM = {
+    // 상태 · 주소 · 그리기 전 확인 (세션 · 역할별 주소)
+    S: () => S, ui, route, prep, pageTitle, closeModal, toast, loginTab: (t) => { if (t !== undefined) loginTab = t; return loginTab; },
+    // 틀(머리띠 · 왼쪽 메뉴): 역할 · 강사 · 탭 · 메뉴 · 알림
+    instructorNav, masterNav, partnerNav, mediaNav, INS, IID, TRK, VPID, MID, C, OPEN, isCoach, ME_COACH, myCoachCourses, coachTrack, can, MT,
+    staffMe, staffRoleName, staffCan, affOf, affMe, affInqNew, affNoticeNew, masterInqAlerts, mdMe, mdName, mdRate, mdR, affDefRs, AFF,
+    trackable, trackSwitch, masterSwitch, vpidPick, vpidStrip, VP_PAGES, trackOffPage,
+    // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
+    labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
+    // 대시보드
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard,
+    vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
+    // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
+    classText, planChips, billGuide, billCard,
+    /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
+    legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
+      const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);
+      return (!p.master && !p.offTrack && TRK() === "vod" && VP_PAGES.indexOf(p.k0) >= 0 ? vpidStrip() : "") + fn(r); }
+  };
 })();
