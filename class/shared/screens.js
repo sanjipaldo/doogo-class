@@ -60,7 +60,7 @@
     // VOD(DOOGO CLASS): VOD 수강생 · VOD 강의 연결 · VOD 판매 내역
     ["ct-vod", /^\/center\/(vod-students|vodlink|vod|vod-live|vod-cal|vod-settle|coaching|teatime|ops-notices)\/?$/, "강사센터 VOD 수강생 · 강의 연결 · 판매 내역 · 무료 LIVE · 온/오프라인 판매 · 정산 달력 · 판매 정산 · 1:1 코칭 답변 · TEA TIME · 운영팀 공지"],
     // 마스터: 대시보드 · 강사 플랫폼 관리 · 전체 수강생
-    ["ct-master", /^\/center\/master(\/(instructors|students))?\/?$/, "마스터 대시보드 · 강사 플랫폼 관리 · 전체 수강생"]
+    ["ct-master", /^\/center\/master(\/(instructors|students|health|notices|site|data))?\/?$/, "마스터 대시보드 · 강사 플랫폼 관리 · 전체 수강생 · 플랫폼 현황 · 강사 공지 · 첫 화면 · 사업자 정보 · 데이터 관리"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

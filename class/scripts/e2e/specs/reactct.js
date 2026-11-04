@@ -7,7 +7,7 @@ const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강사센터 화면 주소 (shared/screens.js 의 ct-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 // 마스터 화면 주소
-const CTM = ["/center/master", "/center/master/instructors", "/center/master/students"];
+const CTM = ["/center/master", "/center/master/instructors", "/center/master/students", "/center/master/health", "/center/master/notices", "/center/master/site", "/center/master/data"];
 const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
   "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
   "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand",
@@ -22,7 +22,9 @@ async function shapes(page, base, L, list) {
       if (u === "/center/ops-notices") { await L.open(page, base, "/center"); await page.evaluate(() => { const A = window.ADM, i = A.INS(); if (i) { delete i[A.annSeenKey()]; window.DB.save(); } }); await L.flushed(page); }
       await L.open(page, base, u); await page.waitForTimeout(400); sh[mode] = { shape: await L.domShape(page), react: await isReact(page), path: new URL(page.url()).pathname };
     }
-    const d = L.shapeDiff(sh.off.shape, sh.all.shape); lines += sh.all.shape.split("\n").length;
+    // 데이터 관리의 백업 글에는 지금 시각이 들어가요
+    const N = (x) => x.replace(/&quot;exportedAt&quot;:&quot;[^&]+&quot;|\\"exportedAt\\":\\"[^\\]+\\"|"exportedAt":"[^"]+"/g, "exportedAt");
+    const d = L.shapeDiff(N(sh.off.shape), N(sh.all.shape)); lines += sh.all.shape.split("\n").length;
     if (sh.off.react || !sh.all.react || d || sh.off.path !== sh.all.path) bad.push({ u, off: sh.off.react, all: sh.all.react, path: [sh.off.path, sh.all.path], d });
   }
   return { bad, lines };
