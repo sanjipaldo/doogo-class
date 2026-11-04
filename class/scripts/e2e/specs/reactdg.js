@@ -359,6 +359,47 @@ module.exports = {
       } else await run.check(false, "VOD 수강생: 두잉고 강의실이 열린 VOD 를 산 회원이 있어야 해요", { pid }, page);
       await page.context().close();
     }
+    // 4) 강의실 로그인(React): 강사 고르기 · 검색(초성 · 없음 · 지우기) · 탭 · 번호 보기 · 안내 · 약관 · 수강 신청 팝업 · 틀린 번호 · 강사 바꾸기 · 로그인 → 홈
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "강의실 로그인");
+      const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 300); out.push(await L.domShape(page)); };
+      const modal = async (out, sel) => { await page.click(sel); await page.waitForTimeout(300); out.push("M " + (await L.domShape(page, "modal-root"))); await page.click("#modal-root [data-action='modal-close']"); await page.waitForTimeout(200); out.push("X " + (await page.evaluate(() => document.getElementById("modal-root").innerHTML.trim()))); };
+      const flow = async (mode) => {
+        await L.fresh(page, base); await L.reactCookie(page, base, mode);
+        await L.open(page, base, "/login"); await page.evaluate(() => { window.__e2eStay = 1; });
+        const out = [await L.domShape(page)], react = await isReact(page);
+        await step(out, () => page.fill("#dc-q", "ㅁ"));
+        await step(out, () => page.fill("#dc-q", "없는강사zz"));
+        await step(out, () => page.click("[data-dc-clear]"));
+        await step(out, () => page.click(".lg-svc [data-k='vod']"));
+        await step(out, () => page.click("#vod-login-form [data-action='toggle-pw']"));
+        await step(out, () => page.click(".lg-svc [data-k='dg']"));
+        await modal(out, "[data-action='legal'][data-doc='terms']");
+        await step(out, () => page.click("[data-action='pick-instructor'][data-id='" + info.student.iid + "']"), 500);
+        await step(out, () => page.click("#login-form [data-action='toggle-pw']"));
+        await modal(out, "[data-action='forgot']");
+        // 수강 신청: 빈칸으로 신청 → 안내 (모집 기수가 없으면 안내 팝업)
+        await page.click("[data-action='signup']"); await page.waitForTimeout(300);
+        if (await page.$("#signup-form")) { out.push("M " + (await L.domShape(page, "modal-root"))); await page.click("#signup-form button[type='submit']"); await page.waitForTimeout(300); out.push("M " + (await L.domShape(page, "modal-root"))); await page.click("#modal-root .modal-head [data-action='modal-close']"); }
+        else { out.push("M " + (await L.domShape(page, "modal-root"))); await page.click("#modal-root [data-action='modal-close']"); }
+        await page.waitForTimeout(200);
+        await page.fill("#lg-name", info.student.name); await page.fill("#lg-phone", "0000");
+        await step(out, () => page.press("#lg-phone", "Enter"), 900);
+        await step(out, () => page.fill("#lg-name", info.student.name + " "));
+        await step(out, () => page.click("[data-action='change-instructor']"), 400);
+        await page.click("[data-action='pick-instructor'][data-id='" + info.student.iid + "']"); await page.waitForTimeout(400);
+        await page.fill("#lg-name", info.student.name); await page.fill("#lg-phone", info.student.pin); await page.press("#lg-phone", "Enter");
+        await page.waitForFunction(() => location.pathname === "/home", null, { timeout: 10000 }).catch(() => {});
+        await page.waitForTimeout(500);
+        return { out, react, path: new URL(page.url()).pathname, toast: await L.toasts(page), stay: await page.evaluate(() => window.__e2eStay === 1) };
+      };
+      const a = await flow("off"), b = await flow("all");
+      const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
+      await run.check(!d.length && a.out.length === b.out.length && b.out.length >= 16 && !a.react && b.react && b.path === "/home" && a.path === "/home" && b.stay && /환영합니다/.test(b.toast),
+        "강의실 로그인(React): 강사 고르기 · 검색 · 탭 · 번호 보기 · 약관 · 안내 · 수강 신청 · 틀린 번호 · 강사 바꾸기 — 누를 때마다 예전 화면과 같은 모양 · 로그인하면 홈으로 (" + b.out.length + "번)", d.slice(0, 1).concat([{ n: [a.out.length, b.out.length], react: [a.react, b.react], path: [a.path, b.path], stay: b.stay, toast: b.toast }]), page);
+      await page.context().close();
+    }
     // 3) 로그인 전 · 로그아웃: React 강의실 주소로 오면 (예전처럼) 로그인 화면으로
     {
       const page = await L.newPage(browser);

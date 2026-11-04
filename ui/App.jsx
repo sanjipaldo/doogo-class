@@ -17,9 +17,10 @@ import PartnersPage from "./store/PartnersPage.jsx";
 import HomePage from "./store/HomePage.jsx";
 import ProductPage from "./store/ProductPage.jsx";
 import Classroom from "./dg/Classroom.jsx";
+import DgLogin from "./dg/Login.jsx";
 
 // 화면 키 → 화면 (키 · 주소 규칙은 class/shared/screens.js)
-const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom };
+const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin };
 
 const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
 function Boot() {
@@ -48,7 +49,8 @@ export default function App() {
     let curK = null;
     window.ReactApp = {
       go(k, h, changed) {
-        curK = k; if (pre(k) === false) return;
+        curK = k;
+        if (pre(k) === false) return;
         if (!booted.current) {
           booted.current = true;
           const X = window.VOD, b = X && X.reactBoot ? X.reactBoot() : null;

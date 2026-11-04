@@ -343,11 +343,16 @@
       '<p class="login-help">두잉고 기수 수강생 계정과는 따로예요. 기수 수강생은 왼쪽 ‘두잉고’ 탭이에요.</p>' +
     "</div>";
   }
-  function svcSwitch(k) {
-    const card = document.querySelector(".login-card"); if (!card) return;
-    const vod = k === "vod", r = route(), qs = new URLSearchParams(r.params.toString());
+  /** 로그인 탭 주소만 바꿔요 (#/login ↔ #/login?tab=vod — 기록은 남기지 않아요) */
+  function svcSet(vod) {
+    const r = route(), qs = new URLSearchParams(r.params.toString());
     if (vod) qs.set("tab", "vod"); else qs.delete("tab");
     ROUTE.replace("#/" + (r.parts.join("/") || "login") + (qs.toString() ? "?" + qs.toString() : ""));
+  }
+  function svcSwitch(k) {
+    const card = document.querySelector(".login-card"); if (!card) return;
+    const vod = k === "vod";
+    svcSet(vod);
     card.querySelectorAll(".lg-svc [data-k]").forEach((a) => { const on = a.dataset.k === (vod ? "vod" : "dg"); a.classList.toggle("on", on); a.setAttribute("aria-selected", String(on)); });
     card.querySelectorAll(".lg-pane").forEach((p) => { p.hidden = p.dataset.pane !== (vod ? "vod" : "dg"); });
     const stack = card.closest(".login-stack"); if (stack) stack.classList.toggle("svc-vod", vod);
@@ -358,6 +363,7 @@
     const X = window.VOD; if (!X || !X.loadCfg) return;
     X.loadCfg().then(() => { if (X.tsMount) X.tsMount(scope || document); });
   }
+  function vodKakao() { const X = window.VOD; if (!X || !X.kakaoGo) { ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; return; } (X.loadCfg ? X.loadCfg() : Promise.resolve()).then(() => { const r = X.kakaoGo("#/vod/dg"); if (r === "off") toast("카카오로 1초 가입은 곧 열려요. 지금은 이메일로 로그인해 주세요."); else if (r === "demo") ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; }); }
   function doVodLogin(f) {
     const err = document.getElementById("lg-vod-error"), b = f.querySelector("button[type=submit]"), X = window.VOD;
     if (!X || !X.authLogin) { err.textContent = "DOOGO CLASS 로그인을 불러오지 못했어요. 새로고침해 주세요."; return; }
@@ -2438,6 +2444,8 @@
     toastRoot.appendChild(t);
     setTimeout(() => t.remove(), 2800);
   }
+  const FORGOT_TXT = "이름은 수강 신청할 때 적은 이름 그대로, 비밀번호 칸에는 휴대폰 번호 뒷자리 4자리를 넣어 주세요.\n\n예) 010-1234-2186 → 2186\n\n수강 신청 후 강사님 승인 전이라면 로그인되지 않아요. 그래도 안 되면 강사님께 이름과 연락처를 보내 주세요.";
+  const legalHtml = (k) => { const doc = LEGAL[k]; return window.CLASS_LEGAL_HTML ? window.CLASS_LEGAL_HTML(doc[1]) : esc(doc[1]); };
   // 약관 글은 legal.js (두잉고 www.doogoclass.com 기준). 없을 때만 아래 짧은 안내
   const LEGAL = window.CLASS_LEGAL || {
     terms: ["이용약관", "본 플랫폼은 강사의 유료 강의 수강생에게 강의 영상, 과제 관리, 학습 자료를 제공합니다.\n\n1. 계정은 수강생 본인만 사용할 수 있으며 타인과 공유할 수 없습니다.\n2. 강의 영상과 자료의 저작권은 강사에게 있으며 무단 복제·배포를 금지합니다.\n3. 수강 기간이 끝난 뒤의 다시보기 기간은 공지사항으로 안내합니다.\n\n정식 약관은 서비스 오픈 시 확정 후 게시됩니다."],
@@ -2461,27 +2469,33 @@
         '<p class="field-error" id="su-error" role="alert"></p>' +
         '<button class="btn btn-primary btn-block" type="submit">신청하기</button></form>');
   }
-  function doSignup(f) {
-    const ins = loginInstructor();
+  /** 수강 신청 — 신청서(f: cohort · name · phone4) → Promise<{ ok, msg }> (예전 · React 로그인 화면 같이 씀) */
+  const signupCos = () => { const ins = loginInstructor(); return ins ? DB.cohortsOf(ins.id).filter((c) => c.recruiting && DB.cohortStatus(c) !== "ended") : []; };
+  const signupDoneMsg = (name) => name + "님, " + loginInstructor().displayName + " 강사님이 확인 후 승인해 드릴게요.\n승인되면 이름과 전화번호 뒷자리로 로그인할 수 있어요.";
+  function signupSubmit(f) {
+    const ins = loginInstructor(), no = (msg) => Promise.resolve({ ok: false, msg });
     const name = f.name.value.trim(), phone4 = f.phone4.value.trim();
-    const err = document.getElementById("su-error");
-    if (!name) { err.textContent = "이름을 입력해 주세요."; return; }
-    if (!/^\d{4}$/.test(phone4)) { err.textContent = "전화번호 뒷자리 숫자 4자리를 입력해 주세요."; return; }
-    if (DB.remote.on) { serverSignup(ins, f, name, phone4, err); return; }
+    if (!name) return no("이름을 입력해 주세요.");
+    if (!/^\d{4}$/.test(phone4)) return no("전화번호 뒷자리 숫자 4자리를 입력해 주세요.");
+    if (DB.remote.on) {
+      const MSG = { "dup-approved": "이미 승인된 수강생이에요. 바로 로그인해 주세요.", "dup-pending": "이미 신청이 접수돼 있어요. 승인을 기다려 주세요.", cohort: "이 기수는 지금 신청을 받지 않아요. 다른 기수를 골라 주세요.", locked: "신청이 너무 많아 잠시 막혔어요. 15분 뒤에 다시 시도해 주세요." };
+      return DB.remote.call("public", { action: "signup", iid: ins.id, cohortId: f.cohort.value, name, phone4 }).then((r) => (r.error ? { ok: false, msg: MSG[r.error] || "신청하지 못했어요. 입력 내용을 확인해 주세요." } : { ok: true, name }))
+        .catch(() => ({ ok: false, msg: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." }));
+    }
     const dup = DB.studentsOf(ins.id).find((x) => x.name.replace(/\s+/g, "") === name.replace(/\s+/g, "") && x.phone4 === phone4 && x.cohortId === f.cohort.value && (x.status === "pending" || x.status === "approved"));
-    if (dup) { err.textContent = dup.status === "approved" ? "이 기수에 이미 승인된 수강생이에요. 바로 로그인해 주세요." : "이 기수에 이미 신청이 접수돼 있어요. 승인을 기다려 주세요."; return; }
+    if (dup) return no(dup.status === "approved" ? "이 기수에 이미 승인된 수강생이에요. 바로 로그인해 주세요." : "이 기수에 이미 신청이 접수돼 있어요. 승인을 기다려 주세요.");
     DB.data.students.push({ id: DB.uid("s"), instructorId: ins.id, cohortId: f.cohort.value, name, phone4, status: "pending", appliedAt: todayStr() });
     DB.save();
-    openModal("신청이 접수됐어요", name + "님, " + ins.displayName + " 강사님이 확인 후 승인해 드릴게요.\n승인되면 이름과 전화번호 뒷자리로 로그인할 수 있어요.", '<button class="btn btn-primary" data-action="modal-close">확인</button>');
+    return Promise.resolve({ ok: true, name });
   }
-  function serverSignup(ins, f, name, phone4, err) {
-    const MSG = { "dup-approved": "이미 승인된 수강생이에요. 바로 로그인해 주세요.", "dup-pending": "이미 신청이 접수돼 있어요. 승인을 기다려 주세요.", cohort: "이 기수는 지금 신청을 받지 않아요. 다른 기수를 골라 주세요.", locked: "신청이 너무 많아 잠시 막혔어요. 15분 뒤에 다시 시도해 주세요." };
-    const btn = f.querySelector("button[type=submit]");
+  function doSignup(f) {
+    const err = document.getElementById("su-error"), btn = DB.remote.on && f.querySelector("button[type=submit]");
     if (btn) btn.disabled = true;
-    DB.remote.call("public", { action: "signup", iid: ins.id, cohortId: f.cohort.value, name, phone4 }).then((r) => {
-      if (r.error) { err.textContent = MSG[r.error] || "신청하지 못했어요. 입력 내용을 확인해 주세요."; return; }
-      openModal("신청이 접수됐어요", name + "님, " + ins.displayName + " 강사님이 확인 후 승인해 드릴게요.\n승인되면 이름과 전화번호 뒷자리로 로그인할 수 있어요.", '<button class="btn btn-primary" data-action="modal-close">확인</button>');
-    }).catch(() => { err.textContent = "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."; }).then(() => { if (btn) btn.disabled = false; });
+    signupSubmit(f).then((r) => {
+      if (btn) btn.disabled = false;
+      if (!r.ok) { err.textContent = r.msg; return; }
+      openModal("신청이 접수됐어요", signupDoneMsg(r.name), '<button class="btn btn-primary" data-action="modal-close">확인</button>');
+    });
   }
   function fileSize(n) { return !n ? "" : n < 1024 ? n + "B" : n < 1048576 ? Math.round(n / 1024) + "KB" : (n / 1048576).toFixed(1) + "MB"; }
   function attachmentList(list) {
@@ -2613,7 +2627,7 @@
     }
     switch (a.dataset.action) {
       case "svc-tab": e.preventDefault(); svcSwitch(a.dataset.k); break;
-      case "vod-kakao": { const X = window.VOD; if (!X || !X.kakaoGo) { ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; break; } (X.loadCfg ? X.loadCfg() : Promise.resolve()).then(() => { const r = X.kakaoGo("#/vod/dg"); if (r === "off") toast("카카오로 1초 가입은 곧 열려요. 지금은 이메일로 로그인해 주세요."); else if (r === "demo") ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; }); break; }
+      case "vod-kakao": vodKakao(); break;
       case "toggle-pw": {
         const inp = document.getElementById(a.dataset.for);
         const show = inp.type === "password";
@@ -2625,10 +2639,8 @@
       case "pick-instructor": loginPick = a.dataset.id; DB.session.setInstructorPick(loginPick); renderLogin(); { const n = document.getElementById("lg-name"); if (n) n.focus(); } break;
       case "change-instructor": loginPick = null; DB.store.remove("moonclass:instructor"); renderLogin(); break;
       case "signup": openSignup(); break;
-      case "forgot":
-        openModal("로그인 정보를 잊으셨나요?", "이름은 수강 신청할 때 적은 이름 그대로, 비밀번호 칸에는 휴대폰 번호 뒷자리 4자리를 넣어 주세요.\n\n예) 010-1234-2186 → 2186\n\n수강 신청 후 강사님 승인 전이라면 로그인되지 않아요. 그래도 안 되면 강사님께 이름과 연락처를 보내 주세요.", '<button class="btn btn-primary" data-action="modal-close">확인</button>');
-        break;
-      case "legal": { const doc = LEGAL[a.dataset.doc]; openModal(doc[0], window.CLASS_LEGAL_HTML ? window.CLASS_LEGAL_HTML(doc[1]) : esc(doc[1]), '<button class="btn btn-primary" data-action="modal-close">확인</button>', true); break; }
+      case "forgot": openModal("로그인 정보를 잊으셨나요?", FORGOT_TXT, '<button class="btn btn-primary" data-action="modal-close">확인</button>'); break;
+      case "legal": { const doc = LEGAL[a.dataset.doc]; openModal(doc[0], legalHtml(a.dataset.doc), '<button class="btn btn-primary" data-action="modal-close">확인</button>', true); break; }
       case "modal-close": closeModal(); break;
       case "logout": logout(); break;
       case "exit-preview": if (INS) { loginPick = INS.id; DB.session.setInstructorPick(INS.id); } DB.session.setStudent(null); me = null; ROUTE.hash = "#/login"; break;
@@ -2881,6 +2893,11 @@
     replaysSorted, rpWeek: (k) => { if (k !== undefined) rpWeek = k; return rpWeek; }, replayFlip,
     scWeek: (k) => { if (k !== undefined) scWeek = k; return scWeek; },
     promptsOf, journalSave, exportNotes, glCat: (c) => { if (c !== undefined) glCat = c; return glCat; }, initialOf,
+    // 로그인 화면: 강사 목록(첫 화면 순서) · 고른 강사 · 브랜드 · 두잉고/두고클래스 탭 · 로그인 · 수강 신청 · 안내 글
+    login: () => { const rank = (id) => { const i = PICK_ORDER.indexOf(id); return i < 0 ? 99 : i; }, list = DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)), ins = loginInstructor(), bi = ins || list[0];
+      return { list, ins, B: bi ? DB.content(bi.id).brand : { name: "두잉고", loginEyebrow: "DOINGGO", loginHeadline: "온라인 강의\n함께 시작해요", loginSub: "" }, vodClosed }; },
+    pickIns: (id) => { loginPick = id; DB.session.setInstructorPick(id); }, unpickIns: () => { loginPick = null; DB.store.remove("moonclass:instructor"); },
+    insNorm, insCho, svcIsVod, svcSet, vodPaneReady, doLogin, doVodLogin, vodKakao, signupCos, signupSubmit, signupDoneMsg, FORGOT_TXT, LEGAL, legalHtml,
     // VOD 강의실(극장형): 탭 · 노트 거르기 · 노트 검색(예전처럼 남아요) · 노트 · 영상 · 완료 · 내려받기
     vtTab: (k) => { if (k !== undefined) vtTab = k; return vtTab; }, vtFilter: (k) => { if (k !== undefined) vtFilter = k; return vtFilter; }, vtQ: (q) => { if (q !== undefined) vtQ = q; return vtQ; },
     NOTE_TAGS, notesAll, notesOf, byTime, fmtT, hhmm, draftGet, draftSet, vtVideo, vtWatermark, vtSaveNote, vtAfter, vtReset: () => { vtLast = { t: 0, at: 0 }; },

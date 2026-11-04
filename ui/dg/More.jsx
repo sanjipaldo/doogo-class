@@ -15,14 +15,14 @@ const redraw = () => window.ReactApp.redraw();
 const Mark = ({ k, c }) => <RawOne html={window.brandMark(k, c)} />;
 
 /** 강의실 팝업 — 예전 openModal(제목, 내용, 버튼, wide) 과 같은 모양 (#modal-root 안 · X · 닫기 버튼으로만 닫혀요) */
-export function DgModal({ title, wide, actions, onClose, children }) {
+export function DgModal({ title, wide, actions, onClose, bodyHtml, children }) {
   useEffect(() => { const c = () => onClose(); window.addEventListener("dc:modal-close", c); return () => window.removeEventListener("dc:modal-close", c); }, [onClose]);
   useEffect(() => { const f = document.querySelector("#modal-root input, #modal-root select, #modal-root [data-action=modal-close]"); if (f) f.focus(); }, []);
   const box = document.getElementById("modal-root"); if (!box) return null;
   return createPortal(
     <div className="modal-backdrop"><div className={"modal" + (wide ? " wide" : "")} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="modal-head"><h3 id="modal-title">{title}</h3><button className="icon-btn" data-action="modal-close" aria-label="닫기" onClick={onClose}><Icon n="x" /></button></div>
-      <div className="modal-body">{children}</div>{actions ? <div className="modal-actions">{actions}</div> : null}</div></div>, box);
+      {bodyHtml != null ? <div className="modal-body" dangerouslySetInnerHTML={{ __html: bodyHtml }} /> : <div className="modal-body">{children}</div>}{actions ? <div className="modal-actions">{actions}</div> : null}</div></div>, box);
 }
 
 /* ---------- 동기부여 ---------- */
