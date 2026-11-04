@@ -63,4 +63,18 @@ const PG_METHOD_KEYS = ["card", "kakao", "toss", "naver", "transfer", "vbank"];
 /** 가상계좌 입금 기한 (시간) */
 const vbankHours = () => Math.min(168, Math.max(1, Number(process.env.PORTONE_VBANK_HOURS) || 72));
 
-module.exports = { on, getPayment, cancelPayment, closeVirtualAccount, verifyWebhook, channel, PG_METHOD_KEYS, vbankHours };
+/** 연결 확인 (배포 빌드 기록에만 — scripts/db-build.js · 4단계 4-2): 없는 결제를 한 번 조회해 봐요. 아무것도 바꾸지 않아요.
+ *  404(결제 없음) → 상점 아이디 · API Secret 이 맞아요 / 401 · 403 → Secret 이 틀렸거나 만료 / 키가 없으면 off
+ *  → { ok, why: "" | "off" | "unauthorized" | "http <코드>" | "network", channels: [채널 키가 있는 결제수단] } — 키 값은 돌려주지 않아요 */
+async function check() {
+  const channels = PG_METHOD_KEYS.filter((m) => !!channel(m));
+  if (!on()) return { ok: false, why: "off", channels };
+  try {
+    const r = await fetch(API + "/payments/" + encodeURIComponent("dc-connection-check") + storeQ(), { headers: hdr(), signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined });
+    if (r.status === 404) return { ok: true, why: "", channels };
+    if (r.status === 401 || r.status === 403) return { ok: false, why: "unauthorized", channels };
+    return { ok: false, why: "http " + r.status, channels };
+  } catch (e) { return { ok: false, why: "network", channels }; }
+}
+
+module.exports = { on, getPayment, cancelPayment, closeVirtualAccount, verifyWebhook, channel, PG_METHOD_KEYS, vbankHours, check };

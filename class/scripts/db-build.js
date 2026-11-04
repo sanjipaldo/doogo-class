@@ -25,6 +25,11 @@ const init = require("../api/_lib/init");
   const before = await store.countDocs();
   console.log("[db] 저장된 문서 " + before + "개");
   if (!process.env.MASTER_PASSWORD) console.warn("[db] 주의: MASTER_PASSWORD 환경변수가 없어 마스터 로그인이 막혀 있어요.");
+  // 포트원 결제 연결 확인 (4단계 4-2): 키가 있으면 없는 결제를 한 번 조회해 상점 아이디 · API Secret 이 맞는지만 봐요 (빌드는 멈추지 않아요 · 키 값은 안 적어요)
+  try {
+    const pc = await require("../api/_lib/portone").check();
+    if (pc.why !== "off") console.log("[pay] 포트원 연결 " + (pc.ok ? "확인: 됐어요 (상점 아이디 · API Secret 맞음)" : "확인 실패: " + (pc.why === "unauthorized" ? "API Secret 이 틀렸거나 만료됐어요 — 포트원 › 식별코드 · API Keys 에서 새로 발급해 Vercel 에 다시 넣어 주세요" : pc.why)) + " · 결제수단 채널: " + (pc.channels.join(", ") || "없음"));
+  } catch (e) { console.log("[pay] 포트원 연결 확인을 못 했어요 (빌드는 계속)"); }
   if (!prod && !staging) { console.log("[db] 미리보기 배포라 데이터는 바꾸지 않아요."); return; }
   if (staging) {
     const MARK = "__staging-db__";

@@ -1839,6 +1839,21 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "끄기: Vercel 환경 변수 DC_SPLIT_OFF=1 → <html data-split=\"off\"> → 예전처럼 모든 파일 (이 브라우저만: localStorage dc:split)");
   }
 
+  {
+    console.log("32) 포트원 연결 확인 (배포 빌드 기록 · 4단계 4-2 결제 시험 환경)");
+    const PO = require(path.join(TMP, "class/api/_lib/portone.js"));
+    const keep = { s: process.env.PORTONE_STORE_ID, a: process.env.PORTONE_API_SECRET, c: process.env.PORTONE_CHANNEL_CARD };
+    const c1 = await PO.check();
+    process.env.PORTONE_API_SECRET = "wrong-secret";
+    const c2 = await PO.check();
+    delete process.env.PORTONE_API_SECRET;
+    const c3 = await PO.check();
+    process.env.PORTONE_STORE_ID = keep.s; process.env.PORTONE_API_SECRET = keep.a; if (keep.c !== undefined) process.env.PORTONE_CHANNEL_CARD = keep.c;
+    const bsrc = fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8");
+    ok(c1.ok === true && c1.channels.indexOf("card") >= 0 && c2.ok === false && c2.why === "unauthorized" && c3.why === "off" && !JSON.stringify([c1, c2, c3]).includes("ps-test") && /require\("\.\.\/api\/_lib\/portone"\)\.check\(\)/.test(bsrc) && /빌드는 멈추지 않아요/.test(bsrc),
+      "맞는 Secret → 결제 없음(404)이라 연결 확인 · 틀린 Secret → 인증 실패 · 키 없음 → off · 키 값은 결과에 없어요 · 배포 빌드가 기록만 해요(멈추지 않음)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);
