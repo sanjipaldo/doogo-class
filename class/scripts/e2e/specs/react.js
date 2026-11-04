@@ -224,14 +224,23 @@ module.exports = {
       await run.check(!bad.length, "로그인 전: 로그인 · 회원가입 · 공개 화면 " + AUTH.length + "개 화면: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요", bad.slice(0, 2), pg);
       // 공개 화면(약관)의 검색 · 공유 미리보기: React 화면도 서버가 같은 제목 · 설명 · 대표 주소 · 검색 허용 · 검색용 안내 글을 넣어요
       const ent = (x) => String(x || "").replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
-      const meta = (h) => ({ title: ent((h.match(/<title>([^<]*)<\/title>/) || [])[1]), canon: (h.match(/<link rel="canonical" href="([^"]+)"/) || [])[1], robots: (h.match(/<meta name="robots" content="([^"]+)"/) || [])[1], desc: ent((h.match(/<meta name="description" content="([^"]+)"/) || [])[1]), ogt: ent((h.match(/<meta property="og:title" content="([^"]+)"/) || [])[1]), seo: /class="seo-static"/.test(h), react: /DC_REACT_PAGE/.test(h) });
+      // 머리 정보 전부: 모든 meta(이름 · 속성 → 내용) · 구조화 데이터(JSON-LD) 전부 · 검색용 안내 글 — 예전 화면과 하나라도 다르면 실패
+      const meta = (h) => {
+        const metas = [], ld = [];
+        h.replace(/<meta\s+(name|property)="([^"]+)"\s+content="([^"]*)"\s*\/?>/g, (m0, k, n, v) => { if (n !== "viewport" && n !== "theme-color") metas.push(k + ":" + n + "=" + ent(v)); return m0; });
+        h.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (m0, j) => { ld.push(j.trim()); return m0; });
+        const sm = /<div class="seo-static">([\s\S]*?)<\/div>/.exec(h);
+        return { title: ent((h.match(/<title>([^<]*)<\/title>/) || [])[1]), canon: (h.match(/<link rel="canonical" href="([^"]+)"/) || [])[1], robots: (h.match(/<meta name="robots" content="([^"]+)"/) || [])[1], desc: ent((h.match(/<meta name="description" content="([^"]+)"/) || [])[1]), ogt: ent((h.match(/<meta property="og:title" content="([^"]+)"/) || [])[1]),
+          metas: metas.sort().join("\n"), ld: ld.join("\n"), seoText: sm ? sm[1].replace(/\s+/g, " ").trim() : "", seo: /class="seo-static"/.test(h), react: /DC_REACT_PAGE/.test(h) };
+      };
       const seoBad = [];
       for (const u of PUB) {
         const a = meta(await (await fetch(base + u, { headers: { cookie: "dc_next=off" } })).text()), b = meta(await (await fetch(base + u, { headers: { cookie: "dc_next=all" } })).text());
-        if (a.react || !b.react || a.title !== b.title || a.canon !== b.canon || a.robots !== b.robots || a.desc !== b.desc || a.ogt !== b.ogt || !b.seo || !/index/.test(b.robots || "") || /noindex/.test(b.robots || "")) seoBad.push({ u, a, b });
+        const diff = ["title", "canon", "robots", "metas", "ld", "seoText"].filter((k) => a[k] !== b[k]);
+        if (a.react || !b.react || diff.length || !b.seo || !/index/.test(b.robots || "") || /noindex/.test(b.robots || "")) seoBad.push({ u, diff, a: diff.map((k) => [k, String(a[k]).slice(0, 300)]), b: diff.map((k) => [k, String(b[k]).slice(0, 300)]) });
       }
       const priv = meta(await (await fetch(base + "/vod/my", { headers: { cookie: "dc_next=all" } })).text());
-      await run.check(!seoBad.length && priv.react && /noindex/.test(priv.robots || ""), "공개 화면 " + PUB.length + "개: React 화면도 서버가 같은 제목 · 설명 · 대표 주소 · 공유 제목 · 검색 허용 · 검색용 안내 글 / 마이페이지(React)는 검색 제외(noindex)", seoBad.slice(0, 1).concat([{ priv }]), pg);
+      await run.check(!seoBad.length && priv.react && /noindex/.test(priv.robots || ""), "공개 화면 " + PUB.length + "개: React 화면도 서버가 같은 제목 · 모든 meta(설명 · 공유 정보 · 검색 허용) · 대표 주소 · 구조화 데이터(JSON-LD) 전부 · 검색용 안내 글 / 마이페이지(React)는 검색 제외(noindex)", seoBad.slice(0, 1).concat([{ priv }]), pg);
       // 탭 바꾸기: 새로 불러오지 않고 그 자리에서 · 주소는 ?tab=dg
       await L.reactCookie(pg, base, "all");
       await L.open(pg, base, "/vod/login");

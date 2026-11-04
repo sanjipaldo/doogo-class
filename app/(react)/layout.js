@@ -43,10 +43,12 @@ async function publicMeta(p) {
     const metas = [];
     head.replace(/<meta\s+(name|property)="([^"]+)"\s+content="([^"]*)"\s*\/?>/g, (m0, kind, k, v) => { if (!META_SKIP[k]) metas.push([kind, k, v.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'")]); return m0; });
     const pick = (re) => { const m = re.exec(head); return m ? m[1] : ""; };
+    const all = (re) => { const out = []; head.replace(re, (m0, x) => { out.push(x); return m0; }); return out; };
     const s0 = body.indexOf('<div class="seo-static">'), s1 = body.lastIndexOf("</div>", body.indexOf('<div id="modal-root"'));
     return {
       title: pick(/<title>([\s\S]*?)<\/title>/).replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'"),
-      metas, canonical: pick(/<link rel="canonical" href="([^"]+)"/), ld: pick(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/), style: pick(/<style>([\s\S]*?)<\/style>/),
+      // 구조화 데이터는 여러 개일 수 있어요 (사이트 정보 + 클래스 상세의 상품 정보 등) — 모두 그대로
+      metas, canonical: pick(/<link rel="canonical" href="([^"]+)"/), ld: all(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g), style: pick(/<style>([\s\S]*?)<\/style>/),
       seo: s0 >= 0 && s1 > s0 ? body.slice(s0 + '<div class="seo-static">'.length, s1).replace(/<\/div>\s*$/, "") : ""
     };
   } catch (e) { console.error("[react meta]", p, e && e.message); return null; }
@@ -66,7 +68,7 @@ export default async function ReactLayout({ children }) {
           {pub.title ? <title>{pub.title}</title> : null}
           {pub.metas.map((x, i) => (x[0] === "name" ? <meta key={"m" + i} name={x[1]} content={x[2]} /> : <meta key={"m" + i} property={x[1]} content={x[2]} />))}
           {pub.canonical ? <link rel="canonical" href={pub.canonical} /> : null}
-          {pub.ld ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: pub.ld }} /> : null}
+          {pub.ld.map((j, i) => <script key={"ld" + i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: j }} />)}
           {pub.style ? <style dangerouslySetInnerHTML={{ __html: pub.style }} /> : null}
         </> : <meta name="robots" content="noindex, nofollow" />}
         {L.links.map((a, i) => <link key={"l" + i} {...a} />)}
