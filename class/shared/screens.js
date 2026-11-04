@@ -56,11 +56,11 @@
     // 강사 운영: 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     ["ct-ops", /^\/center\/(students|cohorts|reviews|questions|billing)\/?$/, "강사센터 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청"],
     // 수강생 화면 콘텐츠 (1): 커리큘럼 · 과제 · 수업 캘린더 · 클래스 소식 · FAQ · 시작 가이드 · 실무 체크리스트 · 1:1 상담 채널
-    ["ct-content", /^\/center\/(curriculum|missions|schedule|notices|faq|guide|docs|channels|coaches|partners|library|motivation|replays|showcase|glossary|notes|brand)\/?$/, "강사센터 콘텐츠 — 기본 정보 · — 커리큘럼 · 과제 · 캘린더 · 공지 · FAQ · 가이드 · 체크리스트 · 상담 채널 · 코치 · 제휴 · 자료함 · 응원 영상 · 다시보기 · 모범 과제 · 용어 · 노트 질문"],
+    ["ct-content", /^\/center\/(curriculum|missions|schedule|notices|faq|guide|docs|channels|coaches|partners|library|motivation|replays|showcase|glossary|notes|brand|menus)\/?$/, "강사센터 콘텐츠 — 기본 정보 · — 커리큘럼 · 과제 · 캘린더 · 공지 · FAQ · 가이드 · 체크리스트 · 상담 채널 · 코치 · 제휴 · 자료함 · 응원 영상 · 다시보기 · 모범 과제 · 용어 · 노트 질문"],
     // VOD(DOOGO CLASS): VOD 수강생 · VOD 강의 연결 · VOD 판매 내역
     ["ct-vod", /^\/center\/(vod-students|vodlink|vod|vod-live|vod-cal|vod-settle|coaching|teatime|ops-notices)\/?$/, "강사센터 VOD 수강생 · 강의 연결 · 판매 내역 · 무료 LIVE · 온/오프라인 판매 · 정산 달력 · 판매 정산 · 1:1 코칭 답변 · TEA TIME · 운영팀 공지"],
     // 마스터: 대시보드 · 강사 플랫폼 관리 · 전체 수강생
-    ["ct-master", /^\/center\/master(\/(instructors|students|health|notices|site|data|calendar|sla))?\/?$/, "마스터 대시보드 · 강사 플랫폼 관리 · 전체 수강생 · 플랫폼 현황 · 강사 공지 · 첫 화면 · 사업자 정보 · 데이터 관리 · 전체 기수 일정 · 과제 검수 · 응답 관리"]
+    ["ct-master", /^\/center\/master(\/(instructors|students|health|notices|site|data|calendar|sla|reports|dc|vod-members|vod-inquiries|vod-home|vod-display|vod-rank|vod-ads|vod-settle|vod-rates|vod-sales|vod-refund|vod-ship|vod|vod-classes|vod-crm|vod-seg|vod-msg|vod-crm-rp|vod-media|vod-media-rs|vod-media-pay|billing|plan|menus|certs|contracts|staff|rs))?\/?$/, "마스터 대시보드 · 강사 플랫폼 관리 · 전체 수강생 · 플랫폼 현황 · 강사 공지 · 첫 화면 · 사업자 정보 · 데이터 관리 · 전체 기수 일정 · 과제 검수 · 응답 관리 · 오류 신고 모아보기 · DOOGO CLASS 대시보드 · 후기 · 다짐 · 문의 · 고객센터 1:1 문의 · 홈 꾸미기 · 전시 · 쿠폰 · 설정 · 판매 순위 · 광고비 · ROAS · 강사 정산 · 정산 비율 · 가격 · 매출 리포트 · 환불 · 취소 관리 · 종이책 주문 · 배송 · 주문 · 결제 · VOD 클래스 관리 목록 · 회원 DB · 세그먼트 · 메시지 · 자동화 · 회원 분석 · 온드미디어 계정 · 채널 성과 · RS 정산 · 기수 신청 · 매출 · 기수 · 일정 설계 · 메뉴 · 색상 설정 · 수료 관리 · 강사 계약 · 서류 · 운영자 계정 · 파트너스 관리"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

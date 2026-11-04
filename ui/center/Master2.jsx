@@ -131,3 +131,22 @@ export function MasterSla({ n }) {
     </div>
   </>;
 }
+
+/** 오류 신고 모아보기 #/center/master/reports (예전 pageMasterReports · requestCards) — 탭 · 강사 고르기 · 답변(폼 .a-q-form)은 예전 이벤트 */
+export function MasterReports({ n }) {
+  const A = ADM(), DB = DBX(), ui = A.ui, fs = (t) => DB.date.fmtStamp(t), all = A.allRequests(), list = all.filter((x) => ui.mRepIns === "all" || x.ins.id === ui.mRepIns);
+  const shown = list.filter((x) => ui.qFilter === "all" || (ui.qFilter === "open" ? !x.q.answer : !!x.q.answer));
+  const tabs = [["open", "답변 대기", list.filter((x) => !x.q.answer).length], ["done", "답변 완료", list.filter((x) => x.q.answer).length], ["all", "전체", list.length]];
+  return <>
+    <Head title="오류 신고 모아보기" sub="모든 강사 플랫폼에서 수강생이 남긴 프로그램 오류·불편 신고예요. 플랫폼 문제는 마스터가 직접 답하고 고칠 수 있어요. (강사도 자기 강사센터에서 볼 수 있어요)" />
+    <section className="a-card"><div className="a-toolbar"><div className="a-tabs">{tabs.map((t) => <button key={t[0]} type="button" className={"a-tab" + (ui.qFilter === t[0] ? " on" : "")} data-action="q-tab" data-k={t[0]}>{t[1]} <span className="num">{t[2]}</span></button>)}</div>
+      <div className="a-filters"><select key={"r" + ui.mRepIns} className="a-input a-sm" id="m-rep-ins" aria-label="강사" defaultValue={ui.mRepIns}><option value="all">전체 강사</option>{DB.data.instructors.map((x) => <option key={x.id} value={x.id}>{x.displayName}</option>)}</select></div></div>
+      {shown.length ? <div className="a-stack">{shown.map((x) => (
+        <article key={x.ins.id + x.q.id} className="a-q"><div className="a-q-head"><span className="a-avatar">{x.s.name.slice(0, 1)}</span><div><b>#{x.no} {x.q.title}</b><small>{x.ins.displayName + " · " + x.s.name + " · " + A.cohortName(x.s.cohortId) + " · " + fs(x.q.at)}</small></div><Pill cls="mute">{x.q.category || "기타"}</Pill>{x.q.answer ? <Pill cls="ok">답변 완료</Pill> : <Pill cls="warn">답변 대기</Pill>}</div>
+          {x.q.answer && (x.q.answeredBy || x.q.answeredAt) ? <p className="a-q-by"><span className="a-by"><Icon n="user" c="xs" />{x.q.answeredBy || "강사"}</span>{x.q.answeredAt ? " · " + fs(x.q.answeredAt) + " 답변" : " 답변"}</p> : null}
+          <p className="a-q-body">{x.q.body}</p>
+          {(x.q.images || []).length ? <div className="a-shots a-q-shots">{x.q.images.map((im, i) => <a key={i} className="a-shot" href={im.data} target="_blank" rel="noopener"><img src={im.data} alt={im.name} /></a>)}</div> : null}
+          <form key={x.q.id + ":" + n} className="a-q-form" data-sid={x.s.id} data-qid={x.q.id}><textarea className="a-input" name="answer" rows="3" placeholder="예: 확인해 보니 ○○ 문제였어요. 지금 고쳤으니 새로고침 후 다시 해 주세요." aria-label="답변" defaultValue={x.q.answer || ""} /><button className="a-btn a-btn-primary a-btn-sm" type="submit">{x.q.answer ? "답변 수정" : "답변 등록"}</button></form></article>
+      ))}</div> : <Empty ic="bug">{ui.qFilter === "open" ? "답변을 기다리는 신고가 없어요." : "신고가 없어요."}</Empty>}</section>
+  </>;
+}

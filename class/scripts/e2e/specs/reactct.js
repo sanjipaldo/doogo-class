@@ -7,10 +7,10 @@ const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강사센터 화면 주소 (shared/screens.js 의 ct-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 // 마스터 화면 주소
-const CTM = ["/center/master", "/center/master/instructors", "/center/master/students", "/center/master/health", "/center/master/notices", "/center/master/site", "/center/master/data", "/center/master/calendar", "/center/master/sla"];
+const CTM = ["/center/master", "/center/master/instructors", "/center/master/students", "/center/master/health", "/center/master/notices", "/center/master/site", "/center/master/data", "/center/master/calendar", "/center/master/sla", "/center/master/reports", "/center/master/dc", "/center/master/vod-members", "/center/master/vod-inquiries", "/center/master/vod-home", "/center/master/vod-display", "/center/master/vod-rank", "/center/master/vod-ads", "/center/master/vod-settle", "/center/master/vod-rates", "/center/master/vod-sales", "/center/master/vod-refund", "/center/master/vod-ship", "/center/master/vod", "/center/master/vod-classes", "/center/master/vod-crm", "/center/master/vod-seg", "/center/master/vod-msg", "/center/master/vod-crm-rp", "/center/master/vod-media", "/center/master/vod-media-rs", "/center/master/vod-media-pay", "/center/master/billing", "/center/master/plan", "/center/master/menus", "/center/master/certs", "/center/master/contracts", "/center/master/staff", "/center/master/rs"];
 const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
   "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
-  "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand",
+  "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand", "/center/menus",
   "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching", "/center/teatime", "/center/ops-notices"];
 async function shapes(page, base, L, list) {
   const bad = []; let lines = 0;
@@ -129,6 +129,43 @@ module.exports = {
           await L.open(page, base, "/center/master/instructors");
           await page.click('[data-action="ins-edit"]'); await page.waitForTimeout(350); o.push("M " + (await L.domShape(page, "modal-root")));
           await page.click('#modal-root .a-modal-head [data-action="modal-close"]'); await page.waitForTimeout(200);
+          await L.open(page, base, "/center/master/vod-members");
+          for (const k of ["pledges", "inquiries", "members"]) { await page.click('[data-action="vda-mt"][data-k="' + k + '"]'); await page.waitForTimeout(300); o.push(await L.domShape(page)); }
+          await page.fill("#vda-mq", "a"); await page.waitForTimeout(450); o.push(await L.domShape(page));
+          await page.fill("#vda-mq", ""); await page.waitForTimeout(450);
+          await page.click('[data-action="vda-mt"][data-k="reviews"]'); await page.waitForTimeout(300); o.push(await L.domShape(page));
+          // 홈 꾸미기: 섹션 고르기 (분야 탭 · 강사진 · 강의 섹션) · 분야 탭 고르기
+          await L.open(page, base, "/center/master/vod-home");
+          for (const k of ["cat", "teach"]) { const b = await page.$('[data-action="hk-sel"][data-k="' + k + '"]'); if (b) { await b.click(); await page.waitForTimeout(300); o.push(await L.domShape(page)); } }
+          { const b = await page.$('[data-action="hk-sel"][data-k="cat"]'); if (b) { await b.click(); await page.waitForTimeout(300); const t = await page.$$('[data-action="hk-cat"]'); if (t[1]) { await t[1].click(); await page.waitForTimeout(300); o.push(await L.domShape(page)); } } }
+          { const ks = await page.$$eval('[data-action="hk-sel"]', (bs) => bs.map((b) => b.dataset.k)); const k = ks.find((x) => ["cat", "teach", "why", "topics"].indexOf(x) < 0); if (k) { await page.click('[data-action="hk-sel"][data-k="' + k + '"]'); await page.waitForTimeout(300); o.push(await L.domShape(page)); } }
+          // 판매 순위 기간 탭 · 강사 정산 다음 달
+          await L.open(page, base, "/center/master/vod-rank");
+          for (const k of ["last", "all"]) { await page.click('[data-action="rk-per"][data-k="' + k + '"]'); await page.waitForTimeout(300); o.push(await L.domShape(page)); }
+          await L.open(page, base, "/center/master/vod-settle");
+          await page.click('[data-action="vda-ym"][data-dir="1"]'); await page.waitForTimeout(300); o.push(await L.domShape(page));
+          // 종이책 배송: 탭 · 고르기 · 모두 선택
+          await L.open(page, base, "/center/master/vod-ship");
+          for (const k of ["ready", "ship", "claim", "all", "wait"]) { await page.click('[data-action="vda-ship-tab"][data-k="' + k + '"]'); await page.waitForTimeout(300); o.push(await L.domShape(page)); }
+          { const c = await page.$('[data-action="vda-ship-pick"]'); if (c) { await c.click(); await page.waitForTimeout(300); o.push(await L.domShape(page)); } }
+          { const b = await page.$('[data-action="vda-ship-all"]'); if (b) { await b.click(); await page.waitForTimeout(300); o.push(await L.domShape(page)); await page.click('[data-action="vda-ship-all"]'); await page.waitForTimeout(300); } }
+          // 주문 · 결제: 상태 탭 · 코칭 탭
+          await L.open(page, base, "/center/master/vod");
+          for (const k of ["paid", "refunded", "all"]) { await page.click('[data-action="vda-of"][data-k="' + k + '"]'); await page.waitForTimeout(300); o.push(await L.domShape(page)); }
+          await page.click('[data-action="vda-tab"][data-k="care"]'); await page.waitForTimeout(300); o.push(await L.domShape(page));
+          await page.click('[data-action="vda-tab"][data-k="orders"]'); await page.waitForTimeout(300);
+          // 회원 DB: 단계 칩 · 가입 방식 · 고르기
+          await L.open(page, base, "/center/master/vod-crm");
+          await page.click('.crm-chip[data-action="crm-seg"][data-k="fan"]'); await page.waitForTimeout(300); o.push(await L.domShape(page));
+          await page.click('.crm-chip[data-action="crm-seg"][data-k="all"]'); await page.waitForTimeout(300);
+          await page.click('[data-action="crm-via"][data-k="kakao"]'); await page.waitForTimeout(300); o.push(await L.domShape(page));
+          await page.click('[data-action="crm-via"][data-k=""]'); await page.waitForTimeout(300);
+          { const c = await page.$("[data-crm-sel]"); if (c) { await c.click(); await page.waitForTimeout(300); o.push(await L.domShape(page)); await page.click('[data-action="crm-sel-clear"]'); await page.waitForTimeout(300); } }
+          // 세그먼트: 조건 더하기 · 항목 바꾸기
+          await L.open(page, base, "/center/master/vod-seg");
+          await page.click('[data-action="crm-b-add"]'); await page.waitForTimeout(300); o.push(await L.domShape(page));
+          await page.selectOption('[data-crm-b="f"][data-i="1"]', "via"); await page.waitForTimeout(300); o.push(await L.domShape(page));
+          await page.click('[data-action="crm-b-del"][data-i="1"]'); await page.waitForTimeout(300);
           out[mode] = o;
         }
         d = out.off.map((x, i) => L.shapeDiff(x, out.all[i])).filter(Boolean); m = [out.off.length, out.all.length];

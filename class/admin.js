@@ -3421,10 +3421,9 @@
   const FIN_KIND = [["vod", "VOD 수강권"], ["extend", "1년 연장권"], ["ebook", "전자책"], ["book", "종이책"], ["live", "LIVE · 오프라인"], ["coach", "1:1 코칭권"], ["tea", "TEA TIME"]];
   const vdKindKey = (o) => (VX().kindOf(o) === "extend" ? "extend" : VX().rateKeyOf(o));
 
-  function pageVodSales() {
-    finMemo = {};
-    try { return vdSalesHtml(); } finally { finMemo = null; }
-  }
+  function pageVodSales() { return finMemoRun(vdSalesHtml); }
+  /** 그리는 동안만 같은 달 손익을 기억해 둬요 (React 매출 리포트도 같이 씀) */
+  function finMemoRun(fn) { finMemo = {}; try { return fn(); } finally { finMemo = null; } }
   function vdSalesHtml() {
     const t0 = todayStr(), thisM = t0.slice(0, 7), ym = ui.finYM || thisM, y = Number(ym.slice(0, 4)), live = ym === thisM;
     const f = vdFin(ym), pm = vdFin(vdYMadd(ym, -1)), ly = vdFin(vdYMadd(ym, -12));
@@ -8519,7 +8518,7 @@
     vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
     vdKey, vdKeep, vdStmt, vdStState, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
     // 마스터: 대시보드 · 강사 플랫폼 · 전체 수강생 (운영자 계정이면 맡지 않은 버튼 · 링크를 빼요 — staffStrip)
-    seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH,
+    seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
     legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
       const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);

@@ -18,17 +18,26 @@ import { VodStudents, VodLink, InsVod, InsVodLive } from "./VodPages.jsx";
 import { InsVodCal, InsVodSettle, Coaching, TeaTime, OpsNotices } from "./VodPages2.jsx";
 import { Coaches, Partners, Library, Motivation, Replays, Showcase, Glossary, NotePrompts } from "./Content2.jsx";
 import { MasterHome, MasterInstructors, MasterStudents } from "./Master.jsx";
-import { MasterHealth, MasterNotices, MasterSite, MasterData, MasterCalendar, MasterSla } from "./Master2.jsx";
+import { MasterHealth, MasterNotices, MasterSite, MasterData, MasterCalendar, MasterSla, MasterReports } from "./Master2.jsx";
+import { MasterDc, MasterVodMembers, MasterVodInquiries } from "./MasterDc.jsx";
+import { MasterVodHome, MasterVodDisplay, MasterVodClasses } from "./MasterStore.jsx";
+import { MasterVodRefund, MasterVodShip, MasterVod } from "./MasterOrders.jsx";
+import { MasterCrm, MasterCrmSeg, MasterCrmMsg, MasterCrmReport } from "./MasterCrm.jsx";
+import { MasterMedia, MasterMediaRs, MasterMediaPay } from "./MasterMedia.jsx";
+import { MasterBilling, MasterPlan } from "./MasterBilling.jsx";
+import { Menus, InsMenus } from "./Menus.jsx";
+import { MasterCerts, MasterContracts, MasterStaff, MasterRs } from "./MasterOps.jsx";
+import { MasterVodRank, MasterVodAds, MasterVodSettle, MasterVodRates, MasterVodSales } from "./MasterFin.jsx";
 import { ADM, Isl } from "./bits.jsx";
 
 // 강사센터 메뉴(주소 첫 칸) → 본문 — 옮긴 화면만 (screens.js 에 없는 주소는 React 로 오지 않아요)
 const PAGES = { "": Dashboard, students: Students, cohorts: Cohorts, reviews: Reviews, questions: Questions, billing: Billing,
   curriculum: Curriculum, missions: Missions, schedule: Schedule, notices: Notices, faq: Faq, guide: Guide, docs: Docs, channels: Channels,
-  coaches: Coaches, partners: Partners, library: Library, motivation: Motivation, replays: Replays, showcase: Showcase, glossary: Glossary, notes: NotePrompts, brand: Brand,
+  coaches: Coaches, partners: Partners, library: Library, motivation: Motivation, replays: Replays, showcase: Showcase, glossary: Glossary, notes: NotePrompts, brand: Brand, menus: InsMenus,
   "vod-students": VodStudents, vodlink: VodLink, vod: InsVod, "vod-live": InsVodLive, "vod-cal": InsVodCal, "vod-settle": InsVodSettle, coaching: Coaching, teatime: TeaTime, "ops-notices": OpsNotices };
 
 // 마스터 메뉴(주소 둘째 칸) → 본문 — 옮긴 화면만
-const MPAGES = { "": MasterHome, instructors: MasterInstructors, students: MasterStudents, health: MasterHealth, notices: MasterNotices, site: MasterSite, data: MasterData, calendar: MasterCalendar, sla: MasterSla };
+const MPAGES = { "": MasterHome, instructors: MasterInstructors, students: MasterStudents, health: MasterHealth, notices: MasterNotices, site: MasterSite, data: MasterData, calendar: MasterCalendar, sla: MasterSla, reports: MasterReports, dc: MasterDc, "vod-members": MasterVodMembers, "vod-inquiries": MasterVodInquiries, "vod-home": MasterVodHome, "vod-display": MasterVodDisplay, "vod-rank": MasterVodRank, "vod-ads": MasterVodAds, "vod-settle": MasterVodSettle, "vod-rates": MasterVodRates, "vod-sales": MasterVodSales, "vod-refund": MasterVodRefund, "vod-ship": MasterVodShip, vod: (p) => <MasterVod {...p} moved={MPAGES} />, "vod-classes": MasterVodClasses, "vod-crm": MasterCrm, "vod-seg": MasterCrmSeg, "vod-msg": MasterCrmMsg, "vod-crm-rp": MasterCrmReport, "vod-media": MasterMedia, "vod-media-rs": MasterMediaRs, "vod-media-pay": MasterMediaPay, billing: MasterBilling, plan: MasterPlan, menus: Menus, certs: MasterCerts, contracts: MasterContracts, staff: MasterStaff, rs: MasterRs };
 
 export default function Center({ n, h }) {
   const A = ADM(), p = A.last || A.prep();

@@ -15,11 +15,14 @@ function styleObj(s) {
   return o;
 }
 const OPEN = /^<([a-zA-Z][a-zA-Z0-9]*)((?:\s+[a-zA-Z_:][-a-zA-Z0-9_:.]*(?:\s*=\s*"[^"]*")?)*)\s*>/;
+const VOID = { img: 1, br: 1, hr: 1, input: 1 };
 export function RawOne({ html, ...rest }) {
   const h = String(html || "").trim(), m = OPEN.exec(h);
-  if (!m || !h.endsWith("</" + m[1] + ">")) return <Raw html={h} />;
   const props = {};
-  m[2].replace(/([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*"([^"]*)")?/g, (m0, k, v) => { const val = v == null ? "" : unesc(v); if (k === "style") props.style = styleObj(val); else props[REACT_NAME[k] || k] = val; return m0; });
+  if (m) m[2].replace(/([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*"([^"]*)")?/g, (m0, k, v) => { const val = v == null ? "" : unesc(v); if (k === "style") props.style = styleObj(val); else props[REACT_NAME[k] || k] = val; return m0; });
+  // 닫는 태그가 없는 태그 하나 (예: <img src alt="">) — 감싸지 않고 그 태그를 그대로
+  if (m && VOID[m[1].toLowerCase()] && m[0].length === h.length) { const V = m[1].toLowerCase(); return <V {...props} {...rest} />; }
+  if (!m || !h.endsWith("</" + m[1] + ">")) return <Raw html={h} />;
   const Tag = m[1].toLowerCase();
   // rest: React 가 더 다는 것 (예: 안쪽 예전 버튼을 누를 때 onClick) — 화면 구조는 그대로
   return <Tag {...props} {...rest} dangerouslySetInnerHTML={{ __html: h.slice(m[0].length, h.length - m[1].length - 3) }} />;
