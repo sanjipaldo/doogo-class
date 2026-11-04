@@ -44,12 +44,10 @@
   <link rel="stylesheet" href="assets/fonts/pretendard.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&display=swap" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="admin.css" />
-  <link rel="stylesheet" href="landing.css" />
-  <link rel="stylesheet" href="doogo-free.css" />
   <link rel="stylesheet" href="home.css" />
   <link rel="stylesheet" href="vod.css" />
-  <link rel="stylesheet" href="guide.css" />
+  <!-- 화면 나눠 받기 (4단계): 강사센터 admin.css · 강사 소개 landing.css · doogo-free.css · 사용법 guide.css 와 영역 스크립트는 areas.js 가 그 영역에서만 넣어요 -->
+  <script src="areas.js"></script>
 </head>
 <body>
   <div id="root">
@@ -96,13 +94,7 @@
   <script src="tags.js"></script>
   <script src="icons.js"></script>
   <script src="legal.js"></script>
-  <script src="vod.js"></script>
-  <script src="app.js"></script>
-  <script src="admin.js"></script>
-  <script src="landing.js"></script>
-  <script src="guide-data.js"></script>
-  <script src="guide.js"></script>
-  <script src="home.js"></script>
+  <!-- vod.js · app.js · admin.js · landing.js · guide-data.js · guide.js · home.js 는 영역에 맞게 main.js 가 받아요 (areas.js) -->
   <script src="main.js"></script>
 </body>
 </html>

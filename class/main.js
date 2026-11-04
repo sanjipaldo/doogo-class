@@ -5,22 +5,43 @@
   "use strict";
   let mode = null;
   const isRoot = (h) => h === "" || h === "#" || h === "#/";
-  const isDg = (h) => /^#\/(doinggo|partner)(\/|\?|$)/.test(h);
-  // 저장하지 않은 편집이 있으면 화면을 옮기기 전에 한 번 묻기 (강사센터 페이지 편집기가 정해 둠)
-  window.addEventListener("beforeunload", (e) => { if (window.__dirty && window.__dirty()) { e.preventDefault(); e.returnValue = ""; } });
-  function go() {
-    if (window.__leaveGuard && !window.__leaveGuard(ROUTE.hash)) return;
-    let h = ROUTE.hash;
+  // 저장하지 않은 편집이 있으면 화면을 옮기기 전에 한 번 묻기 (강사센터 페이지 편집기가 정해 둠) — 영역을 옮기려고 새로 불러올 때는 이미 물어봤어요
+  let leaving = false;
+  window.addEventListener("beforeunload", (e) => { if (!leaving && window.__dirty && window.__dirty()) { e.preventDefault(); e.returnValue = ""; } });
+  /** 지금 주소 → { h: 화면이 읽을 #주소, fix: 주소창을 바꿀 값(없으면 null), next: 영역 } — 처음 파일 받기와 go() 가 같이 써요 */
+  function pick() {
+    let h = ROUTE.hash, fix = null;
     // 정식 서버가 /doinggo 주소를 이 화면으로 넘겨 주면(rewrite) 두잉고 소개로
     if (isRoot(h) && /^\/doinggo(\/|$)/.test(location.pathname)) h = "#/doinggo";
     // 예전 두잉고 소개 주소(#/about)는 #/doinggo 로
-    if (/^#\/about(\?|$)/.test(h)) { ROUTE.replace("#/doinggo"); h = "#/doinggo"; }
+    if (/^#\/about(\?|$)/.test(h)) { fix = "#/doinggo"; h = "#/doinggo"; }
     // 빈 해시(# · #/)는 대표 주소(/)로 깨끗하게
-    if (h === "#" || h === "#/") { ROUTE.replace(""); h = ""; }
+    if (h === "#" || h === "#/") { fix = ""; h = ""; }
     // 서버가 /vod 주소를 이 화면으로 넘겨 주면 두고클래스 스토어로
     if (isRoot(h) && /^\/vod\/?$/.test(location.pathname)) h = "#/vod";
-    // 대표 주소는 두고클래스 스토어가 먼저 (두고클래스가 메인 · 두잉고는 /doinggo)
-    const next = /^#\/center/.test(h) ? "admin" : isRoot(h) || /^#\/(vod|terms|privacy|refund)(\/|\?|$)/.test(h) ? "vod" : /^#\/(p|free)(\/|\?|$)/.test(h) ? "landing" : isDg(h) ? "home" : "student";
+    // 대표 주소는 두고클래스 스토어가 먼저 (두고클래스가 메인 · 두잉고는 /doinggo) — 영역 규칙은 areas.js 한 곳에
+    return { h, fix, next: window.DC_AREA.of(h) };
+  }
+  /* 화면 나눠 받기 (4단계): 옮겨 갈 영역의 화면 파일이 아직 없으면 페이지를 새로 불러요 — 새 페이지가 그 영역 파일만 받아요.
+   * 저장 중인 내용은 먼저 보내고, 같은 주소로 15초 안에 또 새로 부르게 되면(혹시 모를 되풀이) 그 자리에서 파일을 받아 그려요 */
+  function moveArea(next) {
+    const key = "dc:area-reload", here = location.pathname + location.search + location.hash, now = Date.now();
+    let last = null;
+    try { last = JSON.parse(sessionStorage.getItem(key) || "null"); } catch (e) { last = null; }
+    if (last && last.u === here && now - last.t < 15000) {
+      window.DC_AREA.ensure(next).then(() => go(true), bootFail);
+      return;
+    }
+    try { sessionStorage.setItem(key, JSON.stringify({ u: here, t: now })); } catch (e) { /* 되풀이 막기만 못 해요 */ }
+    leaving = true;
+    root.innerHTML = bootHtml();
+    Promise.resolve(DB.remote.on ? DB.remote.flush() : null).catch(() => {}).then(() => new Promise((ok) => setTimeout(ok, 150))).then(() => location.reload());
+  }
+  function go(resumed) {
+    if (!resumed && window.__leaveGuard && !window.__leaveGuard(ROUTE.hash)) return;
+    const p = pick(), h = p.h, next = p.next;
+    if (p.fix !== null) ROUTE.replace(p.fix);
+    if (!window.DC_AREA.ready(next)) { moveArea(next); return; }
     const changed = next !== mode;
     mode = next;
     document.body.dataset.mode = next;
@@ -213,10 +234,24 @@
   const root = document.getElementById("root");
   // 첫 로딩 화면: 흰 바탕 + DOOGO CLASS 글자 로고 + 진행 막대 + ‘로딩중입니다’ (index.html 에 이미 있으면 그대로 — 다시 그리면 깜박인다)
   const LOGO = '<img class="boot-logo boot-logo-dc" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchpriority="high">';
-  if (!root.querySelector(".boot-wait")) root.innerHTML = '<div class="boot-wait" role="status" aria-live="polite">' + LOGO + '<span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>';
-  const boot0 = idleOver();
-  (boot0.admin || boot0.student ? idleLogout(boot0, true) : Promise.resolve()).then(() => DB.remote.connect()).then(start, (err) => {
+  function bootHtml() { return '<div class="boot-wait" role="status" aria-live="polite">' + LOGO + '<span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>'; }
+  function bootFail(err) {
     console.error(err);
     root.innerHTML = '<div class="boot-wait boot-err" role="alert">' + LOGO + '<b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onclick="location.reload()">다시 시도</button></div>';
-  });
+  }
+  if (!root.querySelector(".boot-wait")) root.innerHTML = bootHtml();
+  // 이 주소 영역의 화면 파일(areas.js)은 서버 연결과 같이 받기 시작해요 — 둘 다 끝나면 그려요
+  const files0 = window.DC_AREA.ensure(pick().next);
+  files0.catch(() => {}); // 실패는 아래에서 한 번만 알려요
+  const boot0 = idleOver();
+  (boot0.admin || boot0.student ? idleLogout(boot0, true) : Promise.resolve()).then(() => DB.remote.connect()).then((server) => files0.then(() => server)).then(start, bootFail);
+})();
+
+/* 두잉고 시안: 아래 탭 막대 — 지금 화면에 맞는 탭 표시 (수강생 강의실 · 강사센터 둘 다)
+ * 예전에는 app.js 맨 끝에 있었는데, 화면 나눠 받기(4단계)로 강사센터에는 app.js 가 없어서 늘 받는 이 파일로 옮겼어요 */
+(function () {
+  function mark() { var h = ROUTE.hash || "#/home", best = null, bl = -1; document.querySelectorAll(".bw-tab[href]").forEach(function (a) { var k = a.getAttribute("href"); a.classList.remove("on"); if ((h === k || (!/^#\/center(\/master)?$/.test(k) && (h.indexOf(k + "/") === 0 || h.indexOf(k + "?") === 0))) && k.length > bl) { best = a; bl = k.length; } }); if (best) best.classList.add("on"); }
+  window.addEventListener("hashchange", function () { setTimeout(mark, 0); });
+  new MutationObserver(function () { if (document.querySelector(".bw-tabbar")) mark(); }).observe(document.getElementById("root") || document.body, { childList: true });
+  mark();
 })();

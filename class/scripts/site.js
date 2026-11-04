@@ -31,7 +31,9 @@ const IDX = path.join(OUT, "index.html");
 // 배포마다 CSS · JS 주소 끝에 ?v=<커밋> — 휴대폰 · 앱 안 브라우저가 예전 파일을 다시 쓰지 않고 새로 받게
 const VER = (process.env.VERCEL_GIT_COMMIT_SHA || Date.now().toString(36)).slice(0, 8);
 const ver = (html) => html.replace(/(\s(?:src|href)="\/[^"?#]+\.(?:js|css))"/g, "$1?v=" + VER + '"');
-fs.writeFileSync(IDX, ver(require("./index-abs")(fs.readFileSync(IDX, "utf8"))));
+// 화면 나눠 받기 끄기 (4단계): DC_SPLIT_OFF=1 이면 <html data-split="off"> — areas.js 가 예전처럼 모든 화면 파일을 받아요
+const splitOff = (html) => (process.env.DC_SPLIT_OFF === "1" ? String(html).replace(/<html lang="ko">/, '<html lang="ko" data-split="off">') : html);
+fs.writeFileSync(IDX, splitOff(ver(require("./index-abs")(fs.readFileSync(IDX, "utf8")))));
 console.log("[site] 화면 파일 " + n + "개 → " + path.relative(REPO, OUT));
 
 /* 공유 미리보기 사진 (Next.js 전환 3단계): 카카오톡은 webp 를 못 읽어서, 강사 사진 · 클래스 사진 · 책 표지 폴더의 webp 를

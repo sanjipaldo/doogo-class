@@ -1570,8 +1570,8 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(JSON.stringify(C25.plansOf(cat25.products[1]).map((x) => [x.d, x.sale, x.list])) === JSON.stringify(X25.plansOf(v1).map((x) => [x.d, x.sale, x.list])) && C25.priceOf(cat25.products[1]) === X25.priceOf(v1) && typeof D25.addDays === "function",
       "화면 계산(공용 모듈) = 서버 계산 (한국 시간 기준)");
     const vsrc25 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), psrc25 = fs.readFileSync(path.join(ROOT, "api/_lib/vodprice.js"), "utf8"), idx25 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-    ok(/window\.DCS\.price\.make\(/.test(vsrc25) && /function plansOf\(p\) \{ return PRC\(\)\.plansOf\(p\); \}/.test(vsrc25) && !/PLAN_DAYS\.map\(/.test(vsrc25) && /require\("\.\.\/\.\.\/shared\/price"\)/.test(psrc25) && !/PLAN_DAYS\.map\(/.test(psrc25) && /<script src="shared\/price\.js"><\/script>[\s\S]*<script src="vod\.js">/.test(idx25),
-      "가격 규칙은 한 곳(shared/price.js): 화면 · 서버 모두 그 모듈을 쓰고 따로 계산하지 않아요 · 화면은 vod.js 보다 먼저 읽어요");
+    ok(/window\.DCS\.price\.make\(/.test(vsrc25) && /function plansOf\(p\) \{ return PRC\(\)\.plansOf\(p\); \}/.test(vsrc25) && !/PLAN_DAYS\.map\(/.test(vsrc25) && /require\("\.\.\/\.\.\/shared\/price"\)/.test(psrc25) && !/PLAN_DAYS\.map\(/.test(psrc25) && /<script src="shared\/price\.js"><\/script>[\s\S]*<script src="main\.js">/.test(idx25) && !/<script src="vod\.js">/.test(idx25) /* vod.js 는 main.js 가 영역에 맞게 받아요 — index.html 의 공용 모듈 다음 (4단계 화면 나눠 받기) */,
+      "가격 규칙은 한 곳(shared/price.js): 화면 · 서버 모두 그 모듈을 쓰고 따로 계산하지 않아요 · 화면은 vod.js 보다 먼저 읽어요 (index.html 공용 모듈 → main.js 가 영역 파일)");
   }
 
   {
@@ -1592,7 +1592,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(MD26.rateOf({ subs: 120000 }, MD26.rules({})) === 20 && MD26.rateOf({ subs: 5000 }, MD26.rules({})) === 10 && MD26.rateOf({ rate: 15 }, MD26.rules({})) === 15 && MD26.codeOf("Doo-Go_MD!") === "doogomd" && MD26.rules({ vod: { settings: { rs: { pg: 50 } } } }).pg === 5,
       "서버 RS 규칙(공용 모듈): 구독자 10만 이상 20% · 미만 10% · 직접 정한 15% · 링크 코드 정리 · 범위 밖 값은 기본값");
     const vs26 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), as26 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ms26 = fs.readFileSync(path.join(ROOT, "api/_lib/media.js"), "utf8"), ix26 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-    ok(/const ST = window\.DCS\.settle;/.test(vs26) && !/Math\.floor\(insBase\(o\) \* shareVal/.test(vs26) && /window\.DCS\.settle\.payout\(net, biz, mode, base0\)/.test(as26) && !/Math\.floor\(sup \* 0\.033/.test(as26) && /require\("\.\.\/\.\.\/shared\/settle"\)/.test(ms26) && /<script src="shared\/settle\.js"><\/script>[\s\S]*<script src="vod\.js">/.test(ix26),
+    ok(/const ST = window\.DCS\.settle;/.test(vs26) && !/Math\.floor\(insBase\(o\) \* shareVal/.test(vs26) && /window\.DCS\.settle\.payout\(net, biz, mode, base0\)/.test(as26) && !/Math\.floor\(sup \* 0\.033/.test(as26) && /require\("\.\.\/\.\.\/shared\/settle"\)/.test(ms26) && /<script src="shared\/settle\.js"><\/script>[\s\S]*<script src="main\.js">/.test(ix26) && !/<script src="(vod|admin)\.js">/.test(ix26),
       "정산 규칙은 한 곳(shared/settle.js): 화면 · 강사 정산 명세서 · 서버 RS 모두 그 모듈을 써요");
   }
 
@@ -1802,6 +1802,41 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const w1 = warn({ id: "a", name: "가나", phone4: "1234", coaches: [{ name: "코치", phone4: "5678", status: "active" }] }), w2 = warn({ id: "a", name: "가나", phone4: "9999", coaches: [{ name: "코치", phone4: "0001" }] }), w3 = warn({ id: "b", name: "가나", phone4: "1234" }), w4 = warn({ id: "a", name: "가나", phone4: "9999", coaches: [{ name: "코 치", phone4: "5678" }] });
     ok(/"locked-day": "오늘 여러 번 틀려서/.test(app30) && /"locked-day": "오늘 여러 번 틀려서/.test(adm30) && /seedLoginWarn\(x\) \+ esc\(x\.name\)/.test(adm30) && /처음 데이터 숫자 그대로 · 강사 로그인 · 코치 1명/.test(w1) && w2 === "" && w3 === "" && /코치 1명/.test(w4) && !/1234|5678/.test(w1 + w4),
       "화면: 하루 잠금 안내(수강생 · 강사센터) · 마스터 강사 목록에 처음 데이터 숫자 그대로인 강사 · 코치 표시 (숫자는 안 보여요)");
+  }
+
+  {
+    console.log("31) 화면 나눠 받기: 영역별 화면 파일 · 예전과 같은 영역 규칙 · 늘 받는 파일 (Next.js 전환 4단계 4-3)");
+    const idx = fs.readFileSync(path.join(ROOT, "index.html"), "utf8"), areasSrc = fs.readFileSync(path.join(ROOT, "areas.js"), "utf8"), mainSrc = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), appSrc = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+    // areas.js 를 가짜 브라우저에서 읽어요 (index.html 에 있는 CSS · 스크립트만 있는 상태)
+    const fakeDoc = (links, scripts) => ({ currentScript: { src: "https://www.doogoclass.com/areas.js?v=abc123" }, documentElement: { getAttribute: () => null }, head: { appendChild() {} }, body: null,
+      querySelectorAll: (sel) => (/link/.test(sel) ? links.map((h) => ({ getAttribute: () => h })) : scripts.map((h) => ({ getAttribute: () => h }))), createElement: () => ({ addEventListener() {} }) });
+    const sb31 = { document: fakeDoc(["/styles.css?v=abc123", "/home.css?v=abc123", "/vod.css?v=abc123"], ["/route.js?v=abc123", "/main.js?v=abc123"]), location: { hash: "", pathname: "/", search: "", href: "https://www.doogoclass.com/" }, localStorage: { getItem: () => null }, URL, setTimeout, clearTimeout, Promise };
+    sb31.window = sb31;
+    require("vm").runInNewContext(areasSrc, sb31, { filename: "areas.js" });
+    const A = sb31.DC_AREA;
+    // 예전 main.js 의 영역 고르기와 똑같은지 (여러 주소)
+    const oldOf = (h) => { const isRoot = (x) => x === "" || x === "#" || x === "#/", isDg = (x) => /^#\/(doinggo|partner)(\/|\?|$)/.test(x); return /^#\/center/.test(h) ? "admin" : isRoot(h) || /^#\/(vod|terms|privacy|refund)(\/|\?|$)/.test(h) ? "vod" : /^#\/(p|free)(\/|\?|$)/.test(h) ? "landing" : isDg(h) ? "home" : "student"; };
+    const hs = ["", "#", "#/", "#/vod", "#/vod/p/v5", "#/vod?x=1", "#/vodclass", "#/terms", "#/privacy?a", "#/refund/x", "#/termsx", "#/center", "#/center/master/vod", "#/centerx", "#/p/moon", "#/free/moon?rs=1", "#/pp", "#/doinggo", "#/doinggo/guide", "#/partner", "#/login", "#/login?tab=vod", "#/home", "#/missions/1", "#/library", "#/about", "#/x"];
+    ok(hs.every((h) => A.of(h) === oldOf(h)) && Object.keys(A.NEED).sort().join() === "admin,home,landing,student,vod",
+      "영역 규칙이 예전 main.js 와 같아요 (" + hs.length + "개 주소) · 영역 5개");
+    ok(A.NEED.vod.js.join() === "vod.js,app.js" && A.NEED.student.js.join() === "vod.js,app.js" && A.NEED.admin.js.join() === "vod.js,admin.js" && A.NEED.admin.css.join() === "admin.css" && A.NEED.landing.js.join() === "landing.js" && A.NEED.landing.css.join() === "landing.css,doogo-free.css" && A.NEED.home.js.join() === "vod.js,guide-data.js,guide.js,home.js" && A.NEED.home.css.join() === "guide.css",
+      "영역별 파일: 스토어 · 강의실 vod + app / 강사센터 vod + admin(+css) / 강사 소개 landing(+css 2) / 두잉고 소개 vod + 사용법 + home(+css)");
+    ok(A.ready("vod") === false && A.ready("landing") === false && A.off() === false && A.guess() === "vod",
+      "처음에는 영역 파일이 없어요(받아야 그려요) · 대표 주소 / 는 스토어 영역 · 끄기 꺼짐");
+    // 예전 순서 그대로 (스크립트 · CSS)
+    const oldJs = ["vod.js", "app.js", "admin.js", "landing.js", "guide-data.js", "guide.js", "home.js"], oldCss = ["styles.css", "admin.css", "landing.css", "doogo-free.css", "home.css", "vod.css", "guide.css"];
+    ok(A.JS_ORDER.join() === oldJs.join() && A.CSS_ORDER.join() === oldCss.join() && Object.keys(A.NEED).every((k) => A.NEED[k].js.every((f) => oldJs.indexOf(f) >= 0) && A.NEED[k].css.every((f) => oldCss.indexOf(f) >= 0)),
+      "스크립트 · CSS 순서는 예전 index.html 순서 그대로 (먼저 받은 파일이 먼저 실행 · CSS 는 예전 자리에)");
+    // index.html: 늘 받는 파일만 · areas.js 는 <head> · main.js 맨 끝
+    const sc = (idx.match(/<script src="([^"]+)"/g) || []).map((x) => x.slice(13, -1)), ln = (idx.match(/<link rel="stylesheet" href="([^"]+)"/g) || []).map((x) => x.slice(29, -1));
+    ok(oldJs.every((f) => sc.indexOf(f) < 0) && sc[0] === "areas.js" && sc[sc.length - 1] === "main.js" && ["route.js", "db.js", "icons.js", "legal.js", "shared/price.js"].every((f) => sc.indexOf(f) > 0) && ln.filter((h) => !/^https?:/.test(h) && !/fonts/.test(h)).join() === "styles.css,home.css,vod.css" && idx.indexOf('<script src="areas.js"></script>') < idx.indexOf("</head>"),
+      "index.html: 늘 받는 파일(주소 · 데이터 · 공용 규칙 · 아이콘 · 약관 · main.js + styles · home · vod CSS)만 · 영역 파일은 areas.js 가 (<head>)");
+    // main.js: 영역 규칙은 areas.js · 영역을 옮기면 새로 불러요 · 아래 탭 표시는 늘 받는 main.js 에 (강사센터에는 app.js 가 없어서)
+    ok(/next: window\.DC_AREA\.of\(h\)/.test(mainSrc) && /if \(!window\.DC_AREA\.ready\(next\)\) \{ moveArea\(next\); return; \}/.test(mainSrc) && /window\.DC_AREA\.ensure\(pick\(\)\.next\)/.test(mainSrc) && /location\.reload\(\)/.test(mainSrc) && /function mark\(\)/.test(mainSrc) && !/function mark\(\)/.test(appSrc) && /!leaving && window\.__dirty/.test(mainSrc),
+      "main.js: 영역 규칙은 areas.js 한 곳 · 처음 파일 받기와 서버 연결을 같이 · 다른 영역이면 저장을 마치고 새로 불러요(같은 주소 되풀이 막기) · 아래 탭 표시는 main.js 로");
+    const st31 = fs.readFileSync(path.join(ROOT, "scripts/site.js"), "utf8");
+    ok(/DC_SPLIT_OFF === "1"/.test(st31) && /data-split="off"/.test(st31) && /data-split"\) === "off"/.test(areasSrc) && /dc:split/.test(areasSrc),
+      "끄기: Vercel 환경 변수 DC_SPLIT_OFF=1 → <html data-split=\"off\"> → 예전처럼 모든 파일 (이 브라우저만: localStorage dc:split)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

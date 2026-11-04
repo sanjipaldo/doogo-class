@@ -2783,11 +2783,3 @@
 
   window.StudentApp = { render, mount };
 })();
-
-/* 두잉고 시안: 아래 탭 막대 — 지금 화면에 맞는 탭 표시 */
-(function () {
-  function mark() { var h = ROUTE.hash || "#/home", best = null, bl = -1; document.querySelectorAll(".bw-tab[href]").forEach(function (a) { var k = a.getAttribute("href"); a.classList.remove("on"); if ((h === k || (!/^#\/center(\/master)?$/.test(k) && (h.indexOf(k + "/") === 0 || h.indexOf(k + "?") === 0))) && k.length > bl) { best = a; bl = k.length; } }); if (best) best.classList.add("on"); }
-  window.addEventListener("hashchange", function () { setTimeout(mark, 0); });
-  new MutationObserver(function () { if (document.querySelector(".bw-tabbar")) mark(); }).observe(document.getElementById("root") || document.body, { childList: true });
-  mark();
-})();
