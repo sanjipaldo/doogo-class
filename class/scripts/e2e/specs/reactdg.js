@@ -313,6 +313,49 @@ module.exports = {
           vm[mode] = { one, back: await L.text(page, ".vmode .vmode-t") };
         }
         await run.check(vm.off.one.dark === "dark" && vm.all.one.dark === "dark" && vm.off.one.txt === vm.all.one.txt && vm.off.back === vm.all.back && /블랙 화면으로/.test(vm.all.one.toast), "VOD 강의실: 블랙 / 화이트 바꾸기 (예전 · React 같음 · 이 브라우저에 기억)", vm, page);
+        // VOD 강의실(극장형) · 내 노트: 화면 모양 + 탭 · 노트 쓰기(종류 · 시간) · 거르기 · 고치기 · 할 일 · 지우기 · 내 노트 검색 (모드마다 노트를 처음으로 돌려요)
+        const vl = await page.evaluate((id) => { const X = window.DGA, x = X.vodList().find((v) => v.p.id === id); if (!x) return []; const lz = window.VOD.lessons(x.p), e = encodeURIComponent;
+          return ["/vodclass", "/vodclass/notes", "/vodclass/" + e(id), "/vodclass/nope"].concat(lz.length ? ["/vodclass/" + e(id) + "/" + e(lz[0].id), "/vodclass/" + e(id) + "/" + e(lz[lz.length - 1].id), "/vodclass/" + e(id) + "/" + e(lz[0].id) + "?t=30"] : []); }, pid);
+        const vs = await shapes(page, base, L, vl);
+        await run.check(!vs.bad.length && vl.length >= 4, "VOD 강의실 " + vl.length + "개 화면(목록 · 극장형 · 내 노트): 예전 화면(off) = React 화면(all) — #root 구조 " + vs.lines + "줄이 똑같아요", vs.bad.slice(0, 2), page);
+        if (vl.length > 4) {
+          const T = (x) => x.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}/g, "M/D hh:mm").replace(/"nt[a-z0-9]{6,}"/g, '"NTID"');
+          const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 350); out.push(T(await L.domShape(page))); };
+          const flow = async (mode) => {
+            await L.reactCookie(page, base, mode); await L.open(page, base, "/home");
+            const keep = await page.evaluate(() => JSON.stringify(window.VOD.V().notes || {}));
+            await L.open(page, base, vl[4]); await page.evaluate(() => { window.__e2eStay = 1; });
+            const out = [], t = [];
+            await step(out, () => page.click(".vt-tabs [data-k='note']"));
+            await page.fill("#vt-note-text", "E2E 궁금한 노트"); await page.fill("#vt-note-t", "1:05"); await page.click(".vt-tagr.t-ask");
+            await step(out, () => page.click("[data-action='vt-note-save']"), 500); t.push(await L.toasts(page));
+            await page.fill("#vt-note-text", "E2E 할 일"); await page.click(".vt-tagr.t-todo");
+            await step(out, () => page.click("[data-action='vt-note-save']"), 500);
+            await step(out, () => page.click("[data-action='vt-filter'][data-k='todo']"));
+            await step(out, () => page.click("[data-action='vt-note-todo']"));
+            await step(out, () => page.click("[data-action='vt-filter'][data-k='all']"));
+            await step(out, () => page.click("[data-action='vt-note-edit']"));
+            await step(out, () => page.click("[data-action='vt-note-ecancel']"));
+            await page.click("[data-action='vt-note-edit']"); await page.fill(".vt-edit textarea", "E2E 고친 노트");
+            await step(out, () => page.click("[data-action='vt-note-esave']"), 500); t.push(await L.toasts(page));
+            await step(out, () => page.click("[data-action='vt-note-del']"));
+            await step(out, () => page.click("[data-action='vt-note-del']"), 500);
+            await step(out, () => page.click(".vt-tabs [data-k='files']"));
+            await step(out, () => page.click(".vt-tabs [data-k='toc']"));
+            await page.evaluate(() => { window.ROUTE.hash = "#/vodclass/notes"; }); await page.waitForTimeout(600); out.push(T(await L.domShape(page)));
+            await step(out, () => page.fill("#vn-q", "E2E"), 400);
+            await step(out, () => page.click("[data-action='vt-filter'][data-k='ask']"));
+            await step(out, () => page.fill("#vn-q", ""), 400);
+            await step(out, () => page.click("[data-action='vt-filter'][data-k='all']"));
+            await page.evaluate((k) => { window.VOD.V().notes = JSON.parse(k); window.VOD.save(); window.DGA.vtTab("toc"); window.DGA.vtFilter("all"); window.DGA.vtQ(""); }, keep);
+            await L.flushed(page);
+            return { out, t, stay: await page.evaluate(() => window.__e2eStay === 1) };
+          };
+          const a = await flow("off"), b = await flow("all");
+          const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
+          await run.check(!d.length && a.out.length === b.out.length && b.out.length >= 16 && b.stay && JSON.stringify(a.t) === JSON.stringify(b.t) && /노트를 저장/.test(b.t[0]),
+            "VOD 강의실(React): 내 노트 탭 · 노트 저장(종류 · 시간) · 거르기 · 할 일 · 고치기 · 지우기 · 자료 · 목차 · 내 노트 검색 — 누를 때마다 예전 화면과 같은 모양 · 같은 알림 (" + b.out.length + "번)", d.slice(0, 1).concat([{ t: [a.t, b.t], n: [a.out.length, b.out.length] }]), page);
+        }
       } else await run.check(false, "VOD 수강생: 두잉고 강의실이 열린 VOD 를 산 회원이 있어야 해요", { pid }, page);
       await page.context().close();
     }

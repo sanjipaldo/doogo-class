@@ -977,6 +977,7 @@
     return shown.length ? shown.map((n) => noteItem(n, pid, false)).join("") : '<li class="vt-nl-empty">' + icon("pen") + "<b>" + (list.length ? "이 종류의 노트가 없어요" : "이 강의의 첫 노트를 남겨 보세요") + "</b><small>시간을 함께 저장하면 나중에 그 장면으로 바로 돌아갈 수 있어요.</small></li>";
   }
   function vtPaintNotes() {
+    if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
     const w = document.querySelector(".vt"); if (!w) return render();
     const pid = w.dataset.p, lid = w.dataset.l, list = notesOf(pid, lid);
     const l = document.getElementById("vt-nl"), f = document.getElementById("vt-nf"); if (l) l.innerHTML = noteListHtml(pid, lid); if (f) f.innerHTML = noteFilterHtml(list);
@@ -993,6 +994,36 @@
     notesAll(pid).push({ id: DB.uid("nt"), lid, t, tag, text: txt.slice(0, 2000), at: Date.now() });
     VX().save(); ta.value = ""; tf.value = ""; draftSet(pid, lid, ""); vtFilter = "all";
     vtPaintNotes(); toast("노트를 저장했어요.");
+  }
+  // 노트 하나: 할 일 체크 · 지우기 · 고치기 · 1:1 코칭 질문으로 보내기 / 내려받기 · 복사 · PDF / 지금 영상 시간 · 장면 이동 · 전체 화면 / 완료하고 다음 강의
+  function noteTodo(id, on) { const f = findNote(id); if (!f) return false; f.n.done = !!on; f.n.upd = Date.now(); VX().save(); return true; }
+  function noteDel(id) { const f = findNote(id); if (!f) return false; const arr = notesAll(f.pid); arr.splice(arr.indexOf(f.n), 1); VX().save(); return true; }
+  function noteEditSave(id, val) { const f = findNote(id); if (!f) return false; const v = String(val || "").trim(); if (!v) { toast("내용을 적어 주세요.", "warn"); return false; } f.n.text = v.slice(0, 2000); f.n.upd = Date.now(); VX().save(); return true; }
+  function noteAsk(id) {
+    const f = findNote(id); if (!f) return;
+    const x = vodList().find((v) => v.p.id === f.pid), l = x ? VX().lessons(x.p).find((y) => y.id === f.n.lid) : null;
+    const ref = (x ? x.p.title : "") + (l ? " · " + l.title : "") + (f.n.t != null ? " (" + fmtT(f.n.t) + ")" : "");
+    if (!preview && coachN() <= 0) { const cp = addPid("coachOf"); toast("1:1 코칭권이 있으면 이 노트를 강사님께 바로 보낼 수 있어요.", "warn"); if (cp) ROUTE.hash = "#/vod/checkout/" + cp + "?item=coach"; return; }
+    try { sessionStorage.setItem("vt-ask", JSON.stringify({ title: f.n.text.split("\n")[0].slice(0, 70), body: "[강의] " + ref + "\n\n" + f.n.text, nid: f.n.id })); } catch (e2) {}
+    ROUTE.hash = "#/qna/requests/new";
+  }
+  function noteDl(p) {
+    const txt = notesText(p || "all");
+    try { const url = URL.createObjectURL(new Blob(["\ufeff" + txt], { type: "text/plain;charset=utf-8" })), dl = document.createElement("a"); dl.href = url; dl.download = "강의노트_" + todayStr() + ".txt"; document.body.appendChild(dl); dl.click(); setTimeout(() => { URL.revokeObjectURL(url); dl.remove(); }, 1500); toast("노트를 텍스트 파일로 내려받았어요."); }
+    catch (e2) { toast("이 브라우저에서는 내려받기가 막혀 있어요. ‘복사’를 이용해 주세요.", "warn"); }
+  }
+  function noteCopy() { const txt = notesText("all"); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("노트를 복사했어요. 메모장 · 카톡에 붙여 넣어 보세요."), () => toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn")); else toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn"); }
+  function notePrint(a) { const el = document.querySelector(".page.vn") || document.querySelector(".page"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "내노트_" + todayStr() + ".pdf", { width: 820, title: "내 노트" }, (msg) => toast(msg)); else window.print(); }
+  function vtNowBtn() { const t = vtNow(), tf = document.getElementById("vt-note-t"); if (t == null) toast("영상 시간을 읽지 못했어요. 3:12처럼 직접 적어 주세요.", "warn"); else if (tf) tf.value = fmtT(t); }
+  function vtSeekBtn(t) { t = Number(t) || 0; if (!vtSeek(t)) toast("강사님이 영상을 연결하면 " + fmtT(t) + " 장면으로 바로 이동해요."); }
+  function vtFocusFill() { const tf = document.getElementById("vt-note-t"), t = vtNow(); if (tf && !tf.value && t != null && t > 0) tf.value = fmtT(t); }
+  function vtFs() { const st = document.getElementById("vt-stage"); if (!st) return; const d = document; if (d.fullscreenElement) d.exitFullscreen && d.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast("이 화면에서는 전체 화면을 쓸 수 없어요.", "warn")); else if (st.webkitRequestFullscreen) st.webkitRequestFullscreen(); }
+  function vodDone(pid, lid) {
+    const X = VX(); if (!X || !me.vodMid) return;
+    if (!X.markDone(me.vodMid, pid, lid)) { toast("수강 기간이 끝난 강의예요.", "warn"); return; }
+    const x = vodList().find((v) => v.p.id === pid), lz = x ? X.lessons(x.p) : [], k = lz.findIndex((l) => l.id === lid), nx = lz[k + 1];
+    checkLevelUp();
+    if (nx) ROUTE.hash = learnHref(pid, nx.id); else { render(); toast(vodPctOf(x) >= 100 ? "모든 강의를 끝까지 봤어요! DOOGO CLASS 클래스 페이지에서 후기를 남겨 주세요." : "완료했어요."); }
   }
   function notesText(pid) {
     let out = me.name + "님의 강의 노트 · " + todayStr() + "\n";
@@ -2673,14 +2704,14 @@
         break;
       }
       case "vt-filter": vtFilter = a.dataset.k; if (document.querySelector(".vt")) vtPaintNotes(); else render(); break;
-      case "vt-now": { const t = vtNow(), tf = document.getElementById("vt-note-t"); if (t == null) toast("영상 시간을 읽지 못했어요. 3:12처럼 직접 적어 주세요.", "warn"); else if (tf) tf.value = fmtT(t); break; }
+      case "vt-now": vtNowBtn(); break;
       case "vt-note-save": vtSaveNote(); break;
-      case "vt-seek": { const t = Number(a.dataset.t) || 0; if (!vtSeek(t)) toast("강사님이 영상을 연결하면 " + fmtT(t) + " 장면으로 바로 이동해요."); break; }
-      case "vt-note-todo": { const f = findNote(a.dataset.id); if (!f) break; f.n.done = a.checked; f.n.upd = Date.now(); VX().save(); const li = a.closest(".vt-nt"); if (li) li.classList.toggle("is-done", a.checked); break; }
+      case "vt-seek": vtSeekBtn(a.dataset.t); break;
+      case "vt-note-todo": { if (!noteTodo(a.dataset.id, a.checked)) break; const li = a.closest(".vt-nt"); if (li) li.classList.toggle("is-done", a.checked); break; }
       case "vt-note-del": {
         const f = findNote(a.dataset.id); if (!f) break;
         if (!a.classList.contains("arm")) { a.classList.add("arm"); a.innerHTML = "삭제?"; setTimeout(() => { if (a.isConnected) { a.classList.remove("arm"); a.innerHTML = icon("trash", "xs"); } }, 3000); break; }
-        const arr = notesAll(f.pid); arr.splice(arr.indexOf(f.n), 1); VX().save();
+        noteDel(a.dataset.id);
         if (document.querySelector(".vt")) vtPaintNotes(); else render(); toast("노트를 지웠어요."); break;
       }
       case "vt-note-edit": {
@@ -2690,34 +2721,15 @@
         const ta = li.querySelector(".vt-edit textarea"); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); break;
       }
       case "vt-note-ecancel": if (document.querySelector(".vt")) vtPaintNotes(); else render(); break;
-      case "vt-note-esave": { const f = findNote(a.dataset.id), ta = a.closest(".vt-edit") && a.closest(".vt-edit").querySelector("textarea"); if (!f || !ta) break; const v = ta.value.trim(); if (!v) { toast("내용을 적어 주세요.", "warn"); break; } f.n.text = v.slice(0, 2000); f.n.upd = Date.now(); VX().save(); if (document.querySelector(".vt")) vtPaintNotes(); else render(); toast("노트를 고쳤어요."); break; }
-      case "vt-note-ask": {
-        const f = findNote(a.dataset.id); if (!f) break;
-        const x = vodList().find((v) => v.p.id === f.pid), l = x ? VX().lessons(x.p).find((y) => y.id === f.n.lid) : null;
-        const ref = (x ? x.p.title : "") + (l ? " · " + l.title : "") + (f.n.t != null ? " (" + fmtT(f.n.t) + ")" : "");
-        if (!preview && coachN() <= 0) { const cp = addPid("coachOf"); toast("1:1 코칭권이 있으면 이 노트를 강사님께 바로 보낼 수 있어요.", "warn"); if (cp) ROUTE.hash = "#/vod/checkout/" + cp + "?item=coach"; break; }
-        try { sessionStorage.setItem("vt-ask", JSON.stringify({ title: f.n.text.split("\n")[0].slice(0, 70), body: "[강의] " + ref + "\n\n" + f.n.text, nid: f.n.id })); } catch (e2) {}
-        ROUTE.hash = "#/qna/requests/new"; break;
-      }
-      case "vt-note-dl": {
-        const txt = notesText(a.dataset.p || "all");
-        try { const url = URL.createObjectURL(new Blob(["\ufeff" + txt], { type: "text/plain;charset=utf-8" })), dl = document.createElement("a"); dl.href = url; dl.download = "강의노트_" + todayStr() + ".txt"; document.body.appendChild(dl); dl.click(); setTimeout(() => { URL.revokeObjectURL(url); dl.remove(); }, 1500); toast("노트를 텍스트 파일로 내려받았어요."); }
-        catch (e2) { toast("이 브라우저에서는 내려받기가 막혀 있어요. ‘복사’를 이용해 주세요.", "warn"); }
-        break;
-      }
-      case "vt-note-copy": { const txt = notesText("all"); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("노트를 복사했어요. 메모장 · 카톡에 붙여 넣어 보세요."), () => toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn")); else toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn"); break; }
-      case "vt-print": { const el = document.querySelector(".page.vn") || document.querySelector(".page"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "내노트_" + todayStr() + ".pdf", { width: 820, title: "내 노트" }, (msg) => toast(msg)); else window.print(); break; }
+      case "vt-note-esave": { const ta = a.closest(".vt-edit") && a.closest(".vt-edit").querySelector("textarea"); if (!ta || !noteEditSave(a.dataset.id, ta.value)) break; if (document.querySelector(".vt")) vtPaintNotes(); else render(); toast("노트를 고쳤어요."); break; }
+      case "vt-note-ask": noteAsk(a.dataset.id); break;
+      case "vt-note-dl": noteDl(a.dataset.p); break;
+      case "vt-note-copy": noteCopy(); break;
+      case "vt-print": notePrint(a); break;
       case "req-cancel": { const i = (P.questions || []).findIndex((x) => x.id === a.dataset.id && !x.answer); if (i < 0) break; if (a.dataset.arm !== "1") { a.dataset.arm = "1"; a.textContent = "한 번 더 누르면 취소돼요"; setTimeout(() => { if (a.isConnected) { a.dataset.arm = ""; a.textContent = "취소하기"; } }, 3000); break; } reqCancel(a.dataset.id); break; }
       case "vt-mat": case "vt-dl": matClick(a); break;
-      case "vt-fs": { const st = document.getElementById("vt-stage"); if (!st) break; const d = document; if (d.fullscreenElement) d.exitFullscreen && d.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast("이 화면에서는 전체 화면을 쓸 수 없어요.", "warn")); else if (st.webkitRequestFullscreen) st.webkitRequestFullscreen(); break; }
-      case "vod-done": {
-        const X = VX(); if (!X || !me.vodMid) break;
-        if (!X.markDone(me.vodMid, a.dataset.p, a.dataset.l)) { toast("수강 기간이 끝난 강의예요.", "warn"); break; }
-        const x = vodList().find((v) => v.p.id === a.dataset.p), lz = x ? X.lessons(x.p) : [], k = lz.findIndex((l) => l.id === a.dataset.l), nx = lz[k + 1];
-        checkLevelUp();
-        if (nx) ROUTE.hash = learnHref(a.dataset.p, nx.id); else { render(); toast(vodPctOf(x) >= 100 ? "모든 강의를 끝까지 봤어요! DOOGO CLASS 클래스 페이지에서 후기를 남겨 주세요." : "완료했어요."); }
-        break;
-      }
+      case "vt-fs": vtFs(); break;
+      case "vod-done": vodDone(a.dataset.p, a.dataset.l); break;
       case "calc-new": calcEdit = ""; render(); { const n = document.getElementById("c-name"); if (n) n.focus(); } break;
       case "calc-del": if (calcDel(a.dataset.id)) { render(); toast("지웠어요."); } break;
     }
@@ -2729,7 +2741,7 @@
     else if (e.target.id === "vn-q") { vtQ = e.target.value; const pos = e.target.selectionStart; render(); const i = document.getElementById("vn-q"); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (x) {} } }
   });
   document.addEventListener("keydown", (e) => { if (isActive() && e.target.id === "vt-note-text" && e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); vtSaveNote(); } });
-  document.addEventListener("focusin", (e) => { if (!isActive() || e.target.id !== "vt-note-text") return; const tf = document.getElementById("vt-note-t"), t = vtNow(); if (tf && !tf.value && t != null && t > 0) tf.value = fmtT(t); });
+  document.addEventListener("focusin", (e) => { if (!isActive() || e.target.id !== "vt-note-text") return; vtFocusFill(); });
   window.addEventListener("message", (e) => {
     let d = e.data; if (typeof d === "string") { if (d.charAt(0) !== "{") return; try { d = JSON.parse(d); } catch (x) { return; } }
     if (!d || typeof d !== "object") return;
@@ -2869,6 +2881,10 @@
     replaysSorted, rpWeek: (k) => { if (k !== undefined) rpWeek = k; return rpWeek; }, replayFlip,
     scWeek: (k) => { if (k !== undefined) scWeek = k; return scWeek; },
     promptsOf, journalSave, exportNotes, glCat: (c) => { if (c !== undefined) glCat = c; return glCat; }, initialOf,
+    // VOD 강의실(극장형): 탭 · 노트 거르기 · 노트 검색(예전처럼 남아요) · 노트 · 영상 · 완료 · 내려받기
+    vtTab: (k) => { if (k !== undefined) vtTab = k; return vtTab; }, vtFilter: (k) => { if (k !== undefined) vtFilter = k; return vtFilter; }, vtQ: (q) => { if (q !== undefined) vtQ = q; return vtQ; },
+    NOTE_TAGS, notesAll, notesOf, byTime, fmtT, hhmm, draftGet, draftSet, vtVideo, vtWatermark, vtSaveNote, vtAfter, vtReset: () => { vtLast = { t: 0, at: 0 }; },
+    noteTodo, noteDel, noteEditSave, noteAsk, noteDl, noteCopy, notePrint, vtNowBtn, vtSeekBtn, vtFocusFill, vtFs, vodDone, opsKkBtn,
     customOf: (key) => { const item = DB.menuConfig(MID()).items.find((x) => x.key === key); return item ? { item, pg: D.pages[item.key] || {} } : null; },
     wmLabel: () => (me.name || "") + " · " + (CO ? CO.name : "") + " · " + fmtStamp(Date.now()),
     // 마진 계산기: 숫자(다시 그려도 남아요) · 고치는 제품 · 내 제품 마진표 · 계산 · 저장 · 불러오기 · 새 제품 · 지우기

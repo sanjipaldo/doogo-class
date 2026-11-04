@@ -9,12 +9,13 @@ import DgHome from "./HomePage.jsx";
 import { CurriculumPage, MissionsPage, NotFound } from "./Learn.jsx";
 import { SchedulePage, NoticesPage, QnaPage } from "./Board.jsx";
 import { DocsPage, LibraryPage, BotPage, LibGate } from "./Lib.jsx";
+import VodClassPage from "./VodClass.jsx";
 import { MotivationPage, ChannelsPage, PartnersPage, CertificatePage, ReplaysPage, ShowcasePage, NotesPage, GlossaryPage, CustomPage } from "./More.jsx";
 import { DGA, DBX, st } from "./bits.jsx";
 
 // 메뉴(주소 첫 칸) → 본문 — 옮긴 화면만 (나머지는 아직 예전 화면 · screens.js 에 없는 주소는 React 로 오지 않아요)
 const PAGES = { home: DgHome, curriculum: CurriculumPage, missions: MissionsPage, schedule: SchedulePage, notices: NoticesPage, qna: QnaPage, docs: DocsPage, library: LibraryPage, bot: BotPage,
-  motivation: MotivationPage, channels: ChannelsPage, partners: PartnersPage, certificate: CertificatePage, replays: ReplaysPage, showcase: ShowcasePage, notes: NotesPage, glossary: GlossaryPage, page: CustomPage };
+  motivation: MotivationPage, channels: ChannelsPage, partners: PartnersPage, certificate: CertificatePage, replays: ReplaysPage, showcase: ShowcasePage, notes: NotesPage, glossary: GlossaryPage, page: CustomPage, vodclass: VodClassPage };
 
 export default function Classroom({ n, h, moved }) {
   const X = DGA(), S = st(), r = X.route(), top = r.parts[0], key = window.ROUTE.hash;
