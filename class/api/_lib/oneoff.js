@@ -699,6 +699,38 @@ function moonCohortDates(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 문대표 수업 캘린더 정리 (대표님 요청 2026-11-04) ----------
+ * ① 강의 녹화본 업로드: 오프라인 강의(촬영) 다음 날 → 이틀 뒤로 자동 계산 (지금 ‘다음 날(1)’일 때만)
+ * ② 일정 종류에 ‘온라인 강의’ (문대표 종류 목록의 오프라인 강의 바로 다음 · 달력 색 · 강의 날 표시는 오프라인 강의와 같아요)
+ * ③ 3기 12/15(화) ‘5주차 보너스 강의’ → 문대표 ‘5주차 온라인 강의’: 종류와 이름 속 ‘보너스 강의’만 ‘온라인 강의’로 (날짜 · 시간 · 앞 글자는 그대로)
+ * ④ 다른 강사님을 모신 특강(종류 ‘행사’ · 이름에 특강 · 특별강의 · 초청)은 종류만 ‘초청강사’로 — 수료식 같은 다른 행사는 그대로
+ *  이미 바꾼 일정(종류가 다른 것)은 건드리지 않아요 · 결과에는 날짜만 적어요 */
+function moonCalV2(get) {
+  const k = "content:moon", c = get(k);
+  if (!isObj(c) || !isObj(c.brand)) return { writes: {}, result: { skipped: "문대표 콘텐츠 없음" } };
+  const result = { replayAfter: "", types: "", online: [], guest: [], events: 0 };
+  const brand = clone(c.brand), cal = isObj(brand.cal) ? brand.cal : null;
+  let changed = false;
+  if (cal) {
+    if (Number(cal.replayAfter) === 1) { cal.replayAfter = 2; result.replayAfter = "1 → 2"; changed = true; } else result.replayAfter = "그대로 (" + cal.replayAfter + ")";
+    if (Array.isArray(cal.types) && cal.types.indexOf("online") < 0) { const i = cal.types.indexOf("open"); cal.types.splice(i < 0 ? 0 : i + 1, 0, "online"); result.types = cal.types.join(" · "); changed = true; }
+  } else result.replayAfter = "캘린더 설정 없음";
+  const schedule = (Array.isArray(c.schedule) ? c.schedule : []).map((e) => {
+    if (!isObj(e)) return e;
+    const t = String(e.title || "");
+    if (e.type === "bonus" && (e.id === "e-m3-bonus" || (e.date === "2026-12-15" && /5\s*주차/.test(t)))) {
+      const title = /보너스\s*강의/.test(t) ? t.replace(/보너스\s*강의/, "온라인 강의") : t || "5주차 온라인 강의";
+      result.online.push((e.date || "") + " " + title);
+      return Object.assign({}, e, { type: "online", title });
+    }
+    if (e.type === "event" && /특강|특별\s*강의|초청/.test(t)) { result.guest.push(e.scope === "cohort" ? e.date || "" : (e.week || "") + "주차"); return Object.assign({}, e, { type: "guest" }); }
+    if (e.type === "event") result.events++;
+    return e;
+  });
+  if (!changed && !result.online.length && !result.guest.length) return { writes: {}, result: Object.assign(result, { skipped: "바꿀 것 없음" }) };
+  return { writes: { [k]: Object.assign({}, c, { brand, schedule }) }, result };
+}
+
 /* ---------- 정식 운영: 테스트 데이터 정리 (사용자 요청 2026-11-03) ----------
  * 정식 오픈 전에 만들어 둔 테스트용 계정 · 기록을 지우고, 대표님이 직접 확인할 체험 계정은 하나씩만 남겨요.
  *  남겨요: 강사(실제 강사 그대로) · 수강생 체험 계정 이수진(s1 · 2186) · 코치 체험 계정(문대표 강의 김하나 1004) ·
@@ -804,6 +836,7 @@ const OPS = [
   { id: "2026-11-03-demo-partner-clear", note: "두고 파트너스: 예시(테스트) 파트너 계정과 그 RS 지급 기록만 지우기 (실제 파트너는 그대로)", run: demoPartnerClear },
   { id: "2026-11-03-launch-test-clean", note: "정식 운영: 테스트 데이터 정리 — 0000 테스트 수강생 · 예시 VOD 회원 기록 · 중복 체험단 · 010-0000-0000 테스트 회원 · 테스트 코치 · 예시 운영자 지우기 (체험 계정은 하나씩 남김)", run: launchTestClean },
   { id: "2026-11-03-moon-cohort-dates", note: "문대표 기수 일정: 1기 1/24~2/21 · 2기 8/29~9/23(5주차 수) · 지금 4기(11/21)를 3기로 + 5주차 보너스 강의 12/15(화) · 챌린지 4회(11/25 · 12/2 · 12/9 · 12/16) · 예시였던 예전 3기(10/1) 지우기", run: moonCohortDates },
+  { id: "2026-11-04-moon-cal-v2", note: "문대표 수업 캘린더: 강의 녹화본 업로드를 오프라인 강의 이틀 뒤로 · 일정 종류 ‘온라인 강의’ · 3기 12/15 5주차 보너스 강의 → 5주차 온라인 강의 · 특강(행사) → 초청강사", run: moonCalV2 },
 ];
 
-module.exports = { OPS, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

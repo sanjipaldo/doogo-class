@@ -1453,12 +1453,10 @@
     const sel = byDate[calSel] || [];
     const T = DB.EVENT_TYPES;
     const CT = DB.calTypes(INS.id), used = CT.concat(Object.keys(T).filter((k) => CT.indexOf(k) < 0 && evs.some((e) => e.type === k))), L = (t) => DB.evLabel(INS.id, t);
-    // 칸 안에는 점 대신 글씨 — 휴대폰은 짧게(3주차 · 3주 마감 · Q&A), PC 는 길게(3주차 오프라인 강의 · 20:00 라이브 Q&A)
-    const ORDER = ["open", "offline", "free", "replay", "deadline", "qna", "challenge", "bonus", "event", "notice"], rank = (e) => { const i = ORDER.indexOf(e.type); return i < 0 ? 99 : i; };
-    const SHORT = { offline: "오프라인", free: "무료", replay: "녹화본", qna: "Q&A", challenge: "챌린지", bonus: "보너스", event: "행사", notice: "공지" };
-    const chipS = (e) => (e.type === "open" ? (e.week ? e.week + "주차" : DB.calShort(INS.id)) : e.type === "deadline" ? (e.week ? e.week + "주 마감" : "마감") : SHORT[e.type] || L(e.type));
-    const chipL = (e) => (e.type === "open" || e.type === "deadline" ? (e.week ? e.week + "주차 " : "") + L(e.type) : (e.time ? e.time + " " : "") + L(e.type));
-    const chip = (e) => '<span class="cal-chip t-' + e.type + '"><b class="s">' + esc(chipS(e)) + '</b><b class="l">' + esc(chipL(e)) + "</b></span>";
+    // 칸 안에는 점 대신 글씨 (DB.calChip) — 휴대폰은 짧게(3주차 · 3주 녹화 · 챌린지 2), PC 는 길게(3주차 오프라인 강의 · 3주차 강의 녹화본 업로드 · 19:00 챌린지 2회차)
+    const ORDER = DB.CAL_ORDER, rank = (e) => { const i = ORDER.indexOf(e.type); return i < 0 ? 99 : i; };
+    const chipL = (e) => DB.calChip(INS.id, e).l;
+    const chip = (e) => { const c = DB.calChip(INS.id, e); return '<span class="cal-chip t-' + e.type + '" title="' + esc(c.l) + '"><b class="s">' + esc(c.s) + '</b><b class="l">' + esc(c.l) + "</b></span>"; };
     Object.keys(byDate).forEach((k) => byDate[k].sort((a, b) => rank(a) - rank(b)));
     const ym = DB.date.toStr(new Date(y, m, 1)).slice(0, 7), mon = Object.keys(byDate).filter((k) => k.slice(0, 7) === ym).sort();
     return '<div class="page">' + pageHead(ML("schedule"), "강의가 열리는 날, 과제 마감, 라이브 시간을 달력 한 장으로 챙겨요.") +
@@ -1467,7 +1465,7 @@
         '<div class="cal">' + DOW.map((d, i) => '<div class="cal-dow' + (i === 0 ? " sun" : i === 6 ? " sat" : "") + '">' + d + "</div>").join("") +
           cells.map((k) => {
             const d = parseDate(k);
-            const list = byDate[k] || [], main = list.some((e) => e.type === "open");
+            const list = byDate[k] || [], main = list.some(DB.calMain);
             return '<button type="button" class="cal-day' + (main ? " main" : "") + (d.getMonth() !== m ? " other" : "") + (k === today ? " today" : "") + (k === calSel ? " sel" : "") + (d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : "") +
               '" data-action="cal-pick" data-date="' + k + '" aria-label="' + esc(fmtKo(k) + (list.length ? " · " + list.map(chipL).join(", ") : "")) + '"><span class="d">' + d.getDate() + "</span>" +
               (list.length ? '<span class="cal-evs">' + list.slice(0, 3).map(chip).join("") + (list.length > 3 ? '<span class="cal-more">+' + (list.length - 3) + "</span>" : "") + "</span>" : "") + "</button>";

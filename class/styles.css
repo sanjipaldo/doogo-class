@@ -652,6 +652,7 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .ev-dot.event { background: var(--ink); }
 .ev-dot.free { background: #f76707; }
 .ev-dot.offline { background: #0f766e; }
+.ev-dot.guest { background: #0284c7; }
 .lr-title .lr-place { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--mute); overflow: hidden; text-overflow: ellipsis; }
 .lr-place .icon, .ev-place .icon { width: 12px; height: 12px; margin-right: 3px; vertical-align: -1px; }
 .ev-place { margin-top: 2px; color: var(--mute); }
@@ -2330,7 +2331,7 @@ a.login-vod:hover { filter: brightness(.97); }
 .th-nz .vod-play, .th-nz .mv-tile.on .mv-tile-play { background: #fff; border-color: #fff; color: #0b2a5b; }
 .th-nz .calc-out > div.hl .stat-label { color: rgba(255, 255, 255, .78) !important; }
 /* v15d 수업 캘린더: 강의(오프라인 강의) 날은 칸 전체를 강사 색으로 · 녹화본 업로드 · 보너스 강의 점 */
-.ev-dot.open { background: var(--primary); }
+.ev-dot.open, .ev-dot.online { background: var(--primary); }
 .ev-dot.replay { background: #7c5cff; }
 .ev-dot.bonus { background: #d9a930; }
 .cal-day.main { background: var(--primary); border-color: var(--primary); }
@@ -2342,7 +2343,7 @@ a.login-vod:hover { filter: brightness(.97); }
 .cal-day.main.other { opacity: .55; }
 .legend .cal-sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; background: var(--primary); vertical-align: middle; }
 @media (max-width: 720px) { .cal-day .cal-tag { padding: 0 4px; font-size: 9.5px; letter-spacing: -0.03em; } }
-.th-nz .cal-day.main, .th-nz .cal-day.main.sel, .th-nz .cal-day.main.today, .th-nz .legend .cal-sw, .th-nz .ev-dot.open { background: #0b2a5b; }
+.th-nz .cal-day.main, .th-nz .cal-day.main.sel, .th-nz .cal-day.main.today, .th-nz .legend .cal-sw, .th-nz .ev-dot.open, .th-nz .ev-dot.online { background: #0b2a5b; }
 .th-nz .cal-day.main { border-color: #0b2a5b; }
 .th-nz .cal-day.main .d, .th-nz .cal-day .cal-tag { color: #fff; }
 /* v15e 뉴질랜드 고사리: 메뉴 글씨 뒤에서 빼고, 메뉴 목록 끝에 가로로 누운 고사리 한 줄 (글씨와 겹치지 않게) */
@@ -2465,18 +2466,19 @@ a.login-vod:hover { filter: brightness(.97); }
 .cal-evs { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .cal-chip { --c: #6b7280; display: block; min-width: 0; padding: 2px 6px; border-radius: 6px; background: color-mix(in srgb, var(--c) 12%, #fff); color: color-mix(in srgb, var(--c) 80%, #000); font-size: 11.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* PC 달력 칸: 긴 이름은 두 줄까지 (예: 1주차 오프라인 강의) */
-.cal2 .cal-evs .cal-chip { white-space: normal; word-break: keep-all; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cal2 .cal-evs .cal-chip { white-space: normal; word-break: keep-all; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; padding-bottom: 0; border-bottom: 2px solid transparent; } /* 아래 여백은 테두리로 — 세 번째 줄 윗부분이 여백에 비치지 않게 (긴 일정 이름) */
 .cal-chip b { font-weight: 800; }
 .cal-chip .s { display: none; }
-.cal-chip.t-open { background: var(--cal-main, var(--primary)); color: var(--cal-on, var(--ink)); }
+/* 온라인 강의는 주차 강의(오프라인 강의)와 같은 색 · 초청강사는 하늘색 */
+.cal-chip.t-open, .cal-chip.t-online { background: var(--cal-main, var(--primary)); color: var(--cal-on, var(--ink)); }
 .cal-chip.t-offline { --c: #0f766e; } .cal-chip.t-free { --c: #f76707; } .cal-chip.t-replay { --c: #7c5cff; } .cal-chip.t-deadline { --c: #e5484d; }
-.cal-chip.t-qna { --c: #c2410c; } .cal-chip.t-challenge { --c: #16a34a; } .cal-chip.t-bonus { --c: #b8860b; } .cal-chip.t-event { --c: #111827; } .cal-chip.t-notice { --c: #6b7280; }
+.cal-chip.t-qna { --c: #c2410c; } .cal-chip.t-challenge { --c: #16a34a; } .cal-chip.t-bonus { --c: #b8860b; } .cal-chip.t-guest { --c: #0284c7; } .cal-chip.t-event { --c: #111827; } .cal-chip.t-notice { --c: #6b7280; }
 .cal-more { padding: 0 4px; font-size: 11px; font-weight: 800; color: var(--mute); }
 .cal-legend { gap: 8px 14px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
 .cal2 .cal-legend i.cal-sw { display: inline-block; width: 12px; height: 12px; border-radius: 4px; background: color-mix(in srgb, var(--c, #6b7280) 55%, #fff); }
-.cal2 .cal-legend i.cal-sw.t-open { background: var(--cal-main, var(--primary)); }
+.cal2 .cal-legend i.cal-sw.t-open, .cal2 .cal-legend i.cal-sw.t-online { background: var(--cal-main, var(--primary)); }
 .cal-legend .cal-sw.t-offline { --c: #0f766e; } .cal-legend .cal-sw.t-free { --c: #f76707; } .cal-legend .cal-sw.t-replay { --c: #7c5cff; } .cal-legend .cal-sw.t-deadline { --c: #e5484d; }
-.cal-legend .cal-sw.t-qna { --c: #c2410c; } .cal-legend .cal-sw.t-challenge { --c: #16a34a; } .cal-legend .cal-sw.t-bonus { --c: #b8860b; } .cal-legend .cal-sw.t-event { --c: #111827; } .cal-legend .cal-sw.t-notice { --c: #6b7280; }
+.cal-legend .cal-sw.t-qna { --c: #c2410c; } .cal-legend .cal-sw.t-challenge { --c: #16a34a; } .cal-legend .cal-sw.t-bonus { --c: #b8860b; } .cal-legend .cal-sw.t-guest { --c: #0284c7; } .cal-legend .cal-sw.t-event { --c: #111827; } .cal-legend .cal-sw.t-notice { --c: #6b7280; }
 .cal-selday, .cal-agenda { margin-top: 14px; }
 .ag-list { margin: 0; padding: 0; list-style: none; display: grid; }
 .ag-day { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
@@ -2498,7 +2500,7 @@ a.login-vod:hover { filter: brightness(.97); }
   .cal2 .cal .cal-day { min-height: 62px; padding: 5px 3px 5px; gap: 3px; border-radius: 9px; }
   .cal2 .cal .cal-day .d { min-width: 20px; height: 20px; padding: 0 5px; font-size: 12px; align-self: center; }
   .cal-evs { gap: 2px; }
-  .cal2 .cal-chip, .cal2 .cal-evs .cal-chip { display: block; padding: 1px 2px; border-radius: 4px; font-size: 9.5px; line-height: 1.35; letter-spacing: -0.04em; text-align: center; white-space: nowrap; text-overflow: clip; }
+  .cal2 .cal-chip, .cal2 .cal-evs .cal-chip { display: block; padding: 1px 2px; border-bottom: 0; border-radius: 4px; font-size: 9.5px; line-height: 1.35; letter-spacing: -0.04em; text-align: center; white-space: nowrap; text-overflow: clip; }
   .cal2 .cal-chip .s { display: inline; }
   .cal2 .cal-chip .l { display: none; }
   .cal-more { padding: 0; font-size: 9.5px; text-align: center; }

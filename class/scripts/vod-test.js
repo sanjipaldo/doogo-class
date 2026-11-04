@@ -1451,7 +1451,38 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       ok(evs2.join() === "2026-08-29,2026-09-05,2026-09-12,2026-09-19,2026-09-23", "주차별 강의일: 수업 캘린더 강의 날짜도 8/29 · 9/5 · 9/12 · 9/19 · 9/23", evs2);
       const ad22 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
       ok(/name="pl-wd-/.test(ad22) && /classDates: Object\.keys\(cd\)\.length \? cd : undefined/.test(ad22), "마스터 기수 설계 창: 주차별 강의일 칸 · 기본과 다른 날만 저장");
+      // 수업 캘린더 (2026-11-04): 녹화본은 오프라인 강의 이틀 뒤 · 달력 칸에 주차 · 일정 이름 · 온라인 강의 · 초청강사
+      const g3 = { id: "x3", instructorId: "moon", startDate: "2026-11-21", classDow: 6, weeks: 4, curriculumId: "cur-4w" };
+      const rp3 = D2.events("moon", g3).filter((e) => e.type === "replay");
+      ok(rp3.length && rp3[0].date === "2026-11-23" && rp3[0].week === 1 && rp3.every((e) => e.auto), "수업 캘린더: 강의 녹화본 업로드는 오프라인 강의(토) 이틀 뒤(월) 자동 — 1주차 11/21 → 11/23", rp3.map((e) => e.date));
+      const ch = (e) => D2.calChip("moon", e);
+      const c1 = ch(rp3[0]), c2 = ch({ type: "challenge", time: "19:00", title: "챌린지 2회차" }), c3 = ch({ type: "online", time: "19:00", title: "문대표 - 5주차 온라인 강의" }), c4 = ch({ type: "guest", time: "19:00", title: "OO대표 특별강의 - 쿠팡" }), c5 = ch({ type: "event", time: "20:00", title: "수료식 · 성과 발표" }), c6 = ch({ type: "bonus", time: "", title: "" });
+      ok(c1.l === "1주차 강의 녹화본 업로드" && c1.s === "1주 녹화" && c2.l === "19:00 챌린지 2회차" && c2.s === "챌린지 2" && c3.l === "19:00 문대표 - 5주차 온라인 강의" && c3.s === "5주차" && c4.l === "19:00 OO대표 특별강의 - 쿠팡" && c4.s === "초청" && c5.l === "20:00 수료식 · 성과 발표" && c5.s === "행사" && c6.l === "보너스 강의" && c6.s === "보너스",
+        "수업 캘린더 칸 글씨: 녹화본은 몇 주차인지 · 추가한 일정은 ‘행사’ 대신 일정 이름(챌린지 2회차 · 특강 이름) · 휴대폰은 짧게(1주 녹화 · 챌린지 2 · 5주차 · 초청)", [c1, c2, c3, c4, c5, c6]);
+      const op3 = D2.events("moon", g3).find((e) => e.type === "open");
+      ok(ch(op3).l === "1주차 오프라인 강의" && D2.calMain({ type: "online" }) && D2.calMain(op3) && !D2.calMain({ type: "guest" }) && D2.CAL_ORDER.indexOf("online") === 1 && D2.EVENT_TYPES.online.label === "온라인 강의" && D2.EVENT_TYPES.guest.label === "초청강사" && D2.calManual("moon").slice(0, 2).join() === "open,online",
+        "수업 캘린더: 주차 강의는 그대로 ‘1주차 오프라인 강의’ · 온라인 강의도 강의 날(같은 색) · 종류 ‘온라인 강의’ · ‘초청강사’ · 문대표 종류 목록에 온라인 강의");
+      const st22 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"), adm22 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
+      ok(/\.cal-chip\.t-open, \.cal-chip\.t-online \{ background: var\(--cal-main/.test(st22) && /\.cal-chip\.t-guest \{ --c:/.test(st22) && /PLAN_KINDS = \["free", "offline", "online", "challenge", "qna", "bonus", "guest", "event", "notice"\]/.test(adm22),
+        "수업 캘린더: 온라인 강의는 오프라인 강의와 같은 색 · 초청강사 색 · 일정 추가 종류에 온라인 강의 · 초청강사(행사 바로 위)");
     }
+    // 문대표 수업 캘린더 정리 (일회성 작업 2026-11-04): 녹화본 +2일 · 12/15 5주차 보너스 강의 → 온라인 강의 · 특강(행사) → 초청강사
+    const CV = { "content:moon": { other: 1, brand: { theme: "nz", cal: { types: ["open", "replay", "deadline", "challenge", "bonus"], labels: { open: "오프라인 강의", challenge: "챌린지 강의" }, short: "오프라인", replayAfter: 1 } },
+      schedule: [{ id: "e6", type: "event", title: "수료식 · 성과 발표", time: "20:00", scope: "all", week: 6, dow: 4 }, { id: "e-m3-ch2", type: "challenge", title: "챌린지 2회차", time: "19:00", scope: "cohort", cohortId: "c4", date: "2026-12-02" },
+        { id: "eA", type: "event", title: "OO대표 특별강의 - 쿠팡", time: "19:00", scope: "cohort", cohortId: "c4", date: "2026-12-08" }, { id: "eB", type: "event", title: "OO대표 특별강의 - 네이버 광고 마케팅", time: "19:00", scope: "cohort", cohortId: "c4", date: "2026-12-14" },
+        { id: "e-m3-bonus", type: "bonus", title: "문대표 - 5주차 보너스 강의", time: "19:00", scope: "cohort", cohortId: "c4", date: "2026-12-15" }, { id: "b9", type: "bonus", title: "보너스 강의 · 다른 날", scope: "cohort", cohortId: "c4", date: "2026-12-20" }] } };
+    const cvGet = (k) => (CV[k] ? JSON.parse(JSON.stringify(CV[k])) : undefined);
+    w = OO.moonCalV2(cvGet);
+    const cvc = w.writes["content:moon"], cvs = cvc && cvc.schedule, byId = (id) => cvs.find((e) => e.id === id);
+    ok(cvc && cvc.brand.cal.replayAfter === 2 && cvc.brand.cal.types.join() === "open,online,replay,deadline,challenge,bonus" && cvc.brand.theme === "nz" && cvc.other === 1,
+      "일회성(문대표 캘린더): 녹화본 업로드 다음 날 → 이틀 뒤 · 일정 종류에 온라인 강의(오프라인 강의 다음) · 다른 설정은 그대로", cvc && cvc.brand);
+    ok(byId("e-m3-bonus").type === "online" && byId("e-m3-bonus").title === "문대표 - 5주차 온라인 강의" && byId("e-m3-bonus").date === "2026-12-15" && byId("e-m3-bonus").time === "19:00" && byId("b9").type === "bonus" &&
+      byId("eA").type === "guest" && byId("eB").type === "guest" && byId("eA").title === "OO대표 특별강의 - 쿠팡" && byId("e6").type === "event" && byId("e-m3-ch2").type === "challenge" && w.result.guest.join() === "2026-12-08,2026-12-14" && w.result.events === 1,
+      "일회성(문대표 캘린더): 12/15 5주차 보너스 강의 → 5주차 온라인 강의(날짜 · 시간 그대로) · 특강 2개 → 초청강사 · 수료식 · 챌린지 · 다른 보너스 강의는 그대로 (결과엔 날짜만)", w.result);
+    CV["content:moon"] = cvc;
+    w = OO.moonCalV2(cvGet);
+    ok(!Object.keys(w.writes).length && w.result.skipped && OO.OPS.some((x) => x.id === "2026-11-04-moon-cal-v2" && x.run === OO.moonCalV2) && OO.OPS.findIndex((x) => x.id === "2026-11-04-moon-cal-v2") > OO.OPS.findIndex((x) => x.id === "2026-11-03-moon-cohort-dates"),
+      "일회성(문대표 캘린더): 다시 돌려도 그대로 · 기수 일정 작업 뒤에 돌아요", w);
     // 정산: 체험 계정 주문(demo)은 정산에서 빼요 · 자동 로그아웃
     const ad24 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mj24 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8");
     ok(/const os = VD\(\)\.orders\.filter\(\(o\) => !o\.demo/.test(ad24) && /if \(o\.demo\) return;/.test(ad24), "정산: 체험 계정 0원 주문은 강사 정산 건수에 넣지 않아요");
@@ -1924,7 +1955,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   {
     console.log("35) React 화면 스위치 (Next.js 전환 4-4 · shared/screens.js · proxy.js)");
     const S = require(path.join(ROOT, "shared/screens.js"));
-    ok(S.match("/vod/my") === "vod-my" && S.match("/vod/my/") === "vod-my" && S.match("/vod/my?x=1") === "vod-my" && S.match("/vod/my/classes") === "vod-my" && S.match("/vod/my/likes") === "vod-my" && S.match("/vod/my/orders") === "vod-my" && S.match("/vod/my/ship") === "vod-my" && S.match("/vod/c/all") === "vod-list" && S.match("/vod/c/commerce") === "vod-list" && S.match("/vod/search") === "vod-list" && S.match("/vod/teachers") === "vod-teachers" && S.match("/vod/teachers/yuna") === "vod-teachers" && S.match("/terms") === "vod-legal" && S.match("/vod/legal/refund") === "vod-legal" && S.match("/vod/about") === "vod-about" && S.match("/vod/partners") === "vod-partners" && S.match("/vod/partners/apply") === "vod-partners" && S.match("/vod/recruit") === null && S.match("/vod") === "vod-home" && S.match("/") === "vod-home" && S.match("/vod/p/v5") === "vod-product" && S.isPublic("vod-list") && !S.isPublic("vod-my") && S.match("/vod/login") === "vod-auth" && S.match("/vod/signup") === "vod-auth" && S.match("/vod/dg") === "vod-auth" && S.match("/login") === null && S.match("/vod/order/DC261104000001") === "vod-order" && S.match("/vod/checkout/v5") === "vod-checkout" && S.match("/vod/learn/v5") === "vod-learn" && S.match("/vod/learn/v5/v5-l1-1") === "vod-learn" && S.match("/vod/my/classesx") === null && S.match("/vodx/my") === null,
+    ok(S.match("/vod/my") === "vod-my" && S.match("/vod/my/") === "vod-my" && S.match("/vod/my?x=1") === "vod-my" && S.match("/vod/my/classes") === "vod-my" && S.match("/vod/my/likes") === "vod-my" && S.match("/vod/my/orders") === "vod-my" && S.match("/vod/my/ship") === "vod-my" && S.match("/vod/c/all") === "vod-list" && S.match("/vod/c/commerce") === "vod-list" && S.match("/vod/search") === "vod-list" && S.match("/vod/teachers") === "vod-teachers" && S.match("/vod/teachers/yuna") === "vod-teachers" && S.match("/terms") === "vod-legal" && S.match("/vod/legal/refund") === "vod-legal" && S.match("/vod/about") === "vod-about" && S.match("/vod/partners") === "vod-partners" && S.match("/vod/partners/apply") === "vod-partners" && S.match("/vod/recruit") === null && S.match("/vod") === "vod-home" && S.match("/") === "vod-home" && S.match("/vod/p/v5") === "vod-product" && S.isPublic("vod-list") && !S.isPublic("vod-my") && S.match("/vod/login") === "vod-auth" && S.match("/vod/signup") === "vod-auth" && S.match("/vod/dg") === "vod-auth" && S.match("/login") === "dg-login" && S.match("/vod/order/DC261104000001") === "vod-order" && S.match("/vod/checkout/v5") === "vod-checkout" && S.match("/vod/learn/v5") === "vod-learn" && S.match("/vod/learn/v5/v5-l1-1") === "vod-learn" && S.match("/vod/my/classesx") === null && S.match("/vodx/my") === null,
       "주소 → 화면 키: 옮긴 화면(회원 화면 · 스토어 홈 · 클래스 상세 · 약관 · 강사진 · 목록 · 검색 · 소개 · 파트너스)만 · 아직 안 옮긴 화면(예전 강사 모집 주소) · 다른 주소는 예전 화면 · 공개 화면 표시");
     ok(S.enabled({}).length === 0 && S.enabled({ env: "all" }).join() === S.KEYS.join() && S.enabled({ cookie: "vod-my" }).join() === "vod-my" && S.enabled({ env: "all", off: "vod-my" }).indexOf("vod-my") < 0 && S.enabled({ env: "all", cookie: "off" }).length === 0 && S.enabled({ env: "all", off: "all" }).length === 0,
       "켜기: 기본은 모두 꺼짐 · DC_NEXT=all 또는 쿠키로 켬 · DC_NEXT_OFF 는 쿠키보다 셈 · 쿠키 off 는 이 브라우저만 모두 끔");

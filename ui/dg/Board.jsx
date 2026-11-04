@@ -18,10 +18,9 @@ export function SchedulePage() {
   for (let i = 0; i < Math.ceil((startOffset + days) / 7) * 7; i++) cells.push(DB.date.toStr(new Date(y, m, 1 - startOffset + i)));
   const byDate = {}; evs.forEach((e) => { (byDate[e.date] = byDate[e.date] || []).push(e); });
   const sel = byDate[cal.sel] || [], T = DB.EVENT_TYPES, iid = S.INS.id, CT = DB.calTypes(iid), used = CT.concat(Object.keys(T).filter((k) => CT.indexOf(k) < 0 && evs.some((e) => e.type === k))), L = (t) => DB.evLabel(iid, t);
-  const ORDER = ["open", "offline", "free", "replay", "deadline", "qna", "challenge", "bonus", "event", "notice"], rank = (e) => { const i = ORDER.indexOf(e.type); return i < 0 ? 99 : i; };
-  const SHORT = { offline: "오프라인", free: "무료", replay: "녹화본", qna: "Q&A", challenge: "챌린지", bonus: "보너스", event: "행사", notice: "공지" };
-  const chipS = (e) => (e.type === "open" ? (e.week ? e.week + "주차" : DB.calShort(iid)) : e.type === "deadline" ? (e.week ? e.week + "주 마감" : "마감") : SHORT[e.type] || L(e.type));
-  const chipL = (e) => (e.type === "open" || e.type === "deadline" ? (e.week ? e.week + "주차 " : "") + L(e.type) : (e.time ? e.time + " " : "") + L(e.type));
+  // 칸 안 글씨 · 하루 칸 순서 · 강의 날 표시는 예전 화면과 같은 DB.calChip · CAL_ORDER · calMain
+  const ORDER = DB.CAL_ORDER, rank = (e) => { const i = ORDER.indexOf(e.type); return i < 0 ? 99 : i; };
+  const chipL = (e) => DB.calChip(iid, e).l;
   Object.keys(byDate).forEach((k) => byDate[k].sort((a, b) => rank(a) - rank(b)));
   const ym = DB.date.toStr(new Date(y, m, 1)).slice(0, 7), mon = Object.keys(byDate).filter((k) => k.slice(0, 7) === ym).sort();
   const act = (fn) => () => { fn(); redraw(); };
@@ -32,10 +31,10 @@ export function SchedulePage() {
         <div className="cal-nav"><button className="icon-btn ghost" data-action="cal-move" data-d="-1" aria-label="이전 달" onClick={act(() => X.calMove(-1))}><Icon n="chevLeft" /></button><button className="btn btn-tertiary btn-sm" data-action="cal-today" onClick={act(X.calToday)}>오늘</button><button className="icon-btn ghost" data-action="cal-move" data-d="1" aria-label="다음 달" onClick={act(() => X.calMove(1))}><Icon n="chevRight" /></button></div></div>
         <div className="cal">{DOW.map((d, i) => <div key={"w" + i} className={"cal-dow" + (i === 0 ? " sun" : i === 6 ? " sat" : "")}>{d}</div>)}
           {cells.map((k) => {
-            const d = parse(k), list = byDate[k] || [], main = list.some((e) => e.type === "open");
+            const d = parse(k), list = byDate[k] || [], main = list.some(DB.calMain);
             return (
               <button key={k} type="button" className={"cal-day" + (main ? " main" : "") + (d.getMonth() !== m ? " other" : "") + (k === today ? " today" : "") + (k === cal.sel ? " sel" : "") + (d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : "")} data-action="cal-pick" data-date={k} aria-label={fmtKo(k) + (list.length ? " · " + list.map(chipL).join(", ") : "")} onClick={act(() => X.calPick(k))}><span className="d">{d.getDate()}</span>
-                {list.length ? <span className="cal-evs">{list.slice(0, 3).map((e, i) => <span key={i} className={"cal-chip t-" + e.type}><b className="s">{chipS(e)}</b><b className="l">{chipL(e)}</b></span>)}{list.length > 3 ? <span className="cal-more">+{list.length - 3}</span> : null}</span> : null}</button>
+                {list.length ? <span className="cal-evs">{list.slice(0, 3).map((e, i) => { const c = DB.calChip(iid, e); return <span key={i} className={"cal-chip t-" + e.type} title={c.l}><b className="s">{c.s}</b><b className="l">{c.l}</b></span>; })}{list.length > 3 ? <span className="cal-more">+{list.length - 3}</span> : null}</span> : null}</button>
             );
           })}</div>
         <div className="legend cal-legend">{used.map((k) => <span key={k}><i className={"cal-sw t-" + k} />{L(k)}</span>)}</div></section>

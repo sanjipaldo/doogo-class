@@ -487,14 +487,17 @@
     return (nums.length ? Math.max.apply(null, nums) + 1 : 1) + "기";
   }
 
+  // 온라인 강의: 강사 본인의 주차 강의를 온라인으로 하는 날 (달력 색 · 강의 날 표시는 주차 강의와 같아요) · 초청강사: 다른 강사님을 모신 특강
   const EVENT_TYPES = {
     open: { label: "강의 오픈", cls: "open" },
     free: { label: "무료 강의", cls: "free" },
     offline: { label: "오프라인 강의", cls: "offline" },
+    online: { label: "온라인 강의", cls: "online" },
     deadline: { label: "과제 마감", cls: "deadline" },
     qna: { label: "라이브 Q&A", cls: "qna" },
     notice: { label: "공지", cls: "notice" },
     challenge: { label: "챌린지", cls: "challenge" },
+    guest: { label: "초청강사", cls: "guest" },
     event: { label: "행사", cls: "event" },
     replay: { label: "강의 녹화본 업로드", cls: "replay" },
     bonus: { label: "보너스 강의", cls: "bonus" }
@@ -507,6 +510,24 @@
   /* 강사가 직접 넣는 종류 (과제 마감 · 자동 녹화본은 빼고) */
   function calManual(instId) { const g = calCfg(instId); return g && g.types ? g.types.filter((k) => k !== "deadline" && !(k === "replay" && g.replayAfter != null)) : ["qna", "notice", "challenge", "event"]; }
   function calShort(instId) { const g = calCfg(instId); return (g && g.short) || "강의"; }
+  /* 수강생 수업 캘린더 칸 글씨 (예전 화면 · React 같이) — PC 는 길게(l) · 휴대폰은 짧게(s)
+   *  · 기수에서 자동으로 생기는 주차 강의 · 녹화본 · 과제 마감: ‘N주차 + 종류’ (3주차 오프라인 강의 · 3주차 강의 녹화본 업로드 · 3주차 과제 마감)
+   *  · 강사가 추가한 일정: 시간 + 일정 이름 (19:00 챌린지 2회차 · 19:00 OO 특별강의) — 이름이 없으면 종류 이름
+   *    휴대폰은 종류를 짧게 + 이름의 ‘N회차 · N주차’ 숫자 (챌린지 2) · 주차 강의 종류는 ‘N주차’ */
+  const CAL_SHORT = { offline: "오프라인", online: "온라인", free: "무료", replay: "녹화본", qna: "Q&A", challenge: "챌린지", bonus: "보너스", guest: "초청", event: "행사", notice: "공지" };
+  /** 하루 칸 안의 순서 (주차 강의가 맨 위) */
+  const CAL_ORDER = ["open", "online", "offline", "free", "replay", "deadline", "qna", "challenge", "bonus", "guest", "event", "notice"];
+  /** 강의 날(칸을 옅게 칠해요): 주차 강의 · 온라인 강의 */
+  const calMain = (e) => e.type === "open" || e.type === "online";
+  function calChip(instId, e) {
+    const L = evLabel(instId, e.type), wk = e.week ? e.week + "주차 " : "";
+    if (e.auto && e.type === "open") return { s: e.week ? e.week + "주차" : calShort(instId), l: wk + L };
+    if (e.auto && e.type === "deadline") return { s: e.week ? e.week + "주 마감" : "마감", l: wk + L };
+    if (e.auto && e.type === "replay") return { s: e.week ? e.week + "주 녹화" : CAL_SHORT.replay, l: wk + L };
+    const t = String(e.title || "").trim(), n = /(\d+)\s*(주차|회차|회)/.exec(t), base = e.type === "open" ? calShort(instId) : CAL_SHORT[e.type] || L;
+    const lec = e.type === "open" || e.type === "online" || e.type === "offline";
+    return { s: n ? (lec && n[2] === "주차" ? n[1] + "주차" : base + " " + n[1]) : base, l: (e.time ? e.time + " " : "") + (t || L) };
+  }
   /** 기수 하나의 전체 일정 (자동 일정 + 강사가 추가한 일정), 날짜순 */
   function events(instId, co) {
     const c = content(instId);
@@ -1070,7 +1091,7 @@
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
     curricula, curriculum, curriculumOf, weeksOf, cohortWeeks,
     weekOpen, weekDeadline, baseClassDate, cohortEnd, cohortStatus, STATUS_LABEL, currentWeek, LEVEL_SET, levelSteps, level, currentCohort, nextCohortName,
-    EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort,
+    EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort, calChip, calMain, CAL_ORDER,
     REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, applyTrack, siteInfo, saveSite, SITE_DEFAULT, opsKakao,
     BILLING_DEFAULT, BILL_VAT, BILL_STATE, billingInfo, saveBilling, bills, saveBill, removeBill, billMoney, billState, won,
     THEMES, themeOf, STUDENT_MENUS, LIB_MENUS, CUSTOM_ICONS, menuConfig, menuOn, libOn, isCustom, NOTE_PROMPTS, botNameOf,

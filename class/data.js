@@ -29,8 +29,8 @@ const MOON_CONTENT = {
     // 메인 강의는 외부 강의 플랫폼(아이비클래스)에서 — 두잉고에는 버튼 하나로 연결 (강사센터 › 기본 정보에서 링크 수정)
     mainLec: { on: true, platform: "아이비클래스", label: "메인 강의 들으러 가기", url: "https://www.ivyclass.co.kr", note: "라이브 강의와 녹화본은 아이비클래스에서 봐요. 두잉고에는 주차별 따라하기 영상 · 과제 · 보충 강의가 있어요." },
     lessonLabel: "따라하기 영상",
-    // 수업 캘린더: 문대표가 실제로 쓰는 일정 종류 (주차 강의 = 오프라인 강의, 녹화본은 강의 다음 날 자동)
-    cal: { types: ["open", "replay", "deadline", "challenge", "bonus"], labels: { open: "오프라인 강의", challenge: "챌린지 강의" }, short: "오프라인", replayAfter: 1 },
+    // 수업 캘린더: 문대표가 실제로 쓰는 일정 종류 (주차 강의 = 오프라인 강의 · 온라인으로 하는 주차 강의 = 온라인 강의(같은 색), 녹화본은 오프라인 촬영 이틀 뒤 자동)
+    cal: { types: ["open", "online", "replay", "deadline", "challenge", "bonus"], labels: { open: "오프라인 강의", challenge: "챌린지 강의" }, short: "오프라인", replayAfter: 2 },
     theme: "doinggo"
   },
 

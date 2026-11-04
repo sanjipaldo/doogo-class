@@ -52,7 +52,7 @@ export function Missions() {
   </>;
 }
 
-const EV_CLS = { qna: "warn", notice: "mute", challenge: "ok", event: "dark", open: "info", deadline: "bad", replay: "info", bonus: "warn", free: "warn", offline: "dark" };
+const EV_CLS = { qna: "warn", notice: "mute", challenge: "ok", guest: "guest", event: "dark", open: "info", online: "info", deadline: "bad", replay: "info", bonus: "warn", free: "warn", offline: "dark" };
 export function Schedule() {
   const A = ADM(), DB = DBX(), ui = A.ui, iid = A.IID(), c = A.C(), cos = DB.cohortsOf(iid);
   if (!ui.schedCohort || !cos.some((x) => x.id === ui.schedCohort)) ui.schedCohort = (DB.currentCohort(iid) || {}).id;

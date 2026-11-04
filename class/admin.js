@@ -729,9 +729,9 @@
   }
   /* ---------------- 기수 · 일정 설계 (마스터 › 기수 · 일정 설계 · 강사센터 › 기수 관리 같은 창) ----------------
    * 기수 이름 · 1주차 강의일 · 커리큘럼 · 진행 주차(기수마다 · 예: 1기 5주 · 2기 4주) · 매주 강의 요일 · 시간 · 입장 링크 +
-   * 이 기수만의 특별 일정(무료 강의 · 오프라인 강의 · 챌린지 · 라이브 Q&A · 보너스 강의 · 행사 · 공지)을 한 창에서 정해요.
+   * 이 기수만의 특별 일정(무료 강의 · 오프라인 강의 · 온라인 강의 · 챌린지 · 라이브 Q&A · 보너스 강의 · 초청강사 · 행사 · 공지)을 한 창에서 정해요.
    * 특별 일정은 content.schedule 에 scope: "cohort" 로 저장 → 수강생 대시보드 ‘다가오는 일정’ · 수업 캘린더에 그대로 보여요 */
-  const PLAN_KINDS = ["free", "offline", "challenge", "qna", "bonus", "event", "notice"];
+  const PLAN_KINDS = ["free", "offline", "online", "challenge", "qna", "bonus", "guest", "event", "notice"];
   const planEvs = (iid, coId) => ((DB.content(iid) || {}).schedule || []).filter((e) => e.scope === "cohort" && e.cohortId === coId).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
   const mdDow = (d) => fmtMD(d).replace(" (", "(");
   const planMaster = () => !!S && S.role === "master";
@@ -806,7 +806,7 @@
     const L = (t) => DB.evLabel(iid, t), wk = DB.weeksOf(fake), first = DB.classDate(fake, 1), lastD = DB.classDate(fake, wk.length);
     const list = DB.events(iid, fake).concat(d.evs.filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date)).map((e) => ({ date: e.date, time: e.time, type: e.type, title: e.title || L(e.type), place: e.place, special: true })))
       .sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99")));
-    const cls = { open: "info", deadline: "bad", free: "warn", offline: "dark", challenge: "ok", qna: "warn", bonus: "warn", event: "dark", notice: "mute", replay: "info" };
+    const cls = { open: "info", online: "info", deadline: "bad", free: "warn", offline: "dark", challenge: "ok", qna: "warn", bonus: "warn", guest: "guest", event: "dark", notice: "mute", replay: "info" };
     return '<div class="pl-sum"><b>' + wk.length + "주 과정</b><span>1주차 " + mdDow(first) + " → " + wk.length + "주차 " + mdDow(lastD) + "</span><small>마지막 과제 마감 " + mdDow(DB.cohortEnd(fake)) + "</small></div>" +
       '<ul class="pl-list">' + list.map((e) => '<li class="' + (e.special ? "sp" : e.type === "deadline" ? "dl" : "") + '"><span class="pl-d">' + mdDow(e.date) + (e.time ? " " + esc(e.time) : "") + "</span>" + pill(L(e.type), cls[e.type] || "mute") + "<span class=\"pl-t\">" + esc(e.title) + (e.place && !/^https?:/i.test(e.place) ? ' <small class="a-muted">· ' + esc(e.place) + "</small>" : "") + "</span></li>").join("") + "</ul>";
   }
@@ -1464,7 +1464,7 @@
     if (!ui.schedCohort || !cos.some((x) => x.id === ui.schedCohort)) ui.schedCohort = (DB.currentCohort(iid) || {}).id;
     const co = DB.cohort(ui.schedCohort);
     const T = DB.EVENT_TYPES;
-    const cls = { qna: "warn", notice: "mute", challenge: "ok", event: "dark", open: "info", deadline: "bad", replay: "info", bonus: "warn", free: "warn", offline: "dark" }, L = (t) => DB.evLabel(iid, t);
+    const cls = { qna: "warn", notice: "mute", challenge: "ok", guest: "guest", event: "dark", open: "info", online: "info", deadline: "bad", replay: "info", bonus: "warn", free: "warn", offline: "dark" }, L = (t) => DB.evLabel(iid, t);
     const auto = ["open", "deadline"].concat(DB.calTypes(iid).indexOf("replay") >= 0 && DB.calManual(iid).indexOf("replay") < 0 ? ["replay"] : []).map((k) => "‘" + L(k) + "’").join(" · ");
     return head("수업 캘린더", auto + "은 기수 시작일로 자동 계산돼요. " + DB.calManual(iid).filter((k) => k !== "open").map(L).join(" · ") + " 같은 일정만 추가하세요. 기수 하나의 무료 강의 · 오프라인 강의 · 챌린지 날짜는 ‘기수 관리 › 일정 설계’에서 한 번에 정할 수도 있어요.", addBtn("event", "일정 추가")) +
       '<section class="a-card"><div class="a-card-head"><h2>추가한 일정</h2><span class="a-muted">' + c.schedule.length + "개</span></div>" +

@@ -95,6 +95,7 @@ textarea.a-input { min-height: 0; resize: vertical; line-height: 1.6; }
 .a-pill.info { background: var(--m-info-soft); color: var(--m-info); }
 .a-pill.mute { background: var(--m-surface); color: var(--m-slate); }
 .a-pill.dark { background: var(--m-ink-deep); color: #fff; }
+.a-pill.guest { background: #e0f2fe; color: #0369a1; } /* 일정 종류 ‘초청강사’ (수강생 달력 하늘색과 같은 색) */
 .a-chip { padding: 4px 12px; border-radius: 100px; background: var(--m-primary-soft); color: var(--m-primary-deep); font-size: 13px; font-weight: 700; }
 
 /* ===== 로그인 ===== */
