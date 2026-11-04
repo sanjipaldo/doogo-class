@@ -71,3 +71,12 @@ export function BotFace({ size }) {
   const b = st().D.brand;
   return <span className={"bot-face" + (size ? " " + size : "")}>{b.photo ? <img src={b.photo} alt="" /> : <Icon n="bot" c="sm" />}</span>;
 }
+
+/** 예전 HTML 로 넣은 칸(공지 본문 등) 안의 유튜브 카드를 누르면 그 자리에서 재생 (예전 video-play) */
+export function playDelegate(e) {
+  const a = e.target.closest && e.target.closest("[data-action='video-play']"); if (!a) return;
+  if (e.target.closest(".vp-ext")) return;
+  const box = a.closest(".video"), yid = box && box.dataset.yid, esc = window.DB.esc; if (!yid) return;
+  box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(yid) + '?autoplay=1&rel=0" title="영상" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>' +
+    '<a class="video-out" href="https://www.youtube.com/watch?v=' + esc(yid) + '" target="_blank" rel="noopener">재생이 안 되면 유튜브에서 보기 ' + window.icon("arrowUpRight", "xs") + "</a>";
+}

@@ -33,7 +33,7 @@ export function Attachments({ list }) {
     })}</ul></div>
   );
 }
-function MainBtn({ url, cls, text }) {
+export function MainBtn({ url, cls, text }) {
   const m = DGA().mainLec(); if (!m) return null;
   const u = url || m.url;
   return u ? <a className={"btn " + (cls || "btn-primary") + " ml-btn"} href={u} target="_blank" rel="noopener"><Icon n="arrowUpRight" c="sm" />{text || m.label || "메인 강의 들으러 가기"}</a> : <span className={"btn " + (cls || "btn-primary") + " ml-btn is-off"} aria-disabled="true"><Icon n="clock" c="sm" />링크 준비 중</span>;
@@ -174,9 +174,73 @@ function Week({ no }) {
     </div>
   );
 }
-/** #/missions · #/missions?kind= · #/missions/<주차> (과제 하나는 아직 예전 화면) */
+/* ---------- 과제 하나: 제출 · 자동검수 (예전 pageMissionDetail · resultBox · draftThumbs · submitMission) ---------- */
+function ResultBox({ s }) {
+  const fs = DBX().date.fmtStamp;
+  return <>
+    {s.review ? (s.review.status === "approved" ? <div className="result pass"><h4><Icon n="check" />강사님이 승인했어요</h4><p>{fs(s.review.at) + (s.review.comment ? " · " + s.review.comment : "")}</p></div>
+      : <div className="result fix"><h4><Icon n="alert" />강사님이 보완을 요청했어요</h4><p>{s.review.comment || "내용을 보완해서 다시 제출해 주세요."}</p></div>) : null}
+    {s.result.pass ? <div className="result pass" style={s.review ? { opacity: ".7" } : undefined}><h4><Icon n="check" />자동검수 통과</h4><p>{fs(s.at)} 제출 · 진행률에 반영되었습니다.{s.review ? "" : " 강사님이 한 번 더 확인할 수 있어요."}</p>{s.result.ok.length ? <ul>{s.result.ok.map((t, i) => <li key={i}>{t}</li>)}</ul> : null}</div>
+      : <div className="result fix"><h4><Icon n="alert" />자동검수 · 보완이 필요해요</h4><p>아래 항목을 채워서 다시 제출해 주세요.</p><ul>{s.result.reasons.map((t, i) => <li key={i}>{t}</li>)}</ul></div>}
+  </>;
+}
+function Mission({ no, id }) {
+  const X = DGA(), S = st(), D = S.D, DB = DBX(), w = X.findWeek(no), m = w && w.missions.find((x) => x.id === id);
+  const [drag, setDrag] = useState(false);
+  const [cnt, setCnt] = useState(null);
+  // 강사님 보완 요청을 봤어요 (왼쪽 메뉴 숫자가 줄어요 — 예전처럼 그린 뒤에)
+  useEffect(() => { if (m && X.isOpen(w) && X.revSeen(id)) window.ReactApp.redraw(); });
+  if (!m) return <NotFound />;
+  if (!X.isOpen(w)) return <Locked w={w} />;
+  const draft = X.draftFor(id), subs = S.P.submissions[id] || [], last = subs[subs.length - 1];
+  const typeLabel = { image: "사진 · PDF 인증", link: "링크 제출", text: "글 작성" }[m.type] || "", c = m.check || {}, late = todayStr() > X.deadlineOf(w);
+  // 제출하면 예전처럼 화면을 새로 그려요 — 글자 수 표시도 처음으로
+  const submit = (e) => { e.preventDefault(); setCnt(null); X.submitMission(e.currentTarget); };
+  const files = (e) => { X.addFiles(e.currentTarget.files); e.currentTarget.value = ""; };
+  const dz = { onDragOver: (e) => { e.preventDefault(); setDrag(true); }, onDragEnter: (e) => { e.preventDefault(); setDrag(true); }, onDragLeave: (e) => { e.preventDefault(); setDrag(false); }, onDrop: (e) => { e.preventDefault(); setDrag(false); X.addFiles(e.dataTransfer.files); } };
+  const count = (e) => { const t = e.currentTarget, min = Number(t.dataset.min); if (min) setCnt(t.value.replace(/\s+/g, "").length + " / 최소 " + min + "자"); };
+  const crit = X.checkCriteria(m), sc = X.on("showcase") ? X.showcaseOf(m.id) : [];
+  return (
+    <div className="page"><PageHead title={m.title} crumbs={<Crumb items={[[X.ML("missions"), "#/missions"], [w.no + "주차", "#/missions/" + w.no], [m.title]]} />} />
+      <div className="detail-grid">
+        <section className="card">
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "12px" }}>{m.required ? <span className="badge badge-ink">필수</span> : <span className="badge badge-neutral">{X.kindOf(m).short}</span>}<span className="badge badge-neutral">{typeLabel}</span>
+            <span className={"badge " + (late ? "badge-negative" : "badge-neutral")}>{fmtMD(X.deadlineOf(w))} 마감{late ? " 지남" : ""}</span><StateBadge id={id} /></div>
+          <p style={{ margin: "0 0 20px", fontSize: "16px", lineHeight: "1.75" }}>{m.desc}</p>
+          {(m.steps || []).length ? <><p className="side-label">이렇게 하세요</p><ol className="steps">{m.steps.map((x, i) => <li key={i}>{x}</li>)}</ol></> : null}
+          {(m.templates || []).length ? <div className="mcard-tpl" style={{ marginTop: "14px" }}>{m.templates.map((f, i) => tplLink(f, "tpl-btn", <><Icon n="download" c="xs" />과제 양식 다운로드</>, i))}</div> : null}
+          <hr style={{ border: "0", borderTop: "1px solid var(--line-soft)", margin: "24px 0" }} />
+          <form id="submit-form" data-id={id} className="stack" noValidate onSubmit={submit}>
+            {m.type === "image" ? <>
+              <label className={"dropzone" + (drag ? " drag" : "")} id="dropzone" {...dz}><input type="file" id="file-input" accept="image/*,.pdf" multiple className="sr-only" onChange={files} /><Icon n="image" /><strong>사진 또는 PDF를 끌어다 놓거나 눌러서 선택</strong><span className="tiny">최대 3개 · 개인정보(주민번호·계좌번호)는 가리고 올려 주세요</span></label>
+              <div className="thumbs" id="thumbs">{draft.files.map((f, i) => <div key={i} className="thumb">{f.type === "pdf" ? <div className="thumb-pdf"><Icon n="file" />{f.name}</div> : <img src={f.data} alt={f.name} />}<button type="button" data-action="remove-file" data-i={i} aria-label="삭제" onClick={() => X.removeFile(i)}><Icon n="x" c="xs" /></button></div>)}</div>
+              <div className="field"><label htmlFor="sub-text">메모 <span className="tiny">(선택)</span></label><textarea className="textarea" id="sub-text" name="text" rows="3" style={{ minHeight: "96px" }} placeholder="강사님께 남길 말이 있으면 적어 주세요" /></div>
+            </> : m.type === "link" ? <>
+              <div className="field"><label htmlFor="sub-link">링크</label><input className="input" id="sub-link" name="link" type="url" inputMode="url" placeholder={"https://" + (c.linkHint || "") + (c.linkHint ? "/…" : "")} defaultValue={last ? last.link : ""} /></div>
+              <div className="field"><label htmlFor="sub-text">메모 <span className="tiny">(선택)</span></label><textarea className="textarea" id="sub-text" name="text" rows="3" style={{ minHeight: "96px" }} defaultValue={last ? last.text : ""} /></div>
+            </> : <div className="field"><label htmlFor="sub-text">내용 <span className="tiny" id="char-count">{cnt || (c.minLength ? "최소 " + c.minLength + "자" : "")}</span></label>
+              <textarea className="textarea" id="sub-text" name="text" rows="8" data-min={c.minLength || 0} placeholder={(m.steps || []).join(" / ")} defaultValue={last ? last.text : ""} onInput={count} /></div>}
+            <button className="btn btn-primary" type="submit"><Icon n="send" c="sm" />{last ? "다시 제출하고 검수받기" : "제출하고 자동검수 받기"}</button></form>
+          <div id="result">{last ? <ResultBox s={last} /> : null}</div>
+        </section>
+        <aside className="stack">
+          <div className="card"><p className="side-label">자동검수 기준</p><ul className="history">{crit.length ? crit.map((t, i) => <li key={i}><span>{t}</span></li>) : <li><span>제출하면 바로 통과</span></li>}</ul></div>
+          <div className="card"><p className="side-label">제출 이력</p>{subs.length ? <ul className="history">{subs.slice().reverse().map((x, i) => <li key={i}><span>{subs.length - i}차 제출 · {DB.date.fmtStamp(x.at)}</span>{x.review ? (x.review.status === "approved" ? <span className="badge badge-positive">강사 승인</span> : <span className="badge badge-warning">보완 요청</span>) : x.result.pass ? <span className="badge badge-positive">통과</span> : <span className="badge badge-warning">보완</span>}</li>)}</ul> : <p className="tiny" style={{ margin: "0" }}>아직 제출 기록이 없어요.</p>}</div>
+          {last && last.files && last.files.length ? <div className="card"><p className="side-label">마지막으로 낸 파일</p><div className="thumbs">{last.files.map((f, i) => f.type === "pdf"
+            ? <a key={i} className="thumb" href={f.data || undefined} download={f.data ? f.name : undefined}><div className="thumb-pdf"><Icon n="file" />{f.name}</div></a>
+            : <a key={i} className="thumb" href={f.data} target="_blank" rel="noopener"><img src={f.data} alt={f.name} /></a>)}</div></div> : null}
+          {sc.length ? <a className="card sc-hint plain-link" href={"#/showcase?w=" + w.no}><span className="sc-hint-ic"><Icon n="trophy" c="sm" /></span><span><b>모범 과제 {sc.length}개 보기</b><small>{D.brand.instructor}님이 고른 잘한 예시</small></span><Icon n="chevRight" c="sm" /></a> : null}
+          {X.on("bot") ? <div className="card ask-card"><p className="ask-t"><Icon n="bot" c="sm" />어디서 막혔나요?</p><p className="tiny">{D.brand.botName}가 이 과제 진행 방법을 단계별로 알려 드려요.</p>
+            <button className="btn btn-primary btn-sm btn-block" data-action="ask-bot" data-q={m.title + " 어떻게 해요?"} onClick={() => X.askBot(m.title + " 어떻게 해요?")}><Icon n="bot" c="sm" />이 과제 물어보기</button></div> : null}
+        </aside>
+      </div></div>
+  );
+}
+
+/** #/missions · #/missions?kind= · #/missions/<주차> · #/missions/<주차>/<과제> */
 export function MissionsPage({ r }) {
-  const DB = DBX(), [, weekNo] = r.parts, kind = DB.MISSION_KINDS.find((k) => k.key === r.params.get("kind"));
+  const DB = DBX(), [, weekNo, missionId] = r.parts, kind = DB.MISSION_KINDS.find((k) => k.key === r.params.get("kind"));
+  if (missionId) return <Mission key={weekNo + "/" + missionId} no={weekNo} id={missionId} />;
   if (weekNo) return <Week key={weekNo} no={weekNo} />;
   if (kind) return <MissionKind k={kind} />;
   return <Missions />;

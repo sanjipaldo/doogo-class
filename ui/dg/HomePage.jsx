@@ -144,11 +144,11 @@ function LiveHome() {
 }
 
 /* ---------- VOD 버전 ---------- */
-function CoachCard() {
+export function CoachCard({ compact }) {
   const X = DGA(), S = st(), V = window.VOD, pid = X.addPid("coachOf"); if (!V || !pid) return null;
   const c = V.coachOf(V.product(pid)), n = X.coachN();
   return (
-    <section className="card vh-add vh-coach"><span className="vh-add-ic"><Icon n="message" /></span><div className="vh-add-t"><small>1:1 코칭권</small><b>{n ? <>남은 코칭 <em>{n}회</em></> : S.INS.displayName + " 강사에게 직접 질문하기"}</b><p>{n ? X.coachEnd() + "까지 · 강의 내용 · 내 사업 적용 무엇이든 물어보세요" : c.n + "회 · " + c.days + "일 · " + won(c.price) + " (1회 " + won(c.per) + ") · 강사님이 직접 답해요"}</p></div>
+    <section className={"card vh-add vh-coach" + (compact ? " sm" : "")}><span className="vh-add-ic"><Icon n="message" /></span><div className="vh-add-t"><small>1:1 코칭권</small><b>{n ? <>남은 코칭 <em>{n}회</em></> : S.INS.displayName + " 강사에게 직접 질문하기"}</b><p>{n ? X.coachEnd() + "까지 · 강의 내용 · 내 사업 적용 무엇이든 물어보세요" : c.n + "회 · " + c.days + "일 · " + won(c.price) + " (1회 " + won(c.per) + ") · 강사님이 직접 답해요"}</p></div>
       <div className="vh-add-b">{n ? <><a className="btn btn-primary btn-sm" href="#/qna/requests/new"><Icon n="pen" c="sm" />질문 남기기</a><a className="btn btn-secondary btn-sm" href="#/qna/requests">내 코칭 질문</a></>
         : <><a className="btn btn-primary btn-sm" href={"#/vod/checkout/" + pid + "?item=coach"}><Icon n="message" c="sm" />코칭권 사기</a>{X.myCoachQs().length ? <a className="btn btn-secondary btn-sm" href="#/qna/requests">지난 코칭 질문</a> : null}</>}</div></section>
   );

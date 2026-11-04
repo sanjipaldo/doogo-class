@@ -5,7 +5,8 @@
 const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강의실 화면 주소 (shared/screens.js 의 dg-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
-const DG = ["/home", "/curriculum", "/missions", "/missions?kind=required", "/missions?kind=challenge", "/missions?kind=mind", "/missions/1", "/missions/2", "/missions/9", "/curriculum/nope"];
+const DG = ["/home", "/curriculum", "/missions", "/missions?kind=required", "/missions?kind=challenge", "/missions?kind=mind", "/missions/1", "/missions/2", "/missions/9", "/curriculum/nope",
+  "/schedule", "/notices", "/notices/nope", "/qna", "/qna?tab=request", "/qna/requests", "/qna/requests/new", "/qna/requests/nope"];
 // 강의 한 편은 데이터에서 골라요 (열린 주차 첫 강의 · 잠긴 주차 강의)
 async function shapes(page, base, L, list) {
   const bad = []; let lines = 0;
@@ -26,7 +27,19 @@ module.exports = {
       const page = await L.newPage(browser, { viewport: vp });
       run.watch(page, "강의실 모양 " + vp.width);
       await FL.student(page, base, info);
-      const extra = await page.evaluate(() => { const X = window.DGA, S = X && X.st(); if (!S || !S.D) return []; const ws = S.D.weeks, o = ws.find((w) => X.isOpen(w) && w.lessons.length), c = ws.find((w) => !X.isOpen(w) && w.lessons.length); return [o && "/curriculum/" + o.lessons[0].id, o && o.lessons[1] && "/curriculum/" + o.lessons[1].id, c && "/curriculum/" + c.lessons[0].id].filter(Boolean); });
+      const extra = await page.evaluate(() => {
+        const X = window.DGA, S = X && X.st(); if (!S || !S.D) return [];
+        const ws = S.D.weeks, o = ws.find((w) => X.isOpen(w) && w.lessons.length), c = ws.find((w) => !X.isOpen(w) && w.lessons.length);
+        // 과제 하나: 열린 주차의 글 · 사진 · 링크 과제 하나씩 + 잠긴 주차 과제 + 없는 과제
+        const om = ws.filter((w) => X.isOpen(w)).flatMap((w) => w.missions.map((m) => ({ w, m }))), cm = ws.filter((w) => !X.isOpen(w)).flatMap((w) => w.missions.map((m) => ({ w, m })));
+        const one = (t) => { const x = om.find((y) => y.m.type === t); return x && "/missions/" + x.w.no + "/" + x.m.id; };
+        return [o && "/curriculum/" + o.lessons[0].id, o && o.lessons[1] && "/curriculum/" + o.lessons[1].id, c && "/curriculum/" + c.lessons[0].id,
+          one("text"), one("image"), one("link"), cm[0] && "/missions/" + cm[0].w.no + "/" + cm[0].m.id, "/missions/1/nope"]
+          // 공지 하나씩 (사진 · 영상이 있는 공지 먼저) · 내 1:1 요청 (답변 있는 것 · 없는 것) · 남의 요청 (비공개)
+          .concat(S.D.notices.slice().sort((a, b) => X.noticeVideos(b).length + (b.images || []).length - X.noticeVideos(a).length - (a.images || []).length).slice(0, 3).map((n) => "/notices/" + n.id))
+          .concat(X.myRequests().filter((x) => x.s.id === S.me.id).slice(0, 2).map((x) => "/qna/requests/" + x.q.id))
+          .concat(X.myRequests().filter((x) => x.s.id !== S.me.id).slice(0, 1).map((x) => "/qna/requests/" + x.q.id)).filter(Boolean);
+      });
       const list = DG.concat(extra);
       const { bad, lines } = await shapes(page, base, L, list);
       await run.check(!bad.length, "기수 수강생 강의실 " + list.length + "개 화면 " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요", bad.slice(0, 2), page);
@@ -65,6 +78,91 @@ module.exports = {
       const a = await flow("off"), b = await flow("all");
       const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
       await run.check(!d.length && a.out.length === b.out.length && b.out.length >= 3 && b.stay, "강의실(React): 시작 가이드 · AI 조교 열기 · 질문 · 대화 지우기 · 닫기 · 주차 과제 탭 · 시청 완료 · 메모 — 누를 때마다 예전 화면과 같은 모양 (" + b.out.length + "번)", d.slice(0, 1), page);
+      await page.context().close();
+    }
+    // 1-3) 과제 제출 (글 과제): 짧게 → 글자 수 · 보완 결과 → 길게 → 통과 (모드마다 제출 기록을 비우고 같은 처음에서)
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "강의실 과제 제출");
+      await FL.student(page, base, info);
+      const MID = "m1-7", T = (x) => x.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}/g, "M/D hh:mm");
+      const reset = async () => { await page.evaluate((id) => { const S = window.DGA.st(); delete S.P.submissions[id]; window.DGA.saveProgress(); }, MID); await L.flushed(page); };
+      const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 400); out.push(T(await L.domShape(page))); };
+      const flow = async (mode) => {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/home"); await reset();
+        await L.open(page, base, "/missions/1/" + MID); await page.evaluate(() => { window.__e2eStay = 1; });
+        const out = [];
+        await step(out, () => page.fill("#sub-text", "짧은 답"));
+        await step(out, () => page.click('#submit-form button[type="submit"]'), 700);
+        const t1 = await L.toasts(page);
+        await step(out, () => page.fill("#sub-text", "E2E 과제 답변이에요 — 첫 상품 후보 세 가지를 골라 봤어요. 마진도 계산해 봤어요."));
+        await step(out, () => page.click('#submit-form button[type="submit"]'), 700);
+        const t2 = await L.toasts(page);
+        return { out, t1, t2, stay: await page.evaluate(() => window.__e2eStay === 1), pass: !!(await page.$("#result .result.pass")) };
+      };
+      const a = await flow("off"), b = await flow("all");
+      await reset();
+      const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
+      await run.check(!d.length && b.stay && b.pass && a.t2 === b.t2 && /자동검수 통과|다시 제출/.test(b.t2), "과제 제출(React): 글자 수 · 짧으면 보완 · 길게 쓰면 통과 · 제출 이력 — 누를 때마다 예전 화면과 같은 모양 · 같은 알림", d.slice(0, 1).concat([{ t: [a.t1, b.t1, a.t2, b.t2] }]), page);
+      await page.context().close();
+    }
+    // 1-4) 일정 · 공지 · Q&A 누르기: 달력 앞뒤 달 · 날짜 고르기 · 오늘 · 공지 모두 읽음 · FAQ 분류 · 검색 · 1:1 요청 사진 올리기 · 지우기 · 빈칸 제출 · 등록 → 취소 두 번
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "강의실 일정 · 공지 · Q&A");
+      await FL.student(page, base, info);
+      const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGP4z8CAFWEXHbQSACj/P8Fu7N9hAAAAAElFTkSuQmCC", "base64");
+      let qid = "";
+      const T = (x) => { x = x.replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/g, "YYYY-MM-DD hh:mm"); return qid ? x.split(qid).join("QID") : x; };
+      const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 350); out.push(T(await L.domShape(page))); };
+      const go = async (h) => { await page.evaluate((x) => { window.ROUTE.hash = x; }, h); await page.waitForTimeout(500); };
+      const flow = async (mode) => {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/home");
+        const keep = await page.evaluate(() => JSON.stringify(window.DGA.st().P.readNotices || {}));
+        await go("#/schedule"); await page.evaluate(() => { window.__e2eStay = 1; });
+        const out = [];
+        await step(out, () => page.click("[data-action='cal-move'][data-d='-1']"));
+        await step(out, () => page.click("[data-action='cal-move'][data-d='1']"));
+        await step(out, () => page.click("[data-action='cal-move'][data-d='1']"));
+        if (await page.$(".cal-day:not(.other) .cal-evs")) await step(out, () => page.$eval(".cal-day:not(.other) .cal-evs", (el) => el.click()));
+        if (await page.$(".cal-day.other")) await step(out, () => page.$eval(".cal-day.other", (el) => el.click()));
+        await step(out, () => page.click("[data-action='cal-today']"));
+        // 공지: 모두 읽음 (끝나면 처음 읽음 상태로)
+        await go("#/notices");
+        if (await page.$("[data-action='read-all']")) await step(out, () => page.click("[data-action='read-all']"));
+        await page.evaluate((k) => { const S = window.DGA.st(); S.P.readNotices = JSON.parse(k); window.DGA.saveProgress(); }, keep);
+        // FAQ: 분류 · 검색 · 없는 검색어 · 전체 · 하나 펼치기
+        await go("#/qna");
+        if ((await page.$$("[data-action='faq-cat']")).length > 1) await step(out, () => page.$$eval("[data-action='faq-cat']", (els) => els[1].click()));
+        await step(out, () => page.fill("#faq-search", "로그인"), 400);
+        await step(out, () => page.fill("#faq-search", "없는검색어zz"), 400);
+        await step(out, () => page.click("[data-action='faq-cat'][data-cat='전체']"));
+        if (await page.$("details.faq summary")) await step(out, () => page.click("details.faq summary"));
+        // 1:1 요청: 남의 글(비공개) · 새 글 · 사진 올리고 지우기 · 빈칸 제출 · 등록 · 취소 두 번
+        await go("#/qna/requests");
+        let t0 = "";
+        if (await page.$("tr[data-action='req-open'][data-mine='0']")) { await page.click("tr[data-action='req-open'][data-mine='0']"); await page.waitForTimeout(300); t0 = await L.toasts(page); }
+        await go("#/qna/requests/new");
+        await step(out, () => page.setInputFiles("#req-file", { name: "shot.png", mimeType: "image/png", buffer: PNG }), 900);
+        await step(out, () => page.click("[data-action='req-remove']"));
+        await step(out, () => page.click("#request-form button[type='submit']"));
+        const t1 = await L.toasts(page);
+        await page.fill("#q-title", "E2E 요청 제목"); await page.fill("#q-body", "E2E 요청 내용이에요.");
+        await page.click(".req-cats label.chip-radio:nth-child(2)");
+        await page.click("#request-form button[type='submit']"); await page.waitForTimeout(700);
+        const t2 = await L.toasts(page);
+        qid = decodeURIComponent(new URL(page.url()).pathname.split("/")[3] || "");
+        out.push(T(await L.domShape(page)));
+        await step(out, () => page.click("[data-action='req-cancel']"));
+        await step(out, () => page.click("[data-action='req-cancel']"), 700);
+        const t3 = await L.toasts(page), path = new URL(page.url()).pathname;
+        qid = "";
+        return { out, t: [t0, t1, t2, t3], path, stay: await page.evaluate(() => window.__e2eStay === 1) };
+      };
+      const a = await flow("off"), b = await flow("all");
+      const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
+      await run.check(!d.length && a.out.length === b.out.length && b.out.length >= 12 && b.stay && JSON.stringify(a.t) === JSON.stringify(b.t) && /요청을 취소/.test(b.t[3]) && b.path === "/qna/requests",
+        "일정 · 공지 · Q&A(React): 달력 앞뒤 · 날짜 · 오늘 · 모두 읽음 · FAQ 분류 · 검색 · 사진 올리기 · 지우기 · 빈칸 · 등록 · 취소 — 누를 때마다 예전 화면과 같은 모양 · 같은 알림 (" + b.out.length + "번)", d.slice(0, 1).concat([{ t: [a.t, b.t], n: [a.out.length, b.out.length], path: [a.path, b.path] }]), page);
       await page.context().close();
     }
     {

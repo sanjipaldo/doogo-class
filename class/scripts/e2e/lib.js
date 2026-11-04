@@ -162,7 +162,7 @@ const domShape = (page) => page.evaluate(() => {
   (function walk(n, d) {
     if (n.nodeType === 3) { const t = n.textContent.replace(/\s+/g, " ").trim(); if (t) out.push("  ".repeat(d) + "#" + t); return; }
     if (n.nodeType !== 1) return;
-    const at = Array.from(n.attributes).map((a) => { let v = a.value; if (a.name === "style") v = (n.style && n.style.cssText != null ? n.style.cssText : v).split(";").map((x) => x.trim().replace(/\s*:\s*/, ":")).filter(Boolean).join(";"); if (a.name === "class") v = v.split(/\s+/).filter(Boolean).sort().join(" "); return a.name + "=" + JSON.stringify(v); }).sort();
+    const at = Array.from(n.attributes).map((a) => { let v = a.value; if (a.name === "style") v = (n.style && n.style.cssText != null ? n.style.cssText : v).split(";").map((x) => x.trim().replace(/\s*:\s*/, ":")).filter(Boolean).sort().join(";"); if (a.name === "class") v = v.split(/\s+/).filter(Boolean).sort().join(" "); return a.name + "=" + JSON.stringify(v); }).sort();
     out.push("  ".repeat(d) + "<" + n.tagName.toLowerCase() + (at.length ? " " + at.join(" ") : "") + ">");
     if (n.tagName.toLowerCase() === "svg") { out.push("  ".repeat(d + 1) + "[svg " + n.innerHTML.replace(/url\([^)]*\)/g, "url()").replace(/fnz\d+/g, "fnz").length + "]"); return; }
     n.childNodes.forEach((x) => walk(x, d + 1));

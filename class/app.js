@@ -1377,7 +1377,7 @@
     };
     reader.readAsDataURL(file);
   }
-  function refreshThumbs() { const t = document.getElementById("thumbs"); if (t) t.innerHTML = draftThumbs(); }
+  function refreshThumbs() { if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; } const t = document.getElementById("thumbs"); if (t) t.innerHTML = draftThumbs(); }
   function submitMission(form) {
     const id = form.dataset.id;
     const m = findMission(id);
@@ -1559,8 +1559,16 @@
     Array.from(files || []).forEach((file) => {
       if (reqDraft.length >= 3) { toast("스크린샷은 최대 3장까지 올릴 수 있어요.", "warn"); return; }
       if (!/^image\//.test(file.type)) { toast("사진 파일만 올릴 수 있어요.", "warn"); return; }
-      compressImage(file, 1200, (data) => { if (reqDraft.length < 3) reqDraft.push({ name: file.name, data }); const t = document.getElementById("req-thumbs"); if (t) t.innerHTML = reqThumbs(); });
+      compressImage(file, 1200, (data) => { if (reqDraft.length < 3) reqDraft.push({ name: file.name, data }); if (document.body.dataset.react) { if (window.ReactApp) window.ReactApp.redraw(); return; } const t = document.getElementById("req-thumbs"); if (t) t.innerHTML = reqThumbs(); });
     });
+  }
+  /** 답 없는 내 요청 취소 (코칭 질문이면 코칭권을 돌려줘요) — 예전 화면 · React 화면 같이 씀 */
+  function reqCancel(id) {
+    const i = (P.questions || []).findIndex((x) => x.id === id && !x.answer); if (i < 0) return false;
+    const qq = P.questions[i]; P.questions.splice(i, 1); saveProgress();
+    if (qq.coach && me.vodMid && VX() && VX().giveBackCoach) VX().giveBackCoach(me.vodMid, qq.id);
+    ROUTE.hash = "#/qna/requests"; toast(qq.coach ? "질문을 취소했어요. 코칭권 1회를 돌려드렸어요." : "요청을 취소했어요.");
+    return true;
   }
   function pageRequestDetail(id) {
     const x = myRequests().find((r) => r.q.id === id);
@@ -2515,7 +2523,8 @@
     // 휴대폰에서는 화면을 옮기면 AI봇 창을 닫는다 (반쯤 가린 채로 따라다니지 않게)
     if (prevKey !== key && window.matchMedia("(max-width: 720px)").matches) botOpen = false;
     main.innerHTML = fn(r) + (top === "library" ? watermark() : "");
-    main.dataset.key = key;
+    // 화면이 주소를 바꿨으면(예: #/qna?tab=request → #/qna/requests) 바뀐 주소로 기억해요 (React 화면과 같게)
+    main.dataset.key = ROUTE.hash;
     if (window.VOD && window.VOD.hydrate) window.VOD.hydrate(main);
     vtAfter();
     // 유료강의 자료실: 다른 메뉴에서 들어올 때마다 이용 안내 팝업
@@ -2674,7 +2683,7 @@
       }
       case "vt-note-copy": { const txt = notesText("all"); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("노트를 복사했어요. 메모장 · 카톡에 붙여 넣어 보세요."), () => toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn")); else toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn"); break; }
       case "vt-print": { const el = document.querySelector(".page.vn") || document.querySelector(".page"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "내노트_" + todayStr() + ".pdf", { width: 820, title: "내 노트" }, (msg) => toast(msg)); else window.print(); break; }
-      case "req-cancel": { const i = (P.questions || []).findIndex((x) => x.id === a.dataset.id && !x.answer); if (i < 0) break; if (a.dataset.arm !== "1") { a.dataset.arm = "1"; a.textContent = "한 번 더 누르면 취소돼요"; setTimeout(() => { if (a.isConnected) { a.dataset.arm = ""; a.textContent = "취소하기"; } }, 3000); break; } const qq = P.questions[i]; P.questions.splice(i, 1); saveProgress(); if (qq.coach && me.vodMid && VX() && VX().giveBackCoach) VX().giveBackCoach(me.vodMid, qq.id); ROUTE.hash = "#/qna/requests"; toast(qq.coach ? "질문을 취소했어요. 코칭권 1회를 돌려드렸어요." : "요청을 취소했어요."); break; }
+      case "req-cancel": { const i = (P.questions || []).findIndex((x) => x.id === a.dataset.id && !x.answer); if (i < 0) break; if (a.dataset.arm !== "1") { a.dataset.arm = "1"; a.textContent = "한 번 더 누르면 취소돼요"; setTimeout(() => { if (a.isConnected) { a.dataset.arm = ""; a.textContent = "취소하기"; } }, 3000); break; } reqCancel(a.dataset.id); break; }
       case "vt-mat": if (a.dataset.m === "dl") { const st = DB.session.student(), vm = (me && me.vodMid) || (st && st.vodMid), mp = /^#\/vodclass\/([^/?]+)/.exec(ROUTE.hash); if (vm && mp && VX().markMat) VX().markMat(vm, decodeURIComponent(mp[1])); } VX().matOpen({ url: a.dataset.u, name: a.dataset.n }, a.dataset.m).then((ok) => { if (!ok) toast("이 브라우저에 저장된 파일이 아니에요. 강사님이 다시 올리면 받을 수 있어요.", "warn"); else if (a.dataset.m === "dl") toast("수업 자료를 내려받았어요."); }); break;
       case "vt-dl": toast("수업 자료를 내려받고 있어요. 안 열리면 ‘미리보기’에서 저장할 수 있어요."); break;
       case "vt-fs": { const st = document.getElementById("vt-stage"); if (!st) break; const d = document; if (d.fullscreenElement) d.exitFullscreen && d.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast("이 화면에서는 전체 화면을 쓸 수 없어요.", "warn")); else if (st.webkitRequestFullscreen) st.webkitRequestFullscreen(); break; }
@@ -2716,8 +2725,12 @@
     if (f.id === "signup-form") { e.preventDefault(); doSignup(f); return; }
     if (f.id === "submit-form") { e.preventDefault(); submitMission(f); return; }
     if (f.id === "calc-save") { e.preventDefault(); saveCalc(f); return; }
-    if (f.id === "request-form") {
-      e.preventDefault();
+    if (f.id === "request-form") { e.preventDefault(); submitRequest(f); return; }
+    if (f.hasAttribute("data-chat-form")) { e.preventDefault(); const v = f.q.value; f.q.value = ""; sendChat(v); f.q.focus(); }
+  });
+  /** 1:1 요청 · 코칭 질문 등록 (예전 화면 · React 화면 같이 씀) */
+  function submitRequest(f) {
+    {
       const title = f.title.value.trim(), body = f.body.value.trim();
       if (!title || !body) { toast("제목과 내용을 모두 적어 주세요.", "warn"); return; }
       const vod = TRACK === "vod";
@@ -2731,10 +2744,8 @@
       reqDraft = [];
       ROUTE.hash = "#/qna/requests/" + q.id;
       toast(vod ? "코칭 질문을 남겼어요. 코칭권 1회가 차감됐어요" + (preview ? "" : " (남은 " + coachN() + "회)") + "." : "1:1 요청을 남겼어요. 강사님 답변이 달리면 여기서 확인할 수 있어요.");
-      return;
     }
-    if (f.hasAttribute("data-chat-form")) { e.preventDefault(); const v = f.q.value; f.q.value = ""; sendChat(v); f.q.focus(); }
-  });
+  }
   let noteTimer = null, journalTimer = null;
   document.addEventListener("input", (e) => {
     if (!isActive()) return;
@@ -2815,6 +2826,23 @@
     wkF: (o) => { if (o) Object.assign(wkFilter, o); return Object.assign({}, wkFilter); },
     // 시청 완료 표시 · 강의 메모 (예전 toggle-watched · lesson-note)
     watchFlip: (id) => { if (P.watched[id]) delete P.watched[id]; else P.watched[id] = Date.now(); saveProgress(); return !!P.watched[id]; },
+    // 과제 하나: 쓰던 파일(이 과제를 떠나면 비워요) · 파일 더하기(사진은 긴 변 900px 로 줄여요) · 빼기 · 제출 · 보완 요청 본 표시 · 검수 기준
+    draftFor: (id) => { if (draft.missionId !== id) draft = { missionId: id, files: [] }; return draft; },
+    addFiles, removeFile: (i) => { draft.files.splice(Number(i), 1); refreshThumbs(); }, submitMission, checkCriteria, showcaseOf,
+    revSeen: (id) => { const subs = P.submissions[id] || [], s = subs[subs.length - 1]; if (s && s.review && s.review.status !== "approved" && (s.review.at || 1) > (s.revSeenAt || 0)) { s.revSeenAt = Date.now(); saveProgress(); return true; } return false; },
+    askBot: (q) => { botOpen = true; DB.store.set(KEY_BOT, true); sendChat(q); },
+    // 일정 달력: 고른 날 · 보는 달 (예전처럼 남아요) — 달 옮기기 · 오늘 · 날 고르기
+    cal: () => { const t = todayStr(); if (!calSel) calSel = t; if (!calCursor) { const d = parseDate(calSel); calCursor = { y: d.getFullYear(), m: d.getMonth() }; } return { sel: calSel, y: calCursor.y, m: calCursor.m }; },
+    calMove: (d) => { const x = new Date(calCursor.y, calCursor.m + Number(d), 1); calCursor = { y: x.getFullYear(), m: x.getMonth() }; },
+    calToday: () => { calSel = todayStr(); calCursor = null; },
+    calPick: (k) => { calSel = k; const d = parseDate(k); if (!calCursor || d.getMonth() !== calCursor.m) calCursor = { y: d.getFullYear(), m: d.getMonth() }; },
+    // 공지: 읽음 · 모두 읽음 · 본문(글 · 사진 · 영상 — 예전 HTML)
+    noticeRead: (n) => { if (!isUnread(n)) return false; P.readNotices = P.readNotices || {}; P.readNotices[n.id] = Date.now(); saveProgress(); return true; },
+    readAll: () => { P.readNotices = P.readNotices || {}; D.notices.forEach((n) => { P.readNotices[n.id] = Date.now(); }); saveProgress(); }, noticeBody, noticeVideos,
+    // Q&A: FAQ 분류(예전처럼 남아요) · 1:1 요청 · 코칭 질문 (목록 · 쓰던 사진 · 등록 · 취소 · 답 본 표시)
+    faqCat: (c) => { if (c !== undefined) faqCat = c; return faqCat; }, myRequests, COACH_CATS, vtAskGet,
+    reqDraft: () => reqDraft, addReqFiles, reqRemove: (i) => { reqDraft.splice(Number(i), 1); }, submitRequest, reqCancel,
+    qSeen: (id) => { const q = (P.questions || []).find((y) => y.id === id); if (q && q.answer && (q.answeredAt || 1) > (q.seenAt || 0)) { q.seenAt = Date.now(); saveProgress(); return true; } return false; },
     noteSave: (id, v) => { P.notes = P.notes || {}; if (String(v).trim()) P.notes[id] = v; else delete P.notes[id]; saveProgress(); },
     // 시작 가이드 체크 · 완료 · VOD 블랙/화이트
     guideToggle: (g) => { const before = guideGroup(); P.guide = P.guide || {}; if (P.guide[g]) delete P.guide[g]; else P.guide[g] = Date.now(); saveProgress(); return before; },
