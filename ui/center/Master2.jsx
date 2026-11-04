@@ -71,3 +71,63 @@ export function MasterData() {
     <section className="a-card"><div className="a-card-head"><h2>체험 데이터 처음으로</h2></div><p className="a-muted" style={{ margin: "0 0 12px" }}>모든 강사·수강생·제출 기록을 지우고 처음 체험 상태로 되돌려요. {on ? "지금 상태는 서버 자동 백업에 먼저 남겨요." : "되돌릴 수 없으니 먼저 백업하세요."}</p><Btn action="data-reset" cls="a-btn-ghost a-btn-sm danger"><Icon n="trash" c="sm" />처음 상태로 초기화</Btn></section>
   </>;
 }
+
+/** 전체 기수 일정 #/center/master/calendar (예전 pageMasterCalendar) — 달 옮기기는 예전 이벤트(cal-m) */
+export function MasterCalendar() {
+  const A = ADM(), DB = DBX(), ui = A.ui, today = DB.date.todayStr(), ym = ui.calMonth || today.slice(0, 7), ff = DB.date.fmtFull;
+  const cos = DB.data.cohorts.filter((c) => A.insOk(c.instructorId) && c.startDate).map((co) => ({ co, ins: DB.instructor(co.instructorId), start: co.startDate, end: DB.cohortEnd(co), st: DB.cohortStatus(co), color: A.insTheme(co.instructorId), n: A.cohortStudents(co).length, weeks: DB.weeksOf(co).length }));
+  const inM = (d) => d && d.slice(0, 7) === ym, y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)), days = new Date(y, m, 0).getDate(), lead = new Date(y, m - 1, 1).getDay(), ds = (d) => ym + "-" + String(d).padStart(2, "0");
+  const Chip = ({ x, kind }) => <span className={"mc-chip " + kind} style={{ "--c": x.color }} title={x.ins.displayName + " " + x.co.name + (kind === "s" ? " 시작" : " 종료 · 수료")}><i />{x.ins.displayName + " " + x.co.name}<em>{kind === "s" ? "시작" : "수료"}</em></span>;
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(<div key={"o" + i} className="mc-day off" />);
+  for (let d = 1; d <= days; d++) {
+    const k = ds(d), run = cos.filter((x) => x.start <= k && k <= x.end).length, dow = (lead + d - 1) % 7;
+    cells.push(<div key={k} className={"mc-day" + (k === today ? " today" : "") + (dow === 0 ? " sun" : dow === 6 ? " sat" : "")}><b>{d}</b>{run ? <small className="mc-run">진행 {run}</small> : null}{cos.filter((x) => x.start === k).map((x) => <Chip key={"s" + x.co.id} x={x} kind="s" />)}{cos.filter((x) => x.end === k).map((x) => <Chip key={"e" + x.co.id} x={x} kind="e" />)}</div>);
+  }
+  const startM = cos.filter((x) => inM(x.start)), endM = cos.filter((x) => inM(x.end)), list = cos.slice().sort((a, b) => b.start.localeCompare(a.start));
+  const stPill = (s) => <Pill cls={s === "running" ? "ok" : s === "upcoming" ? "info" : "mute"}>{DB.STATUS_LABEL[s]}</Pill>;
+  return <>
+    <Head title="전체 기수 일정" sub="모든 강사 플랫폼의 기수 시작 · 종료(수료) 날짜를 한 달력에서 봐요. 대학의 학사 일정처럼, 겹치는 기수와 다가오는 개강을 미리 챙길 수 있어요." right={<a className="a-btn a-btn-primary" href="#/center/master/plan"><Icon n="layers" c="sm" />기수 · 일정 설계</a>} />
+    <div className="a-kpis">
+      <Kpi label="모집 중 기수" value={cos.filter((x) => x.st === "upcoming").length + "개"} sub="개강 전" href="#/center/master/calendar" />
+      <Kpi label="진행 중 기수" value={cos.filter((x) => x.st === "running").length + "개"} sub={"수강생 " + cos.filter((x) => x.st === "running").reduce((a, x) => a + x.n, 0) + "명 학습 중"} href="#/center/master/calendar" tone="ok" />
+      <Kpi label={m + "월 개강"} value={startM.length + "개"} sub={startM.map((x) => x.ins.displayName).slice(0, 3).join(" · ") || "없어요"} href="#/center/master/calendar" />
+      <Kpi label={m + "월 종료 · 수료"} value={endM.length + "개"} sub={endM.map((x) => x.ins.displayName).slice(0, 3).join(" · ") || "없어요"} href="#/center/master/certs" />
+    </div>
+    <section className="a-card mc"><div className="mc-head"><Btn action="cal-m" cls="a-btn-ghost a-btn-sm" data-dir="-1" aria-label="이전 달"><Icon n="chevLeft" c="sm" /></Btn><h2>{y}년 {m}월</h2><Btn action="cal-m" cls="a-btn-ghost a-btn-sm" data-dir="1" aria-label="다음 달"><Icon n="chevRight" c="sm" /></Btn>{ym !== today.slice(0, 7) ? <Btn action="cal-m" cls="a-btn-outline a-btn-sm" data-dir="0">이번 달</Btn> : null}
+      <span className="mc-legend"><span className="mc-chip s"><i />개강</span><span className="mc-chip e"><i />종료 · 수료</span></span></div>
+      <div className="mc-grid">{["일", "월", "화", "수", "목", "금", "토"].map((w, i) => <div key={w} className={"mc-w" + (i === 0 ? " sun" : i === 6 ? " sat" : "")}>{w}</div>)}{cells}</div></section>
+    <section className="a-card"><div className="a-card-head"><h2>기수 목록</h2><span className="a-muted">{list.length}개 · 최근 개강 순</span></div>{list.length ? <div className="a-table-wrap"><table className="a-table"><thead><tr><th>강사</th><th>기수</th><th>기간</th><th className="num">주차</th><th className="num">수강생</th><th>상태</th><th className="right" /></tr></thead><tbody>
+      {list.map((x) => <tr key={x.co.id}><td><span className="mc-dot" style={{ "--c": x.color }} /><b>{x.ins.displayName}</b></td><td>{x.co.name}</td><td>{ff(x.start) + " ~ " + ff(x.end)}{x.st === "upcoming" ? <> <small className="a-muted">개강 {A.dLeft(x.start)}</small></> : null}</td><td className="num">{x.weeks}주</td><td className="num">{x.n}명</td><td>{stPill(x.st)}</td>
+        <td className="right"><div className="a-row-actions"><Btn action="plan-edit" cls="a-btn-ghost a-btn-sm" data-id={x.co.id}>설계 · 수정</Btn><Btn action="ins-enter" cls="a-btn-ghost a-btn-sm" data-id={x.ins.id}>강사센터 접속</Btn></div></td></tr>)}
+    </tbody></table></div> : <Empty ic="calendar">아직 열린 기수가 없어요.</Empty>}</section>
+  </>;
+}
+
+/** 과제 검수 · 응답 관리 #/center/master/sla (예전 pageMasterSla) — 기준 시간 저장(폼 sla-form)은 예전 이벤트 */
+export function MasterSla({ n }) {
+  const A = ADM(), set = A.SLA(), rows = A.slaRows(), H = A.hoursTxt, fs = (t) => DBX().date.fmtStamp(t);
+  const late = rows.flatMap((r) => r.late.map((x) => Object.assign({ ins: r.ins }, x))).sort((a, b) => a.sub.at - b.sub.at).slice(0, 10), allDone = rows.filter((r) => r.avgRev != null), avg = allDone.length ? allDone.reduce((a, r) => a + r.avgRev, 0) / allDone.length : null;
+  return <>
+    <Head title="과제 검수 · 응답 관리" sub="강사님이 수강생 과제를 제때 검수하고, 1:1 요청에 제때 답하는지 봐요. 기준 시간을 넘긴 과제는 먼저 보여 드려요. 늦어지는 강사님께는 강사센터에 접속해 도와드리거나 공지로 알려 주세요." />
+    <div className="a-kpis">
+      <Kpi label="검수 대기 과제" value={rows.reduce((a, r) => a + r.pend.length, 0) + "건"} sub="모든 플랫폼 합계" href="#/center/master/sla" />
+      <Kpi label={set.review + "시간 넘은 과제"} value={rows.reduce((a, r) => a + r.late.length, 0) + "건"} sub={"기준 " + set.review + "시간 안 검수"} href="#/center/master/sla" tone={rows.some((r) => r.late.length) ? "warn" : ""} />
+      <Kpi label="평균 검수 시간" value={H(avg)} sub="제출 → 검수까지" href="#/center/master/sla" />
+      <Kpi label="답변 대기 1:1 요청" value={rows.reduce((a, r) => a + r.open.length, 0) + "건"} sub={set.request + "시간 넘음 " + rows.reduce((a, r) => a + r.lateReq.length, 0) + "건"} href="#/center/master/reports" tone={rows.some((r) => r.lateReq.length) ? "warn" : ""} />
+    </div>
+    <section className="a-card"><div className="a-card-head"><h2>강사별 응답 현황</h2><span className="a-muted">기준: 과제 검수 {set.review}시간 · 1:1 요청 {set.request}시간</span></div><div className="a-table-wrap"><table className="a-table"><thead><tr><th>강사</th><th className="num">검수 대기</th><th className="num">기준 초과</th><th className="num">평균 검수</th><th className="num">1:1 답변 대기</th><th className="num">평균 답변</th><th>상태</th><th className="right" /></tr></thead><tbody>
+      {rows.map((r) => <tr key={r.ins.id}><td><span className="mc-dot" style={{ "--c": A.insTheme(r.ins.id) }} /><b>{r.ins.displayName}</b></td><td className="num">{r.pend.length}건</td><td className="num">{r.late.length ? <b className="sla-bad">{r.late.length}건</b> : "0건"}</td><td className="num">{H(r.avgRev)}</td>
+        <td className="num">{r.lateReq.length ? <b className="sla-bad">{r.open.length}건</b> : r.open.length + "건"}</td><td className="num">{H(r.avgReq)}</td><td><Pill cls={r.grade[1]}>{r.grade[0]}</Pill></td><td className="right"><Btn action="ins-enter" cls="a-btn-ghost a-btn-sm" data-id={r.ins.id}>강사센터 접속</Btn></td></tr>)}
+    </tbody></table></div></section>
+    <div className="p-grid p-grid-r">
+      <section className="a-card"><div className="a-card-head"><h2>오래 기다린 과제</h2><span className="a-muted">기준 시간을 넘긴 순</span></div>{late.length ? <ul className="sla-list">{late.map((x, i) => (
+        <li key={i}><span className="mc-dot" style={{ "--c": A.insTheme(x.ins.id) }} /><div><b>{x.s.name + " · " + x.w.no + "주차 " + (x.m.title || "과제")}</b><small>{x.ins.displayName} · {fs(x.sub.at)} 제출</small></div><em className="sla-age">{H(A.ageH(x.sub.at))} 대기</em><Btn action="ins-enter" cls="a-btn-outline a-btn-sm" data-id={x.ins.id}>검수하러 가기</Btn></li>
+      ))}</ul> : <Empty ic="check">기준 시간을 넘긴 과제가 없어요. 모두 제때 검수하고 있어요.</Empty>}</section>
+      <section className="a-card"><div className="a-card-head"><h2>응답 기준 시간</h2></div><form key={n} id="sla-form" className="a-form" noValidate>
+        <div className="a-field"><label htmlFor="sla-review">과제 검수 (시간)</label><input className="a-input" id="sla-review" name="review" type="number" min="1" max="336" defaultValue={set.review} /><small className="a-muted">수강생이 과제를 내고 이 시간 안에 검수하면 ‘좋아요’예요.</small></div>
+        <div className="a-field"><label htmlFor="sla-request">1:1 요청 답변 (시간)</label><input className="a-input" id="sla-request" name="request" type="number" min="1" max="336" defaultValue={set.request} /></div>
+        <button className="a-btn a-btn-primary" type="submit">저장</button></form></section>
+    </div>
+  </>;
+}

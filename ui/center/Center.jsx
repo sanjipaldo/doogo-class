@@ -18,7 +18,7 @@ import { VodStudents, VodLink, InsVod, InsVodLive } from "./VodPages.jsx";
 import { InsVodCal, InsVodSettle, Coaching, TeaTime, OpsNotices } from "./VodPages2.jsx";
 import { Coaches, Partners, Library, Motivation, Replays, Showcase, Glossary, NotePrompts } from "./Content2.jsx";
 import { MasterHome, MasterInstructors, MasterStudents } from "./Master.jsx";
-import { MasterHealth, MasterNotices, MasterSite, MasterData } from "./Master2.jsx";
+import { MasterHealth, MasterNotices, MasterSite, MasterData, MasterCalendar, MasterSla } from "./Master2.jsx";
 import { ADM, Isl } from "./bits.jsx";
 
 // 강사센터 메뉴(주소 첫 칸) → 본문 — 옮긴 화면만 (screens.js 에 없는 주소는 React 로 오지 않아요)
@@ -28,7 +28,7 @@ const PAGES = { "": Dashboard, students: Students, cohorts: Cohorts, reviews: Re
   "vod-students": VodStudents, vodlink: VodLink, vod: InsVod, "vod-live": InsVodLive, "vod-cal": InsVodCal, "vod-settle": InsVodSettle, coaching: Coaching, teatime: TeaTime, "ops-notices": OpsNotices };
 
 // 마스터 메뉴(주소 둘째 칸) → 본문 — 옮긴 화면만
-const MPAGES = { "": MasterHome, instructors: MasterInstructors, students: MasterStudents, health: MasterHealth, notices: MasterNotices, site: MasterSite, data: MasterData };
+const MPAGES = { "": MasterHome, instructors: MasterInstructors, students: MasterStudents, health: MasterHealth, notices: MasterNotices, site: MasterSite, data: MasterData, calendar: MasterCalendar, sla: MasterSla };
 
 export default function Center({ n, h }) {
   const A = ADM(), p = A.last || A.prep();

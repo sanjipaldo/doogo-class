@@ -7,7 +7,7 @@ const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강사센터 화면 주소 (shared/screens.js 의 ct-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 // 마스터 화면 주소
-const CTM = ["/center/master", "/center/master/instructors", "/center/master/students", "/center/master/health", "/center/master/notices", "/center/master/site", "/center/master/data"];
+const CTM = ["/center/master", "/center/master/instructors", "/center/master/students", "/center/master/health", "/center/master/notices", "/center/master/site", "/center/master/data", "/center/master/calendar", "/center/master/sla"];
 const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
   "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
   "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand",
