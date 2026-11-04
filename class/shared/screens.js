@@ -13,8 +13,8 @@
   "use strict";
   // [키, 주소 규칙, 설명]
   const LIST = [
-    // 마이페이지: 옮긴 메뉴만 — 아직 예전 화면: 결제 대기 · 주문 · 결제 내역 · 종이책 배송 조회 (돈 · 환불이 걸린 메뉴는 마지막에)
-    ["vod-my", /^\/vod\/my(\/(classes|free|vod|addons|ebooks|live|alarm|likes|coupons|points|reviews|posts|badges|account|devices|help))?\/?$/, "두고클래스 마이페이지 (주문 · 결제 · 배송 메뉴 빼고)"]
+    // 마이페이지: 메뉴 전부 (홈 · 강의장 · 구매 · 활동 · 계정)
+    ["vod-my", /^\/vod\/my(\/(classes|free|vod|addons|ebooks|live|alarm|likes|pending|orders|ship|coupons|points|reviews|posts|badges|account|devices|help))?\/?$/, "두고클래스 마이페이지 (메뉴 전부)"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

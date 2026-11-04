@@ -3612,6 +3612,31 @@
     if (o.pointOff) { const mb = v.members.find((y) => y.id === o.mid); if (mb) addPoint(mb, o.pointOff, "주문 취소 · 포인트 돌려받음 (" + o.no + ")"); }
   }
   window.VOD.restoreOrder = restoreOrder;
+  /* 마이페이지 주문 처리 — 예전 화면 · React 화면(Next.js 전환 4-4)이 같이 써요. 알림 글을 돌려줘요 */
+  /** 입금 대기 주문 취소 (함께 결제한 대기 주문도) → Promise<알림 글> · 서버면 api/vod-pay cancelPending */
+  function ordCancelDo(o) {
+    const msg = () => "주문을 취소했어요." + (o.mcid || o.pointOff ? " 쓴 쿠폰 · 포인트를 돌려드렸어요." : "") + " 환불 · 취소 내역에 남아요.";
+    if (SRV()) return payApi("cancelPending", { no: o.no }).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "취소하지 못했어요."); return DB.remote.refresh().then(msg); });
+    const at = now(); restoreOrder(o); Object.assign(o, { status: "canceled", canceledAt: at, canceledBy: "member" });
+    V().orders.filter((x) => x.grp === o.no && x.status === "pending").forEach((x) => { restoreOrder(x); Object.assign(x, { status: "canceled", canceledAt: at, canceledBy: "member" }); });
+    save(); return Promise.resolve(msg());
+  }
+  /** 0원 신청(무료 LIVE · 0원 결제) 취소 → 알림 글 */
+  function ordCancel0Do(o) { restoreOrder(o); Object.assign(o, { status: "canceled", canceledAt: now(), canceledBy: "member" }); save(); return "신청을 취소했어요." + (o.mcid || o.pointOff ? " 쓴 쿠폰 · 포인트를 돌려드렸어요." : ""); }
+  /** 환불 · 반품 요청 거둬들이기 → 알림 글 */
+  function rfUndoDo(o) { delete o.refundReq; save(); return o.ship ? "요청을 거둬들였어요." : "환불 요청을 거둬들였어요."; }
+  /** 바로 취소 팝업 내용: { q(바로 취소 되는지 · 왜), r(환불 설정), adds(같이 취소되는 주문), tot(돌려줄 금액) } */
+  function rfNowInfo(o) { const q = instantOf(o), r = rfSet(), adds = r.addons ? V().orders.filter((x) => x.grp === o.no && x.status === "paid" && (!x.coach || !(Number(x.coach.used) > 0))) : []; return { q, r, adds, tot: o.amount + adds.reduce((a, x) => a + x.amount, 0) }; }
+  /** 환불 · 취소 · 반품 · 교환 요청 보내기 (팝업 폼 data-vd-rfreq) — 끝나면 팝업을 닫고 다시 그려요 */
+  function doRfReq(f) {
+    const m = me(), o = V().orders.find((x) => x.no === f.dataset.no); if (!m || !o || o.mid !== m.id || o.status !== "paid") return;
+      const er = f.querySelector("[data-rfq-err]"), why = (f.querySelector("input[name=why]:checked") || {}).value || "기타", sst = o.ship ? shipStOf(o) : "", kind = !o.ship ? "" : sst === "prep" || sst === "ready" ? "cancel" : (f.querySelector("input[name=kind]:checked") || {}).value === "exchange" ? "exchange" : "return";
+      if (kind === "exchange" && /변심/.test(why)) { if (er) er.textContent = "단순 변심은 반품(환불)으로 신청해 주세요. 교환은 파손 · 파본 · 잘못 보낸 책일 때 같은 책으로 바꿔 드려요."; return; }
+      if (kind === "return" && /변심/.test(why) && sst === "done" && shipDoneAt(o) && now() - shipDoneAt(o) > 7 * 864e5) { if (er) er.textContent = "단순 변심 반품은 받은 날부터 7일 안에만 할 수 있어요. 파손 · 파본 · 잘못 보낸 책이면 사유를 골라 주세요."; return; }
+      let acct = null; if ((o.method === "bank" || o.method === "vbank") && kind !== "exchange") { const r = acctRead(f); if (r.err) { if (er) er.textContent = r.err; return; } acct = r.acct; }
+      o.refundReq = Object.assign({ at: now(), by: "member", why, text: f.text.value.trim().slice(0, 300) }, kind ? { kind } : {}, acct ? { acct } : {}); save(); closeModal(); render();
+      toast(o.ship ? CLAIM_K[kind] + " 요청을 보냈어요. 마이페이지 › 종이책 · 배송 조회에서 진행 상황을 볼 수 있어요." : "환불 요청을 보냈어요. 처리 결과는 주문 · 결제 내역에서 볼 수 있어요.");
+  }
   function download(p, gi) {
     const f = gi != null ? ((p.gifts || [])[gi] || {}).file : p.file;
     if (f) {
@@ -3722,12 +3747,11 @@
       modal("배송지 바꾸기", '<form class="vd-modal-b vd-shipedit" data-vd-shipedit="' + esc(o.no) + '"><p class="vd-muted">책을 보내기 전까지 바꿀 수 있어요.</p>' + shipFields(o.ship, "e") + '<label class="vd-co-keep"><input type="checkbox" name="esave" checked><span>다음 주문에도 이 배송지 쓰기</span></label><p class="vd-err" data-se-err role="alert"></p><button type="submit" class="vd-btn vd-btn-p vd-btn-xl">배송지 저장</button></form>', "vd-modal-sm"); return; }
     if (v === "dl") { const p = product(t.dataset.p); if (p && m && owns(m.id, p.id)) { const o = ownOrder(m.id, p.id); if (o && !o.dlAt && typeOf(p) === "ebook") { o.dlAt = now(); save(); } download(p, t.dataset.g != null ? Number(t.dataset.g) : null); } return; }
     if (v === "dl-none") { e.preventDefault(); toast("시안이라 첨부 파일은 정식 오픈 때 연결돼요."); return; }
-    if (v === "ord-cancel" && SRV()) { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || o.status !== "pending") return; t.disabled = true; payApi("cancelPending", { no: o.no }).then((r) => { if (!r || !r.ok) { t.disabled = false; toast((r && r.message) || "취소하지 못했어요.", "warn"); return; } return DB.remote.refresh().then(() => { keepScroll(); toast("주문을 취소했어요." + (o.mcid || o.pointOff ? " 쓴 쿠폰 · 포인트를 돌려드렸어요." : "") + " 환불 · 취소 내역에 남아요."); }); }); return; }
-    if (v === "ord-cancel") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || o.status !== "pending") return; const at = now(); restoreOrder(o); Object.assign(o, { status: "canceled", canceledAt: at, canceledBy: "member" }); V().orders.filter((x) => x.grp === o.no && x.status === "pending").forEach((x) => { restoreOrder(x); Object.assign(x, { status: "canceled", canceledAt: at, canceledBy: "member" }); }); save(); keepScroll(); toast("주문을 취소했어요." + (o.mcid || o.pointOff ? " 쓴 쿠폰 · 포인트를 돌려드렸어요." : "") + " 환불 · 취소 내역에 남아요."); return; }
+    if (v === "ord-cancel") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || o.status !== "pending") return; t.disabled = true; ordCancelDo(o).then((msg) => { keepScroll(); toast(msg); }, (er) => { t.disabled = false; toast(String((er && er.message) || "취소하지 못했어요."), "warn"); }); return; }
     // 0원 신청(무료 LIVE · 0원 결제) 취소: 강의 전까지 · 자리를 돌려줘요
-    if (v === "ord-cancel0") { const o = V().orders.find((x) => x.no === t.dataset.no), p = o && product(o.pid); if (!o || !m || o.mid !== m.id || o.status !== "paid" || o.amount > 0 || (p && eventPast(p))) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 취소"; return; } restoreOrder(o); Object.assign(o, { status: "canceled", canceledAt: now(), canceledBy: "member" }); save(); keepScroll(); toast("신청을 취소했어요." + (o.mcid || o.pointOff ? " 쓴 쿠폰 · 포인트를 돌려드렸어요." : "")); return; }
+    if (v === "ord-cancel0") { const o = V().orders.find((x) => x.no === t.dataset.no), p = o && product(o.pid); if (!o || !m || o.mid !== m.id || o.status !== "paid" || o.amount > 0 || (p && eventPast(p))) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 취소"; return; } const msg0 = ordCancel0Do(o); keepScroll(); toast(msg0); return; }
     // 환불 요청: 사유를 남기면 마스터 ‘환불 요청’ 목록에 올라가요
-    if (v === "rf-now") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id) return; const q = instantOf(o); if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } const r = rfSet(), adds = r.addons ? V().orders.filter((x) => x.grp === o.no && x.status === "paid" && (!x.coach || !(Number(x.coach.used) > 0))) : [], tot = o.amount + adds.reduce((a, x) => a + x.amount, 0);
+    if (v === "rf-now") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id) return; const nw = rfNowInfo(o), q = nw.q; if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } const r = nw.r, adds = nw.adds, tot = nw.tot;
       modal("결제 취소 · 100% 환불", '<div class="vd-modal-b vd-rfnow"><p class="vd-rfq-t"><b>' + esc(o.title) + "</b>" + (optTxt(o) ? "<small>" + esc(optTxt(o)) + "</small>" : "") + "<span>결제 " + won(o.amount) + " · " + esc(DB.date.fmtFull(DB.date.toStr(new Date(o.paidAt || o.at)))) + "</span></p>" +
         '<div class="vd-rfnow-box"><b>' + won(tot) + "</b><span>전액 돌려드려요</span></div><ul class=\"vd-rfnow-l\">" + "<li>" + icon("check", "xs") + esc(q.why) + "</li>" + (adds.length ? "<li>" + icon("check", "xs") + "함께 결제한 " + adds.map((x) => esc(optTxt(x) || x.title)).join(", ") + "도 같이 취소돼요.</li>" : "") + (r.restore && (o.mcid || o.pointOff) ? "<li>" + icon("check", "xs") + "결제에 쓴 쿠폰 · 포인트도 돌려드려요.</li>" : "") + "<li>" + icon("check", "xs") + "취소하면 수강 권한이 바로 사라져요.</li><li>" + icon("clock", "xs") + "카드 승인 취소는 카드사에 따라 3~5영업일 걸려요.</li></ul>" +
         '<div class="vd-rfnow-a"><button type="button" class="vd-btn vd-btn-o" data-v="close">그만두기</button><button type="button" class="vd-btn vd-btn-p" data-v="rf-now-ok" data-no="' + esc(o.no) + '">결제 취소하고 환불받기</button></div></div>'); return; }
@@ -3741,7 +3765,7 @@
       (o.method === "bank" || o.method === "vbank" ? '<div class="vd-rfq-acct"><b>환불 받을 계좌</b><small>' + (o.method === "vbank" ? "가상계좌" : "무통장 입금") + " 결제는 이 계좌로 돌려드려요. 본인 명의 계좌를 적어 주세요." + (bk && !pre ? " (교환은 적지 않아도 돼요)" : "") + "</small>" + acctFields((o.refundReq && o.refundReq.acct) || null) + "</div>" : "") +
       '<p class="vd-err" data-rfq-err></p><p class="vd-muted">' + icon("alert", "xs") + (bk ? " 영업일 1~2일 안에 확인하고 마이페이지 › 종이책 · 배송 조회에서 진행 상황을 알려 드려요." : " 환불 금액은 환불 규정(결제일 · 들은 강의 수)에 따라 정해져요. 영업일 1~3일 안에 처리하고 결과를 알려 드려요.") + "</p>" +
       '<button type="submit" class="vd-btn vd-btn-p vd-btn-xl">' + (bk ? (pre ? "취소 요청 보내기" : "신청하기") : "환불 요청 보내기") + "</button></form>", "vd-modal-sm"); return; }
-    if (v === "rf-undo") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || !o.refundReq || typeof o.refundReq !== "object") return; delete o.refundReq; save(); keepScroll(); toast(o.ship ? "요청을 거둬들였어요." : "환불 요청을 거둬들였어요."); return; }
+    if (v === "rf-undo") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || !o.refundReq || typeof o.refundReq !== "object") return; const msgU = rfUndoDo(o); keepScroll(); toast(msgU); return; }
     if (v === "rv-edit") { const rv = V().reviews.find((x) => x.id === t.dataset.id && x.mid === (me() || {}).id); if (!rv) return; modal("후기 고치기", '<form class="vd-modal-b vd-rv-edit" data-vd-rvedit="' + esc(rv.id) + '"><div class="vd-rv-stars" role="radiogroup" aria-label="별점">' + [5, 4, 3, 2, 1].map((n) => '<label><input type="radio" name="rating" value="' + n + '"' + (rv.rating === n ? " checked" : "") + "><span>" + n + "점</span></label>").join("") + '</div><textarea name="text" rows="5" maxlength="1000" aria-label="후기">' + esc(rv.text) + '</textarea><button type="submit" class="vd-btn vd-btn-p">저장</button></form>'); return; }
     if (v === "rv-del") { const rv = V().reviews.find((x) => x.id === t.dataset.id && x.mid === (me() || {}).id); if (!rv) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 지워요"; setTimeout(() => { if (t.isConnected) { t.dataset.arm = ""; t.textContent = "지우기"; } }, 3000); return; } V().reviews.splice(V().reviews.indexOf(rv), 1); save(); render(); toast("후기를 지웠어요. 받은 포인트는 그대로예요 (다시 써도 추가 적립은 없어요)."); return; }
     if (v === "rcpt-print") { document.body.classList.add("vd-printing"); window.print(); setTimeout(() => document.body.classList.remove("vd-printing"), 500); return; }
@@ -3795,13 +3819,7 @@
     if (f.matches("[data-vd-pledge]")) { e.preventDefault(); doPledge(f); return; }
     if (f.matches("[data-vd-coupon]")) { e.preventDefault(); doCoupon(f); return; }
     if (f.matches("[data-vd-iq]")) { e.preventDefault(); doInquiry(f); return; }
-    if (f.matches("[data-vd-rfreq]")) { e.preventDefault(); const m = me(), o = V().orders.find((x) => x.no === f.dataset.no); if (!m || !o || o.mid !== m.id || o.status !== "paid") return;
-      const er = f.querySelector("[data-rfq-err]"), why = (f.querySelector("input[name=why]:checked") || {}).value || "기타", sst = o.ship ? shipStOf(o) : "", kind = !o.ship ? "" : sst === "prep" || sst === "ready" ? "cancel" : (f.querySelector("input[name=kind]:checked") || {}).value === "exchange" ? "exchange" : "return";
-      if (kind === "exchange" && /변심/.test(why)) { if (er) er.textContent = "단순 변심은 반품(환불)으로 신청해 주세요. 교환은 파손 · 파본 · 잘못 보낸 책일 때 같은 책으로 바꿔 드려요."; return; }
-      if (kind === "return" && /변심/.test(why) && sst === "done" && shipDoneAt(o) && now() - shipDoneAt(o) > 7 * 864e5) { if (er) er.textContent = "단순 변심 반품은 받은 날부터 7일 안에만 할 수 있어요. 파손 · 파본 · 잘못 보낸 책이면 사유를 골라 주세요."; return; }
-      let acct = null; if ((o.method === "bank" || o.method === "vbank") && kind !== "exchange") { const r = acctRead(f); if (r.err) { if (er) er.textContent = r.err; return; } acct = r.acct; }
-      o.refundReq = Object.assign({ at: now(), by: "member", why, text: f.text.value.trim().slice(0, 300) }, kind ? { kind } : {}, acct ? { acct } : {}); save(); closeModal(); render();
-      toast(o.ship ? CLAIM_K[kind] + " 요청을 보냈어요. 마이페이지 › 종이책 · 배송 조회에서 진행 상황을 볼 수 있어요." : "환불 요청을 보냈어요. 처리 결과는 주문 · 결제 내역에서 볼 수 있어요."); return; }
+    if (f.matches("[data-vd-rfreq]")) { e.preventDefault(); doRfReq(f); return; }
     // 지원서: 마지막 섹션 전에는 Enter 가 ‘다음’으로 (보내기는 마지막 섹션에서만)
     if (f.matches("[data-pt-form]")) { e.preventDefault(); if (ptSecNow() < 5) ptGo(ptSecNow() + 1); else doPartnerApply(f); return; }
     if (f.matches("[data-vd-acct]")) { e.preventDefault(); doAcct(f); return; }
@@ -3809,8 +3827,9 @@
   });
   document.addEventListener("toggle", (e) => { const d = e.target; if (!isActive() || !d.matches || !d.matches(".vd-iq-it[open]")) return; const x = (V().inquiries || []).find((y) => y.id === d.dataset.iq); if (x && x.answer && !x.seenAt) { x.seenAt = now(); save(); } }, true);
   document.addEventListener("input", (e) => { const t = e.target; if (!isActive() || !t.closest || !t.closest(".vd-iq2") || t.name !== "text") return; const c = document.querySelector("[data-iq-cnt]"); if (c) c.textContent = t.value.length + " / 1000"; });
-  document.addEventListener("change", (e) => {
-    if (!isActive()) return;
+  document.addEventListener("change", (e) => { if (isActive()) formChange(e); });
+  /** 폼 안 바꾸기(결제수단 · 현금영수증 · 쿠폰 · 포인트 · 배송 요청사항 · 동의) — 예전 화면 · React 화면(4-4)이 같이 써요 */
+  function formChange(e) {
     if (e.target.name === "method") { const n = document.querySelector("[data-bank-note]"); if (n) n.classList.toggle("on", e.target.value === "bank"); }
     if (e.target.name === "cashType") { const f = e.target.form, inp = f && f.cashNo, nt = f && f.querySelector("[data-cash-note]"); if (inp) { inp.hidden = !e.target.value; inp.placeholder = e.target.value === "b" ? "사업자등록번호 10자리 (- 없이)" : "휴대폰 번호 (- 없이)"; if (e.target.value === "b") inp.value = ""; } if (nt) nt.hidden = !e.target.value; }
     if (e.target.name === "coupon" || e.target.name === "points" || e.target.name === "plan" || e.target.name === "coach" || e.target.name === "qty") { const f = e.target.closest("[data-vd-pay]"); if (f) coPaint(f); }
@@ -3821,7 +3840,7 @@
     // 결제 동의: 전체 동의 ↔ 필수 3개
     if (e.target.hasAttribute && e.target.hasAttribute("data-agree-all")) { const fm = e.target.closest("form"); if (fm) fm.querySelectorAll("[data-agree-req]").forEach((x) => { x.checked = e.target.checked; }); }
     else if (e.target.hasAttribute && e.target.hasAttribute("data-agree-req")) { const fm = e.target.closest("form"), all = fm && fm.querySelector("[data-agree-all]"); if (all) all.checked = Array.from(fm.querySelectorAll("[data-agree-req]")).every((x) => x.checked); }
-  });
+  }
   const pwOk = (s) => s.length >= 8 && /[A-Za-z]/.test(s) && /\d/.test(s);
   function doAuth(f) {
     const err = document.getElementById("vd-auth-err"), v = (k) => (f[k] ? f[k].value.trim() : ""), mode = f.dataset.vdAuth, list = V().members;
@@ -4018,6 +4037,8 @@
   Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
-    reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }) });
+    reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),
+    // 주문 · 결제 · 배송 메뉴 (4-4)
+    rfBtnsInfo: (o) => ({ q: instantOf(o), bk: !!o.ship, st: o.ship ? shipStOf(o) : "", c: o.ship ? claimOf(o) : null }), ordCancelDo, ordCancel0Do, rfUndoDo, rfNowInfo, doRfReq, doShipEdit, rcptHtml, refundHtml, shipFields, acctFields, shipClaimBox, fmtDue, dueOf, fmtDT, formChange, addrFind });
   window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };
 })();

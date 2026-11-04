@@ -6,7 +6,7 @@ const F = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 화면 주소 (shared/screens.js 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 const SHAPES = ["/vod/my", "/vod/my/classes", "/vod/my/classes?st=done", "/vod/my/free", "/vod/my/vod", "/vod/my/addons", "/vod/my/ebooks", "/vod/my/live", "/vod/my/alarm", "/vod/my/likes", "/vod/my/likes?t=topics",
-  "/vod/my/coupons", "/vod/my/coupons?st=used", "/vod/my/points", "/vod/my/reviews", "/vod/my/posts", "/vod/my/badges", "/vod/my/account", "/vod/my/devices", "/vod/my/help", "/vod/my/help?t=list"];
+  "/vod/my/pending", "/vod/my/orders", "/vod/my/orders?t=refund", "/vod/my/ship", "/vod/my/ship?st=claim", "/vod/my/coupons", "/vod/my/coupons?st=used", "/vod/my/points", "/vod/my/reviews", "/vod/my/posts", "/vod/my/badges", "/vod/my/account", "/vod/my/devices", "/vod/my/help", "/vod/my/help?t=list"];
 module.exports = {
   title: "React 화면 · 스위치 · 예전 화면과 같은 모양 · 오가기",
   async run({ base, info, browser, run, L }) {
@@ -88,14 +88,59 @@ module.exports = {
     await page.waitForTimeout(600); await L.flushed(page);
     const iq = await page.evaluate(() => ({ path: location.pathname + location.search, items: Array.from(document.querySelectorAll(".vd-iq-it b")).map((x) => x.textContent) }));
     await run.check(/t=list/.test(iq.path) && iq.items.indexOf("React 화면 시험 문의") >= 0 && cnt === iqText.length + " / 1000", "1:1 문의: 글자 수가 세지고 · 남기면 내 문의 내역에 보여요", { iq, cnt }, page);
-    // React 화면 → 예전 화면 (주문 · 결제 내역은 아직 예전 화면): 새로 불러 예전 화면으로
-    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.click(".vd-my-nav a[href='#/vod/my/orders']")]);
+    // 주문 만들기 (API — 결제 화면은 4-4 다음 차례): 무통장 주문 2건 · 하나는 회원이 React 화면에서 취소, 하나는 마스터가 입금 확인
+    const mkOrder = (i) => page.evaluate((k) => { const X = window.VOD, mm = X.me(), ps = X.listed().filter((x) => (X.typeOf(x) === "vod" || X.typeOf(x) === "ebook") && x.status === "on" && X.priceOf(x) > 0 && !X.owns(mm.id, x.id)), p = ps[k]; if (!p) return { none: true };
+      const pl = X.defPlan ? X.defPlan(p) : null;
+      return fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid: p.id, kind: "course", plan: pl && pl.d, method: "bank", depositor: "체험회원" }) }).then((r) => r.json()).then((j) => ({ ok: !!j.ok, no: j.no, msg: j.message })); }, i);
+    // (시험 DB 에서 체험 회원이 아직 안 산 유료 클래스가 하나라서, 먼저 주문 → 취소한 뒤 같은 클래스를 다시 주문해 입금 확인해요)
+    const o1 = await mkOrder(0);
+    // 결제 대기: React 화면에서 주문 취소 (예전 처리 함수 ordCancelDo → api/vod-pay cancelPending)
+    await L.open(page, base, "/vod/my/pending");
+    const pend0 = await page.$("[data-v='ord-cancel'][data-no='" + o1.no + "']");
+    if (pend0) await pend0.click();
+    await page.waitForTimeout(1200);
+    const pend = { had: !!pend0, toast: await L.toasts(page), still: !!(await page.$("[data-v='ord-cancel'][data-no='" + o1.no + "']")), react: await isReact(page) };
+    await run.check(o1.ok && pend.had && !pend.still && /주문을 취소했어요/.test(pend.toast) && pend.react, "무통장 주문 → 결제 대기 → 주문 취소: 서버에서 취소되고 목록에서 빠져요 (React 화면 그대로)", Object.assign({ o1 }, pend), page);
+    const o2 = await mkOrder(0);
+    const adm = await L.newPage(browser);
+    await F.master(adm, base, info);
+    const ok2 = await adm.evaluate((no) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "bankOk", no }) }).then((r) => r.json()).then((j) => !!j.ok), o2.no);
+    await adm.context().close();
+    await run.check(o2.ok && ok2, "다시 무통장 주문 → 마스터가 입금 확인 (결제 완료)", { o2, ok2 }, page);
+    await L.open(page, base, "/vod/my");
+    // 주문 · 결제 내역: 영수증 · 환불 규정 팝업 · 환불 요청 보내기 → 요청 취소 (예전 처리 함수 doRfReq · rfUndoDo)
+    await page.click(".vd-my-nav a[href='#/vod/my/orders']"); await page.waitForTimeout(300);
+    const rc = await page.$("[data-v='receipt']");
+    let rcOk = null;
+    if (rc) { await rc.click(); await page.waitForTimeout(300); rcOk = await page.evaluate(() => !!document.querySelector("#modal-root .vd-modal-rcpt #rc-doc")); await page.click("#modal-root .vd-modal-h button"); await page.waitForTimeout(200); }
+    await page.click("[data-v='refund']"); await page.waitForTimeout(300);
+    const rules = await page.evaluate(() => !!document.querySelector("#modal-root .vd-modal .vd-rf-all"));
+    await page.click("#modal-root .vd-modal-h button"); await page.waitForTimeout(200);
+    await run.check(!!rc && rcOk && rules && !(await page.$("#modal-root .vd-modal-bg")), "주문 · 결제 내역: 영수증 · 환불 규정 팝업이 열리고 X 로 닫혀요", { rc: !!rc, rcOk, rules }, page);
+    const rq = await page.$("[data-v='rf-req'][data-no='" + o2.no + "']");
+    if (rq) {
+      const no = o2.no;
+      await rq.click(); await page.waitForSelector("#modal-root form[data-vd-rfreq]", { timeout: 3000 }).catch(() => {});
+      await page.fill("#modal-root form[data-vd-rfreq] textarea[name=text]", "React 화면 시험 환불 요청");
+      // 무통장 결제는 돌려받을 계좌가 있어야 해요 (빠뜨리면 팝업 안에 안내가 떠요)
+      const errNoAcct = await page.evaluate(() => { const f = document.querySelector("#modal-root form[data-vd-rfreq]"); f.requestSubmit(); return new Promise((r) => setTimeout(() => r((f.querySelector("[data-rfq-err]") || {}).textContent || ""), 200)); });
+      await page.selectOption("#modal-root form[data-vd-rfreq] select[name=raBank]", { index: 1 });
+      await page.fill("#modal-root form[data-vd-rfreq] input[name=raNo]", "12345678901");
+      await page.fill("#modal-root form[data-vd-rfreq] input[name=raHolder]", "체험회원");
+      await page.click("#modal-root form[data-vd-rfreq] button[type=submit]"); await page.waitForTimeout(500); await L.flushed(page);
+      const sent = { modal: !!(await page.$("#modal-root .vd-modal-bg")), toast: await L.toasts(page), undo: !!(await page.$("[data-v='rf-undo'][data-no='" + no + "']")) };
+      await page.click("[data-v='rf-undo'][data-no='" + no + "']").catch(() => {}); await page.waitForTimeout(400); await L.flushed(page);
+      const back = !!(await page.$("[data-v='rf-req'][data-no='" + no + "']"));
+      await run.check(!!errNoAcct && !sent.modal && /환불 요청을 보냈어요/.test(sent.toast) && sent.undo && back, "환불 요청(무통장): 계좌를 안 적으면 안내 · 적어 보내면 팝업이 닫히고 ‘요청 취소’ 가 생겨요 · 요청 취소하면 다시 ‘환불 요청’", Object.assign(sent, { back, errNoAcct }), page);
+    } else await run.check(false, "입금 확인한 주문에 ‘환불 요청’ 버튼이 있어요", { no: o2.no }, page);
+    // React 화면 → 예전 화면 (전체 클래스는 아직 예전 화면): 새로 불러 예전 화면으로
+    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.click(".vd-nav a[href='#/vod/c/all']")]);
     await L.ready(page);
-    await run.check(!(await isReact(page)) && new URL(page.url()).pathname === "/vod/my/orders" && !!(await page.$(".vd-my-nav a.on[href='#/vod/my/orders']")), "React → 예전 화면(주문 · 결제 내역): 새로 불러 예전 화면으로", { url: page.url() }, page);
-    // 예전 화면 → React 화면 (홈)
-    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.click(".vd-my-nav a.vd-my-home")]);
+    await run.check(!(await isReact(page)) && new URL(page.url()).pathname === "/vod/c/all", "React → 예전 화면(전체 클래스): 새로 불러 예전 화면으로", { url: page.url() }, page);
+    // 예전 화면 → React 화면 (머리띠 ‘내 강의실’)
+    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.click(".vd-top a.vd-tl")]);
     await L.ready(page);
-    await run.check((await isReact(page)) && new URL(page.url()).pathname === "/vod/my", "예전 화면 → React 화면(마이페이지 홈): 새로 불러 React 화면으로", { url: page.url() }, page);
+    await run.check((await isReact(page)) && new URL(page.url()).pathname === "/vod/my/classes", "예전 화면 → React 화면(내 강의실): 새로 불러 React 화면으로", { url: page.url() }, page);
     // /n/… 를 직접 열면 원래 주소로
     await page.goto(base + "/n/vod/my", { waitUntil: "load" });
     await page.waitForFunction(() => location.pathname === "/vod/my", null, { timeout: 8000 }).catch(() => {});

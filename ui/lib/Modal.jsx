@@ -10,6 +10,8 @@ export const MENU_MODAL = ["vd-modal-drawer", "vd-modal-acct"];
 
 export default function Modal({ title, cls, onClose, children }) {
   const menu = MENU_MODAL.indexOf(cls) >= 0;
+  // 예전 처리 함수(doRfReq · doShipEdit …)가 끝에 팝업을 닫으면 (window.ReactApp.closeModal)
+  useEffect(() => { const c = () => onClose(); window.addEventListener("dc:modal-close", c); return () => window.removeEventListener("dc:modal-close", c); }, [onClose]);
   useEffect(() => {
     if (!menu) return undefined;
     const k = (e) => { if (e.key === "Escape") onClose(); };

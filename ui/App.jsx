@@ -39,6 +39,8 @@ export default function App() {
           return { k, h, n: s.n + 1, moved, keep, fail: false };
         });
       },
+      // 예전 처리 함수가 부르는 ‘팝업 닫기’ (vod.js closeModal) — 열려 있는 React 팝업을 닫아요 (ui/lib/Modal.jsx)
+      closeModal() { window.dispatchEvent(new Event("dc:modal-close")); },
       // 예전 처리 함수가 끝에 부르는 ‘다시 그리기’ (vod.js render) — 보던 자리 그대로
       redraw() { setSt((s) => Object.assign({}, s, { n: s.n + 1, moved: false, keep: null })); },
       fail() { setSt((s) => Object.assign({}, s, { fail: true })); }

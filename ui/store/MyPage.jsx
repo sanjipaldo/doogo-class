@@ -11,9 +11,10 @@ import Raw from "../lib/Raw.jsx";
 import { VOD, DB, today, hash, storeRoute, toast, go } from "../lib/legacy.js";
 import { Classes, Free, Vods, Badges, Points, Posts, Alarm, Likes } from "./MyTabs.jsx";
 import { Coupons, Ebooks, Live, Devices, Reviews, Help, Account, Addons } from "./MyTabs2.jsx";
+import { ShipStrip, Pending, OrderList, Ship } from "./MyOrders.jsx";
 
-/* React 로 옮긴 마이페이지 메뉴 — 여기 없는 메뉴는 예전 화면이 열려요 (class/shared/screens.js 의 vod-my 주소 규칙과 같게) */
-const TABS = { "": null, classes: Classes, free: Free, vod: Vods, addons: Addons, ebooks: Ebooks, live: Live, alarm: Alarm, likes: Likes, coupons: Coupons, points: Points, reviews: Reviews, posts: Posts, badges: Badges, account: Account, devices: Devices, help: Help };
+/* React 로 옮긴 마이페이지 메뉴 — 마이페이지 메뉴 전부 (class/shared/screens.js 의 vod-my 주소 규칙과 같게) */
+const TABS = { "": null, classes: Classes, free: Free, vod: Vods, addons: Addons, ebooks: Ebooks, live: Live, alarm: Alarm, likes: Likes, pending: Pending, orders: OrderList, ship: Ship, coupons: Coupons, points: Points, reviews: Reviews, posts: Posts, badges: Badges, account: Account, devices: Devices, help: Help };
 
 const TITLE = "DOOGO CLASS — 돈 되는 클래스";
 const fmt = (at) => DB().date.toStr(new Date(at));
@@ -32,13 +33,6 @@ function Cal({ m }) {
     <div className="vd-cal"><div className="vd-cal-h"><b>{y}년 {mo + 1}월</b><small>이번 달 {cnt}일 공부했어요</small></div><div className="vd-cal-g">{X.DOWK.map((w) => <i key={w}>{w}</i>)}{Array.from({ length: first }, (_, i) => <span key={"b" + i} />)}
       {Array.from({ length: days }, (_, i) => { const k = ymd(i + 1); return <span key={k} className={(s[k] ? "on" : "") + (k === t ? " today" : "") + (k > t ? " fut" : "")} title={s[k] ? s[k] + "번 공부" : undefined}>{i + 1}</span>; })}</div></div>
   );
-}
-/** 주문 · 배송 현황 줄 (예전 shipStrip) */
-function ShipStrip({ list, on }) {
-  const X = VOD(), ks = ["wait", "ready", "prep", "ship", "done"], n = (k) => list.filter((o) => X.shipStOf(o) === k && !(X.claimOf(o) && ["req", "pick"].indexOf(X.claimOf(o).st) >= 0)).length, cl = list.filter((o) => X.claimOf(o) || X.shipStOf(o) === "cancel").length;
-  const items = [];
-  ks.forEach((k, i) => { if (i) items.push(<i key={"s" + i} aria-hidden="true"><Icon n="chevRight" c="xs" /></i>); items.push(<a key={k} href={"#/vod/my/ship?st=" + k} className={(n(k) ? "has" : "") + (on === k ? " on" : "")}><b>{n(k)}</b><span>{X.SHIP_ST[k][0]}</span></a>); });
-  return <><div className="vd-shs">{items}</div><p className="vd-shs-c"><a href="#/vod/my/ship?st=claim" className={on === "claim" ? "on" : ""}>취소 · 반품 · 교환 <b>{cl}</b></a>{on ? <a href="#/vod/my/ship">전체 보기</a> : null}</p></>;
 }
 function TopicChip({ t, onTopic }) {
   const on = VOD().myTopics().indexOf(t) >= 0;
