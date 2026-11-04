@@ -9,6 +9,8 @@ cd class
 node scripts/e2e/run.js            # 전부 (시험 DB를 새로 만들고, 테스트마다 새 복사본으로)
 node scripts/e2e/run.js routes idle  # 고른 것만
 node scripts/e2e/fixture.js /tmp/fx  # 시험 DB만 만들기 → E2E_FIXTURE=/tmp/fx 로 다시 쓰기
+E2E_SERVER=next node scripts/e2e/run.js              # Next.js 서버로 (먼저 저장소 맨 위에서 node class/scripts/site.js public && npx next build)
+E2E_SERVER=next E2E_REACT=1 node scripts/e2e/run.js  # React 화면을 모두 켠 채로 같은 테스트 (react* 테스트가 고른 값은 그대로)
 ```
 
 - Playwright(chromium)가 설치된 컴퓨터에서 돌려요. 배포 빌드가 무거워지지 않게 저장소 `package.json`에는 넣지 않아요.
@@ -28,6 +30,10 @@ node scripts/e2e/fixture.js /tmp/fx  # 시험 DB만 만들기 → E2E_FIXTURE=/t
 | classroom | 두잉고 수강생 과제 제출 → 강사 과제 검수에서 승인 → 수강생 화면에 반영 |
 | center | 강사센터 저장이 서버에 남음 (새로 고친 뒤에도) · 마스터 강사 정산 화면(상품 종류 탭 · 정산 규칙) |
 | idle | 자동 로그아웃: 강사센터 30분 무동작 · 29분 그대로 · 강사센터 밖 탭은 새로 고치지 않음 · 수강생 · 회원은 창을 닫고 60분 뒤 (브라우저 시계를 앞으로 돌려서) |
+| split | 화면 나눠 받기 (4-3단계) — 영역별 파일만 받고 · 영역을 옮길 때 나머지를 받아 같은 화면이 그려짐 |
+| react · reactdg | React 화면(스토어 · 회원 · 두잉고 강의실)이 예전 화면과 같은 구조 · 누르기 (Next.js 서버 `E2E_SERVER=next` 에서만) |
+| reactct | 강사센터 · 코치 · VOD 탭 · 마스터 · 운영자(스태프) 계정 화면이 예전 화면과 같은 구조 (PC · 휴대폰) · 운영 화면 · 무료강의 · 강사 소개 페이지 편집 · 클래스 세팅 · 마스터 화면 누르기 (Next.js 서버에서만) |
+| reactpm | 마스터가 화면에서 만든 파트너 · 온드미디어 계정으로 파트너센터 · 온드미디어 센터가 예전 화면과 같은 구조 · 탭 · 고르기 · 찾기 (Next.js 서버에서만) |
 
 ## 주소 목록 (지금 운영에서 열리는 주소 — 전환 뒤에도 그대로)
 

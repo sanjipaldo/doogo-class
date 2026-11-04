@@ -15,7 +15,7 @@ const path = require("path");
 const L = require("./lib");
 const F = require("./fixture");
 
-const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "split", "react", "reactdg", "reactct"].filter((n) => fs.existsSync(path.join(__dirname, "specs", n + ".js")));
+const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "split", "react", "reactdg", "reactct", "reactpm"].filter((n) => fs.existsSync(path.join(__dirname, "specs", n + ".js")));
 
 (async () => {
   const want = process.argv.slice(2).filter((a) => !a.startsWith("-"));

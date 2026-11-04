@@ -178,3 +178,61 @@ export function MasterCrmReport() {
     </div>
   </>;
 }
+
+/* ---------------- 회원 상세 (360°) #/center/master/vod-crm/<회원> (예전 crmMemberPage) ----------------
+ *  · 쿠폰 지급 · 포인트 · 메시지 · 이용 중지 · 태그 · 상담 메모 · 쿠폰 회수는 예전 admin.js 이벤트 · 창이 그대로 받아요 */
+const CrmBack = () => <a className="a-link" href="#/center/master/vod-crm"><Icon n="arrowLeft" c="xs" /> 회원 DB</a>;
+const Card = ({ t, children, extra }) => <section className="a-card crm-card"><div className="a-card-head"><h2>{t}</h2>{extra || null}</div>{children}</section>;
+export function CrmMember({ r, n }) {
+  const A = ADM(), DB = window.DB, X = A.VX(), ui = A.ui, won = A.won, id = decodeURIComponent((r && r.parts && r.parts[2]) || ""), m = A.vdMember(id);
+  if (!m) return <><CrmBack /><Empty ic="userX">회원을 찾을 수 없어요. 탈퇴했거나 잘못된 주소예요.</Empty></>;
+  const v = A.VD(), pf = A.crmProf(m), st = A.crmStage(pf.stage), c = m.consent || X.consentOf(m.marketing, m.createdAt), cps = v.coupons || [], today = DB.date.todayStr(), D = A.crmDate, P = (pid) => A.vdP(pid);
+  const cpName = (cid) => (cps.find((x) => x.id === cid) || {}).name || "삭제된 쿠폰";
+  const fan = Object.keys(pf.ins).filter((i) => pf.ins[i] >= 2).map((i) => A.vdName(i) + " 팬").filter((t) => (m.tags || []).indexOf(t) < 0);
+  const ords = pf.os.slice().sort((a, b) => b.at - a.at);
+  // 활동 기록: 가입 · 로그인 · 주문 · 환불 · 후기 · 문의 · 쿠폰 · 포인트 · 메시지 · 동의 변경 · 메모
+  const ev = [[m.createdAt, "userPlus", (m.via === "kakao" ? "카카오로 가입" : "이메일로 가입") + " · " + A.crmSrc(m)]];
+  if (m.lastLoginAt) ev.push([m.lastLoginAt, "user", "마지막 로그인" + (m.loginN ? " (누적 " + m.loginN + "회)" : "")]);
+  pf.os.forEach((o) => { ev.push([o.at, o.amount ? "coins" : "sparkles", (o.amount ? "결제 " + won(o.amount) : "무료 신청") + " · " + o.title + (o.status === "pending" ? " (입금 대기)" : "")]); if (o.refundedAt) ev.push([o.refundedAt, "refresh", "환불 " + won(o.refundAmount || o.amount) + " · " + o.title]); });
+  pf.rvs.forEach((x) => ev.push([x.at, "star", "후기 " + "★".repeat(x.rating) + " · " + ((P(x.pid) || {}).title || "")]));
+  pf.iqs.forEach((q) => ev.push([q.at, "headset", "1:1 문의 · " + q.title + (q.answer ? " (답변 완료)" : " (답변 대기)")]));
+  pf.mcs.forEach((x) => { ev.push([x.at, "gift", "쿠폰 받음 · " + cpName(x.cid)]); if (x.usedAt) ev.push([x.usedAt, "check", "쿠폰 사용 · " + cpName(x.cid)]); });
+  (m.pointLog || []).forEach((x) => ev.push([x.at, "coins", "포인트 " + (x.amt > 0 ? "+" : "") + Number(x.amt).toLocaleString() + "P · " + x.why]));
+  A.CRM().msgs.filter((x) => x.mid === m.id).forEach((x) => ev.push([x.at, "send", "메시지 · " + ((A.CRM_CH[x.ch] || [""])[0]) + " · " + x.name]));
+  (c.log || []).slice(1).forEach((x) => ev.push([x.at, "bell", "소식 받기 " + (x.on ? "동의 (" + A.CH3n(x.ch || []) + ")" : "철회") + " · " + (x.how || "")]));
+  (m.notes || []).forEach((x) => ev.push([x.at, "pen", "상담 메모 · " + x.text]));
+  ev.sort((a, b) => b[0] - a[0]);
+  const Kp = ({ l, val, sub }) => <div className="a-kpi"><span>{l}</span><b>{val}</b><small>{sub}</small></div>;
+  const tagsAll = A.CRM().tags.filter((t) => (m.tags || []).indexOf(t) < 0), idA = { "data-id": m.id };
+  return <>
+    <div className="vda-top"><CrmBack /></div>
+    <section className="a-card crm-hero"><div className="crm-hero-l"><Isl html={A.crmAv(m, "lg")} /><div><h1>{m.name || "-"} <Pill cls={st[1]}>{st[0]}</Pill>{pf.sub ? <> <Pill cls="info">구독자</Pill></> : null}{m.kakaoCh ? <> <Pill cls="mute">카톡 채널 친구</Pill></> : null}</h1>
+        <p className="crm-hero-sub"><Isl html={A.crmVia(m)} /> <span>{A.crmE(m)}</span><span>{A.crmPh(m)}</span><span>가입 {D(m.createdAt)}</span><span>마지막 활동 {A.crmAgo(pf.last)}</span><span className="a-muted">회원번호 {m.id}</span></p>
+        {(m.tags || []).length || fan.length ? <p className="crm-tags lg">{fan.map((t) => <i key={"f" + t} className="auto">{t}</i>)}{(m.tags || []).map((t) => <i key={t}>{t}<button type="button" data-action="crm-tag-del" data-id={m.id} data-t={t} aria-label={t + " 태그 빼기"}><Icon n="x" c="xs" /></button></i>)}</p> : null}</div></div>
+      <div className="crm-hero-a"><Btn action="crm-pii" cls="a-btn-ghost a-btn-sm" {...idA}><Icon n={ui.crmPii ? "eyeOff" : "eye"} c="sm" />{ui.crmPii ? "가리기" : "개인정보 보기"}</Btn><Btn action="crm-1-cp" cls="a-btn-ghost a-btn-sm" {...idA}><Icon n="gift" c="sm" />쿠폰 지급</Btn><Btn action="crm-1-pt" cls="a-btn-ghost a-btn-sm" {...idA}><Icon n="coins" c="sm" />포인트 조정</Btn>
+        <Btn action="crm-camp-new" cls="a-btn-primary a-btn-sm" data-seg="one" {...idA}><Icon n="send" c="sm" />메시지 보내기</Btn><Btn action="crm-block" cls={"a-btn-ghost a-btn-sm" + (m.blocked ? "" : " danger")} {...idA}>{m.blocked ? "이용 중지 풀기" : "이용 중지"}</Btn></div></section>
+    <div className="a-kpis a-kpis-5 crm-kpis"><Kp l="누적 결제 (LTV)" val={won(pf.ltv)} sub={"평균 " + won(pf.aov)} /><Kp l="결제 횟수" val={pf.paid.length + "회"} sub={"무료 신청 " + pf.free.length + "회"} /><Kp l="RFM 점수" val={pf.score + " / 15"} sub={"최근 " + pf.rfm[0] + " · 횟수 " + pf.rfm[1] + " · 금액 " + pf.rfm[2]} /><Kp l="평균 진도율" val={pf.prog == null ? "-" : pf.prog + "%"} sub={"구매한 VOD " + Object.keys(pf.pct).length + "개"} /><Kp l="쿠폰 · 포인트" val={pf.cpOk.length + "장"} sub={(Number(m.points) || 0).toLocaleString() + "P 보유"} /></div>
+    <div className="crm-grid"><div className="crm-col">
+      <Card t={"구매한 클래스 " + pf.pids.length + "개"}>{pf.pids.length ? <ul className="crm-clss">{pf.pids.map((pid) => { const p = P(pid) || {}, end = X.accessEnd ? X.accessEnd(m.id, pid) : 0, pc = pf.pct[pid], tp = X.typeOf(p); return (
+        <li key={pid} className="crm-cls"><span className="crm-cls-t"><b>{p.title || "삭제된 클래스"}</b><small>{(p.creator || "") + " · " + (X.TYPE[tp] || [tp])[0] + (end && end < 4e12 ? " · " + (end > Date.now() ? "~" + D(end) : "수강 끝") : "")}</small></span>
+          {pc != null ? <span className="crm-cls-p"><span className="a-bar"><span style={{ width: pc + "%" }} /></span><small className="num">{pc}%</small></span> : <span className="a-muted p-small">{X.isEvent(p) ? (X.fmtEvent ? X.fmtEvent(p.eventAt) : p.eventAt || "") : "-"}</span>}</li>); })}</ul> : <p className="a-muted">아직 구매 · 신청한 클래스가 없어요.</p>}</Card>
+      <Card t={"주문 · 결제 " + ords.length + "건"}>{ords.length ? <div className="a-table-wrap"><table className="a-table"><thead><tr><th>주문일</th><th>클래스</th><th>결제</th><th className="right">금액</th><th>상태</th></tr></thead><tbody>{ords.map((o) => { const s2 = A.VD_OST[o.status] || A.VD_OST.paid, opt = X.optTxt && X.optTxt(o); return (
+        <tr key={o.id}><td className="vda-nw">{D(o.at)}<small className="a-memo num">{o.no}</small></td><td>{o.title}{opt ? <small className="a-memo">{opt}</small> : null}</td><td className="vda-nw">{A.VD_PAY[o.method] || o.method}{o.couponOff ? <small className="a-memo">쿠폰 -{won(o.couponOff)}</small> : null}</td><td className="right num">{won(o.amount)}</td><td><Pill cls={s2[1]}>{s2[0]}</Pill></td></tr>); })}</tbody></table></div> : <p className="a-muted">주문이 없어요.</p>}</Card>
+      <Card t={"찜 · 오픈 알림 " + pf.likes.length + "개"}>{pf.likes.length ? <ul className="crm-mini">{pf.likes.map((pid) => { const p = P(pid) || {}; return <li key={pid}><b>{p.title || "삭제된 클래스"}</b><small>{p.status === "soon" ? "오픈 알림 신청" : pf.pids.indexOf(pid) >= 0 ? "구매함" : "찜 · 아직 안 삼"}</small></li>; })}</ul> : <p className="a-muted">찜한 클래스가 없어요.</p>}</Card>
+      <Card t="후기 · 1:1 문의">{pf.rvs.length || pf.iqs.length ? <ul className="crm-mini">{pf.rvs.map((x) => <li key={"r" + x.id}><b>{"★".repeat(x.rating) + " " + ((P(x.pid) || {}).title || "")}</b><small>{x.text}</small></li>)}{pf.iqs.map((q) => <li key={"q" + q.id}><b><Icon n="headset" c="xs" /> {q.title}</b><small>{(q.answer ? "답변 완료" : "답변 대기") + " · " + D(q.at)}</small></li>)}</ul> : <p className="a-muted">후기 · 문의가 없어요.</p>}</Card>
+    </div><div className="crm-col">
+      <Card t="소식 받기 동의"><dl className="crm-dl"><div><dt>광고성 정보</dt><dd>{pf.sub ? <><Pill cls="info">동의</Pill> {A.CH3n(c.ch || [])}</> : <Pill cls="mute">안 함</Pill>}</dd></div>
+          {pf.sub ? <><div><dt>야간 (21~8시)</dt><dd>{c.night ? "동의" : "안 함 · 밤에는 광고를 안 보내요"}</dd></div><div><dt>동의한 날</dt><dd>{D(c.at)}</dd></div><div><dt>다시 확인할 날</dt><dd>{D(pf.reAt)}{pf.reDue ? <> <Pill cls="warn">재확인 필요</Pill></> : null}</dd></div></> : null}
+          {m.via === "kakao" ? <><div><dt>카카오 회원번호</dt><dd className="num">{ui.crmPii ? m.kakaoId || "-" : String(m.kakaoId || "").replace(/^(\d{3})\d+(\d{2})$/, "$1*****$2") || "-"}</dd></div><div><dt>카카오톡 채널</dt><dd>{m.kakaoCh ? "친구 추가함" : "친구 아님"}</dd></div>{m.birth ? <div><dt>생일 · 연령대</dt><dd>{m.birth + " · " + (m.age || "-")}</dd></div> : null}</> : null}</dl>
+        {(c.log || []).length ? <ul className="crm-mini sm">{c.log.slice().reverse().slice(0, 5).map((x, i) => <li key={i}><b>{x.on ? "동의" : "철회"}</b><small>{D(x.at) + " · " + (x.how || "") + (x.on ? " · " + A.CH3n(x.ch || ["sms", "email", "kakao"]) : "")}</small></li>)}</ul> : null}
+        <p className="a-muted p-small">동의 · 철회는 회원이 마이페이지에서 직접 바꿔요. 운영자는 바꿀 수 없어요.</p></Card>
+      <Card t={"쿠폰 " + pf.cpOk.length + "장 · 포인트 " + (Number(m.points) || 0).toLocaleString() + "P"}>{pf.mcs.length ? <ul className="crm-mini sm">{pf.mcs.slice().reverse().map((x) => <li key={x.id}><b>{cpName(x.cid)}</b><small>{x.usedAt ? "사용 " + D(x.usedAt) : x.exp && x.exp < today ? "만료" : "~" + (x.exp || "기한 없음")}</small>{!x.usedAt ? <Btn action="crm-cp-del" cls="a-btn-text a-btn-sm" data-id={m.id} data-mc={x.id}>회수</Btn> : null}</li>)}</ul> : <p className="a-muted p-small">받은 쿠폰이 없어요.</p>}
+        {(m.pointLog || []).length ? <ul className="crm-mini sm">{m.pointLog.slice().sort((a, b) => b.at - a.at).slice(0, 5).map((x, i) => <li key={i}><b>{x.why}</b><small className="num">{(x.amt > 0 ? "+" : "") + Number(x.amt).toLocaleString() + "P · " + D(x.at)}</small></li>)}</ul> : null}</Card>
+      <Card t="태그"><div key={n} className="crm-tagadd"><select className="a-input a-sm" id="crm-tag-pick" aria-label="태그 고르기" defaultValue=""><option value="">태그 고르기</option>{tagsAll.map((t) => <option key={t} value={t}>{t}</option>)}</select><input className="a-input a-sm" id="crm-tag-new" maxLength={12} placeholder="새 태그 (12자)" aria-label="새 태그" /><Btn action="crm-tag-add" cls="a-btn-ghost a-btn-sm" {...idA}>붙이기</Btn></div>
+        {fan.length ? <p className="a-muted p-small">‘{fan.join(", ")}’는 같은 강사 클래스를 2개 이상 사서 자동으로 붙었어요.</p> : null}</Card>
+      <Card t="상담 메모"><div key={n} className="crm-note"><textarea className="a-input" id="crm-note" rows={2} maxLength={300} placeholder="통화 · 상담 내용, 다음에 할 일 (회원에게는 안 보여요)" aria-label="상담 메모" /><Btn action="crm-note-add" cls="a-btn-dark a-btn-sm" {...idA}>메모 남기기</Btn></div>
+        {(m.notes || []).length ? <ul className="crm-mini">{m.notes.slice().sort((a, b) => b.at - a.at).map((x) => <li key={x.id}><b>{x.text}</b><small>{(x.by || "") + " · " + D(x.at)}</small><Btn action="crm-note-del" cls="a-btn-text a-btn-sm" data-id={m.id} data-n={x.id} aria-label="메모 지우기"><Icon n="trash" c="xs" /></Btn></li>)}</ul> : null}</Card>
+      <Card t="활동 기록"><ol className="crm-tl">{ev.slice(0, 30).map((e, i) => <li key={i}><Icon n={e[1]} c="xs" /><div><b>{e[2]}</b><small>{A.crmStamp(e[0])}</small></div></li>)}</ol></Card>
+    </div></div>
+  </>;
+}

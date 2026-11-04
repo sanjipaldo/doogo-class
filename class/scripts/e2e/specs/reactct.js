@@ -7,11 +7,13 @@ const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강사센터 화면 주소 (shared/screens.js 의 ct-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 // 마스터 화면 주소
-const CTM = ["/center/master", "/center/master/instructors", "/center/master/students", "/center/master/health", "/center/master/notices", "/center/master/site", "/center/master/data", "/center/master/calendar", "/center/master/sla", "/center/master/reports", "/center/master/dc", "/center/master/vod-members", "/center/master/vod-inquiries", "/center/master/vod-home", "/center/master/vod-display", "/center/master/vod-rank", "/center/master/vod-ads", "/center/master/vod-settle", "/center/master/vod-rates", "/center/master/vod-sales", "/center/master/vod-refund", "/center/master/vod-ship", "/center/master/vod", "/center/master/vod-classes", "/center/master/vod-crm", "/center/master/vod-seg", "/center/master/vod-msg", "/center/master/vod-crm-rp", "/center/master/vod-media", "/center/master/vod-media-rs", "/center/master/vod-media-pay", "/center/master/billing", "/center/master/plan", "/center/master/menus", "/center/master/certs", "/center/master/contracts", "/center/master/staff", "/center/master/rs"];
+const CTM = ["/center/master", "/center/master/instructors", "/center/master/students", "/center/master/health", "/center/master/notices", "/center/master/site", "/center/master/data", "/center/master/calendar", "/center/master/sla", "/center/master/reports", "/center/master/dc", "/center/master/vod-members", "/center/master/vod-inquiries", "/center/master/vod-home", "/center/master/vod-display", "/center/master/vod-rank", "/center/master/vod-ads", "/center/master/vod-settle", "/center/master/vod-rates", "/center/master/vod-sales", "/center/master/vod-refund", "/center/master/vod-ship", "/center/master/vod", "/center/master/vod-classes", "/center/master/vod-crm", "/center/master/vod-seg", "/center/master/vod-msg", "/center/master/vod-crm-rp", "/center/master/vod-media", "/center/master/vod-media-rs", "/center/master/vod-media-pay", "/center/master/billing", "/center/master/plan", "/center/master/menus", "/center/master/certs", "/center/master/contracts", "/center/master/staff", "/center/master/rs", "/center/master/partners", "/center/master/vod-recruit"];
 const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
   "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
   "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand", "/center/menus",
-  "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching", "/center/teatime", "/center/ops-notices"];
+  "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching", "/center/teatime", "/center/ops-notices",
+  // 무료강의 · 강사 소개 페이지 · 추가 메뉴 · VOD 강의 · 계약
+  "/center/free", "/center/landing", "/center/pages", "/center/vodlessons", "/center/contract"];
 async function shapes(page, base, L, list) {
   const bad = []; let lines = 0;
   for (const u of list) {
@@ -110,12 +112,70 @@ module.exports = {
       await run.check(!d.length && !md.length && a.out.length === b.out.length && b.out.length >= 15 && b.stay, "강사센터 운영 화면(React): 수강생 탭 · 기수 · 검색 · 체크 · 과제 검수 탭 · 주차 · 1:1 요청 탭 · 팝업 — 누를 때마다 예전 화면과 같은 모양 (" + b.out.length + "번)", d.slice(0, 1).concat(md.slice(0, 1), [{ n: [a.out.length, b.out.length], m: [a.modal.length, b.modal.length] }]), page);
       await page.context().close();
     }
+    // 2-2b) 무료강의 · 강사 소개 페이지 편집: 칸 탭 · 카드 더하기 · 적기(‘저장하지 않은 변경’) · 지우기 · 숨기기 · 순서 · 공개 · 되돌리기 (저장은 하지 않아요)
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "강사센터 페이지 편집 누르기");
+      await FL.instructor(page, base, info);
+      const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 300); out.push(await L.domShape(page)); };
+      const tap = (sel) => page.$eval(sel, (el) => el.click()); // 접힌 칸 안의 버튼도 (예전 이벤트는 document 에서 받아요)
+      const flow = async (mode) => {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/center/free");
+        await page.evaluate(() => { window.__e2eStay = 1; });
+        const out = [await L.domShape(page)];
+        const tabs = await page.$$eval('[data-action="fc-tab"]', (bs) => bs.map((b) => b.dataset.k));
+        for (const k of tabs) await step(out, () => page.click('[data-action="fc-tab"][data-k="' + k + '"]'));
+        await step(out, () => page.click('[data-action="fc-tab"][data-k="videos"]'));
+        if (await page.$('.a-fc-body [data-action="lp-row-add"]')) {
+          await step(out, () => page.click('.a-fc-body [data-action="lp-row-add"]'));
+          const f = await page.$$('.a-fc-body .a-fc-card [data-lp$=".title"]');
+          if (f.length) await step(out, () => f[f.length - 1].fill("시험 영상"));
+          const del = await page.$$('.a-fc-body [data-action="lp-row-del"]');
+          if (del.length) await step(out, () => del[del.length - 1].click());
+        }
+        await step(out, () => page.click('.a-fc-panel-head [data-action="lp-toggle"]'));
+        await step(out, () => page.click('[data-action="fc-tab"][data-k="gifts"]'));
+        if (await page.$('.a-fc-body [data-action="lp-row-add"]')) await step(out, () => page.click('.a-fc-body [data-action="lp-row-add"]'));
+        await step(out, () => page.click('[data-action="fc-tab"][data-k="hero"]'));
+        await step(out, () => page.fill('[data-lp="hero.instructor"]', "시험 강사"));
+        await step(out, () => page.click('.a-lp-top [data-action="lp-pub"]'));
+        await step(out, () => page.click('.a-lp-savebar [data-action="lp-revert"]'));
+        // 강사 소개 페이지: 칸 펼치기 · 순서 · 숨기기 · 줄 더하기 · 적기 · 되돌리기
+        const stay1 = await page.evaluate(() => window.__e2eStay === 1); // 무료강의 페이지에서 새로고침 · 다른 주소로 가지 않았는지
+        await L.open(page, base, "/center/landing"); await page.evaluate(() => { window.__e2eStay = 1; }); out.push(await L.domShape(page));
+        const ks = await page.$$eval("details.a-lp-sec", (ds) => ds.map((d) => d.dataset.k));
+        if (ks[1]) {
+          await step(out, () => page.click('details.a-lp-sec[data-k="' + ks[1] + '"] > summary > b'));
+          await step(out, () => tap('[data-action="lp-move"][data-k="' + ks[1] + '"][data-dir="-1"]'));
+          await step(out, () => tap('[data-action="lp-toggle"][data-k="' + ks[1] + '"]'));
+        }
+        if (ks.indexOf("stats") >= 0) {
+          await step(out, () => tap('details.a-lp-sec[data-k="stats"] [data-action="lp-row-add"]'));
+          await step(out, () => page.click('details.a-lp-sec[data-k="stats"] > summary > b'));
+          const f = await page.$$('[data-lp^="stats."][data-lp$=".value"]');
+          if (f.length) await step(out, () => f[f.length - 1].fill("1,234명"));
+          const up = await page.$$('details.a-lp-sec[data-k="stats"] [data-action="lp-row-move"]');
+          if (up.length > 1) await step(out, () => up[up.length - 1].click());
+        }
+        await step(out, () => page.fill('[data-lp="applyUrl"]', "https://example.com/apply"));
+        await step(out, () => page.click('.a-lp-savebar [data-action="lp-revert"]'));
+        return { out, stay: stay1 && (await page.evaluate(() => window.__e2eStay === 1)) };
+      };
+      const a = await flow("off"), b = await flow("all");
+      const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
+      // stay: 두 페이지 모두 여는 동안 새로고침 · 다른 주소로 가지 않았는지 (React 화면에서 예전 이벤트로만 그려요)
+      await run.check(!d.length && a.out.length === b.out.length && b.out.length >= 20 && b.stay, "무료강의 · 강사 소개 페이지 편집(React): 칸 탭 · 카드 더하기 · 적기 · 지우기 · 숨기기 · 순서 · 공개 · 되돌리기 — 누를 때마다 예전 화면과 같은 모양 (" + b.out.length + "번)", d.slice(0, 1).concat([{ n: [a.out.length, b.out.length], stay: b.stay }]));
+      await page.context().close();
+    }
     // 2-3) 마스터: 화면 모양 (PC · 휴대폰) + 강사 · 상태 고르기 · 강사 수정 팝업
     for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       const page = await L.newPage(browser, { viewport: vp });
       run.watch(page, "마스터 모양 " + vp.width);
       await FL.master(page, base, info);
-      const { bad, lines } = await shapes(page, base, L, CTM);
+      // 주소 셋째 칸: 회원 상세는 시험 DB 의 첫 회원 · 클래스 세팅은 상품 종류(VOD · 전자책 · 종이책 · LIVE · 오프라인)마다 첫 클래스 + 새로 만들기
+      const ids = await page.evaluate(() => { const v = window.ADM && window.ADM.VD(), X = window.ADM && window.ADM.VX(); const by = {}; (v ? v.products : []).forEach((p) => { const t = X.typeOf(p); if (!by[t]) by[t] = p.id; }); return { ps: Object.keys(by).map((k) => by[k]), m: v && v.members[0] ? v.members[0].id : "" }; });
+      const CTM2 = CTM.concat(ids.ps.map((x) => "/center/master/vod-classes/" + encodeURIComponent(x)), ["/center/master/vod-classes/new"], ids.m ? ["/center/master/vod-crm/" + encodeURIComponent(ids.m)] : []);
+      const { bad, lines } = await shapes(page, base, L, CTM2);
       let d = [], m = null;
       if (vp.width === 1280) {
         const out = {};
@@ -166,12 +226,55 @@ module.exports = {
           await page.click('[data-action="crm-b-add"]'); await page.waitForTimeout(300); o.push(await L.domShape(page));
           await page.selectOption('[data-crm-b="f"][data-i="1"]', "via"); await page.waitForTimeout(300); o.push(await L.domShape(page));
           await page.click('[data-action="crm-b-del"][data-i="1"]'); await page.waitForTimeout(300);
+          // 클래스 세팅: 상품 종류 · 이름 적기(오른쪽 미리보기) · 챕터 · 강의 · 질문 더하기 · 포인트 색 · 순서 · 지우기 (저장은 하지 않아요)
+          if (ids.ps[0]) {
+            await L.open(page, base, "/center/master/vod-classes/" + encodeURIComponent(ids.ps[0])); o.push(await L.domShape(page));
+            const vs = async (fn, w) => { await fn(); await page.waitForTimeout(w || 450); o.push(await L.domShape(page)); };
+            await vs(() => page.click('#vda-form label.vda-radio:has(input[name="type"][value="ebook"])'));
+            await vs(() => page.click('#vda-form label.vda-radio:has(input[name="type"][value="flive"])'));
+            await vs(() => page.click('#vda-form label.vda-radio:has(input[name="type"][value="vod"])'));
+            await vs(() => page.fill("#vda-title", "시험 클래스 이름"));
+            await vs(() => page.click('[data-action="vda-ch-add"]'));
+            await vs(() => page.click('[data-action="vda-ls-add"][data-ci="0"]'));
+            await vs(() => page.click('[data-action="vda-fq-add"]'));
+            { const c = await page.$('[data-action="vda-acc"]'); if (c) await vs(() => c.click()); }
+            { const m = await page.$('[data-action="vda-ch-move"][data-ci="1"][data-dir="-1"]'); if (m) await vs(() => m.click()); }
+            { const q = await page.$$('[data-action="vda-fq-del"]'); if (q.length) await vs(() => q[q.length - 1].click()); }
+            { const l = await page.$$('[data-action="vda-ls-del"][data-ci="0"]'); if (l.length) await vs(() => l[l.length - 1].click()); }
+            await L.open(page, base, "/center/master/vod-classes"); o.push(await L.domShape(page));
+          }
           out[mode] = o;
         }
         d = out.off.map((x, i) => L.shapeDiff(x, out.all[i])).filter(Boolean); m = [out.off.length, out.all.length];
       }
-      await run.check(!bad.length && !d.length, "마스터 " + CTM.length + "개 화면 " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요" + (m ? " · 강사 · 상태 고르기 · 수정 팝업도" : ""), bad.slice(0, 2).concat(d.slice(0, 1), [{ m }]), page);
+      await run.check(!bad.length && !d.length, "마스터 " + CTM2.length + "개 화면 " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요" + (m ? " · 강사 · 상태 고르기 · 수정 팝업도" : ""), bad.slice(0, 2).concat(d.slice(0, 1), [{ m }]), page);
       await page.context().close();
+    }
+    // 2-4) 운영자(스태프) 계정: 마스터가 화면에서 만든 ‘학사 · 상담 담당’(+ DOOGO CLASS 대시보드 · 후기) 계정으로 — 맡은 메뉴 · 맡지 않은 메뉴(대시보드로 돌아가요) 모양 (PC · 휴대폰)
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "운영자 계정 만들기");
+      await FL.master(page, base, info); await L.reactCookie(page, base, "off");
+      await L.open(page, base, "/center/master/staff");
+      await page.click('[data-action="st-new"]'); await page.waitForTimeout(300);
+      await page.fill("#sf-name", "시험운영자"); await page.fill("#sf-loginId", "e2estaff"); await page.fill("#sf-pw", "e2epw1234");
+      for (const k of ["master/dc", "master/vod-members"]) { const c = await page.$('#st-form input[name="perm"][value="' + k + '"]'); if (c) await c.check(); }
+      await page.click('#modal-root button[type="submit"][form="st-form"]'); await page.waitForTimeout(700); await L.flushed(page);
+      const made = await page.evaluate(() => (window.DB.data.staff || []).some((x) => x.loginId === "e2estaff"));
+      await page.context().close();
+      const ST = ["/center/master", "/center/master/students", "/center/master/partners", "/center/master/calendar", "/center/master/health", "/center/master/sla", "/center/master/certs", "/center/master/reports", "/center/master/notices", "/center/master/plan", "/center/master/dc", "/center/master/vod-members", "/center/master/instructors", "/center/master/billing"];
+      for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+        const pg = await L.newPage(browser, { viewport: vp });
+        run.watch(pg, "운영자 계정 모양 " + vp.width);
+        await FL.adminLogin(pg, base, "master", "e2estaff", "e2epw1234");
+        const who = await pg.evaluate(() => { const A = window.ADM, st = A && A.staffMe && A.staffMe(); return st ? st.loginId : ""; });
+        const { bad, lines } = await shapes(pg, base, L, ST);
+        // 숨긴 칸이 정말 안 보이는지 (React 화면 · 대시보드의 강사 플랫폼 버튼 · 정산 알림)
+        await L.reactCookie(pg, base, "all"); await L.open(pg, base, "/center/master");
+        const vis = await pg.evaluate(() => Array.from(document.querySelectorAll("#a-main [data-staff-cut]")).filter((el) => el.offsetParent !== null).length);
+        await run.check(made && who === "e2estaff" && !bad.length && !vis, "운영자 계정 " + ST.length + "개 화면 " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요 (맡지 않은 버튼 · 알림은 숨김 · 메뉴는 대시보드로)", bad.slice(0, 2).concat([{ made, who, vis }]), pg);
+        await pg.context().close();
+      }
     }
     // 3) 버튼은 예전 이벤트가 그대로: 수강생 추가 팝업 · 과제 열기 팝업 · 휴대폰 메뉴 · 로그아웃
     {

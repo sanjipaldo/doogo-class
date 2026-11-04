@@ -127,8 +127,12 @@ const me = (page) => page.evaluate(() => (window.DB && DB.remote && DB.remote.me
 /** 이 브라우저의 저장 · 쿠키를 비우고 새로 시작 */
 async function fresh(page, base) {
   await page.goto(base + "/terms", { waitUntil: "load" });
+  // 첫 그리기가 끝난 뒤에 비워요 — 그리기 도중에 쿠키(React 스위치)가 바뀌면 그 화면이 스스로 새로고침해서 다음 page.goto 가 끊겨요(ERR_ABORTED)
+  await ready(page).catch(() => {});
   await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) { /* 비우기 실패해도 계속 */ } });
   await page.context().clearCookies();
+  // 남아 있던 화면의 할 일(새로고침 · 서버로 보내기)이 다음 주소 열기와 겹치지 않게 빈 화면으로
+  await page.goto("about:blank");
 }
 /** 서버에 남은 변경을 다 보낼 때까지 */
 async function flushed(page, ms) {
@@ -157,6 +161,8 @@ const domShape = (page, id) => page.evaluate((id) => {
   // 남은 시간(1초마다 바뀜)은 마감 시각으로 · 못 불러오면 스스로 지우는 그림(유튜브 미리보기 · 네트워크에 따라 다름)은 빼요
   c.querySelectorAll("[data-cd]").forEach((el) => { el.textContent = el.dataset.cd; });
   c.querySelectorAll('img[onerror="this.remove()"]').forEach((el) => el.remove());
+  // 운영자(스태프) 계정: 맡지 않은 메뉴의 버튼 · 알림을 예전 화면은 빼고, React 화면은 숨겨요(data-staff-cut) — 숨긴 칸은 뺀 것과 같게 봐요
+  c.querySelectorAll("[data-staff-cut]").forEach((el) => el.remove());
   // 강의실 썸네일도 못 불러오면 예전 코드가 지워요 (app.js error 처리 — 네트워크 · 시각에 따라 다름)
   c.querySelectorAll(".lesson-thumb img, .video img, .vod-thumb img, .mv-tile-img img").forEach((el) => el.remove());
   // 줄 넘김 표시(한 쪽뿐이면 one)는 줄 너비를 재고 나서 붙어서 시각에 따라 달라요
