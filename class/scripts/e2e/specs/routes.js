@@ -106,7 +106,9 @@ module.exports = {
       });
     })(Object.fromEntries((bs.docs || []).map((d) => [d[0], d[1]])), "", false);
     (bs.docs || []).filter((d) => /^ins:/.test(d[0])).forEach((d) => Object.keys(d[1] || {}).forEach((k) => { if (/^(contact|vodSettle|phone4|trackReq|coaches)$/.test(k)) leaks.push(d[0] + "." + k); }));
-    await run.check(!leaks.length, "공개 문서에 강사 연락처 · 정산 · 뒷자리 · 비밀번호가 없어요", leaks);
+    // 강사센터 로그인 이름도 공개하지 않아요 — 그 자리에는 수강생에게 보이는 이름 (4단계)
+    (bs.docs || []).filter((d) => /^ins:/.test(d[0]) && d[1]).forEach((d) => { if (d[1].name !== (d[1].displayName || "")) leaks.push(d[0] + ".name(로그인 이름)"); });
+    await run.check(!leaks.length, "공개 문서에 강사 로그인 이름 · 연락처 · 정산 · 뒷자리 · 비밀번호가 없어요", leaks);
     await page.context().close();
   }
 };

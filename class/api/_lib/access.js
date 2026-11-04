@@ -79,8 +79,10 @@ function publicContent(c) {
   o.curricula = (c.curricula || []).map((cu) => Object.assign(pick(cu, ["id", "name"]), { weeks: weeksSkeleton(cu.weeks) }));
   return o;
 }
-/** 방문자 · 수강생이 보는 강사 계정: 뒷자리(비밀번호) · 코치 · 연락처 · 정산 정보 · 입점 신청 표시는 빼요 */
-function publicIns(v) { const o = clone(v); ["phone4", "coaches", "contact", "vodSettle", "trackReq"].forEach((k) => delete o[k]); return o; }
+/** 방문자 · 수강생이 보는 강사 계정: 뒷자리(비밀번호) · 코치 · 연락처 · 정산 정보 · 입점 신청 표시는 빼요
+ *  강사센터 로그인 이름(name)도 빼고 그 자리에 수강생에게 보이는 이름(displayName)을 넣어요 — 화면은 원래 displayName 을 써요
+ *  (예전에는 로그인 이름이 공개돼 비밀이 숫자 4자리뿐이었어요 · Next.js 전환 4단계 · 2026-11) */
+function publicIns(v) { const o = clone(v); ["phone4", "coaches", "contact", "vodSettle", "trackReq"].forEach((k) => delete o[k]); o.name = String((v && v.displayName) || ""); return o; }
 /** 코치가 보는 강사 계정: 뒷자리(비밀번호)는 빼고, 정산 받을 정보(계좌 · 사업자번호 · 이메일)는 정산 유형만 남겨요 — 계좌 등록은 강사님만 */
 function coachIns(v) {
   const o = clone(v); delete o.phone4; delete o.contact;

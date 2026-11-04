@@ -14,28 +14,39 @@ const MD = require("./_lib/media");
 const COACH = require("../coach-perms");
 
 const IP_LIMIT = 40, NAME_LIMIT = 8;
+// 하루 기준 잠금 (Next.js 전환 4단계 · 2026-11): 같은 이름(아이디)으로 24시간 안에 30번 틀리면 그 24시간이 끝날 때까지 막아요.
+// 15분 잠금만 있으면 숫자 4자리를 하루 768번까지 맞춰 볼 수 있었어요 → 이제 하루 30번. 성공하면 바로 풀려요.
+// 마스터는 빼요 — 누가 일부러 틀려서 주인이 하루 내내 못 들어오는 일을 막으려고 (마스터는 긴 비밀번호 · 15분 잠금 그대로)
+const DAY_LIMIT = 30, DAY_MS = 24 * 3600e3, dayKey = (k) => "day:" + k;
 const norm = auth.norm;
 const eq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 // 한글 자판 상태로 친 글자(예: 한글2@)를 같은 자리의 영문 자판 글자(gksrmf2@)로 바꾼다 — 마스터 아이디 · 비밀번호는 둘 다 받아 준다
 const koToKeys = auth.koToKeys;
 
-async function limited(req, nameKey) {
-  return (await store.rlCheck(["ip:" + ip(req)], IP_LIMIT)) || (await store.rlCheck([nameKey], NAME_LIMIT));
+/** 막혔으면 오류 이름("locked" 15분 · "locked-day" 하루), 아니면 "" — day === false 면 하루 기준은 안 봐요 (마스터) */
+async function limited(req, nameKey, day) {
+  if ((await store.rlCheck(["ip:" + ip(req)], IP_LIMIT)) || (await store.rlCheck([nameKey], NAME_LIMIT))) return "locked";
+  if (day !== false && (await store.rlCheck([dayKey(nameKey)], DAY_LIMIT))) return "locked-day";
+  return "";
 }
-const fail = (req, nameKey) => store.rlFail(["ip:" + ip(req), nameKey]);
+async function fail(req, nameKey, day) {
+  await store.rlFail(["ip:" + ip(req), nameKey]);
+  if (day !== false) await store.rlFail([dayKey(nameKey)], DAY_MS);
+}
+const clear = (nameKey) => store.rlClear([nameKey, dayKey(nameKey)]);
 
 async function studentLogin(req, res, b) {
   const iid = String(b.iid || ""), name = norm(b.name), phone4 = String(b.phone4 || "").trim();
   if (!iid || !name || !/^\d{4}$/.test(phone4)) return send(res, 400, { error: "input" });
   const nameKey = "stu:" + iid + ":" + name;
-  if (await limited(req, nameKey)) return send(res, 429, { error: "locked" });
+  { const lk = await limited(req, nameKey); if (lk) return send(res, 429, { error: lk }); }
   const ins = await store.getDoc("ins:" + iid);
   if (!ins || !ins.v || ins.v.status !== "active") return send(res, 200, { error: "notfound" });
   const list = (await store.listDocs({ prefixes: ["stu:" + iid + ":%"] })).map((r) => r.v);
   const matches = list.filter((s) => norm(s.name) === name && s.phone4 === phone4);
   const s = matches.find((x) => x.status === "approved") || matches[0];
   if (!s) { await fail(req, nameKey); return send(res, 200, { error: "notfound" }); }
-  await store.rlClear([nameKey]);
+  await clear(nameKey);
   if (s.status !== "approved") return send(res, 200, { error: s.status });
   auth.setCookie(req, res, "student", auth.sign({ r: "student", sid: s.id, iid }));
   send(res, 200, { ok: true, sid: s.id, name: s.name });
@@ -66,14 +77,14 @@ async function touchMedia(id) {
 /** 운영자(마스터가 만든 직원 계정) · 파트너 계정 · 온드미디어 계정: meta 의 staff · affiliates · media (아이디 + 비밀번호) */
 async function accountLogin(req, res, tab, id, pw) {
   const nameKey = "acc:" + koToKeys(id).toLowerCase();
-  if (await limited(req, nameKey)) return send(res, 429, { error: "locked" });
+  { const lk = await limited(req, nameKey); if (lk) return send(res, 429, { error: lk }); }
   const meta = ((await store.getDoc("meta")) || {}).v || {}, n = (v) => koToKeys(String(v || "").replace(/\s+/g, "")).toLowerCase(), want = n(id);
   const same = (x) => typeof x.pw === "string" && x.pw && eq(koToKeys(pw), koToKeys(String(x.pw).trim()));
   if (tab === "master") {
     const st = (meta.staff || []).find((x) => x && n(x.loginId) === want && same(x));
     if (st) {
       if (st.status !== "active") return send(res, 200, { error: "paused-staff" });
-      await store.rlClear([nameKey]);
+      await clear(nameKey);
       auth.setCookie(req, res, "admin", auth.sign({ r: "master", staffId: st.id }));
       return send(res, 200, { ok: true, role: "master", staffId: st.id, name: st.name || "" });
     }
@@ -81,7 +92,7 @@ async function accountLogin(req, res, tab, id, pw) {
   const pt = (meta.affiliates || []).find((x) => x && (n(x.loginId) === want || n(x.name) === want) && same(x));
   if (pt) {
     if (pt.status !== "active") return send(res, 200, { error: "paused-partner" });
-    await store.rlClear([nameKey]);
+    await clear(nameKey);
     auth.setCookie(req, res, "admin", auth.sign({ r: "partner", pid: pt.id }));
     return send(res, 200, { ok: true, role: "partner", pid: pt.id, name: pt.name || "" });
   }
@@ -89,7 +100,7 @@ async function accountLogin(req, res, tab, id, pw) {
   const md = (meta.media || []).find((x) => x && n(x.loginId) === want && MD.checkLogin(x, pw));
   if (md) {
     if (md.status !== "active") return send(res, 200, { error: "paused-media" });
-    await store.rlClear([nameKey]);
+    await clear(nameKey);
     await touchMedia(md.id).catch(() => {});
     auth.setCookie(req, res, "admin", auth.sign({ r: "media", md: md.id }));
     return send(res, 200, { ok: true, role: "media", mdid: md.id, name: md.name || md.channel || "" });
@@ -105,30 +116,31 @@ async function adminLogin(req, res, b) {
     const wantId = String(process.env.MASTER_ID || "doogobiz").trim().toLowerCase();
     if (koToKeys(id).toLowerCase() !== wantId) return accountLogin(req, res, tab, id, pw);
     const nameKey = "master";
-    if (await limited(req, nameKey)) return send(res, 429, { error: "locked" });
+    const lk = await limited(req, nameKey, false);
+    if (lk) return send(res, 429, { error: lk });
     const want = process.env.MASTER_PASSWORD;
     if (!want) return send(res, 200, { error: "master-disabled" });
-    if (!eq(koToKeys(pw), koToKeys(want))) { await fail(req, nameKey); return send(res, 200, { error: "notfound" }); }
-    await store.rlClear([nameKey]);
+    if (!eq(koToKeys(pw), koToKeys(want))) { await fail(req, nameKey, false); return send(res, 200, { error: "notfound" }); }
+    await clear(nameKey);
     auth.setCookie(req, res, "admin", auth.sign({ r: "master" }));
     return send(res, 200, { ok: true, role: "master" });
   }
   const name = norm(id);
   if (!name || !/^\d{4}$/.test(pw)) return send(res, 400, { error: "input" });
   const nameKey = "adm:" + name;
-  if (await limited(req, nameKey)) return send(res, 429, { error: "locked" });
+  { const lk = await limited(req, nameKey); if (lk) return send(res, 429, { error: lk }); }
   const all = (await store.listDocs({ prefixes: ["ins:%"] })).map((r) => r.v);
   const ins = all.find((x) => norm(x.name) === name && x.phone4 === pw);
   const hits = coachHits(all, name, pw), live = hits.filter((h) => h.c.status === "active");
   const okIns = async () => {
     if (ins.status !== "active") return send(res, 200, { error: "paused-platform" });
-    await store.rlClear([nameKey]);
+    await clear(nameKey);
     auth.setCookie(req, res, "admin", auth.sign({ r: "instructor", iid: ins.id }));
     return send(res, 200, { ok: true, role: "instructor", iid: ins.id, name: ins.name });
   };
   const okCoach = async (hit) => {
     if (hit.c.status !== "active") return send(res, 200, { error: "paused-coach" });
-    await store.rlClear([nameKey]);
+    await clear(nameKey);
     await touchCoach(hit.i.id, hit.c.id).catch(() => {});
     auth.setCookie(req, res, "admin", auth.sign({ r: "coach", iid: hit.i.id, cid: hit.c.id }));
     return send(res, 200, { ok: true, role: "coach", iid: hit.i.id, cid: hit.c.id, name: hit.c.name });
@@ -139,7 +151,7 @@ async function adminLogin(req, res, b) {
     const want = String(b.iid || "");
     if (want) { const h = live.find((x) => x.i.id === want); if (h) return okCoach(h); return send(res, 200, { error: "notfound" }); }
     if (live.length === 1) return okCoach(live[0]);
-    await store.rlClear([nameKey]);
+    await clear(nameKey);
     return send(res, 200, { choose: true, role: "coach", name: live[0].c.name, courses: await courseList(live) });
   };
   // 코치 탭은 코치를 먼저, 강사 탭은 강사를 먼저 찾는다 (탭을 잘못 골라도 들어갈 수 있게)

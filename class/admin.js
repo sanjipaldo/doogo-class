@@ -270,6 +270,7 @@
     "paused-platform": "운영이 중지된 플랫폼이에요. 마스터 관리자에게 문의해 주세요.",
     "paused-coach": "사용이 중지된 코치 계정이에요. 강사님께 문의해 주세요.",
     locked: "여러 번 틀려서 잠시 로그인이 막혔어요. 15분 뒤에 다시 시도해 주세요.",
+    "locked-day": "오늘 여러 번 틀려서 로그인이 막혔어요. 24시간 뒤에 다시 시도하거나 두고클래스 운영팀에 알려 주세요.",
     "master-disabled": "마스터 비밀번호가 아직 설정되지 않았어요. Vercel 환경변수 MASTER_PASSWORD 를 설정해 주세요.",
     "paused-staff": "사용이 중지된 운영자 계정이에요. 최고 관리자에게 문의해 주세요.",
     "paused-partner": "사용이 중지된 파트너 계정이에요. 두잉고 담당자에게 문의해 주세요.",
@@ -2873,6 +2874,18 @@
           '<p class="a-lvm-top">잘하고 있는 학생: ' + top.map((r) => esc(r.s.name) + " (" + esc(r.lv.cur.name) + " · " + r.st.pct + "%)").join(", ") + "</p></div>";
       }).join("") + "</div></section>";
   }
+  /* 처음 데이터(data.js · 공개 저장소)에 적힌 로그인 숫자를 그대로 쓰는 강사 · 코치 표시 (Next.js 전환 4단계 · 2026-11)
+   * data.js 는 누구나 받을 수 있는 공개 파일이라, 그 값 그대로면 누구나 그 강사센터에 들어올 수 있어요 → ‘수정’에서 숫자를 바꾸면 사라져요.
+   * 숫자는 화면에 보이지 않고 같은지만 봐요 (마스터 화면 · 이 브라우저 안에서만) */
+  function seedLoginWarn(x) {
+    const seed = ((window.CLASS_SEED || {}).instructors || []).find((s) => s && s.id === x.id), nm = (v) => String(v || "").replace(/\s+/g, "");
+    if (!seed) return "";
+    const insSame = !!seed.phone4 && seed.phone4 === x.phone4 && nm(seed.name) === nm(x.name);
+    const coachSame = (x.coaches || []).filter((c) => c && c.status !== "removed" && (seed.coaches || []).some((s) => s && s.phone4 && s.phone4 === c.phone4 && nm(s.name) === nm(c.name))).length;
+    if (!insSame && !coachSame) return "";
+    const what = (insSame ? "강사 로그인" : "") + (insSame && coachSame ? " · " : "") + (coachSame ? "코치 " + coachSame + "명" : "");
+    return '<span class="a-pill bad" title="처음 데이터(공개 파일 data.js)에 적힌 이름 · 숫자 그대로예요. 누구나 들어올 수 있어요 — 수정(강사) · 강사센터 › 코치 관리(코치)에서 숫자를 바꿔 주세요.">' + icon("alert", "xs") + "처음 데이터 숫자 그대로 · " + esc(what) + "</span> ";
+  }
   function insTable() {
     const list = DB.data.instructors;
     return '<section class="a-card"><div class="a-card-head"><h2>강사 플랫폼</h2><span class="a-muted">' + list.length + "개</span></div>" +
@@ -2880,7 +2893,7 @@
         list.map((x) => {
           const c = DB.content(x.id), cos = DB.cohortsOf(x.id), cur = DB.currentCohort(x.id);
           const ss = DB.studentsOf(x.id), paid = DB.bills(x.id).filter((b) => !b.canceledAt && b.paidAt);
-          return "<tr><td><b>" + esc(x.displayName) + '</b><small class="a-memo">' + fmtMD(x.createdAt || todayStr()) + " 개설</small></td><td>" + esc(x.name) + ' <span class="a-muted num">/ ' + (staffCan("master/instructors") ? '<button type="button" class="a-pw-peek" data-action="pw-peek" data-pw="' + esc(x.phone4) + '" title="눌러서 보기">••••</button>' : "••••") + "</span></td><td>" + esc(c ? c.brand.courseTitle : "-") + "</td>" +
+          return "<tr><td><b>" + esc(x.displayName) + '</b><small class="a-memo">' + fmtMD(x.createdAt || todayStr()) + " 개설</small></td><td>" + seedLoginWarn(x) + esc(x.name) + ' <span class="a-muted num">/ ' + (staffCan("master/instructors") ? '<button type="button" class="a-pw-peek" data-action="pw-peek" data-pw="' + esc(x.phone4) + '" title="눌러서 보기">••••</button>' : "••••") + "</span></td><td>" + esc(c ? c.brand.courseTitle : "-") + "</td>" +
             "<td>" + (() => { const o = DB.tracksOf(x), rq = x.trackReq || {}; return '<span class="a-ins-trk">' + (o.live ? pill("두잉고 LIVE", "ok") : '<span class="a-pill mute">' + icon("lock", "xs") + "두잉고" + (rq.live ? " · 신청 중" : "") + "</span>") + (o.vod ? pill("DOOGO CLASS", "dark") : '<span class="a-pill mute">' + icon("lock", "xs") + "DOOGO CLASS" + (rq.vod ? " · 신청 중" : "") + "</span>") + "</span>"; })() + "</td>" +
             "<td>" + cos.length + "개" + (cur ? ' <small class="a-memo">' + esc(cur.name) + " " + DB.STATUS_LABEL[DB.cohortStatus(cur)] + "</small>" : "") + '</td><td class="num">' + ss.filter((s) => s.status === "approved").length + "명" + (ss.filter((s) => s.status === "pending").length ? ' <small class="a-memo">대기 ' + ss.filter((s) => s.status === "pending").length + "</small>" : "") + "</td>" +
             '<td class="num">' + (!staffCan("master/billing") ? '<span class="a-muted">-</span>' : paid.length ? won(sumMoney(paid, "supply")) + ' <small class="a-memo">' + paid.length + "개 기수</small>" : '<span class="a-muted">-</span>') + "</td>" +

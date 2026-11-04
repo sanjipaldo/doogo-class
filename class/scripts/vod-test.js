@@ -1748,6 +1748,62 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "배포(app/route.js 스토어 홈 · app/doinggo · 약관 3개 · app/sitemap.xml) · 함수에 약관 글 · 고정 주소 목록 · public/ 에는 사이트맵 복사 안 함 · 로컬 개발 서버도 같은 규칙");
   }
 
+  {
+    console.log("30) 로그인 보안: 공개 문서에 강사 로그인 이름 없음 · 하루 기준 잠금 · 처음 데이터 숫자 표시 (Next.js 전환 4단계)");
+    ["dc_a", "dc_s", "dc_v"].forEach((k) => delete jar[k]);
+    const st30 = require(path.join(TMP, "class/api/_lib/store.js")), SD30 = require(path.join(TMP, "class/api/_lib/seed.js")).seedDocs();
+    const seedMoon = SD30["ins:moon"], norm30 = require(path.join(TMP, "class/api/_lib/auth.js")).norm;
+    let r30 = await call("bootstrap", { method: "GET" });
+    const pubMoon = ((r30.json.docs || []).find((d) => d[0] === "ins:moon") || [])[1] || {};
+    const pubAll = (r30.json.docs || []).filter((d) => /^ins:/.test(d[0])).map((d) => d[1] || {});
+    ok(pubMoon.id === "moon" && pubMoon.name === pubMoon.displayName && pubMoon.name !== seedMoon.name && pubAll.length >= 2 && pubAll.every((x) => x.name === (x.displayName || "") && !("phone4" in x) && !("coaches" in x)),
+      "방문자 공개 문서: 강사 로그인 이름 대신 수강생에게 보이는 이름 · 뒷자리 · 코치 목록 없음 (모든 강사)");
+    jar.dc_a = auth.sign({ r: "instructor", iid: "moon" });
+    r30 = await call("bootstrap", { method: "GET" });
+    const ownMoon = ((r30.json.docs || []).find((d) => d[0] === "ins:moon") || [])[1] || {};
+    delete jar.dc_a;
+    ok(ownMoon.name === seedMoon.name && ownMoon.phone4 === seedMoon.phone4, "그 강사 본인(강사센터)은 예전처럼 로그인 이름 · 뒷자리를 그대로 봐요");
+    // 하루 기준 잠금: 15분 잠금(8번)을 풀어 가며 · 다른 주소(IP)에서 30번 틀리면 맞는 숫자도 막혀요
+    const nk = "adm:" + norm30(seedMoon.name), wrong = seedMoon.phone4 === "0000" ? "1111" : "0000", ipH = (i) => ({ "x-forwarded-for": "10.30.0." + i });
+    await st30.rlClear([nk, "day:" + nk]);
+    for (let i = 0; i < 30; i++) { if (i % 7 === 0) await st30.rlClear([nk]); await call("auth", { body: { action: "admin", tab: "instructor", id: seedMoon.name, pw: wrong }, headers: ipH(i) }); }
+    await st30.rlClear([nk]);
+    const rDay = await call("auth", { body: { action: "admin", tab: "instructor", id: seedMoon.name, pw: seedMoon.phone4 }, headers: ipH(99) });
+    ok(rDay.status === 429 && rDay.json.error === "locked-day" && !jar.dc_a, "하루 30번 틀리면 15분 잠금이 풀려도 맞는 숫자까지 막아요 (locked-day)", rDay.json);
+    const r29 = await (async () => { await st30.rlClear([nk, "day:" + nk]); for (let i = 0; i < 29; i++) { if (i % 7 === 0) await st30.rlClear([nk]); await call("auth", { body: { action: "admin", tab: "instructor", id: seedMoon.name, pw: wrong }, headers: ipH(100 + i) }); } await st30.rlClear([nk]); return call("auth", { body: { action: "admin", tab: "instructor", id: seedMoon.name, pw: seedMoon.phone4 }, headers: ipH(200) }); })();
+    const dayLeft = (await st30.exec("SELECT n FROM rl WHERE k = ?", ["day:" + nk])).rows.length;
+    delete jar.dc_a;
+    ok(r29.json.ok && r29.json.role === "instructor" && dayLeft === 0, "29번까지는 맞는 숫자로 들어가고 · 들어가면 하루 기록도 지워요", { r: r29.json, dayLeft });
+    // 15분 잠금 메시지는 예전 그대로 · 마스터는 하루 기준에서 빼요
+    process.env.MASTER_PASSWORD = "Test-master9@";
+    await st30.rlClear(["master", "day:master"]);
+    for (let i = 0; i < 30; i++) { if (i % 7 === 0) await st30.rlClear(["master"]); await call("auth", { body: { action: "admin", tab: "master", id: "doogobiz", pw: "wrong-" + i }, headers: ipH(150 + i % 50) }); }
+    const mDay = (await st30.exec("SELECT n FROM rl WHERE k = ?", ["day:master"])).rows.length;
+    await st30.rlClear(["master"]);
+    const rM = await call("auth", { body: { action: "admin", tab: "master", id: "doogobiz", pw: process.env.MASTER_PASSWORD }, headers: ipH(250) });
+    delete jar.dc_a; delete process.env.MASTER_PASSWORD;
+    for (let i = 0; i < 8; i++) await call("auth", { body: { action: "admin", tab: "instructor", id: seedMoon.name, pw: wrong }, headers: ipH(240) });
+    const r15 = await call("auth", { body: { action: "admin", tab: "instructor", id: seedMoon.name, pw: seedMoon.phone4 }, headers: ipH(241) });
+    await st30.rlClear([nk, "day:" + nk]);
+    ok(mDay === 0 && rM.json.ok && rM.json.role === "master" && r15.status === 429 && r15.json.error === "locked", "마스터는 하루 기준 잠금 없음(주인이 못 들어오는 일 막기) · 15분 잠금(8번)은 예전 그대로", { mDay, rM: rM.json, r15: r15.json });
+    // 두잉고 수강생(이름 + 뒷자리)도 같은 하루 기준
+    const stu30 = Object.keys(SD30).filter((k) => k.indexOf("stu:") === 0).map((k) => SD30[k]).find((x) => x && x.instructorId && x.status === "approved");
+    const sk = "stu:" + stu30.instructorId + ":" + norm30(stu30.name), sw = stu30.phone4 === "0000" ? "1111" : "0000";
+    await st30.rlClear([sk, "day:" + sk]);
+    for (let i = 0; i < 30; i++) { if (i % 7 === 0) await st30.rlClear([sk]); await call("auth", { body: { action: "student", iid: stu30.instructorId, name: stu30.name, phone4: sw }, headers: ipH(i) }); }
+    await st30.rlClear([sk]);
+    const rS = await call("auth", { body: { action: "student", iid: stu30.instructorId, name: stu30.name, phone4: stu30.phone4 }, headers: ipH(77) });
+    await st30.rlClear([sk, "day:" + sk]); delete jar.dc_s;
+    ok(rS.status === 429 && rS.json.error === "locked-day", "두잉고 수강생 로그인도 하루 30번까지", rS.json);
+    // 화면: 하루 잠금 안내 문구 · 마스터 강사 목록의 ‘처음 데이터 숫자 그대로’ 표시
+    const app30 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), adm30 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
+    const fnSrc = (adm30.match(/  function seedLoginWarn\(x\) \{[\s\S]*?\n  \}\n/) || [])[0] || "";
+    const warn = new Function("window", "esc", "icon", fnSrc + "\nreturn seedLoginWarn;")({ CLASS_SEED: { instructors: [{ id: "a", name: "가 나", phone4: "1234", coaches: [{ name: "코치", phone4: "5678" }] }] } }, (x) => String(x), () => "");
+    const w1 = warn({ id: "a", name: "가나", phone4: "1234", coaches: [{ name: "코치", phone4: "5678", status: "active" }] }), w2 = warn({ id: "a", name: "가나", phone4: "9999", coaches: [{ name: "코치", phone4: "0001" }] }), w3 = warn({ id: "b", name: "가나", phone4: "1234" }), w4 = warn({ id: "a", name: "가나", phone4: "9999", coaches: [{ name: "코 치", phone4: "5678" }] });
+    ok(/"locked-day": "오늘 여러 번 틀려서/.test(app30) && /"locked-day": "오늘 여러 번 틀려서/.test(adm30) && /seedLoginWarn\(x\) \+ esc\(x\.name\)/.test(adm30) && /처음 데이터 숫자 그대로 · 강사 로그인 · 코치 1명/.test(w1) && w2 === "" && w3 === "" && /코치 1명/.test(w4) && !/1234|5678/.test(w1 + w4),
+      "화면: 하루 잠금 안내(수강생 · 강사센터) · 마스터 강사 목록에 처음 데이터 숫자 그대로인 강사 · 코치 표시 (숫자는 안 보여요)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

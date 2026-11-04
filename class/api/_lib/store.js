@@ -141,11 +141,12 @@ async function rlCheck(keys, limit) {
   const now = Date.now();
   return res.rows.some((r) => r.until > now && r.n >= limit);
 }
-async function rlFail(keys) {
-  const now = Date.now();
+/** 실패 한 번 기록 — windowMs 를 주면 그 길이로 세요 (기본 15분 · 하루 기준 잠금은 24시간: api/auth.js) */
+async function rlFail(keys, windowMs) {
+  const now = Date.now(), W = Number(windowMs) > 0 ? Number(windowMs) : RL_WINDOW;
   await batch(keys.map((k) => ({
     sql: "INSERT INTO rl (k, n, until) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = CASE WHEN until < ? THEN 1 ELSE n + 1 END, until = CASE WHEN until < ? THEN ? ELSE until END",
-    args: [k, now + RL_WINDOW, now, now, now + RL_WINDOW]
+    args: [k, now + W, now, now, now + W]
   })));
 }
 async function rlClear(keys) { await batch(keys.map((k) => ({ sql: "DELETE FROM rl WHERE k = ?", args: [k] }))); }
