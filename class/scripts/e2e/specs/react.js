@@ -6,7 +6,9 @@ const F = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 화면 주소 (shared/screens.js 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 const SHAPES = ["/vod/my", "/vod/my/classes", "/vod/my/classes?st=done", "/vod/my/free", "/vod/my/vod", "/vod/my/addons", "/vod/my/ebooks", "/vod/my/live", "/vod/my/alarm", "/vod/my/likes", "/vod/my/likes?t=topics",
-  "/vod/my/pending", "/vod/my/orders", "/vod/my/orders?t=refund", "/vod/my/ship", "/vod/my/ship?st=claim", "/vod/my/coupons", "/vod/my/coupons?st=used", "/vod/my/points", "/vod/my/reviews", "/vod/my/posts", "/vod/my/badges", "/vod/my/account", "/vod/my/devices", "/vod/my/help", "/vod/my/help?t=list"];
+  "/vod/my/pending", "/vod/my/orders", "/vod/my/orders?t=refund", "/vod/my/ship", "/vod/my/ship?st=claim", "/vod/my/coupons", "/vod/my/coupons?st=used", "/vod/my/points", "/vod/my/reviews", "/vod/my/posts", "/vod/my/badges", "/vod/my/account", "/vod/my/devices", "/vod/my/help", "/vod/my/help?t=list",
+  // 주문 · 결제 (수강권 · 수강권 + 코칭권 · 종이책 · 무료 신청 · 1:1 코칭권 · TEA TIME)
+  "/vod/checkout/v8", "/vod/checkout/v8?plan=180&coach=1", "/vod/checkout/b1", "/vod/checkout/fl-choi", "/vod/checkout/v5?item=coach", "/vod/checkout/v5?item=tea"];
 module.exports = {
   title: "React 화면 · 스위치 · 예전 화면과 같은 모양 · 오가기",
   async run({ base, info, browser, run, L }) {
@@ -92,8 +94,24 @@ module.exports = {
     const mkOrder = (i) => page.evaluate((k) => { const X = window.VOD, mm = X.me(), ps = X.listed().filter((x) => (X.typeOf(x) === "vod" || X.typeOf(x) === "ebook") && x.status === "on" && X.priceOf(x) > 0 && !X.owns(mm.id, x.id)), p = ps[k]; if (!p) return { none: true };
       const pl = X.defPlan ? X.defPlan(p) : null;
       return fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid: p.id, kind: "course", plan: pl && pl.d, method: "bank", depositor: "체험회원" }) }).then((r) => r.json()).then((j) => ({ ok: !!j.ok, no: j.no, msg: j.message })); }, i);
-    // (시험 DB 에서 체험 회원이 아직 안 산 유료 클래스가 하나라서, 먼저 주문 → 취소한 뒤 같은 클래스를 다시 주문해 입금 확인해요)
-    const o1 = await mkOrder(0);
+    // (시험 DB 에서 체험 회원이 아직 안 산 유료 클래스가 하나라서, 먼저 결제 화면(React)으로 주문 → 취소한 뒤 같은 클래스를 다시 주문해 입금 확인해요)
+    // 결제 화면(React): 수강권 바꾸면 금액이 다시 계산되고 · 전체 동의 · 무통장 → 주문 확인(React)으로
+    await L.open(page, base, "/vod/checkout/v8");
+    const co0 = { react: await isReact(page), tot: await L.text(page, "[data-co-tot]") };
+    await page.check(".vd-co-plans input[name=plan][value='180']", { force: true }).catch(() => {}); await page.waitForTimeout(250);
+    const tot1 = await L.text(page, "[data-co-tot]"), btn1 = await L.text(page, "button[data-co-btn]");
+    await page.check("input[name=method][value=bank]");
+    await page.fill("input[name=depositor]", "체험회원");
+    await page.check("input[data-agree-all]");
+    const agreed = await page.evaluate(() => Array.from(document.querySelectorAll("[data-agree-req]")).every((x) => x.checked));
+    await page.click("button[data-co-btn]");
+    await page.waitForFunction(() => /^\/vod\/order\//.test(location.pathname), null, { timeout: 15000 }).catch(() => {});
+    await L.ready(page); await page.waitForTimeout(300);
+    const coNo = await page.evaluate(() => (location.pathname.match(/^\/vod\/order\/([^/?]+)/) || [])[1] || "");
+    const coDone = { react: await isReact(page), h1: await L.text(page, ".vd-done h1"), bank: !!(await page.$(".vd-done-bank")) };
+    await run.check(co0.react && co0.tot && tot1 && tot1 !== co0.tot && btn1.indexOf(tot1) === 0 && agreed && /^DC\d{12}$/.test(coNo) && coDone.react && /접수/.test(coDone.h1 || "") && coDone.bank,
+      "결제 화면(React): 6개월 수강권으로 바꾸면 금액 · 버튼이 다시 계산 · 전체 동의 · 무통장 주문 → 주문 확인(React · 입금 계좌)", { co0, tot1, btn1, agreed, coNo, coDone }, page);
+    const o1 = { ok: !!coNo, no: coNo };
     // 결제 대기: React 화면에서 주문 취소 (예전 처리 함수 ordCancelDo → api/vod-pay cancelPending)
     await L.open(page, base, "/vod/my/pending");
     const pend0 = await page.$("[data-v='ord-cancel'][data-no='" + o1.no + "']");

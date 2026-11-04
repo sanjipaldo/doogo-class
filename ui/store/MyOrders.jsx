@@ -2,7 +2,7 @@
 /* 마이페이지 › 결제 대기 · 주문 · 결제 내역 · 종이책 · 배송 조회 — 예전 vod.js pageMy 의 pending · orders · ship 을 React 로 (Next.js 전환 4-4)
  * 돈이 걸린 버튼(주문 취소 · 바로 취소 · 환불 요청 · 요청 취소 · 영수증)은 예전과 같은 처리 함수(window.VOD.ordCancelDo · rfCancel · doRfReq …)를 불러요.
  * 영수증 · 환불 규정 · 배송지 칸 · 환불 계좌 칸 · 반품 안내 상자는 아직 예전 HTML 그대로 (Raw). */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "../lib/Icon.jsx";
 import Raw, { RawOne } from "../lib/Raw.jsx";
 import Modal from "../lib/Modal.jsx";
@@ -73,12 +73,14 @@ function RfReqModal({ o, onClose }) {
   );
 }
 function ShipEditModal({ o, onClose }) {
-  const X = VOD();
+  const X = VOD(), ref = useRef(null);
+  // 배송 요청사항 ‘직접 적기’ 등 예전 HTML 칸의 change 는 브라우저에서 직접 들어요 (React onChange 는 React 가 그린 칸에만 와요)
+  useEffect(() => { const f = ref.current; if (!f) return undefined; const fn = (e) => X.formChange(e); f.addEventListener("change", fn); return () => f.removeEventListener("change", fn); }, [X]);
   // 배송지 칸은 예전 HTML(주소 찾기 버튼 · 요청사항 고르기 포함) — 그 안의 버튼 · 바꾸기는 예전 처리 함수로
   const click = (e) => { const b = e.target.closest && e.target.closest("[data-v='addr-find']"); if (b) { e.preventDefault(); X.addrFind(b); } };
   return (
     <Modal title="배송지 바꾸기" cls="vd-modal-sm" onClose={onClose}>
-      <form className="vd-modal-b vd-shipedit" data-vd-shipedit={o.no} onSubmit={(e) => { e.preventDefault(); X.doShipEdit(e.currentTarget); }} onClick={click} onChange={(e) => X.formChange(e.nativeEvent)}><p className="vd-muted">책을 보내기 전까지 바꿀 수 있어요.</p><RawOne html={X.shipFields(o.ship, "e")} /><label className="vd-co-keep"><input type="checkbox" name="esave" defaultChecked /><span>다음 주문에도 이 배송지 쓰기</span></label><p className="vd-err" data-se-err="" role="alert" /><button type="submit" className="vd-btn vd-btn-p vd-btn-xl">배송지 저장</button></form>
+      <form ref={ref} className="vd-modal-b vd-shipedit" data-vd-shipedit={o.no} onSubmit={(e) => { e.preventDefault(); X.doShipEdit(e.currentTarget); }} onClick={click}><p className="vd-muted">책을 보내기 전까지 바꿀 수 있어요.</p><RawOne html={X.shipFields(o.ship, "e")} /><label className="vd-co-keep"><input type="checkbox" name="esave" defaultChecked /><span>다음 주문에도 이 배송지 쓰기</span></label><p className="vd-err" data-se-err="" role="alert" /><button type="submit" className="vd-btn vd-btn-p vd-btn-xl">배송지 저장</button></form>
     </Modal>
   );
 }

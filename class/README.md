@@ -298,6 +298,7 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 - **아직 옮기지 않은 작은 조각:** 클래스 썸네일 그림(thumbArt)은 예전 코드 그대로 넣어요(`ui/lib/Raw.jsx` — 옮기면 지워요).
 - **버튼 · 저장:** 쿠폰 등록 · 1:1 문의 · 회원 정보 저장 · 카카오 연결처럼 서버와 주고받는 일은 예전 처리 함수(`VOD.doCoupon` · `doInquiry` · `doAcct` · `kakaoLink` …)를 그대로 불러요. 돈이 걸린 주문 처리(입금 대기 주문 취소 `ordCancelDo` · 0원 신청 취소 `ordCancel0Do` · 환불 요청 `doRfReq` · 요청 취소 `rfUndoDo` · 바로 취소 `rfNowInfo` + `rfCancel` · 배송지 바꾸기 `doShipEdit`)는 예전 화면의 클릭 처리에서 함수로 빼서 예전 화면 · React 화면이 같은 함수를 써요. 폼 안 바꾸기(배송 요청사항 · 결제수단 · 동의)도 `VOD.formChange` 하나. 그 함수가 끝에 부르는 ‘다시 그리기’(`render`) · ‘팝업 닫기’(`closeModal`)는 React 화면 틀에서 React 로 넘어가요.
 - **처음 그리기 전에:** 스토어 영역은 결제 · 로그인 설정(`/api/vod-config`)을 받은 뒤 그려요(`VOD.reactBoot` = 예전 `VodApp.mount` 와 같은 일). 받기 전에 그리면 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 — 4-4 시험에서 찾았고, 11/4 마스터 환불 버그와 같은 종류예요.
+- **예전 HTML 칸의 바꾸기:** React 의 onChange 는 React 가 그린 칸에만 와서, 예전 HTML 로 넣은 칸(결제 화면의 수강권 줄 · 무통장 상자 · 배송지 칸)은 폼에 브라우저 change 를 직접 달아 `VOD.formChange` 로 보내요 — 4-4 시험에서 찾았어요(수강권을 바꿔도 금액이 그대로였어요).
 - **새로 불러도 알림 그대로:** React 화면 ↔ 예전 화면 · 영역을 옮기려고 새로 부를 때 떠 있던 알림(로그아웃했어요 · 오래 사용하지 않아 로그아웃 …)을 새 페이지에서 이어서 보여 줘요(`main.js` `dc:toasts`).
 - **켜고 끄기:**
   - 모두: Vercel 환경 변수 `DC_NEXT=all` · 몇 개만: `DC_NEXT=vod-my` (쉼표) · 하나만 끄기: `DC_NEXT_OFF=vod-my` — 바꾸면 다시 배포
@@ -310,6 +311,7 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 | `vod-my` | `/vod/my` · `/vod/my/<메뉴>` | 두고클래스 마이페이지 메뉴 전부 — 홈 · 내 강의실 · 무료강의 · VOD 강의 · 1:1 코칭 · TEA TIME · 전자책 · LIVE · 오프라인 · 오픈 알림 · 찜 · 관심 부업 · 결제 대기 · 주문 · 결제 내역(영수증 · 환불 규정 · 바로 취소 · 환불 요청 · 요청 취소) · 종이책 배송 조회(배송지 바꾸기 · 취소 · 반품 · 교환) · 쿠폰 · 포인트 · 내 수강 후기 · 다짐 한마디 · 내 배지 · 회원 정보 수정 · 기기 관리 · 고객센터 · 1:1 문의 (+ 머리띠 · 전체 카테고리 · 내 계정 메뉴 · 전체 메뉴 · 바닥 · 아래 메뉴) | 미리보기 · 운영은 꺼짐 |
 | `vod-auth` | `/vod/login` · `/vod/signup` · `/vod/dg` | 두고클래스 로그인 · 회원가입(탭 [두잉고 · 두고클래스] · 두잉고 강사 고르기 · 카카오 · 비밀번호 찾기 · 자주 묻는 질문 · 봇 막기) · 두잉고 VOD 강의실 고르기 | 미리보기 · 운영은 꺼짐 |
 | `vod-order` | `/vod/order/<번호>` | 주문 확인 (결제 · 신청 · 입금 대기 완료 · 휴대폰 결제에서 돌아오기) | 미리보기 · 운영은 꺼짐 |
+| `vod-checkout` | `/vod/checkout/<클래스>` | 주문 · 결제 (수강권 · 코칭권 · TEA TIME · 종이책 · 무료 신청 — 금액 다시 계산 · 결제는 예전 함수 `coPaint` · `doPay` 그대로) | 미리보기 · 운영은 꺼짐 |
 
 ## 결제 시험 환경 (Next.js 전환 4단계 · 4-2 · 2026-11-04)
 

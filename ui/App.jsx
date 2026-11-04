@@ -7,9 +7,10 @@ import { useEffect, useRef, useState } from "react";
 import MyPage from "./store/MyPage.jsx";
 import AuthPage from "./store/AuthPage.jsx";
 import OrderPage from "./store/OrderPage.jsx";
+import CheckoutPage from "./store/CheckoutPage.jsx";
 
 // 화면 키 → 화면 (키 · 주소 규칙은 class/shared/screens.js)
-const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage };
+const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage };
 
 const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
 function Boot() {

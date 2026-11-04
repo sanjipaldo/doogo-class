@@ -18,7 +18,9 @@
     // 두고클래스 로그인 · 회원가입 · 두잉고 VOD 강의실 고르기
     ["vod-auth", /^\/vod\/(login|signup|dg)\/?$/, "두고클래스 로그인 · 회원가입 · 두잉고 VOD 강의실 고르기"],
     // 주문 확인 (결제 · 신청 · 입금 대기 완료)
-    ["vod-order", /^\/vod\/order\/[^/]+\/?$/, "두고클래스 주문 확인"]
+    ["vod-order", /^\/vod\/order\/[^/]+\/?$/, "두고클래스 주문 확인"],
+    // 주문 · 결제 (수강권 · 1:1 코칭권 · TEA TIME · 종이책 · 무료 신청)
+    ["vod-checkout", /^\/vod\/checkout\/[^/]+\/?$/, "두고클래스 주문 · 결제"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);
