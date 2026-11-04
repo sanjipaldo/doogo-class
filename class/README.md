@@ -34,7 +34,7 @@ Vercel 프로젝트 **doogo-class**는 GitHub 저장소 `sanjipaldo/doogo-class`
 
 | 파일 (저장소 맨 위) | 하는 일 |
 |---|---|
-| `vercel.json` | 빌드 `node class/scripts/db-build.js && node class/scripts/site.js`, 화면 파일은 `class/.site`, 함수 설정. `ignoreCommand`: `class/` 폴더가 없는 브랜치(다른 작업)는 빌드하지 않음(Canceled로 표시, 오류 아님) · `class/` · `api/`가 안 바뀐 커밋도 건너뜀 |
+| `vercel.json` | 빌드 `node class/scripts/db-build.js && node class/scripts/site.js`, 화면 파일은 `class/.site`, 함수 설정. `ignoreCommand` → `class/scripts/ignore-build.sh`: `class/` 폴더가 없는 브랜치(다른 작업)는 빌드하지 않음(Canceled로 표시, 오류 아님) · 화면 · 서버 파일이 안 바뀐 커밋도 건너뜀 · 비교할 직전 배포 커밋을 Vercel 이 받아 온 기록(얕은 복제)에서 못 찾으면 그냥 빌드 (커밋이 많이 쌓인 운영 배포가 ‘bad object’ 로 실패하던 것 — 11/4) |
 | `api/*.js` | Vercel 함수 입구. 실제 코드 `class/api/*.js`를 그대로 불러옴 |
 | `.vercelignore` | 배포에 필요 없는 폴더(`dist/` · `server/` 등)와 `.env*` 제외 |
 
