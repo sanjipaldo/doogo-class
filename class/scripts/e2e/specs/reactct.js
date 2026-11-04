@@ -9,12 +9,17 @@ const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
   "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
   "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand",
-  "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching"];
+  "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching", "/center/teatime", "/center/ops-notices"];
 async function shapes(page, base, L, list) {
   const bad = []; let lines = 0;
   for (const u of list) {
     const sh = {};
-    for (const mode of ["off", "all"]) { await L.reactCookie(page, base, mode); await L.open(page, base, u); await page.waitForTimeout(400); sh[mode] = { shape: await L.domShape(page), react: await isReact(page), path: new URL(page.url()).pathname }; }
+    for (const mode of ["off", "all"]) {
+      await L.reactCookie(page, base, mode);
+      // 운영팀 공지는 열면 읽음이 돼요 — 두 번 다 같은 처음(안 읽음)에서
+      if (u === "/center/ops-notices") { await L.open(page, base, "/center"); await page.evaluate(() => { const A = window.ADM, i = A.INS(); if (i) { delete i[A.annSeenKey()]; window.DB.save(); } }); await L.flushed(page); }
+      await L.open(page, base, u); await page.waitForTimeout(400); sh[mode] = { shape: await L.domShape(page), react: await isReact(page), path: new URL(page.url()).pathname };
+    }
     const d = L.shapeDiff(sh.off.shape, sh.all.shape); lines += sh.all.shape.split("\n").length;
     if (sh.off.react || !sh.all.react || d || sh.off.path !== sh.all.path) bad.push({ u, off: sh.off.react, all: sh.all.react, path: [sh.off.path, sh.all.path], d });
   }

@@ -3,6 +3,7 @@
  * 예전 admin.js pageInsVodCal · pageInsVodSettle · pageCoaching 을 React 로 (Next.js 전환 6단계)
  *  · 달 옮기기 · 날짜 고르기 · 명세서 · 세금계산서 · 링크 복사 · 정산 정보 저장(폼 vs-prof-form) · 코칭 답변(폼 .a-q-form)은 예전 admin.js 이벤트가 그대로 받아요
  *  · 정산 명세 카드 · 비율 카드 · 지급 일정 같은 큰 조각은 예전 HTML 그대로 (Isl) */
+import { useEffect, useState } from "react";
 import Icon from "../lib/Icon.jsx";
 import { ADM, DBX, Btn, Head, Kpi, Empty, Pill, Isl, fmtMD, fmtStamp } from "./bits.jsx";
 
@@ -120,5 +121,36 @@ export function Coaching({ n }) {
           <form key={x.q.id + ":" + n} className="a-q-form" data-sid={x.s.id} data-qid={x.q.id}><textarea className="a-input" name="answer" rows="4" placeholder="예: 샘플 요청 메일에 단가를 같이 물어봐도 괜찮아요. ‘검토용’이라고 밝혀 두면 답장이 더 빨라요." aria-label="답변" defaultValue={x.q.answer || ""} /><button className="a-btn a-btn-primary a-btn-sm" type="submit">{x.q.answer ? "답변 수정" : "답변 등록"}</button></form></article>); })}</div>
         : <Empty ic="message">{f === "open" ? "답변을 기다리는 코칭 질문이 없어요." : "코칭 질문이 없어요."}</Empty>}</section>
     <p className="a-hint"><Icon n="coins" c="xs" />{(A.can("vod") ? " 코칭권 매출은 " + (A.isCoach() ? "강사님" : "내") + " 코칭권 정산 비율(" + X.addonShare(iid) + "%)로 정산돼요." : "") + " 사용 기간이 끝난 코칭권의 남은 횟수는 사라져요."}</p>
+  </>;
+}
+
+/** TEA TIME 신청 #/center/teatime (예전 pageTeaTime · 신청 카드 teaItem 은 예전 HTML — 일정 확정 폼 · 취소 · 진행 완료는 예전 이벤트가 받아요) */
+export function TeaTime() {
+  const A = ADM(), DB = DBX(), won = A.won, iid = A.IID(), X = A.VX(), all = X.teasOf(null, iid), f = A.ui.teaF || "req", st = (o) => (o.status === "pending" ? "pend" : (o.tea || {}).st || "req");
+  const F = [["req", "확정 대기"], ["ok", "일정 확정"], ["done", "진행 완료"], ["all", "전체"]], cnt = (k) => all.filter((o) => k === "all" || st(o) === k).length;
+  const list = all.filter((o) => f === "all" || st(o) === f).sort((a, b) => (f === "ok" ? String(a.tea.when).localeCompare(String(b.tea.when)) : b.at - a.at));
+  const ym = DB.date.todayStr().slice(0, 7), mon = all.filter((o) => o.status === "paid" && o.paidAt && A.vdYM(o.paidAt) === ym), next = all.filter((o) => st(o) === "ok" && o.tea.when).sort((a, b) => String(a.tea.when).localeCompare(String(b.tea.when)))[0];
+  const cp = A.VD().products.find((p) => p.iid === iid && X.teaOf(p)), t = cp ? X.teaOf(cp) : null;
+  return <>
+    <Head title="TEA TIME 신청" sub="VOD 수강생이 DOOGO CLASS에서 결제하고 신청한 1:1 만남이에요. 희망 날짜를 보고 일정을 확정하면 수강생 마이페이지와 두잉고 화면에 바로 보여요." right={<Store />} />
+    <div className="a-kpis"><Kpi label="확정 대기" value={cnt("req") + "건"} sub="희망 날짜를 보고 확정해 주세요" href="#/center/teatime" tone={cnt("req") ? "warn" : ""} />
+      <Kpi label="다가오는 TEA TIME" value={next ? X.teaWhen(next.tea) : "없음"} sub={next ? ((A.vdMember(next.mid) || {}).name || "") + (next.tea.where ? " · " + next.tea.where : "") : "확정된 일정이 없어요"} href="#/center/teatime" />
+      {A.can("vod") ? <Kpi label="이번 달 TEA TIME 매출" value={won(A.vdSum(mon))} sub={mon.length + "건 · 정산 " + won(A.vdSum(mon, A.vdInsAmt))} href={A.can("vod-settle") ? "#/center/vod-settle" : "#/center/vod"} tone={mon.length ? "ok" : ""} /> : null}
+      <Kpi label="TEA TIME 구성" value={t ? t.min + "분 · " + won(t.price) : "판매 안 함"} sub={t ? X.TEA_MODE[t.mode] : "판매하려면 마스터에게 요청해 주세요"} href="#/center/teatime" /></div>
+    <div className="a-tabs">{F.map((x) => <button key={x[0]} type="button" className={"a-tab" + (f === x[0] ? " on" : "")} data-action="tea-f" data-k={x[0]}>{x[1]} <b>{cnt(x[0])}</b></button>)}</div>
+    <section className="a-card">{list.length ? <div className="a-stack">{list.map((o) => <Isl key={o.id} html={A.teaItem(o)} />)}</div> : <Empty ic="calendar">{f === "req" ? "확정을 기다리는 TEA TIME이 없어요." : "이 조건의 TEA TIME이 없어요."}</Empty>}</section>
+    <p className="a-hint"><Icon n="shieldCheck" c="xs" /> 확정 전 · 확정 3일 전까지 취소하면 전액 환불돼요. 강사님 사정으로 취소하면 마스터가 전액 환불해 드려요. 연락처는 진행 안내에 필요한 뒷자리만 보여요.</p>
+  </>;
+}
+
+/** 운영팀 공지 #/center/ops-notices (예전 pageOpsNotices) — 열면 읽음으로 (왼쪽 메뉴 숫자는 React 가 다시 그려서 빼요) */
+export function OpsNotices() {
+  const A = ADM(), DB = DBX(), iid = A.IID(), ins = A.INS(), list = A.annFor(iid), [seen] = useState(() => (ins && ins[A.annSeenKey()]) || "");
+  useEffect(() => { if (ins && list.length && list.some((a) => a.date > seen)) { ins[A.annSeenKey()] = DB.date.todayStr(); DB.save(); window.ReactApp.redraw(); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return <>
+    <Head title="운영팀 공지" sub="두잉고 운영팀이 보내는 기능 업데이트 · 점검 · 운영 정책 소식이에요. 강사님에게만 보낸 공지도 여기에 모여요." />
+    <section className="a-card">{list.length ? <div className="a-ann-all">{list.map((a, i) => (
+      <details key={i} open={a.date > seen || a.pinned || undefined}><summary>{a.pinned ? <><Pill cls="dark">고정</Pill> </> : null}{a.to ? <><Pill cls="info">나에게만</Pill> </> : null}<b>{a.title}</b><small>{DB.date.fmtFull(a.date)}</small>{a.date > seen ? <> <em className="a-new">NEW</em></> : null}</summary><Isl html={'<div class="a-ann-b">' + DB.rich(a.body) + "</div>"} /></details>
+    ))}</div> : <Empty ic="megaphone">아직 받은 공지가 없어요.</Empty>}</section>
   </>;
 }

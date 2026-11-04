@@ -15,7 +15,7 @@ import Billing from "./Billing.jsx";
 import { Curriculum, Missions, Schedule, Notices, Faq, Guide, Docs, Channels } from "./Content.jsx";
 import Brand from "./Brand.jsx";
 import { VodStudents, VodLink, InsVod, InsVodLive } from "./VodPages.jsx";
-import { InsVodCal, InsVodSettle, Coaching } from "./VodPages2.jsx";
+import { InsVodCal, InsVodSettle, Coaching, TeaTime, OpsNotices } from "./VodPages2.jsx";
 import { Coaches, Partners, Library, Motivation, Replays, Showcase, Glossary, NotePrompts } from "./Content2.jsx";
 import { ADM, Isl } from "./bits.jsx";
 
@@ -23,7 +23,7 @@ import { ADM, Isl } from "./bits.jsx";
 const PAGES = { "": Dashboard, students: Students, cohorts: Cohorts, reviews: Reviews, questions: Questions, billing: Billing,
   curriculum: Curriculum, missions: Missions, schedule: Schedule, notices: Notices, faq: Faq, guide: Guide, docs: Docs, channels: Channels,
   coaches: Coaches, partners: Partners, library: Library, motivation: Motivation, replays: Replays, showcase: Showcase, glossary: Glossary, notes: NotePrompts, brand: Brand,
-  "vod-students": VodStudents, vodlink: VodLink, vod: InsVod, "vod-live": InsVodLive, "vod-cal": InsVodCal, "vod-settle": InsVodSettle, coaching: Coaching };
+  "vod-students": VodStudents, vodlink: VodLink, vod: InsVod, "vod-live": InsVodLive, "vod-cal": InsVodCal, "vod-settle": InsVodSettle, coaching: Coaching, teatime: TeaTime, "ops-notices": OpsNotices };
 
 export default function Center({ n, h }) {
   const A = ADM(), p = A.last || A.prep();
