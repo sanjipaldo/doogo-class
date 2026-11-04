@@ -1,0 +1,183 @@
+"use client";
+/* 두잉고 강의실: 강의(커리큘럼) #/curriculum · 강의 한 편 #/curriculum/<강의> · 과제 #/missions · 종류별 #/missions?kind= · 주차 #/missions/<주차>
+ * 예전 app.js pageCurriculum · curWeekCard · pageLesson · pageMissions · pageMissionKind · weekCard · missionCard · pageWeek · lockedPage · notFound 를 React 로 (Next.js 전환 5단계) */
+import { Fragment, useEffect, useRef, useState } from "react";
+import Icon from "../lib/Icon.jsx";
+import Raw, { RawOne } from "../lib/Raw.jsx";
+import { DGA, DBX, st, fmtMD, todayStr, Video, Progress, PctText, StateBadge, Empty, PageHead, Crumb, Pager, Thumb } from "./bits.jsx";
+import { MainLecCard } from "./HomePage.jsx";
+
+/* ---------- 공통 ---------- */
+export function NotFound() {
+  return <div className="page"><section className="card empty"><Icon n="alert" /><p style={{ fontSize: "18px", fontWeight: "800", color: "var(--ink)" }}>페이지를 찾을 수 없어요</p><a className="btn btn-primary" href="#/home">홈으로</a></section></div>;
+}
+export function Locked({ w, from }) {
+  const X = DGA(), cur = from === "curriculum";
+  return (
+    <div className="page"><PageHead title={w.no + "주차 · " + w.title} crumbs={<Crumb items={[[cur ? X.ML("curriculum") : X.ML("missions"), cur ? "#/curriculum" : "#/missions"], [w.no + "주차"]]} />} />
+      <section className="card empty"><Icon n="lock" /><p style={{ fontSize: "18px", fontWeight: "800", color: "var(--ink)", margin: "0 0 6px" }}>{fmtMD(X.openOf(w))}에 공개됩니다</p><p style={{ margin: "0 0 20px" }}>{w.summary}</p>
+        <a className="btn btn-primary" href={cur ? "#/curriculum" : "#/missions"}>{cur ? X.ML("curriculum") + "으로" : "주차 목록으로"}</a></section></div>
+  );
+}
+/** 첨부 자료 (내려받기 · 링크) */
+export function Attachments({ list }) {
+  if (!list || !list.length) return null;
+  const X = DGA();
+  return (
+    <div className="att-box"><p className="side-label">첨부 자료 {list.length}개</p><ul className="att-list">{list.map((f, i) => {
+      const ext = (f.name.split(".").pop() || "").toUpperCase().slice(0, 4), href = f.data || f.url || "#";
+      return (
+        <li key={i}><span className="att-ext">{ext || "파일"}</span><span className="att-name">{f.name}{f.size ? <small>{X.fileSize(f.size)}</small> : f.url ? <small>링크</small> : null}</span>
+          <a className="btn btn-tertiary btn-sm" href={href} download={f.data ? f.name : undefined} target={f.data ? undefined : "_blank"} rel={f.data ? undefined : "noopener"}><Icon n={f.data ? "download" : "arrowUpRight"} c="sm" />{f.data ? "다운로드" : "열기"}</a></li>
+      );
+    })}</ul></div>
+  );
+}
+function MainBtn({ url, cls, text }) {
+  const m = DGA().mainLec(); if (!m) return null;
+  const u = url || m.url;
+  return u ? <a className={"btn " + (cls || "btn-primary") + " ml-btn"} href={u} target="_blank" rel="noopener"><Icon n="arrowUpRight" c="sm" />{text || m.label || "메인 강의 들으러 가기"}</a> : <span className={"btn " + (cls || "btn-primary") + " ml-btn is-off"} aria-disabled="true"><Icon n="clock" c="sm" />링크 준비 중</span>;
+}
+
+/* ---------- 강의(커리큘럼) ---------- */
+function CurWeek({ w, now }) {
+  const X = DGA(), S = st(), DB = DBX(), open = X.isOpen(w), s2 = X.weekStats(w), ml = X.mainLec(), mOn = X.on("missions");
+  const head = (
+    <div className="cw-head"><div className="cw-head-main"><p className="cw-date"><Icon n="calendar" c="xs" />강의일 · {fmtMD(DB.classDate(S.CO, w.no))}{now ? <span className="cw-now">이번 주</span> : null}</p>
+      <h2>{w.no}주차 · {w.title}</h2>{w.subtitle || w.summary ? <p className="cw-sub">{w.subtitle || w.summary}</p> : null}</div>
+      {(open && mOn && w.missions.length) || (open && ml) ? <div className="cw-acts">{open && ml ? <MainBtn url={w.mainUrl} cls="btn-secondary" text="메인 강의" /> : null}{open && mOn && w.missions.length ? <a className="btn btn-primary cw-go" href={"#/missions/" + w.no}>과제 보러 가기 <Icon n="arrowRight" c="sm" /></a> : null}</div> : null}</div>
+  );
+  if (!open) return <section className="card cw cw-locked">{head}<div className="cw-lock"><Icon n="lock" /><div><b>아직 열리지 않은 주차입니다</b><span>{fmtMD(X.openOf(w))}부터 강의 내용이 공개됩니다</span></div></div></section>;
+  const mrow = (m) => {
+    const s = X.missionState(m.id), inner = <><span className={"cw-mk " + (s === "done" ? "done" : s === "fix" ? "fix" : "")}>{s === "done" ? <Icon n="check" c="xs" /> : s === "fix" ? "!" : null}</span><span>{m.title}</span></>;
+    return <li key={m.id}>{mOn ? <a href={"#/missions/" + w.no + "/" + m.id}>{inner}</a> : <a>{inner}</a>}</li>;
+  };
+  const watched = w.lessons.filter((l) => S.P.watched[l.id]).length;
+  return (
+    <section className="card cw">{head}
+      {w.goal ? <div className="cw-goal"><span className="cw-goal-label"><Icon n="target" c="sm" />핵심 목표</span><p>{w.goal}</p></div> : null}
+      {w.howto ? <RawOne html={'<div class="cw-sec cw-howto"><h3>' + window.icon("checks", "sm") + "이번 주 진행 방법</h3>" + DB.rich(w.howto) + "</div>"} /> : null}
+      {w.lessons.length ? <details className="cw-lessons" open><summary><Icon n="play" c="sm" />{X.lessonWord()} {w.lessons.length}개 <span className="tiny">{watched}개 시청 완료</span><Icon n="chevDown" c="sm" /></summary>
+        {w.lessons.map((l) => <a key={l.id} className="lesson" href={"#/curriculum/" + l.id}><Thumb item={l} /><div><div className="lesson-title">{l.title}</div><div className="lesson-desc">{l.desc}</div></div>
+          {S.P.watched[l.id] ? <span className="badge badge-positive"><Icon n="check" c="xs" />시청 완료</span> : <Raw as="span" className="tiny" html={DB.vdur.label(l.youtubeId, l.durSec, l.minutes ? l.minutes + "분" : "")} />}</a>)}</details> : null}
+      {(w.topics || []).length ? <div className="cw-sec"><h3>{ml ? "메인 강의에서 다루는 내용" : "강의 내용"}</h3><ul className="cw-topics">{w.topics.map((t, i) => <li key={i}>{t}</li>)}</ul></div> : null}
+      {w.missions.length ? <div className="cw-sec"><div className="cw-sec-head"><h3>과제</h3><span className="cw-period"><Icon n="clock" c="xs" />과제 제출 기간 · {fmtMD(X.openOf(w))} ~ {fmtMD(X.deadlineOf(w))}</span><span className="cw-progress">{s2.done}/{s2.total} 완료</span></div>
+        <div className="cw-mgrid">{DB.MISSION_KINDS.map((k) => { const list = w.missions.filter((m) => DB.missionKind(m) === k.key); return list.length ? <div key={k.key} className={"cw-mgroup " + k.key}><h4>{k.label} <span>{list.length}개</span></h4><ul>{list.map(mrow)}</ul></div> : null; })}</div></div> : null}
+    </section>
+  );
+}
+function Curriculum() {
+  const X = DGA(), S = st(), D = S.D, ml = X.mainLec();
+  const cur = D.weeks.find((w) => X.isOpen(w) && todayStr() <= X.deadlineOf(w)) || D.weeks.filter(X.isOpen).slice(-1)[0];
+  return (
+    <div className="page"><PageHead title={X.ML("curriculum")} sub={ml ? "메인 강의는 " + (ml.platform || "외부 강의실") + "에서 듣고, 여기서는 주차마다 " + X.lessonWord() + "을 보며 과제를 바로 따라 해요." : "주차마다 무엇을 배우고 어떤 과제를 하는지 순서대로 정리했어요."} />
+      <MainLecCard compact />
+      {D.weeks.length ? <div className="cw-list">{D.weeks.map((w) => <CurWeek key={w.no} w={w} now={cur === w} />)}</div> : <section className="card"><Empty ic="book">커리큘럼을 준비하고 있어요.</Empty></section>}</div>
+  );
+}
+function Lesson({ id }) {
+  const X = DGA(), S = st(), D = S.D, DB = DBX();
+  const w = D.weeks.find((x) => x.lessons.some((l) => l.id === id));
+  const [state, setState] = useState(null);
+  // 메모 칸의 처음 글은 들어올 때 한 번 (적는 동안 저장돼도 React 가 칸을 다시 채우지 않게 — 예전처럼)
+  const [note0] = useState(() => (st().P.notes || {})[id] || "");
+  const timer = useRef(0);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  if (!w) return <NotFound />;
+  if (!X.isOpen(w)) return <Locked w={w} from="curriculum" />;
+  const all = D.weeks.flatMap((x) => x.lessons.map((l) => Object.assign({ w: x }, l))), i = all.findIndex((l) => l.id === id);
+  const l = all[i], prev = all[i - 1], next = all[i + 1], done = !!S.P.watched[id];
+  const flip = () => { const on = X.watchFlip(id); window.ReactApp.redraw(); if (on) X.toast("시청 완료로 표시했어요."); };
+  // 메모: 적으면 0.5초 뒤 자동 저장 (예전 lesson-note)
+  const note = (e) => { const v = e.currentTarget.value; clearTimeout(timer.current); setState("저장 중…"); timer.current = setTimeout(() => { X.noteSave(id, v); setState("저장됨"); }, 500); };
+  return (
+    <div className="page"><PageHead title={l.title} sub={w.no + "주차 · " + w.title + X.lenTxt(l, " · ")} crumbs={<Crumb items={[[X.ML("curriculum"), "#/curriculum"], [w.no + "주차", "#/curriculum"], [l.title]]} />} />
+      <section className="card"><Video item={l} />{l.desc ? <Raw as="div" className="lesson-body" html={DB.rich(l.desc)} /> : null}<Attachments list={l.attachments} />
+        <div className="guide-actions" style={{ marginTop: "20px" }}><button className={"btn " + (done ? "btn-secondary" : "btn-primary")} data-action="toggle-watched" data-id={id} onClick={flip}><Icon n="check" c="sm" />{done ? "시청 완료됨 · 취소" : "시청 완료로 표시"}</button>
+          {X.on("missions") ? <a className="btn btn-tertiary" href={"#/missions/" + w.no}>{w.no}주차 과제 보기</a> : null}</div></section>
+      <section className="card" style={{ marginTop: "14px" }}><div className="home-video-head"><h2><Icon n="pen" />내 메모</h2><span className="tiny" id="note-state">{state || ((S.P.notes || {})[id] ? "저장됨" : "적으면 자동으로 저장돼요")}</span></div>
+        <textarea key={id} className="textarea" id="lesson-note" data-id={id} rows="5" placeholder="강의를 보며 기억할 내용, 궁금한 점을 적어 두세요. 나만 볼 수 있어요." defaultValue={note0} onInput={note} /></section>
+      <Pager p={prev && X.isOpen(prev.w) ? { href: "#/curriculum/" + prev.id, label: "이전 강의", title: prev.title } : null} n={next && X.isOpen(next.w) ? { href: "#/curriculum/" + next.id, label: "다음 강의", title: next.title } : null} />
+    </div>
+  );
+}
+export function CurriculumPage({ r }) { return r.parts[1] ? <Lesson key={r.parts[1]} id={r.parts[1]} /> : <Curriculum />; }
+
+/* ---------- 과제 ---------- */
+const typeText = (m) => ({ image: "사진 · PDF 업로드", link: "링크 제출", text: "글 작성" }[m.type] || "") + (m.check && m.check.minLength ? " · 최소 " + m.check.minLength + "자" : "");
+const tplLink = (f, cls, kids, key) => <a key={key} className={cls} href={f.data || f.url || "#"} download={f.data ? f.name : undefined} target={f.data ? undefined : "_blank"} rel={f.data ? undefined : "noopener"}>{kids}</a>;
+function MissionCard({ w, m }) {
+  const X = DGA(), s = X.missionState(m.id), k = X.kindOf(m), left = X.daysUntil(X.deadlineOf(w)), late = left < 0 && s !== "done";
+  const stLabel = { done: "체크 완료", fix: "보완 필요", todo: "미제출" }[s], href = "#/missions/" + w.no + "/" + m.id;
+  return (
+    <article className={"mcard st-" + s}><span className="mcard-ic"><Icon n={m.type === "image" ? "image" : m.type === "link" ? "link" : "pen"} c="sm" /></span>
+      <div className="mcard-main"><div className="mcard-tags"><span className={"kbadge " + k.key}>{k.short}</span>{s !== "done" && left >= 0 ? <span className="mcard-d"><Icon n="clock" c="xs" />{left === 0 ? "오늘 마감" : "D-" + left}</span> : null}<span className={"mcard-due" + (late ? " late" : "")}>마감 {fmtMD(X.deadlineOf(w))}{late ? " (지남)" : ""}</span></div>
+        <h3><a href={href}>{m.title}</a></h3>{m.desc ? <p className="mcard-desc">{m.desc}</p> : null}
+        <p className="mcard-type">제출 방식: {typeText(m)}</p>{(m.templates || []).length ? <div className="mcard-tpl">{m.templates.map((f, i) => tplLink(f, "tpl-btn", <><Icon n="download" c="xs" />과제 양식 다운로드</>, i))}</div> : null}</div>
+      <span className={"mcard-state " + s}>{s === "done" ? <Icon n="check" c="xs" /> : null}{stLabel}</span>
+      <a className={"btn " + (s === "done" ? "btn-secondary" : "btn-primary") + " btn-sm mcard-go"} href={href}>{s === "done" ? "제출 내용 보기" : s === "fix" ? "다시 제출" : "과제 제출"}</a></article>
+  );
+}
+function WeekCard({ w }) {
+  const X = DGA(), s2 = X.weekStats(w), open = X.isOpen(w), nm = open ? X.nextMission(w) : null;
+  const top = <div className="wk-top"><span className="wk-icon"><Icon n="book" /></span><div><div className="wk-title">{w.no}주차</div><div className="wk-meta">{X.kindCount(s2)} · {s2.done}/{s2.total} 완료</div></div><PctText pct={s2.pct} /></div>;
+  if (!open) return <div className="week-card locked">{top}<Progress pct={0} thin /><div className="wk-foot"><span className="lock-msg"><Icon n="lock" c="sm" />{fmtMD(X.openOf(w))}부터 과제 제출이 공개됩니다.</span></div></div>;
+  return <a className="week-card" href={"#/missions/" + w.no}>{top}<Progress pct={s2.pct} thin /><div className="wk-foot"><span>{nm ? <><b>다음:</b> {nm.title}</> : <b>모든 과제 완료!</b>}</span><span className="link-btn">열기 <Icon n="arrowRight" c="sm" /></span></div></a>;
+}
+function Missions() {
+  const X = DGA(), S = st(), o = X.overallStats();
+  return (
+    <div className="page"><PageHead title={X.ML("missions")} sub="주차를 고르고 과제를 내면 자동 검수 결과가 바로 나와요." />
+      <section className="card overall"><div className="overall-top"><span>전체 진행률</span><PctText pct={o.pct} /></div><Progress pct={o.pct} /><span className="tiny" style={{ color: "var(--body)" }}>전체 {o.total}개 중 {o.done}개 완료</span></section>
+      <div className="section-head"><h2>주차 선택</h2><span className="hint">주차를 눌러 과제를 확인하세요</span></div>
+      <div className="grid-2">{S.D.weeks.map((w) => <WeekCard key={w.no} w={w} />)}</div></div>
+  );
+}
+function MissionKind({ k }) {
+  const X = DGA(), S = st(), DB = DBX(), s2 = X.overallStats().kinds[k.key], pct = s2.total ? Math.round(s2.done / s2.total * 100) : 0;
+  const groups = S.D.weeks.map((w) => {
+    const list = w.missions.filter((m) => DB.missionKind(m) === k.key);
+    if (!list.length) return null;
+    if (!X.isOpen(w)) return <div key={w.no} className="section-head"><h2>{w.no}주차 · {w.title}</h2><span className="hint"><Icon n="lock" c="xs" /> {fmtMD(X.openOf(w))} 공개 · {list.length}개</span></div>;
+    return <Fragment key={w.no}><div className="section-head"><h2>{w.no}주차 · {w.title}</h2><span className="hint">마감 {fmtMD(X.deadlineOf(w))}</span></div>{list.map((m) => <MissionCard key={m.id} w={w} m={m} />)}</Fragment>;
+  }).filter(Boolean);
+  return (
+    <div className="page"><PageHead title={k.label} sub={k.hint + " · " + s2.done + " / " + s2.total + " 완료"} crumbs={<Crumb items={[[X.ML("missions"), "#/missions"], [k.label]]} />} />
+      <div className="utabs" role="tablist">{DB.MISSION_KINDS.map((x) => <a key={x.key} role="tab" href={"#/missions?kind=" + x.key} className={x === k ? "on" : ""} aria-selected={String(x === k)}>{x.label}</a>)}</div>
+      <section className="card overall" style={{ marginTop: "14px" }}><div className="overall-top"><span>{k.label} 진행률</span><PctText pct={pct} /></div><Progress pct={pct} /></section>
+      {groups.length ? groups : <section className="card" style={{ marginTop: "14px" }}><Empty ic="checks">이 종류의 과제가 아직 없어요.</Empty></section>}</div>
+  );
+}
+const STATE_TABS = [["all", "전체"], ["todo", "미제출"], ["fix", "보완 필요"], ["done", "체크 완료"]];
+function Week({ no }) {
+  const X = DGA(), S = st(), D = S.D, DB = DBX(), w = X.findWeek(no);
+  const [f, setF] = useState(() => X.wkF());
+  if (!w) return <NotFound />;
+  if (!X.isOpen(w)) return <Locked w={w} />;
+  const s2 = X.weekStats(w), late = todayStr() > X.deadlineOf(w);
+  const byKind = w.missions.filter((m) => f.kind === "all" || DB.missionKind(m) === f.kind), shown = byKind.filter((m) => f.state === "all" || X.missionState(m.id) === f.state);
+  const pick = (grp, key) => { const y = window.scrollY; setF(X.wkF({ [grp]: key })); requestAnimationFrame(() => window.scrollTo(0, y)); };
+  const chip = (grp, key, label, n) => <button key={grp + key} type="button" className={"fchip" + (f[grp] === key ? " on" : "")} data-action="wk-filter" data-grp={grp} data-k={key} aria-pressed={String(f[grp] === key)} onClick={() => pick(grp, key)}>{label} <span className="fnum">{n}</span></button>;
+  const tpls = w.missions.filter((m) => (m.templates || []).length);
+  return (
+    <div className="page"><PageHead title={w.no + "주차 · " + w.title} sub={w.summary} crumbs={<Crumb items={[[X.ML("missions"), "#/missions"], [w.no + "주차"]]} />} />
+      <section className="card overall"><div className="overall-top"><span>{w.no}주차 진행률</span><PctText pct={s2.pct} /></div><Progress pct={s2.pct} />
+        <span className="tiny" style={{ color: "var(--body)" }}>{X.kindCount(s2)} · {s2.total}개 중 {s2.done}개 완료 · {fmtMD(X.openOf(w))} 공개 · <b style={late ? { color: "var(--negative)" } : undefined}>{fmtMD(X.deadlineOf(w))} 마감{late ? " (지남)" : ""}</b></span></section>
+      {w.no === 1 && X.on("docs") ? <a className="card help-banner plain-link" href="#/docs"><span className="hb-ic"><Icon n="clipboard" /></span><span><b>서류 발급이 어렵다면?</b><span className="tiny">{X.ML("docs")}에서 단계별로 화면과 함께 안내해 드려요.</span></span><Icon n="chevRight" /></a> : null}
+      {X.on("showcase") && (D.showcase || []).some((x) => Number(x.week) === w.no) ? <a className="card help-banner sc-banner plain-link" href={"#/showcase?w=" + w.no}><span className="hb-ic"><Icon n="trophy" /></span><span><b>{w.no}주차 모범 과제 보기</b><span className="tiny">{D.brand.instructor}님이 고른 잘한 예시를 먼저 보고 시작해 보세요.</span></span><Icon n="chevRight" /></a> : null}
+      {tpls.length ? <section className="card tpl-box"><div className="home-video-head"><h2><Icon n="fileSheet" />이 주차 과제 양식 <span className="tiny">{tpls.length}개</span></h2></div><p className="tiny" style={{ margin: "-6px 0 10px" }}>양식을 내려받아 엑셀에서 채운 뒤, 해당 과제에서 올려 주세요.</p>
+        {tpls.map((m) => m.templates.map((t, i) => tplLink(t, "tpl-row", <><span className="tpl-ic"><Icon n="download" c="sm" /></span><span className="tpl-txt"><b>{m.title}</b><small>{t.name}</small></span></>, m.id + i)))}</section> : null}
+      <div className="ffilters"><p className="ff-label">과제 유형</p><div className="fchips">{chip("kind", "all", "전체", w.missions.length)}{DB.MISSION_KINDS.map((k) => chip("kind", k.key, k.label, w.missions.filter((m) => DB.missionKind(m) === k.key).length))}</div>
+        <p className="ff-label">진행 상태</p><div className="fchips">{STATE_TABS.map((t) => chip("state", t[0], t[1], t[0] === "all" ? byKind.length : byKind.filter((m) => X.missionState(m.id) === t[0]).length))}</div></div>
+      {DB.MISSION_KINDS.map((k) => { const list = shown.filter((m) => DB.missionKind(m) === k.key); return list.length ? <Fragment key={k.key}><div className="section-head"><h2>{k.label} <span className="tiny">{list.length}개</span></h2><span className="hint">{k.hint}</span></div>{list.map((m) => <MissionCard key={m.id} w={w} m={m} />)}</Fragment> : null; })}
+      {!w.missions.length ? <section className="card" style={{ marginTop: "14px" }}><Empty ic="checks">이번 주차 과제를 준비하고 있어요.</Empty></section> : !shown.length ? <section className="card" style={{ marginTop: "14px" }}><Empty ic="checks">조건에 맞는 과제가 없어요.</Empty></section> : null}
+    </div>
+  );
+}
+/** #/missions · #/missions?kind= · #/missions/<주차> (과제 하나는 아직 예전 화면) */
+export function MissionsPage({ r }) {
+  const DB = DBX(), [, weekNo] = r.parts, kind = DB.MISSION_KINDS.find((k) => k.key === r.params.get("kind"));
+  if (weekNo) return <Week key={weekNo} no={weekNo} />;
+  if (kind) return <MissionKind k={kind} />;
+  return <Missions />;
+}

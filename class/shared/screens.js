@@ -35,7 +35,11 @@
     // 스토어 홈 (대표 주소 / · /vod — 공개 화면)
     ["vod-home", /^\/(vod\/?)?$/, "스토어 홈", { pub: true }],
     // 클래스 상세 (공개 화면 — 클래스마다 제목 · 설명 · 사진 미리보기)
-    ["vod-product", /^\/vod\/p\/[^/]+\/?$/, "클래스 상세", { pub: true }]
+    ["vod-product", /^\/vod\/p\/[^/]+\/?$/, "클래스 상세", { pub: true }],
+    // 두잉고 강의실 (5단계 · 로그인한 수강생 · 검색 제외) — 홈
+    ["dg-home", /^\/home\/?$/, "두잉고 강의실 홈 (기수 · VOD 버전)"],
+    // 강의(커리큘럼 · 강의 한 편) · 과제 목록(전체 · 종류별 · 주차) — 과제 하나(제출)는 아직 예전 화면
+    ["dg-learn", /^\/(curriculum(\/[^/]+)?|missions(\/\d+)?)\/?$/, "두잉고 강의실 강의 · 과제 목록"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

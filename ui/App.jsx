@@ -16,9 +16,10 @@ import AboutPage from "./store/AboutPage.jsx";
 import PartnersPage from "./store/PartnersPage.jsx";
 import HomePage from "./store/HomePage.jsx";
 import ProductPage from "./store/ProductPage.jsx";
+import Classroom from "./dg/Classroom.jsx";
 
 // 화면 키 → 화면 (키 · 주소 규칙은 class/shared/screens.js)
-const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage };
+const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom };
 
 const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
 function Boot() {
@@ -37,11 +38,17 @@ export default function App() {
     // /n/… 를 직접 열었으면 원래 주소로 (proxy.js 가 넘겨 준 게 아니라서 주소창이 /n/… 이에요)
     if (/^\/n(\/|$)/.test(location.pathname)) { location.replace((location.pathname.slice(2) || "/") + location.search); return; }
     // 스토어 화면을 그리기 전에 예전 render() 처음에 하던 일 (무료 LIVE 일정 맞추기 — 바뀐 게 있을 때만 저장)
-    const pre = (k) => { const X = window.VOD; if (/^vod-/.test(k || "") && X && X.syncFreeLive) { try { X.syncFreeLive(); } catch (e) { console.error("[react] 무료 LIVE 맞추기", e); } } };
+    //  · 두잉고 강의실(dg-*): 예전 render() 처음에 하던 로그인 확인 · 꺼진 메뉴 · 강의실 고르기 · 테마 (DGA.prep) — 옮길 주소가 나오면 그리지 않고 그리로 (예전 화면 ↔ React 화면은 main.js 가 골라요)
+    const pre = (k) => {
+      const X = window.VOD;
+      if (/^vod-/.test(k || "") && X && X.syncFreeLive) { try { X.syncFreeLive(); } catch (e) { console.error("[react] 무료 LIVE 맞추기", e); } }
+      if (/^dg-/.test(k || "") && window.DGA) { const to = window.DGA.prep(); if (to) { window.ROUTE.redirect(to); return false; } }
+      return true;
+    };
     let curK = null;
     window.ReactApp = {
       go(k, h, changed) {
-        curK = k; pre(k);
+        curK = k; if (pre(k) === false) return;
         if (!booted.current) {
           booted.current = true;
           const X = window.VOD, b = X && X.reactBoot ? X.reactBoot() : null;
@@ -58,7 +65,7 @@ export default function App() {
       // 예전 처리 함수가 부르는 ‘팝업 닫기’ (vod.js closeModal) — 열려 있는 React 팝업을 닫아요 (ui/lib/Modal.jsx)
       closeModal() { window.dispatchEvent(new Event("dc:modal-close")); },
       // 예전 처리 함수가 끝에 부르는 ‘다시 그리기’ (vod.js render) — 보던 자리 그대로
-      redraw() { pre(curK); setSt((s) => Object.assign({}, s, { n: s.n + 1, moved: false, keep: null })); },
+      redraw() { if (pre(curK) === false) return; setSt((s) => Object.assign({}, s, { n: s.n + 1, moved: false, keep: null })); },
       fail() { setSt((s) => Object.assign({}, s, { fail: true })); }
     };
     if (window.__dcReactReady) window.__dcReactReady();

@@ -143,6 +143,10 @@ async function reactCookie(page, base, v) { await page.context().addCookies([{ n
  *  움직임용으로 그린 뒤 붙는 표시(서비스 바꾸기 손잡이 위치 · 내려가면 생기는 그림자 · 움직임 시작)와 아이콘 그림 내용은 빼요 */
 const domShape = (page) => page.evaluate(() => {
   const c = document.getElementById("root").cloneNode(true); c.normalize();
+  // 예전 강의실이 #root 에 붙이는 ‘누가 그린 틀인지’ 표시(data-who)는 화면 모양이 아니라서 빼요
+  c.removeAttribute("data-who");
+  // 한국 · 뉴질랜드 시계(15초마다)는 시각만 빼요
+  c.querySelectorAll(".wclock .wc-txt b").forEach((el) => { el.textContent = "00:00"; });
   // 움직임: 숫자 올라가기는 도는 중인 값 대신 최종 숫자 · 화면에 들어온 표시(is-in)는 스크롤 · 시간에 따라 달라서 빼요
   c.querySelectorAll("[data-count]").forEach((el) => { el.textContent = el.dataset.count; });
   // 남은 시간(1초마다 바뀜)은 마감 시각으로 · 못 불러오면 스스로 지우는 그림(유튜브 미리보기 · 네트워크에 따라 다름)은 빼요
@@ -158,9 +162,9 @@ const domShape = (page) => page.evaluate(() => {
   (function walk(n, d) {
     if (n.nodeType === 3) { const t = n.textContent.replace(/\s+/g, " ").trim(); if (t) out.push("  ".repeat(d) + "#" + t); return; }
     if (n.nodeType !== 1) return;
-    const at = Array.from(n.attributes).map((a) => { let v = a.value; if (a.name === "style") v = v.split(";").map((x) => x.trim().replace(/\s*:\s*/, ":")).filter(Boolean).join(";"); if (a.name === "class") v = v.split(/\s+/).filter(Boolean).sort().join(" "); return a.name + "=" + JSON.stringify(v); }).sort();
+    const at = Array.from(n.attributes).map((a) => { let v = a.value; if (a.name === "style") v = (n.style && n.style.cssText != null ? n.style.cssText : v).split(";").map((x) => x.trim().replace(/\s*:\s*/, ":")).filter(Boolean).join(";"); if (a.name === "class") v = v.split(/\s+/).filter(Boolean).sort().join(" "); return a.name + "=" + JSON.stringify(v); }).sort();
     out.push("  ".repeat(d) + "<" + n.tagName.toLowerCase() + (at.length ? " " + at.join(" ") : "") + ">");
-    if (n.tagName.toLowerCase() === "svg") { out.push("  ".repeat(d + 1) + "[svg " + n.innerHTML.length + "]"); return; }
+    if (n.tagName.toLowerCase() === "svg") { out.push("  ".repeat(d + 1) + "[svg " + n.innerHTML.replace(/url\([^)]*\)/g, "url()").replace(/fnz\d+/g, "fnz").length + "]"); return; }
     n.childNodes.forEach((x) => walk(x, d + 1));
   })(c, 0);
   return out.join("\n");

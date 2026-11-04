@@ -321,6 +321,10 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 | `vod-partners` | `/vod/partners` · `/vod/partners/apply` | 두고 파트너스 소개 · 지원서(섹션 5개 · 쓰던 내용 기억 · 확인 · 보내기는 예전 함수 `ptIssues` · `ptSubmit`) · 공개 화면 | 미리보기 · 운영은 꺼짐 |
 | `vod-legal` | `/terms` · `/privacy` · `/refund` · `/vod/legal/<약관>` | 약관 및 정책 (목차 · 인쇄 · 사업자 정보) · 공개 화면 | 미리보기 · 운영은 꺼짐 |
 
+| `dg-home` | `/home` | 두잉고 강의실 홈 — 기수(LIVE) 버전(인사 · 메인 강의 · 시작 가이드 · 오늘 LIVE · 응원 영상 · 성장 단계 · 이번 주 · 진행률 · 다가오는 일정 · 이어서 할 과제 · 공지 · 빠른 이동) · VOD 버전(이어서 학습 · 다른 강의 · 수강 기간 · 1:1 코칭 · TEA TIME) + 강의실 틀(머리띠 · 왼쪽 메뉴 · 막힐 땐 · 세계 시계 · AI 조교 · 아래 메뉴) · 5단계 | 미리보기 · 운영은 꺼짐 |
+| `dg-learn` | `/curriculum` · `/curriculum/<강의>` · `/missions` · `/missions?kind=` · `/missions/<주차>` | 두잉고 강의(주차 카드 · 강의 한 편 — 시청 완료 · 메모) · 과제 목록(전체 · 종류별 · 주차 — 유형 · 진행 상태 탭 · 과제 양식) · 잠긴 주차 · 5단계 (과제 하나 · 제출은 아직 예전 화면) | 미리보기 · 운영은 꺼짐 |
+
+- **두잉고 강의실(5단계):** 화면 코드 `ui/dg/` · 계산 · 처리는 예전 app.js 를 그대로 빌려 써요(`window.DGA` — 상태 · 메뉴 구성 · 진행률 · 가이드 · AI 조교 `sendChat` …). 그리기 전에 예전 `render()` 처음에 하던 로그인 확인 · 꺼진 메뉴 · VOD 강의실 고르기 · 테마를 `DGA.prep` 으로 해요(`ui/App.jsx`) — 로그인 전이면 로그인 화면으로. React 화면 틀에서는 app.js 의 클릭 처리가 돌지 않고, app.js 가 부르는 다시 그리기(`render` · 대화 새로 고침)는 React 로 넘어가요. 테스트 `reactdg` 가 기수 · VOD 수강생으로 예전 화면과 모양을 비교해요.
 - **공개 화면(검색 · 공유):** 목록에 `pub` 표시가 있는 화면은 React 화면 틀이 원래 주소로 예전과 같은 미리보기 정보(제목 · 설명 · 대표 주소 · 공유 그림 · 구조화 데이터 · 검색용 안내 글 `seo-static`)를 서버에서 넣어요(`api/_lib/pagemeta.js` 그대로). 회원 화면은 검색 제외(`noindex`). 테스트가 예전 화면과 같은 값인지 봐요.
 - **그리기 전에 (스토어):** 예전 `render()` 가 그릴 때마다 처음에 하던 무료 LIVE 일정 맞추기(`VOD.syncFreeLive`)를 React 화면도 그리기 전에 해요(`ui/App.jsx`) — 안 하면 무료 LIVE 썸네일 날짜가 예전 화면과 달라져요 (React 화면만 켠 시험에서 찾음).
 - **움직임:** 제목 글자 새김 · 스크롤 등장 · 숫자 올라가기는 `ui/lib/motion.jsx`(`<Eg>` · `useMotion`) — 예전 `egSplit` 이 만든 모양을 처음부터 React 가 그리고, 숫자는 글자 칸 값만 바꿔요(React 가 그린 글자를 갈아 끼우지 않아요). 주소를 옮겨 처음 그릴 때만 움직이고, 다시 그릴 때는 바로 보여요(예전과 같음).

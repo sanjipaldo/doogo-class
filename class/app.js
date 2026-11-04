@@ -32,7 +32,8 @@
   let lastTop = null;   // 바로 전 화면의 메뉴 (자료실 안내 팝업용)
   let vodClosed = false; // VOD 수강 기간이 끝나 로그인이 닫혔을 때 로그인 화면에 한 번 안내
 
-  const isActive = () => document.body.dataset.mode === "student";
+  // React 화면 틀(<body data-react> · Next.js 전환 5단계)에서는 예전 강의실 화면 이벤트가 돌지 않아요 — React 화면이 이 파일의 계산 · 처리 함수를 빌려 써요 (window.DGA)
+  const isActive = () => document.body.dataset.mode === "student" && !document.body.dataset.react;
 
   function saveProgress() {
     if (!DB.saveProgress(me.id, P)) { toast("저장 공간이 부족해요. 사진 수를 줄여 다시 시도해 주세요.", "warn"); return false; }
@@ -1807,7 +1808,7 @@
     if (DB.remote.on && INS && on("bot") && !(TINFO && TINFO.iid === INS.id)) Promise.race([tutorInfo(), new Promise((ok) => setTimeout(ok, 1500))]).then(go);
     else go();
   }
-  function refreshChats() { document.querySelectorAll("[data-chat-log]").forEach((el) => { el.innerHTML = chatLog(); el.scrollTop = el.scrollHeight; }); }
+  function refreshChats() { if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; } document.querySelectorAll("[data-chat-log]").forEach((el) => { el.innerHTML = chatLog(); el.scrollTop = el.scrollHeight; }); }
   const chatForm = (id) => '<form class="chat-form" data-chat-form><input class="input" name="q" id="' + id + '" autocomplete="off" placeholder="궁금한 걸 편하게 적어 보세요" aria-label="질문 입력"><button class="btn btn-primary chat-send" type="submit" aria-label="보내기">' + icon("send", "sm") + "<span>보내기</span></button></form>";
   // 조교 답 속 주소(배송 조회 · 신청 폼 …)는 새 창 링크로 (글은 먼저 esc 한 뒤라 안전)
   const linkify = (h) => String(h).replace(/https?:\/\/[^\s<]+[^\s<.,;:)\]’'"]/g, (u) => '<a href="' + u + '" target="_blank" rel="noopener">' + u + "</a>");
@@ -1825,7 +1826,7 @@
         '<button type="button" class="chip-nav next" data-action="chip-nav" data-d="1" tabindex="-1" aria-label="다음 질문 보기">' + icon("chevRight", "sm") + "</button>" +
       "</div></div>";
   };
-  function refreshChipRows() { document.querySelectorAll("[data-chip-wrap]").forEach((el) => { const box = document.createElement("div"); box.innerHTML = chipRow(el.dataset.chipWrap); el.replaceWith(box.firstChild); }); chipNavInit(); }
+  function refreshChipRows() { if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; } document.querySelectorAll("[data-chip-wrap]").forEach((el) => { const box = document.createElement("div"); box.innerHTML = chipRow(el.dataset.chipWrap); el.replaceWith(box.firstChild); }); chipNavInit(); }
   /** 칩 한 줄 슬라이드: 끝에 닿았는지에 따라 양옆 화살표 · 흐림을 켜고 끄고, 마우스로 끌어서 넘기기 (조금이라도 끌었으면 칩 누름은 무시) */
   const chipDrag = { el: null, x: 0, left: 0, moved: false };
   function chipEdges(el) { const rail = el.parentElement, max = el.scrollWidth - el.clientWidth; rail.classList.toggle("can-prev", el.scrollLeft > 4); rail.classList.toggle("can-next", el.scrollLeft < max - 4); }
@@ -2366,7 +2367,7 @@
     const f = modalRoot.querySelector("input, select, [data-action=modal-close]");
     if (f) f.focus();
   }
-  const closeModal = () => { modalRoot.innerHTML = ""; };
+  const closeModal = () => { if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.closeModal) window.ReactApp.closeModal(); return; } modalRoot.innerHTML = ""; };
   function toast(msg, kind) {
     const t = document.createElement("div");
     t.className = "toast";
@@ -2462,7 +2463,26 @@
     place();
     setTimeout(place, 80);
   }
+  /** React 화면이 그리기 전에 한 번 — 예전 render() 처음에 하던 일 (세션 · 로그인 확인 · VOD 강의실 고르기 · 테마 · 꺼진 메뉴)
+   *  → 옮길 주소(#/login · #/home …) 또는 "" (그대로 그려요). 로그인 화면은 따로(로그인 전 화면) */
+  function prep() {
+    const r = route();
+    if (!me) startSession();
+    if (!me) {
+      const want = r.params.get("ins");
+      if (want && DB.liveInstructors().some((x) => x.id === want)) { loginPick = want; DB.session.setInstructorPick(want); }
+      return r.parts[0] !== "login" || want ? "#/login" : "";
+    }
+    if (r.parts[0] === "login") return "#/home";
+    if (TRACK === "vod" && r.parts[0] === "vodclass" && r.parts[1] && r.parts[1] !== "notes") setVp(decodeURIComponent(r.parts[1]));
+    applyTheme();
+    const top = r.parts[0];
+    const allowed = top === "home" || (top === "page" ? DB.menuConfig(MID()).items.some((x) => x.key === r.parts[1] && x.on) : NAV_DEFS.some((n) => n.id === top) ? on(top) : true);
+    return allowed ? "" : "#/home";
+  }
   function render() {
+    // React 화면 틀에서는 예전 화면을 그리지 않고 React 에 다시 그리라고만 알려요 (예전 처리 함수가 끝에 부르는 render)
+    if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
     closeModal();
     const r = route();
     if (!me) startSession();
@@ -2782,4 +2802,32 @@
   document.addEventListener("error", (e) => { const t = e.target; if (t && t.tagName === "IMG" && t.closest && t.closest(".lesson-thumb, .video, .vod-thumb, .mv-tile-img")) t.remove(); }, true);
 
   window.StudentApp = { render, mount };
+  /* React 화면(Next.js 전환 5단계 · ui/dg/)이 빌려 쓰는 강의실 계산 · 데이터 · 처리 함수 — 그리기만 React 가 하고 결과는 예전 화면과 같아요 */
+  window.DGA = {
+    // 지금 상태 (수강생 · 강사 · 콘텐츠 · 기수 · 진행 기록 · 버전 · 미리보기 · VOD 강의실)
+    st: () => ({ me, INS, D, CO, P, TRACK, preview, previewBy, VP, botOpen, botThinking, chipTab }),
+    prep, route, setVp, NAV, NAV_DEFS, navLabel, on, ML, NT, libList, LV, unreadNotices, newAnswers, newFixes,
+    isOpen, weekStats, overallStats, nextMissionOverall, myEvents, isUnread, kindOf, kindCount, findWeek, findMission, openOf, deadlineOf, missionState, lastSub, isDone, daysUntil, greetWord,
+    guideGroup, guideDoneCheck, quickList: () => DB.quickLinksOf(D).filter((l) => l.url && (/^https?:/i.test(l.url) || linkOk([l.title, l.url]))), linkOk, mainLec,
+    vodList, vodPct, vodPctOf, vodNext, coachN, addPid, coachEnd, myCoachQs, vodExp, learnHref, vodMode, applyTheme,
+    worldClockHtml, lenTxt, saveProgress, toast, logout, lessonWord, nextMission, fileSize,
+    // 주차 과제 탭(유형 · 진행 상태) — 예전처럼 다른 화면에 다녀와도 남아요
+    wkF: (o) => { if (o) Object.assign(wkFilter, o); return Object.assign({}, wkFilter); },
+    // 시청 완료 표시 · 강의 메모 (예전 toggle-watched · lesson-note)
+    watchFlip: (id) => { if (P.watched[id]) delete P.watched[id]; else P.watched[id] = Date.now(); saveProgress(); return !!P.watched[id]; },
+    noteSave: (id, v) => { P.notes = P.notes || {}; if (String(v).trim()) P.notes[id] = v; else delete P.notes[id]; saveProgress(); },
+    // 시작 가이드 체크 · 완료 · VOD 블랙/화이트
+    guideToggle: (g) => { const before = guideGroup(); P.guide = P.guide || {}; if (P.guide[g]) delete P.guide[g]; else P.guide[g] = Date.now(); saveProgress(); return before; },
+    guideClose: (wk) => { P.guideClosed = P.guideClosed || {}; P.guideClosed[wk] = Date.now(); saveProgress(); },
+    vodModeFlip: () => { try { localStorage.setItem(VMODE_KEY, vodMode() === "dark" ? "light" : "dark"); } catch (e) { /* 기억만 못 해요 */ } applyTheme(); return vodMode(); },
+    exitPreview: () => { if (INS) { loginPick = INS.id; DB.session.setInstructorPick(INS.id); } DB.session.setStudent(null); me = null; },
+    // AI 조교 (오른쪽 아래 · 전체 화면)
+    botSet: (v) => { botOpen = !!v; DB.store.set(KEY_BOT, !!v); }, chipSet: (k) => { chipTab = /^\d$/.test(k) ? k : "class"; },
+    botChips, botGreeting, tutorInfo, sendChat, linkify, clearChat: () => { P.chat = []; saveProgress(); }, tinfo: () => (TINFO && INS && TINFO.iid === INS.id ? TINFO : null),
+    // 화면을 옮길 때: 떠나는 화면의 스크롤 기억 · 휴대폰에서는 AI 조교 창 닫기 (예전 render) → 그린 뒤 돌아온 자리로 (예전 restoreScroll)
+    memo: (prev, key) => { if (prev && prev !== key) scrollMemo[prev] = { y: window.scrollY, to: key }; if (prev !== key && window.matchMedia("(max-width: 720px)").matches) botOpen = false; },
+    restoreScroll,
+    // 화면을 옮기면 끄는 것 (동기부여 자동 재생 · 수료증 미리보기 · 자료실 안내) — 예전 render 끝부분
+    leave: (top) => { if (top !== "motivation") { mvAuto = false; mvSel = null; } if (top !== "certificate") certPreview = false; const was = lastTop; lastTop = top; return was; }
+  };
 })();
