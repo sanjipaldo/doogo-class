@@ -21,7 +21,7 @@ import DgLogin from "./dg/Login.jsx";
 import Center from "./center/Center.jsx";
 
 // 화면 키 → 화면 (키 · 주소 규칙은 class/shared/screens.js)
-const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin, "ct-login": Center, "ct-dash": Center, "ct-ops": Center, "ct-content": Center, "ct-vod": Center, "ct-master": Center };
+const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin, "ct-login": Center, "ct-dash": Center, "ct-ops": Center, "ct-content": Center, "ct-vod": Center, "ct-master": Center, "ct-partner": Center, "ct-media": Center };
 
 const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
 function Boot() {

@@ -27,6 +27,8 @@ import { MasterMedia, MasterMediaRs, MasterMediaPay } from "./MasterMedia.jsx";
 import { MasterBilling, MasterPlan } from "./MasterBilling.jsx";
 import { Menus, InsMenus } from "./Menus.jsx";
 import { MasterCerts, MasterContracts, MasterStaff, MasterRs } from "./MasterOps.jsx";
+import { PPAGES } from "./Partner.jsx";
+import { MDPAGES } from "./MediaCenter.jsx";
 import { MasterVodRank, MasterVodAds, MasterVodSettle, MasterVodRates, MasterVodSales } from "./MasterFin.jsx";
 import { ADM, Isl } from "./bits.jsx";
 
@@ -52,7 +54,9 @@ export default function Center({ n, h }) {
   }, [n, h]); // eslint-disable-line react-hooks/exhaustive-deps
   if (p.login) return <CenterLogin />;
   // 운영자(스태프) 계정은 맡지 않은 버튼을 예전 코드가 빼서(staffStrip) — 그 화면은 예전 본문 그대로 (React 가 그린 칸을 지우지 않게)
-  const r = p.r, k0 = p.k0 || "", Page = p.area === "center" && !p.offTrack ? (p.master ? (A.staffMe() ? null : MPAGES[r.parts[1] || ""]) : PAGES[k0]) : null;
+  // 파트너센터 · 온드미디어 센터: 모르는 메뉴는 예전처럼 홈으로
+  const r = p.r, k0 = p.k0 || "", Page = p.area === "partner" ? PPAGES[r.parts[1] || ""] || PPAGES[""] : p.area === "media" ? MDPAGES[r.parts[1] || ""] || MDPAGES[""]
+    : p.area === "center" && !p.offTrack ? (p.master ? (A.staffMe() ? null : MPAGES[r.parts[1] || ""]) : PAGES[k0]) : null;
   const strip = p.area === "center" && !p.master && !p.offTrack && A.TRK() === "vod" && A.VP_PAGES.indexOf(k0) >= 0;
   // 아직 옮기지 않은 화면 · 다른 영역 안내 화면은 예전 본문 HTML 그대로 (React 틀 안에)
   if (!Page) return <Shell r={r} pageHtml={A.legacyPage(p)} />;

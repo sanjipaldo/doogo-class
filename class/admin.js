@@ -2673,8 +2673,14 @@
     }), { threshold: 0.35 });
     document.querySelectorAll('.a-inq[data-unread="1"]').forEach((el) => inqIO.observe(el));
   }
+  /** 왼쪽 메뉴 숫자 지우기 — React 화면이면 React 에 다시 그리라고만 (React 가 그린 칸을 직접 지우지 않게) */
+  function navBadgeGone(sel) {
+    if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
+    const n = document.querySelector(sel); if (n) n.remove();
+  }
   /** 메뉴 · 종 숫자만 다시 그리기 (화면은 그대로) */
   function refreshInqBadges() {
+    if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
     const a = masterInqAlerts(), n = a.inq + a.msg;
     const nav = document.querySelector('.a-nav[href="#/center/master/partners"]');
     if (nav) { let b = nav.querySelector(".a-nav-num, span + span"); if (b && !n) b.remove(); else if (b) b.textContent = n; }
@@ -6972,7 +6978,7 @@
         inqThread(q, "partner") + "</article>";
     };
     // 이 화면을 열면 ‘새 소식’ 표시를 읽음으로
-    setTimeout(() => { let ch = false; qs.forEach((q0) => { const q = findInq(q0.id); if (q && inqUpdated(q) > (q.pSeen || 0)) { q.pSeen = Date.now(); DB.saveInquiry(q); ch = true; } }); if (ch) { const n = document.querySelector('.a-nav[href="#/center/partner/inquiries"] .a-nav-num, .a-nav[href="#/center/partner/inquiries"] span + span'); if (n) n.remove(); } }, 1500);
+    setTimeout(() => { let ch = false; qs.forEach((q0) => { const q = findInq(q0.id); if (q && inqUpdated(q) > (q.pSeen || 0)) { q.pSeen = Date.now(); DB.saveInquiry(q); ch = true; } }); if (ch) navBadgeGone('.a-nav[href="#/center/partner/inquiries"] .a-nav-num, .a-nav[href="#/center/partner/inquiries"] span + span'); }, 1500);
     return head("입점 문의", "내 추천 링크 · 코드로 들어온 강사님 입점 문의예요. 상담과 계약은 두잉고가 진행하고, 진행 상황과 계약 성사 여부가 여기에 그대로 보여요.") +
       '<div class="a-kpis">' + kpi("들어온 문의", qs.length + "건", "내 추천 링크 · 코드", "#/center/partner/inquiries") + kpi("상담 중", c("new") + c("seen") + c("contact") + "건", "두잉고가 연락 · 미팅 중", "#/center/partner/inquiries", "") + kpi("계약 성사", c("done") + "건", qs.length ? "성사율 " + Math.round(c("done") / qs.length * 100) + "%" : "아직 없어요", "#/center/partner/inquiries", c("done") ? "ok" : "") + kpi("미성사 · 보류", c("fail") + c("hold") + "건", "계약 미성사 " + c("fail") + "건 · 보류 " + c("hold") + "건", "#/center/partner/inquiries") + "</div>" +
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" +
@@ -7099,12 +7105,19 @@
   /* 홍보 자료: 추천 링크 · QR · 문구 · 이미지 */
   function pagePartnerKit() {
     const p = affMe(), url = refUrl(p);
-    const T = [
+    const T = affKitT(p, url);
+    setTimeout(drawAffQr, 0);
+    return pagePartnerKitHtml(p, url, T);
+  }
+  /** 홍보 문구 (카카오톡 · 인스타그램 · 이메일) — 예전 화면 · React 화면이 같이 써요 */
+  function affKitT(p, url) {
+    return [
       ["message", "카카오톡 · 문자", "안녕하세요! 강의하고 계신 걸 강사님 이름으로 된 강의 플랫폼으로 운영해 보시면 어떨까 해서 연락드려요.\n\n‘두잉고’는 강의 소개 페이지 · 무료 강의 · 수강생 관리를 한 번에 만들어 주고, 기수마다 1인 수강료 1명분만 내면 돼요. (수강생 수와 상관없이 같아요)\n\n👉 " + url],
       ["camera", "인스타그램 · 블로그", "강의는 강사님이, 운영은 두잉고가 ✍️\n내 이름으로 된 강의 플랫폼 · 수강생 케어 · 무료 강의 페이지까지 한 번에.\n기수마다 1인 수강료 1명분이면 시작할 수 있어요.\n\n입점 문의 👉 " + url],
       ["mail", "이메일", "제목: 강사님 이름으로 운영하는 강의 플랫폼, 두잉고를 소개드려요\n\n안녕하세요, " + p.name + "입니다.\n강의를 운영하시면서 신청 · 과제 · 공지 관리에 시간을 많이 쓰고 계시다면 두잉고를 한번 살펴보세요.\n\n- 강사님 이름 · 색 · 커리큘럼으로 만드는 수강생 화면\n- 강의 소개 랜딩 · 무료 강의 페이지\n- 과제 검수 · 출석 · 수료증까지 한 곳에서\n- 이용료: 기수마다 1인 수강료 1명분 (수강생 수와 무관)\n\n아래 링크로 입점 문의를 남기시면 담당자가 연락드려요.\n" + url]
     ];
-    setTimeout(drawAffQr, 0);
+  }
+  function pagePartnerKitHtml(p, url, T) {
     return head("홍보 자료", "강사님께 두잉고를 소개할 때 쓰는 자료예요. 아래 링크 · QR · 문구로 들어온 입점 문의는 모두 파트너님 소개로 기록돼요.") +
       '<div class="p-grid p-grid-r">' +
         '<section class="a-card p-kit-link"><div class="a-card-head"><h2>내 추천 링크 · QR</h2></div>' +
@@ -7135,7 +7148,7 @@
   /* 공지사항 (두잉고 → 파트너) */
   function pagePartnerNotices() {
     const p = affMe(), list = affNoticeList(), seen = p.noticeSeen || 0;
-    setTimeout(() => { const me = affMe(); if (me && affNoticeNew(me)) { me.noticeSeen = Date.now(); DB.save(); const n = document.querySelector('.a-nav[href="#/center/partner/notices"] span + span'); if (n) n.remove(); } }, 1200);
+    setTimeout(() => { const me = affMe(); if (me && affNoticeNew(me)) { me.noticeSeen = Date.now(); DB.save(); navBadgeGone('.a-nav[href="#/center/partner/notices"] span + span'); } }, 1200);
     return head("공지사항", "두잉고가 파트너님께 알려 드리는 소식이에요. 지급 일정 · 정책 변경 · 새 기능을 여기서 알려 드려요.") +
       '<section class="a-card">' + (list.length ? '<ul class="p-notices">' + list.map((n) => '<li class="' + (n.pinned ? "pin" : "") + '"><details' + (n.at > seen || n.pinned ? " open" : "") + "><summary>" + (n.pinned ? '<span class="a-pill dark">고정</span>' : "") + (n.at > seen ? '<i class="p-new">N</i>' : "") + "<b>" + esc(n.title) + "</b><time>" + fmtFull(DB.date.toStr(new Date(n.at))) + "</time>" + icon("chevDown", "sm") + '</summary><p>' + esc(n.body) + "</p></details></li>").join("") + "</ul>" : emptyBox("megaphone", "아직 공지가 없어요.")) + "</section>";
   }
@@ -7144,14 +7157,19 @@
   function pagePartnerGuide() {
     const p = affMe(), set = AFF().affSettings, rs = (p.rs !== null && p.rs !== undefined && p.rs !== "") ? Number(p.rs) : affDefRs();
     const fee = 990000, supply = Math.round(fee / 1.1), amt = Math.round(supply * rs / 100), n = affNet(p, amt);
-    const faq = [
+    const faq = AFF_FAQ;
+    return pagePartnerGuideHtml(p, set, rs, fee, supply, amt, n, faq);
+  }
+  /** 파트너 가이드 자주 묻는 질문 — 예전 화면 · React 화면이 같이 써요 */
+  const AFF_FAQ = [
       ["추천은 언제 ‘내 소개’로 인정되나요?", "내 추천 링크(또는 추천 코드)로 들어와 입점 문의를 남기거나, ‘강사 추천하기’로 직접 등록하면 바로 파트너님 소개로 기록돼요. 같은 강사님을 다른 경로로 먼저 소개받은 경우에는 먼저 기록된 쪽이 인정돼요."],
       ["RS는 얼마 동안 받나요?", "연결된 강사님이 두잉고를 쓰는 동안, 기수 이용료가 입금될 때마다 계속 RS가 생겨요. (계약 조건이 따로 있으면 그 조건을 따라요)"],
       ["강사님이 환불하면 어떻게 되나요?", "강사님 이용료가 환불되면 그 건의 RS도 함께 취소돼요. 이미 지급했다면 다음 정산에서 빼고 지급해요."],
       ["세금은 어떻게 처리되나요?", "개인 파트너는 사업소득으로 3.3%(소득세 3% + 지방소득세 0.3%)를 떼고 지급해요. 사업자 파트너는 세금계산서를 발행해 주시면 원천징수 없이 지급해요. 정산 유형은 두잉고 담당자가 정해 드려요."],
       ["지급 계좌를 바꾸고 싶어요", "‘내 정보 · 비밀번호’에서 언제든 바꿀 수 있어요. 지급일 3일 전까지 바꾼 계좌로 지급돼요."],
       ["계약이 성사되지 않으면요?", "‘입점 문의’에 ‘계약 안 됨’으로 표시되고 RS는 생기지 않아요. 나중에 다시 진행되면 상태가 바뀌고 RS도 정상적으로 생겨요."]
-    ];
+  ];
+  function pagePartnerGuideHtml(p, set, rs, fee, supply, amt, n, faq) {
     return head("파트너 가이드", "RS가 어떻게 계산되고 언제 지급되는지, 자주 묻는 질문을 모았어요.") +
       '<div class="p-grid">' +
         '<section class="a-card"><div class="a-card-head"><h2>RS 계산 예시</h2><span class="a-muted">내 RS ' + rs + "% 기준</span></div>" +
@@ -8518,7 +8536,7 @@
     vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
     vdKey, vdKeep, vdStmt, vdStState, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
     // 마스터: 대시보드 · 강사 플랫폼 · 전체 수강생 (운영자 계정이면 맡지 않은 버튼 · 링크를 빼요 — staffStrip)
-    seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus,
+    seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
     legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
       const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);
