@@ -1854,6 +1854,30 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "맞는 Secret → 결제 없음(404)이라 연결 확인 · 틀린 Secret → 인증 실패 · 키 없음 → off · 키 값은 결과에 없어요 · 배포 빌드가 기록만 해요(멈추지 않음)");
   }
 
+  {
+    console.log("33) 결제 대조: 주문 ↔ 포트원 결제 (배포 빌드 기록 · 읽기만 · 4단계 4-2)");
+    const PA = require(path.join(TMP, "class/api/_lib/payaudit.js"));
+    const O = (status, amount, extra) => Object.assign({ no: "DC1", method: "card", status, amount, paymentId: "p1" }, extra || {});
+    const P = (status, total, cancelled) => ({ status, storeId: process.env.PORTONE_STORE_ID, amount: { total, paid: total, cancelled: cancelled || 0 } });
+    const cases = [
+      [[O("paid", 10000)], P("PAID", 10000), "ok"],
+      [[O("paid", 10000), O("paid", 5000, { no: "DC2" })], P("PAID", 15000), "ok"],
+      [[O("refunded", 10000, { refundAmount: 10000 })], P("CANCELLED", 10000, 10000), "ok"],
+      [[O("refunded", 10000, { refundAmount: 3000 })], P("PARTIAL_CANCELLED", 10000, 3000), "ok"],
+      [[O("pending", 10000, { method: "vbank" })], P("VIRTUAL_ACCOUNT_ISSUED", 10000), "ok"],
+      [[O("ready", 10000)], null, "open"], [[O("failed", 10000)], null, "open"], [[O("failed", 10000)], P("FAILED", 10000), "open"],
+      [[O("paid", 10000)], P("PAID", 9000), "bad"], [[O("paid", 10000)], P("CANCELLED", 10000, 10000), "bad"], [[O("ready", 10000)], P("PAID", 10000), "bad"],
+      [[O("paid", 10000)], null, "bad"], [[O("refunded", 10000, { refundAmount: 3000 })], P("PARTIAL_CANCELLED", 10000, 5000), "bad"], [[O("paid", 10000)], Object.assign(P("PAID", 10000), { storeId: "store-other" }), "bad"],
+      [[O("canceled", 10000, { method: "vbank" })], Object.assign(P("VIRTUAL_ACCOUNT_ISSUED", 10000), { amount: { total: 10000, paid: 0 } }), "ok"], [[O("canceled", 10000, { method: "vbank" })], Object.assign(P("CANCELLED", 10000), { amount: { total: 10000, paid: 0, cancelled: 0 } }), "ok"], [[O("canceled", 10000, { method: "vbank" })], P("PAID", 10000), "bad"]
+    ];
+    const got = cases.map((c) => PA.judge(c[0], c[1]).verdict);
+    ok(got.every((v, i) => v === cases[i][2]), "판정: 결제 완료 · 묶음 결제 · 전액 · 부분 취소 · 가상계좌 대기 · 입금 전 취소 = 맞음 / 창만 연 결제 = 안 끝남 / 금액 · 취소 금액 · 상태 · 상점이 다르거나 취소 뒤 입금되면 확인 필요 (" + cases.length + "가지)", got);
+    const au = await PA.audit(50);
+    const txt = JSON.stringify(au);
+    ok(au.checked > 0 && au.rows.every((r) => Object.keys(r).every((k) => ["no", "method", "status", "amount", "pg", "verdict", "why"].indexOf(k) >= 0)) && !/@example\.com|010-|pwHash|ps-test/.test(txt) && au.bad === 0 && au.ok >= 10 && /payaudit"\)\.audit\(30\)/.test(fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8")),
+      "대조 결과에는 주문 번호 · 결제수단 · 상태 · 금액만 (이름 · 연락처 · 키 없음) · 배포 빌드가 최근 30건을 기록 (" + au.checked + "건 · 맞음 " + au.ok + " · 안 끝남 " + au.open + " · 확인 필요 " + au.bad + ")");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

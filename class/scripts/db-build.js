@@ -29,6 +29,12 @@ const init = require("../api/_lib/init");
   try {
     const pc = await require("../api/_lib/portone").check();
     if (pc.why !== "off") console.log("[pay] 포트원 연결 " + (pc.ok ? "확인: 됐어요 (상점 아이디 · API Secret 맞음)" : "확인 실패: " + (pc.why === "unauthorized" ? "API Secret 이 틀렸거나 만료됐어요 — 포트원 › 식별코드 · API Keys 에서 새로 발급해 Vercel 에 다시 넣어 주세요" : pc.why)) + " · 결제수단 채널: " + (pc.channels.join(", ") || "없음"));
+    // 결제 대조: 최근 포트원 결제 30건을 주문과 하나씩 맞춰 봐요 (읽기만 · 주문 번호 · 상태 · 금액만 적어요)
+    if (pc.ok) {
+      const au = await require("../api/_lib/payaudit").audit(30);
+      console.log("[pay] 결제 대조: 포트원 결제 " + au.checked + "건 — 맞음 " + au.ok + " · 결제 안 끝남 " + au.open + " · 확인 필요 " + au.bad);
+      au.rows.filter((r) => r.verdict !== "open").slice(0, 12).forEach((r) => console.log("[pay]   " + (r.verdict === "ok" ? "맞음" : "확인 필요") + " " + r.no + " · " + r.method + " · 주문 " + (r.status || "-") + " · 포트원 " + (r.pg || "-") + " · " + (r.amount != null ? r.amount + "원" : "") + " · " + r.why));
+    }
   } catch (e) { console.log("[pay] 포트원 연결 확인을 못 했어요 (빌드는 계속)"); }
   if (!prod && !staging) { console.log("[db] 미리보기 배포라 데이터는 바꾸지 않아요."); return; }
   if (staging) {
