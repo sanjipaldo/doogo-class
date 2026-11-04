@@ -142,7 +142,10 @@ async function reactCookie(page, base, v) { await page.context().addCookies([{ n
 /** #root 구조를 글로 (태그 · 속성 · 글자) — 예전 화면과 React 화면이 똑같은지 비교해요.
  *  움직임용으로 그린 뒤 붙는 표시(서비스 바꾸기 손잡이 위치 · 내려가면 생기는 그림자 · 움직임 시작)와 아이콘 그림 내용은 빼요 */
 const domShape = (page, id) => page.evaluate((id) => {
-  const c = document.getElementById(id || "root").cloneNode(true); c.normalize();
+  const src = document.getElementById(id || "root"), sels = Array.from(src.querySelectorAll("select")).map((x) => x.value);
+  const c = src.cloneNode(true); c.normalize();
+  // 고르기 칸: ‘selected’ 표시(예전 HTML · React 가 다르게 달아요) 대신 지금 골라진 값으로 비교해요
+  c.querySelectorAll("select").forEach((x, i) => { x.setAttribute("data-val", sels[i]); x.querySelectorAll("option").forEach((o) => o.removeAttribute("selected")); });
   // 자료실 열람자 표시(이름 · 기수 · 지금 시각)는 시각만 빼요
   c.querySelectorAll(".lib-wm span").forEach((el) => { el.textContent = el.textContent.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}$/, "M/D hh:mm"); });
   // 예전 강의실이 #root 에 붙이는 ‘누가 그린 틀인지’ 표시(data-who)는 화면 모양이 아니라서 빼요
@@ -156,6 +159,8 @@ const domShape = (page, id) => page.evaluate((id) => {
   c.querySelectorAll('img[onerror="this.remove()"]').forEach((el) => el.remove());
   // 강의실 썸네일도 못 불러오면 예전 코드가 지워요 (app.js error 처리 — 네트워크 · 시각에 따라 다름)
   c.querySelectorAll(".lesson-thumb img, .video img, .vod-thumb img, .mv-tile-img img").forEach((el) => el.remove());
+  // 줄 넘김 표시(한 쪽뿐이면 one)는 줄 너비를 재고 나서 붙어서 시각에 따라 달라요
+  c.querySelectorAll(".vd-pager").forEach((el) => el.classList.remove("one"));
   c.querySelectorAll("*").forEach((el) => {
     if (el.classList.contains("site-sw")) { ["ready", "no-anim", "at-dg", "at-vod"].forEach((k) => el.classList.remove(k)); el.style.removeProperty("--kx"); el.style.removeProperty("--kw"); }
     ["is-sc", "mo", "stuck", "is-in", "pop"].forEach((k) => el.classList.remove(k));

@@ -54,7 +54,11 @@
     ["ct-login", /^\/center\/login\/?$/, "강사센터 로그인 (강사 · 코치 · 마스터 · 파트너)"],
     ["ct-dash", /^\/center\/?$/, "강사센터 · 코치센터 대시보드 (두잉고 · VOD)"],
     // 강사 운영: 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
-    ["ct-ops", /^\/center\/(students|cohorts|reviews|questions|billing)\/?$/, "강사센터 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청"]
+    ["ct-ops", /^\/center\/(students|cohorts|reviews|questions|billing)\/?$/, "강사센터 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청"],
+    // 수강생 화면 콘텐츠 (1): 커리큘럼 · 과제 · 수업 캘린더 · 클래스 소식 · FAQ · 시작 가이드 · 실무 체크리스트 · 1:1 상담 채널
+    ["ct-content", /^\/center\/(curriculum|missions|schedule|notices|faq|guide|docs|channels|coaches|partners|library|motivation|replays|showcase|glossary|notes|brand)\/?$/, "강사센터 콘텐츠 — 기본 정보 · — 커리큘럼 · 과제 · 캘린더 · 공지 · FAQ · 가이드 · 체크리스트 · 상담 채널 · 코치 · 제휴 · 자료함 · 응원 영상 · 다시보기 · 모범 과제 · 용어 · 노트 질문"],
+    // VOD(DOOGO CLASS): VOD 수강생 · VOD 강의 연결 · VOD 판매 내역
+    ["ct-vod", /^\/center\/(vod-students|vodlink|vod|vod-live|vod-cal|vod-settle|coaching)\/?$/, "강사센터 VOD 수강생 · 강의 연결 · 판매 내역 · 무료 LIVE · 온/오프라인 판매 · 정산 달력 · 판매 정산 · 1:1 코칭 답변"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

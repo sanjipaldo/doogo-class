@@ -21,7 +21,7 @@ import DgLogin from "./dg/Login.jsx";
 import Center from "./center/Center.jsx";
 
 // 화면 키 → 화면 (키 · 주소 규칙은 class/shared/screens.js)
-const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin, "ct-login": Center, "ct-dash": Center, "ct-ops": Center };
+const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin, "ct-login": Center, "ct-dash": Center, "ct-ops": Center, "ct-content": Center, "ct-vod": Center };
 
 const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
 function Boot() {
@@ -73,7 +73,9 @@ export default function App() {
       closeModal() { window.dispatchEvent(new Event("dc:modal-close")); },
       // 예전 처리 함수가 끝에 부르는 ‘다시 그리기’ (vod.js render) — 보던 자리 그대로
       redraw() { if (pre(curK) === false) return; setSt((s) => Object.assign({}, s, { n: s.n + 1, moved: false, keep: null })); },
-      fail() { setSt((s) => Object.assign({}, s, { fail: true })); }
+      fail() { setSt((s) => Object.assign({}, s, { fail: true })); },
+      // 다른 영역 · 예전 화면으로 옮기려고 페이지를 새로 부를 때: ‘로딩중입니다’ (예전 화면과 같게 — main.js moveArea)
+      leave() { setSt((s) => Object.assign({}, s, { k: null })); }
     };
     if (window.__dcReactReady) window.__dcReactReady();
   }, []);

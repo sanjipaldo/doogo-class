@@ -6,7 +6,10 @@
 const FL = require("./_flows.js");
 const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강사센터 화면 주소 (shared/screens.js 의 ct-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
-const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing"];
+const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
+  "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
+  "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand",
+  "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching"];
 async function shapes(page, base, L, list) {
   const bad = []; let lines = 0;
   for (const u of list) {
@@ -55,10 +58,10 @@ module.exports = {
         let vod = null;
         await L.reactCookie(page, base, "off"); await L.open(page, base, "/center");
         if (await page.$('[data-action="trk"][data-k="vod"]')) {
-          await page.click('[data-action="trk"][data-k="vod"]'); await page.waitForTimeout(600);
+          await page.$eval('[data-action="trk"][data-k="vod"]', (el) => el.click()); await page.waitForTimeout(600);
           vod = await shapes(page, base, L, list);
           await L.reactCookie(page, base, "off"); await L.open(page, base, "/center");
-          if (await page.$('[data-action="trk"][data-k="live"]')) { await page.click('[data-action="trk"][data-k="live"]'); await page.waitForTimeout(400); }
+          if (await page.$('[data-action="trk"][data-k="live"]')) { await page.$eval('[data-action="trk"][data-k="live"]', (el) => el.click()); await page.waitForTimeout(400); }
         }
         const allBad = bad.concat(vod ? vod.bad : []);
         await run.check(!allBad.length, (who === "coach" ? "코치" : "강사") + "센터 " + list.length + "개 화면" + (vod ? " + VOD 탭" : "") + " " + vp.width + "px: 예전 화면(off) = React 화면(all) — #root 구조 " + (lines + (vod ? vod.lines : 0)) + "줄이 똑같아요", allBad.slice(0, 2), page);

@@ -319,7 +319,7 @@ module.exports = {
         const vs = await shapes(page, base, L, vl);
         await run.check(!vs.bad.length && vl.length >= 4, "VOD 강의실 " + vl.length + "개 화면(목록 · 극장형 · 내 노트): 예전 화면(off) = React 화면(all) — #root 구조 " + vs.lines + "줄이 똑같아요", vs.bad.slice(0, 2), page);
         if (vl.length > 4) {
-          const T = (x) => x.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}/g, "M/D hh:mm").replace(/"nt[a-z0-9]{6,}"/g, '"NTID"');
+          const T = (x) => x.replace(/\d{1,2}\/\d{1,2}( \([^)]+\))? \d{2}:\d{2}/g, "M/D hh:mm").replace(/"nt[a-z0-9]{6,}"/g, '"NTID"');
           const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 350); out.push(T(await L.domShape(page))); };
           const flow = async (mode) => {
             await L.reactCookie(page, base, mode); await L.open(page, base, "/home");

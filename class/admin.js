@@ -8513,6 +8513,11 @@
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,
+    // 수강생 화면 콘텐츠 편집 (커리큘럼 · 과제 · 캘린더 · 공지 · FAQ · 가이드 · 체크리스트 · 상담 채널 …)
+    CUR, usedBy, curBar, mlStrip, ytBadge, kindPill, faqCats, coachStats, TRACK_PILL, coachPermChips, menuNote, missionOpts, themePicker, brandPhotoBox,
+    // VOD(DOOGO CLASS): 수강생 · 강의 연결 · 판매 내역
+    vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
+    vdKey, vdKeep, vdStmt, vdStState, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
     legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
       const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);

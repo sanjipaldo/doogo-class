@@ -44,7 +44,8 @@
     leaving = true;
     // 떠 있는 알림(로그아웃했어요 · 오래 사용하지 않아 로그아웃 …)은 새로 부른 페이지에서 이어서 보여요 (React 화면 ↔ 예전 화면 · 영역 옮기기)
     try { const ts = Array.from(document.querySelectorAll("#toast-root .toast")).map((t) => ({ c: t.className, h: t.innerHTML })); if (ts.length) sessionStorage.setItem("dc:toasts", JSON.stringify(ts.slice(-2))); } catch (e) { /* 알림만 못 이어요 */ }
-    if (!REACT_PAGE) root.innerHTML = bootHtml();
+    // 새로 부르는 동안 ‘로딩중입니다’ (React 화면 틀은 React 가 같은 화면을 그려요)
+    if (!REACT_PAGE) root.innerHTML = bootHtml(); else if (window.ReactApp && window.ReactApp.leave) window.ReactApp.leave();
     Promise.resolve(DB.remote.on ? DB.remote.flush() : null).catch(() => {}).then(() => new Promise((ok) => setTimeout(ok, 150))).then(() => location.reload());
   }
   function go(resumed) {

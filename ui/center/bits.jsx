@@ -7,8 +7,17 @@ import { RawOne } from "../lib/Raw.jsx";
 export const ADM = () => window.ADM;
 export const DBX = () => window.DB;
 
-/** 예전 HTML 조각 (한 태그로 감싸진 것) — 비어 있으면 아무것도 */
-export const Isl = ({ html, ...rest }) => (html ? <RawOne html={html} {...rest} /> : null);
+/** 예전 HTML 조각 — 비어 있으면 아무것도 · 맨 위 태그가 여러 개면(예: 색 고르기 + 미리보기) 감싸지 않고 나란히 */
+export function Isl({ html, ...rest }) {
+  if (!html) return null;
+  const h = String(html).trim();
+  if (typeof document !== "undefined") {
+    const t = document.createElement("template"); t.innerHTML = h;
+    const kids = Array.from(t.content.childNodes).filter((k) => k.nodeType === 1 || (k.nodeType === 3 && k.textContent.trim()));
+    if (kids.length > 1) return kids.map((k, i) => (k.nodeType === 1 ? <RawOne key={i} html={k.outerHTML} {...rest} /> : k.textContent));
+  }
+  return <RawOne html={h} {...rest} />;
+}
 /** 예전 btn(label, action, cls, attrs) */
 export const Btn = ({ action, cls, children, ...rest }) => <button type="button" className={"a-btn " + (cls || "a-btn-ghost")} data-action={action} {...rest}>{children}</button>;
 /** 예전 head(제목, 설명, 오른쪽 버튼) */
