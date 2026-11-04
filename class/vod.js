@@ -2754,12 +2754,15 @@
     else if (t - me.last > 6e4) { me.last = t; save(); }
     return list.slice().sort((a, b) => (a.id === id ? -1 : b.id === id ? 1 : b.last - a.last));
   }
+  // 결제창만 열고 끝내지 않은 주문(ready) · 결제가 안 된 주문(failed)은 회원 화면에 보이지 않아요 — 예전에는 주문 · 결제 내역에 ‘결제 완료’로 보였어요 (4단계 결제 시험에서 찾음)
+  //  (휴대폰 결제에서 돌아오는 주문 확인 화면 #/vod/order/… 은 이 목록을 쓰지 않아요)
+  const NOT_ORDER = { ready: 1, failed: 1 };
   function myData(m) {
     const v = V(), seen = {};
     const mine = v.orders.filter((o) => o.mid === m.id && o.status === "paid" && isAccess(o)).sort((a, b) => b.at - a.at).map((o) => ({ o, p: product(o.pid) })).filter((x) => x.p && !seen[x.p.id] && (seen[x.p.id] = 1));
     const vods = mine.filter((x) => typeOf(x.p) === "vod"), ing = vods.filter((x) => pctDone(m.id, x.p.id) < 100), done = vods.filter((x) => pctDone(m.id, x.p.id) >= 100);
     const doneL = vods.reduce((a, x) => a.concat(lessons(x.p).filter((l) => prog(m.id, x.p.id).done[l.id])), []);
-    const likes = (v.likes[m.id] || []).map(product).filter(Boolean), orders = v.orders.filter((o) => o.mid === m.id).sort((a, b) => b.at - a.at);
+    const likes = (v.likes[m.id] || []).map(product).filter(Boolean), orders = v.orders.filter((o) => o.mid === m.id && !NOT_ORDER[o.status]).sort((a, b) => b.at - a.at);
     const rv = v.reviews.filter((r) => r.mid === m.id).sort((a, b) => b.at - a.at), pl = v.pledges.filter((x) => x.mid === m.id).sort((a, b) => b.at - a.at), cps = myCoupons(m.id);
     const d = { mine, vods, ing, done, doneL, likes: likes.filter((p) => p.status !== "soon"), alarm: likes.filter((p) => p.status === "soon"), orders, pending: orders.filter((o) => o.status === "pending"), rv, pl, cps, cpOk: cps.filter((y) => y.st === "ok"),
       free: vods.filter((x) => Number(x.p.price) === 0), paidV: vods.filter((x) => Number(x.p.price) > 0), ebooks: mine.filter((x) => typeOf(x.p) === "ebook"), live: mine.filter((x) => isEvent(x.p)).sort((a, b) => eventTime(a.p) - eventTime(b.p)), streak: streakOf(m.id) };
@@ -2856,7 +2859,7 @@
   function pageMy(sub) {
     const m = me(); if (!m) { ROUTE.redirect("#/vod/login?next=" + encodeURIComponent(ROUTE.hash)); return ""; }
     const legacy = route().qs.get("tab"); if (legacy) sub = { classes: "classes", likes: "likes", orders: "orders", account: "account" }[legacy] || "";
-    sub = MYT[sub] != null ? sub : ""; const v = V(), d = myData(m), ST = { paid: ["결제 완료", "ok"], pending: ["입금 대기", "warn"], refunded: ["환불 완료", "mute"], canceled: ["주문 취소", "mute"] };
+    sub = MYT[sub] != null ? sub : ""; const v = V(), d = myData(m), ST = { paid: ["결제 완료", "ok"], pending: ["입금 대기", "warn"], refunded: ["환불 완료", "mute"], canceled: ["주문 취소", "mute"], ready: ["결제 안 끝남", "mute"], failed: ["결제 안 됨", "mute"] };
     const shipN = d.orders.filter((o) => o.ship && ["wait", "ready", "prep", "ship"].indexOf(shipStOf(o)) >= 0).length;
     const cnt = { ship: shipN, addons: d.addN, classes: d.ing.length, free: d.free.length, vod: d.paidV.length, ebooks: d.ebooks.length, live: d.live.length, alarm: d.alarm.length, likes: d.likes.length, pending: d.pending.length, coupons: d.cpOk.length, reviews: d.rv.length, posts: d.pl.length, help: (v.inquiries || []).filter((x) => x.mid === m.id && x.answer && !x.seenAt).length };
     let body = "";

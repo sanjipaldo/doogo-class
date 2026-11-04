@@ -3048,7 +3048,8 @@
   const vdYMtxt = (ym) => ym.slice(0, 4) + "년 " + Number(ym.slice(5, 7)) + "월";
   const vdYMadd = (ym, n) => { const d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
   const VD_ST = { on: ["판매 중", "ok"], soon: ["오픈 예정", "info"], hidden: ["숨김", "mute"] };
-  const VD_OST = { paid: ["결제 완료", "ok"], pending: ["입금 대기", "warn"], refunded: ["환불", "mute"], canceled: ["주문 취소", "mute"] };
+  // ready: 카드 · 간편결제 창만 열고 끝내지 않은 주문 · failed: 결제가 안 된 주문 — 예전에는 ‘결제 완료’로 보였어요 (4단계 결제 시험에서 찾음 · 매출에는 원래 안 들어가요)
+  const VD_OST = { paid: ["결제 완료", "ok"], pending: ["입금 대기", "warn"], refunded: ["환불", "mute"], canceled: ["주문 취소", "mute"], ready: ["결제 안 끝남", "mute"], failed: ["결제 안 됨", "mute"] };
   const VD_PAY = { card: "카드", kakao: "카카오페이", toss: "토스페이", naver: "네이버페이", transfer: "계좌이체", vbank: "가상계좌", bank: "무통장", free: "무료", point: "쿠폰 · 포인트" };
   // 강사 · 코치 화면은 회원 문서를 받지 않아요(서버가 주문의 이름만 가려서 보냄) → 주문의 주문자 이름으로 보여요
   const vdMember = (id) => VD().members.find((m) => m.id === id) || vdBuyer(id);
@@ -6154,7 +6155,7 @@
    * 취소 · 반품 · 교환: 회원 요청 → 승인(수거 중) → 환불(반품 · 취소) 또는 교환 상품 발송 · 반려 (교보문고처럼 책이 돌아와 확인한 뒤 환불)
    * 엑셀: 주문 목록 · 택배 접수용(.xlsx) 내려받기 → 택배사에서 받은 송장 파일(.xlsx · .csv)을 올리면 주문번호로 맞춰 한 번에 발송 처리
    * 바꾼 상태 · 송장은 회원 마이페이지 › 종이책 · 배송 조회에 바로 보여요 (정식 서버는 주문 문서로 동기화) */
-  const vdShipAll = () => VD().orders.filter((o) => o.ship && o.status !== "failed");
+  const vdShipAll = () => VD().orders.filter((o) => o.ship && o.status !== "failed" && o.status !== "ready"); // 결제를 끝내지 않은 카드 주문은 배송 목록에서 빼요
   const boClaimOn = (o) => { const c = VX().claimOf(o); return !!c && o.status === "paid" && (c.st === "req" || c.st === "pick"); };
   const vdShipTodo = () => VD().orders.filter((o) => o.ship && (o.status === "pending" || boClaimOn(o) || (o.status === "paid" && ["ready", "prep"].indexOf(VX().shipStOf(o)) >= 0))).length;
   const BO_ST = { wait: ["입금 대기", "warn"], ready: ["신규 주문", "bad"], prep: ["배송 준비", "info"], ship: ["배송 중", "info"], done: ["배송 완료", "ok"], cancel: ["취소", "mute"] };

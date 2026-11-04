@@ -1876,6 +1876,11 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const txt = JSON.stringify(au);
     ok(au.checked > 0 && au.rows.every((r) => Object.keys(r).every((k) => ["no", "method", "status", "amount", "pg", "verdict", "why"].indexOf(k) >= 0)) && !/@example\.com|010-|pwHash|ps-test/.test(txt) && au.bad === 0 && au.ok >= 10 && /payaudit"\)\.audit\(30\)/.test(fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8")),
       "대조 결과에는 주문 번호 · 결제수단 · 상태 · 금액만 (이름 · 연락처 · 키 없음) · 배포 빌드가 최근 30건을 기록 (" + au.checked + "건 · 맞음 " + au.ok + " · 안 끝남 " + au.open + " · 확인 필요 " + au.bad + ")");
+    // 화면: 결제를 끝내지 않은 주문(ready) · 결제가 안 된 주문(failed) — 예전에는 ‘결제 완료’로 보였어요
+    const vj33 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), aj33 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
+    ok(/const NOT_ORDER = \{ ready: 1, failed: 1 \};/.test(vj33) && /orders = v\.orders\.filter\(\(o\) => o\.mid === m\.id && !NOT_ORDER\[o\.status\]\)/.test(vj33) && /ready: \["결제 안 끝남", "mute"\], failed: \["결제 안 됨", "mute"\] \};/.test(vj33) &&
+      /const VD_OST = \{[^;]*ready: \["결제 안 끝남", "mute"\], failed: \["결제 안 됨", "mute"\] \};/.test(aj33) && /o\.ship && o\.status !== "failed" && o\.status !== "ready"/.test(aj33),
+      "화면: 결제를 끝내지 않은 · 결제가 안 된 카드 주문은 회원 주문 내역 · 배송 조회에서 빼고, 마스터 주문 목록에는 ‘결제 안 끝남 · 결제 안 됨’으로 (예전엔 ‘결제 완료’로 보였어요)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
