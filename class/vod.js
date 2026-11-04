@@ -4039,6 +4039,8 @@
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),
     // 주문 · 결제 · 배송 메뉴 (4-4)
-    rfBtnsInfo: (o) => ({ q: instantOf(o), bk: !!o.ship, st: o.ship ? shipStOf(o) : "", c: o.ship ? claimOf(o) : null }), ordCancelDo, ordCancel0Do, rfUndoDo, rfNowInfo, doRfReq, doShipEdit, rcptHtml, refundHtml, shipFields, acctFields, shipClaimBox, fmtDue, dueOf, fmtDT, formChange, addrFind });
+    rfBtnsInfo: (o) => ({ q: instantOf(o), bk: !!o.ship, st: o.ship ? shipStOf(o) : "", c: o.ship ? claimOf(o) : null }), ordCancelDo, ordCancel0Do, rfUndoDo, rfNowInfo, doRfReq, doShipEdit, rcptHtml, refundHtml, shipFields, acctFields, shipClaimBox, fmtDue, dueOf, fmtDT, formChange, addrFind,
+    // 로그인 · 가입 · 두잉고 강의실 고르기 (4-4)
+    authReady, doAuth, doDgLogin, kakaoStart, dgList, dgCard });
   window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };
 })();

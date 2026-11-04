@@ -14,7 +14,11 @@
   // [키, 주소 규칙, 설명]
   const LIST = [
     // 마이페이지: 메뉴 전부 (홈 · 강의장 · 구매 · 활동 · 계정)
-    ["vod-my", /^\/vod\/my(\/(classes|free|vod|addons|ebooks|live|alarm|likes|pending|orders|ship|coupons|points|reviews|posts|badges|account|devices|help))?\/?$/, "두고클래스 마이페이지 (메뉴 전부)"]
+    ["vod-my", /^\/vod\/my(\/(classes|free|vod|addons|ebooks|live|alarm|likes|pending|orders|ship|coupons|points|reviews|posts|badges|account|devices|help))?\/?$/, "두고클래스 마이페이지 (메뉴 전부)"],
+    // 두고클래스 로그인 · 회원가입 · 두잉고 VOD 강의실 고르기
+    ["vod-auth", /^\/vod\/(login|signup|dg)\/?$/, "두고클래스 로그인 · 회원가입 · 두잉고 VOD 강의실 고르기"],
+    // 주문 확인 (결제 · 신청 · 입금 대기 완료)
+    ["vod-order", /^\/vod\/order\/[^/]+\/?$/, "두고클래스 주문 확인"]
   ];
   const KEYS = LIST.map((x) => x[0]);
   const parse = (s) => String(s || "").split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);

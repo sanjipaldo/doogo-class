@@ -133,6 +133,19 @@ module.exports = {
       const back = !!(await page.$("[data-v='rf-req'][data-no='" + no + "']"));
       await run.check(!!errNoAcct && !sent.modal && /환불 요청을 보냈어요/.test(sent.toast) && sent.undo && back, "환불 요청(무통장): 계좌를 안 적으면 안내 · 적어 보내면 팝업이 닫히고 ‘요청 취소’ 가 생겨요 · 요청 취소하면 다시 ‘환불 요청’", Object.assign(sent, { back, errNoAcct }), page);
     } else await run.check(false, "입금 확인한 주문에 ‘환불 요청’ 버튼이 있어요", { no: o2.no }, page);
+    // 주문 확인 화면(#/vod/order/<번호>): 예전 화면 = React 화면 (입금 확인한 주문 · 취소한 주문 · 없는 주문)
+    {
+      const bad = [];
+      for (const u of ["/vod/order/" + o2.no, "/vod/order/" + o1.no, "/vod/order/DC000000000000"]) {
+        const sh = {};
+        for (const mode of ["off", "all"]) { await L.reactCookie(page, base, mode); await L.open(page, base, u); sh[mode] = { shape: await L.domShape(page), react: await isReact(page) }; }
+        const d = L.shapeDiff(sh.off.shape, sh.all.shape);
+        if (sh.off.react || !sh.all.react || d) bad.push({ u, off: sh.off.react, all: sh.all.react, d });
+      }
+      await L.reactCookie(page, base, "all");
+      await run.check(!bad.length, "주문 확인 화면 3가지(결제 완료 · 취소 · 없는 주문): 예전 화면 = React 화면", bad.slice(0, 2), page);
+      await L.open(page, base, "/vod/my");
+    }
     // React 화면 → 예전 화면 (전체 클래스는 아직 예전 화면): 새로 불러 예전 화면으로
     await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.click(".vd-nav a[href='#/vod/c/all']")]);
     await L.ready(page);
@@ -158,5 +171,59 @@ module.exports = {
     await L.open(page, base, "/vod/my");
     await run.check(!(await isReact(page)) && !!(await page.$(".vd-my-side")), "끄면(dc_next=off) /vod/my 는 예전 화면", { url: page.url() }, page);
     await page.context().close();
+    // 3) 로그인 · 회원가입 (로그인 전 · 같은 창에서 쿠키만 바꿔 예전 화면 = React 화면)
+    {
+      const pg = await L.newPage(browser);
+      run.watch(pg, "React 로그인");
+      await L.fresh(pg, base);
+      const AUTH = ["/vod/login", "/vod/signup", "/vod/login?tab=dg", "/vod/signup?tab=dg", "/vod/login?next=%23%2Fvod%2Fdg"];
+      const bad = []; let lines = 0;
+      for (const u of AUTH) {
+        const sh = {};
+        for (const mode of ["off", "all"]) { await L.reactCookie(pg, base, mode); await L.open(pg, base, u); sh[mode] = { shape: await L.domShape(pg), react: await isReact(pg) }; }
+        const d = L.shapeDiff(sh.off.shape, sh.all.shape); lines += sh.all.shape.split("\n").length;
+        if (sh.off.react || !sh.all.react || d) bad.push({ u, off: sh.off.react, all: sh.all.react, d });
+      }
+      await run.check(!bad.length, "로그인 · 회원가입 " + AUTH.length + "개 화면: 예전 화면(off) = React 화면(all) — #root 구조 " + lines + "줄이 똑같아요", bad.slice(0, 2), pg);
+      // 탭 바꾸기: 새로 불러오지 않고 그 자리에서 · 주소는 ?tab=dg
+      await L.reactCookie(pg, base, "all");
+      await L.open(pg, base, "/vod/login");
+      await pg.evaluate(() => { window.__e2eStay = 1; });
+      await pg.click(".lg-svc a[data-k='dg']"); await pg.waitForTimeout(300);
+      const tab = await pg.evaluate(() => ({ stay: window.__e2eStay === 1, q: location.search, dg: !document.querySelector(".vd-svc-pane[data-pane='dg']").hidden, list: document.querySelectorAll(".vd-dgl-ins").length }));
+      await pg.click(".lg-svc a[data-k='vod']"); await pg.waitForTimeout(200);
+      await run.check(tab.stay && /tab=dg/.test(tab.q) && tab.dg && tab.list > 0 && !(await pg.evaluate(() => /tab=dg/.test(location.search))), "로그인 탭 [두잉고 | 두고클래스]: 새로 불러오지 않고 바꿔요 · 주소에 ?tab=dg · 두잉고 탭은 강사 목록", tab, pg);
+      // 칸을 채워야 버튼이 켜져요 · 비밀번호가 틀리면 안내
+      const dis0 = await pg.$eval("[data-vd-auth] button[type=submit]", (b) => b.disabled);
+      await pg.fill("[data-vd-auth] input[name=email]", em); await pg.fill("[data-vd-auth] input[name=pw]", "wrong-pw-1");
+      const dis1 = await pg.$eval("[data-vd-auth] button[type=submit]", (b) => b.disabled);
+      await pg.click("[data-vd-auth] button[type=submit]"); await pg.waitForTimeout(1200);
+      const err = await L.text(pg, "#vd-auth-err");
+      await run.check(dis0 && !dis1 && !!err, "로그인: 칸을 채우기 전엔 버튼이 꺼져 있고 · 비밀번호가 틀리면 안내가 떠요", { dis0, dis1, err }, pg);
+      // 로그인 (?next=마이페이지) → 마이페이지(React)로 · 서버 로그인
+      await L.open(pg, base, "/vod/login?next=" + encodeURIComponent("#/vod/my"));
+      await pg.fill("[data-vd-auth] input[name=email]", em); await pg.fill("[data-vd-auth] input[name=pw]", pw);
+      await pg.click("[data-vd-auth] button[type=submit]");
+      await pg.waitForFunction(() => location.pathname === "/vod/my", null, { timeout: 10000 }).catch(() => {});
+      await L.ready(pg); await pg.waitForTimeout(400);
+      const li = { path: new URL(pg.url()).pathname, react: await isReact(pg), me: !!(((await F.serverMe(pg)) || {}).vod), side: !!(await pg.$(".vd-my-side")) };
+      await run.check(li.path === "/vod/my" && li.react && li.me && li.side, "로그인(React 화면): 서버 로그인 → ?next 의 마이페이지(React)로", li, pg);
+      // 회원가입 (React 화면) → 가입 · 로그인 · 가입 쿠폰
+      await L.fresh(pg, base); await L.reactCookie(pg, base, "all");
+      await L.open(pg, base, "/vod/signup");
+      const mail = "react" + Date.now().toString(36) + "@example.com";
+      await pg.fill("[data-vd-auth] input[name=name]", "리액트");
+      await pg.fill("[data-vd-auth] input[name=email]", mail);
+      await pg.fill("[data-vd-auth] input[name=phone]", "010-0000-7777");
+      await pg.fill("[data-vd-auth] input[name=pw]", "test1234a"); await pg.fill("[data-vd-auth] input[name=pw2]", "test1234a");
+      await pg.check("[data-vd-auth] [data-v='agree-all']");
+      const agreed = await pg.evaluate(() => { const f = document.querySelector("[data-vd-auth]"); return f.agree.checked && f.mkt.checked && !f.querySelector("button[type=submit]").disabled; });
+      await pg.click("[data-vd-auth] button[type=submit]");
+      await pg.waitForFunction(() => !!(window.DB && DB.remote && DB.remote.me && DB.remote.me.vod), null, { timeout: 10000 }).catch(() => {});
+      await pg.waitForTimeout(800);
+      const su = { agreed, me: !!(((await F.serverMe(pg)) || {}).vod), toast: await L.toasts(pg) };
+      await run.check(su.agreed && su.me, "회원가입(React 화면): 전체 동의로 필수 · 선택이 같이 켜지고 · 가입하면 서버 로그인", su, pg);
+      await pg.context().close();
+    }
   }
 };
