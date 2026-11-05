@@ -73,6 +73,14 @@ const sign = (body) => { const id = "msg_" + crypto.randomBytes(4).toString("hex
 const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId: "store-test", transactionId: "tx_" + pid, currency: "KRW", amount: { total, paid: total, cancelled: 0 }, method: { type: "PaymentMethodCard" }, receiptUrl: "https://r/" + pid }; };
 
 (async () => {
+  // TEST_DB=pg: 같은 시험을 Postgres(PGlite · 운영 Supabase 와 같은 postgres 드라이버 · 같은 SQL)로 — DB 전환 1부 A1
+  //   설치(한 번): npm --prefix class/scripts/pg ci  ·  실행: TEST_DB=pg node scripts/vod-test.js
+  if (process.env.TEST_DB === "pg") {
+    const pgT = await require(path.join(ROOT, "scripts/pg/server.js")).start();
+    delete process.env.CLASS_SQLITE;
+    Object.assign(process.env, { DB_DRIVER: "supabase", SUPABASE_DB_URL: pgT.url });
+    console.log("저장소: Postgres (PGlite 시험용 · " + pgT.url.replace(/\/\/[^@]+@/, "//") + ")");
+  }
   await require(path.join(TMP, "class/api/_lib/init.js")).ensureSeeded(); // 실제 서버처럼 두잉고 기본 데이터(meta · 강사)부터
   console.log("1) 설정 · 카탈로그");
   let r = await call("vod-config", { method: "GET" });
@@ -2119,6 +2127,65 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/reactBoot: \(\) => loadCfg\(\)\.then\(\(\) => \{ kkReturn\(\); pgReturn\(\); tsMount\(\); \}\)/.test(vj35) && /X\.reactBoot \? X\.reactBoot\(\)/.test(app35) && /Screen && ready \?/.test(app35) &&
       /if \(document\.body\.dataset\.react\) \{ if \(window\.ReactApp && window\.ReactApp\.redraw\) window\.ReactApp\.redraw\(\); return; \}/.test(vj35) && /sessionStorage\.setItem\("dc:toasts"/.test(mj) && /function carryToasts\(\)/.test(mj),
       "React 화면: 결제 · 로그인 설정(vod-config)을 받은 뒤 처음 그려요(안 받으면 쿠폰 · 결제가 서버를 안 거쳐요) · 예전 처리 함수의 ‘다시 그리기’는 React 로 · 새로 불러도 알림이 이어져요");
+  }
+
+  {
+    console.log("36) DB 전환 1부 A1: 저장소 어댑터(Turso · SQLite · Postgres) · 쓰기 멈춤(DC_READONLY) · 배포 기록용 확인");
+    const st36 = require(path.join(TMP, "class/api/_lib/store.js")), init36 = require(path.join(TMP, "class/api/_lib/init.js")), pgRun = process.env.TEST_DB === "pg";
+    const kind36 = st36.kind();
+    ok(kind36 === (pgRun ? "postgres" : "sqlite"), "지금 저장소: " + (pgRun ? "Postgres (PGlite · 운영 Supabase 와 같은 postgres 드라이버 · 같은 SQL)" : "SQLite (로컬 · Turso 와 같은 SQL)"), kind36);
+    const q36 = [st36.pgSql("SELECT k, v, ver, created FROM docs WHERE updated > ? AND (k LIKE ? OR k = ?) ORDER BY created, k"), st36.pgSql("UPDATE docs SET v = ?, updated = ? WHERE k = 'a?b'"), st36.pgSql("DELETE FROM backups WHERE id NOT IN (SELECT id FROM backups ORDER BY id DESC LIMIT 40)")];
+    ok(q36[0] === 'SELECT k, v, ver, created FROM app.docs WHERE updated > $1 AND (k LIKE $2 OR k = $3) ORDER BY created, k COLLATE "C"' && q36[1] === "UPDATE app.docs SET v = $1, updated = $2 WHERE k = 'a?b'" && q36[2] === "DELETE FROM app.backups WHERE id NOT IN (SELECT id FROM app.backups ORDER BY id DESC LIMIT 40)",
+      "Postgres 로 바꾸기: ? → $1 (따옴표 안은 그대로) · 표 이름 → app.표 · 같은 시각 문서는 키를 바이트 순으로(SQLite 와 같은 순서)", q36);
+    // init.js 가 직접 쓰던 SQL → 저장소 함수 (두 DB 같은 결과)
+    const k36 = "zz36:" + Date.now().toString(36), v36 = JSON.stringify({ b: 1, a: "한글", z: [1, { y: null }] });
+    await st36.insertDocs([{ k: k36, v: v36, created: 9e12 }]);
+    await st36.insertDocs([{ k: k36, v: JSON.stringify({ a: 2 }), created: 9e12 }]);
+    const row36 = await st36.getDoc(k36), all36 = await st36.allDocRows(), list36 = await st36.listDocs({ prefixes: ["zz36:%"] });
+    ok(row36 && row36.ver === 1 && row36.v.a === "한글" && all36.some((r) => r.k === k36 && r.v === v36) && list36.length === 1 && list36[0].k === k36,
+      "문서 넣기(이미 있는 키는 그대로) · 모든 문서 읽기 · 앞부분 찾기 — 문서 글자는 한 글자도 안 바뀌어요(키 순서 · 한글 · null)", { row36, n: list36.length });
+    const sys0 = await st36.getDoc("sys"); await init36.setEpoch(); const sys1 = await st36.getDoc("sys");
+    ok(sys1 && sys1.v && sys1.v.epoch && (!sys0 || (sys1.v.epoch !== sys0.v.epoch && sys1.ver === sys0.ver + 1)), "epoch(sys 문서) 바꾸기 — 있으면 고치고(버전 +1) 없으면 맨 앞에 만들어요", { before: sys0 && sys0.ver, after: sys1 && sys1.ver });
+    // 쓰기 멈춤: 문서 · 사진 쓰기만 503 — 읽기 · 로그인(실패 횟수) · 배포 전 백업은 그대로
+    const jar36 = Object.assign({}, jar);
+    process.env.DC_READONLY = "1"; process.env.MASTER_PASSWORD = "Test-master9@";
+    let ro = {};
+    try {
+      jar.dc_a = auth.sign({ r: "master" });
+      const b36 = await call("bootstrap", { method: "GET" }), m36 = (b36.json.docs || []).find((d) => d[0] === "meta");
+      const s36 = await call("sync", { body: { changes: [{ k: "meta", base: m36 ? m36[2] : 0, put: Object.assign({}, m36 ? m36[1] : {}, { ro36: 1 }) }] } });
+      let thrown = null; try { await st36.writeDoc(k36, { a: 3 }, 1); } catch (e) { thrown = e; }
+      let rlOk = true; try { await st36.rlFail(["ro36:" + k36]); await st36.rlClear(["ro36:" + k36]); } catch (e) { rlOk = false; }
+      const bk36 = await st36.backup("시험: 쓰기 멈춤 중 배포 전 백업");
+      await st36.rlClear(["master", "day:master"]); delete jar.dc_a;
+      const l36 = await call("auth", { body: { action: "admin", tab: "master", id: "doogobiz", pw: "Test-master9@" }, headers: { "x-forwarded-for": "10.36.0.1" } });
+      ro = { boot: b36.status, docs: (b36.json.docs || []).length, sync: s36.status, err: s36.json.error, msg: s36.json.message, thrown: st36.isReadonlyError(thrown), rlOk, backup: !!(bk36 && bk36.docs), login: !!(l36.json.ok && jar.dc_a) };
+    } finally { delete process.env.DC_READONLY; delete process.env.MASTER_PASSWORD; Object.keys(jar).forEach((k) => delete jar[k]); Object.assign(jar, jar36); }
+    ok(ro.sync === 503 && ro.err === "readonly" && /점검/.test(ro.msg || "") && ro.thrown, "쓰기 멈춤(DC_READONLY=1): 저장은 503 ‘잠시 점검 중’ — 화면은 바뀐 내용을 들고 있다가 다시 보내요", ro);
+    ok(ro.boot === 200 && ro.docs > 0 && ro.rlOk && ro.backup && ro.login, "쓰기 멈춤 중에도 읽기 · 로그인(실패 횟수 기록) · 배포 전 백업은 그대로 — 점검 중에 들어가서 확인할 수 있어요", ro);
+    const after36 = await st36.writeDoc(k36, null, 1), meta36 = await st36.getDoc("meta");
+    ok(after36 === 2 && !(meta36 && meta36.v && meta36.v.ro36), "쓰기 멈춤을 끄면 바로 다시 저장돼요 · 멈춘 동안 보낸 저장은 하나도 안 들어갔어요", { after36 });
+    // 배포 기록용 확인 (A0)
+    const fx36 = await st36.fileStats(), bad36 = await st36.pgProbe("postgres://postgres.abc:s3cret-pw@127.0.0.1:1/postgres");
+    ok(typeof fx36.n === "number" && fx36.n >= 0 && fx36.total >= fx36.max && bad36.ok === false && bad36.port === 1 && !/s3cret-pw|postgres\.abc/.test(JSON.stringify(bad36)),
+      "배포 기록: 사진 · 첨부 개수 · 크기(읽기만) · Supabase 접속 실패도 빌드는 계속 · 기록에 비밀번호 · 주소가 안 나와요", { fx36, bad36 });
+    if (pgRun) { const pr36 = await st36.pgProbe(process.env.SUPABASE_DB_URL); ok(pr36.ok && pr36.app && pr36.docs > 0 && /^\d+/.test(pr36.version), "Supabase 접속 확인(시험 Postgres): 버전 · 왕복 시간 · app 표 · 문서 수", pr36); }
+    // 로그인 서명 키: SESSION_SECRET 을 새로 넣어도 예전 키(Turso 토큰) 쿠키를 받아 줘요 · Vercel 에서 키가 없으면 기본 키로 서명하지 않아요
+    const env36 = { s: process.env.SESSION_SECRET, t: process.env.TURSO_AUTH_TOKEN, v: process.env.VERCEL }, setEnv = (o) => { ["SESSION_SECRET", "TURSO_AUTH_TOKEN", "VERCEL"].forEach((k) => delete process.env[k]); Object.assign(process.env, o); };
+    let sk36 = {};
+    try {
+      setEnv({ TURSO_AUTH_TOKEN: "legacy-36" }); const oldT = auth.sign({ r: "master" });
+      setEnv({ TURSO_AUTH_TOKEN: "legacy-36", SESSION_SECRET: "new-36" }); const newT = auth.sign({ r: "master" });
+      sk36.both = [!!auth.verify(oldT), !!auth.verify(newT)];
+      setEnv({ SESSION_SECRET: "new-36" }); sk36.afterTurso = [!!auth.verify(oldT), !!auth.verify(newT)];
+      setEnv({ VERCEL: "1" }); try { auth.sign({ r: "x" }); sk36.vercel = "signed"; } catch (e) { sk36.vercel = "blocked"; }
+    } finally { setEnv({}); if (env36.s != null) process.env.SESSION_SECRET = env36.s; if (env36.t != null) process.env.TURSO_AUTH_TOKEN = env36.t; if (env36.v != null) process.env.VERCEL = env36.v; }
+    ok(sk36.both && sk36.both[0] && sk36.both[1] && !sk36.afterTurso[0] && sk36.afterTurso[1] && sk36.vercel === "blocked",
+      "로그인 서명 키: SESSION_SECRET 을 넣어도 지금 로그인(예전 키 쿠키)이 안 풀리고 · Turso 를 뗀 뒤엔 새 키만 · 운영에서 키가 없으면 누구나 아는 기본 키로 서명하지 않아요", sk36);
+    const db36 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), mj36 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), hb36 = fs.readFileSync(path.join(ROOT, "api/_lib/http.js"), "utf8"), bd36 = fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8"), pkg36 = JSON.parse(fs.readFileSync(path.join(ROOT, "../package.json"), "utf8"));
+    ok(/if \(j\.error === "readonly"\) e\.readonly = true;/.test(db36) && /info && info\.readonly \? "잠시 점검 중이에요/.test(mj36) && /e\.code === "DC_READONLY"\) \{ if \(!res\.headersSent\) send\(res, 503/.test(hb36) && /if \(ro\) return;/.test(bd36) && /\.then\(\(\) => store\.close\(\)\)/.test(bd36),
+      "쓰기 멈춤 안내: 서버 503 readonly → 화면 ‘잠시 점검 중’ · 배포 때는 백업만 · 빌드 끝에 DB 연결 닫기");
+    ok(pkg36.dependencies.postgres === "3.4.9" && !Object.keys(pkg36.dependencies).concat(Object.keys(pkg36.devDependencies || {})).some((d) => /pglite/.test(d)), "운영 빌드 의존성: postgres 드라이버(3.4.9)만 · 시험용 PGlite 는 class/scripts/pg 폴더에만", pkg36.dependencies);
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

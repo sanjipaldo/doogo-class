@@ -1,4 +1,4 @@
-/* 저장소 — Turso(운영, HTTP) 또는 node:sqlite(로컬 개발) 위에 문서(doc) 테이블을 둔다.
+/* 저장소 — Turso(운영, HTTP) · node:sqlite(로컬 개발) · Postgres(Supabase) 위에 문서(doc) 테이블을 둔다.
  *
  *  docs        k(키) · v(JSON, 지우면 NULL) · ver(버전) · updated(바뀐 시각) · created(순서)
  *  files       사진·첨부 (data: URL 을 떼어 내 보관, 주소는 /api/file?h=해시)
@@ -9,6 +9,15 @@
  *
  * 데이터 보존 원칙: 배포할 때 이미 저장된 내용은 지우거나 바꾸지 않는다 (빠진 칸만 채움).
  * 지우기는 강사센터 · 마스터에서 사람이 직접 할 때만. 요청받은 데이터 수정은 oneoff.js 에 한 번만 도는 작업으로.
+ *
+ * 어느 DB 에 붙는지 (DB 전환 1부 A1 · 2026-11): DB_DRIVER
+ *   (비움 · turso)  TURSO_DATABASE_URL + TURSO_AUTH_TOKEN → Turso, 없으면 CLASS_SQLITE 파일(로컬) — 지금까지 그대로
+ *   supabase        SUPABASE_DB_URL(Supabase 연결 풀러 · 트랜잭션 모드)의 Postgres — 같은 표 6개를 app 스키마에
+ *   Postgres 에서는 같은 SQL 을 조금만 바꿔 써요(pgSql): ? → $1 · 표 이름 → app.표 · 같은 created 끼리는 키를 바이트 순(COLLATE "C",
+ *   SQLite 와 같은 순서) · 여러 문장(batch)은 한 트랜잭션(중간에 실패하면 전부 취소). 문서(v)는 글자 그대로(text) — 키 순서 · 공백이 한 글자도 안 바뀌게.
+ *   다른 점 하나: LIKE 가 영문 대소문자를 가려요(SQLite 는 안 가림) — 키 앞부분은 모두 코드가 만든 같은 글자라 결과는 같아요.
+ * 쓰기 멈춤 (DC_READONLY=1 · 운영 전환 당일 복사하는 동안): 문서 · 사진 쓰기는 503 ‘잠시 점검 중’ (화면은 변경을 들고 있다가 다시 보내요).
+ *   읽기 · 로그인 실패 횟수(rl) · 배포 전 백업(backups) · 작업 기록(oplog)은 그대로 — 점검 중에도 들어가서 확인할 수 있게
  */
 "use strict";
 
@@ -67,22 +76,95 @@ function sqliteClient(file) {
   return { kind: "sqlite", batch: async (stmts) => stmts.map(run) };
 }
 
+/* ---------------- Postgres (Supabase) ---------------- */
+/* 같은 표 6개 — app 스키마 (Supabase 공개 API(anon 키)는 public 스키마만 열어요 · 권한 막기와 보기는 pgsetup.js 가 배포 때) */
+const PG_TABLES = ["docs", "files", "file_scopes", "rl", "backups", "oplog"];
+const PG_SCHEMA = [
+  "CREATE SCHEMA IF NOT EXISTS app",
+  "CREATE TABLE IF NOT EXISTS app.docs (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, kind text GENERATED ALWAYS AS (split_part(k, ':', 1)) STORED)",
+  "CREATE INDEX IF NOT EXISTS docs_updated ON app.docs (updated)",
+  "CREATE INDEX IF NOT EXISTS docs_k_prefix ON app.docs (k text_pattern_ops)",
+  "CREATE INDEX IF NOT EXISTS docs_kind ON app.docs (kind)",
+  "CREATE TABLE IF NOT EXISTS app.files (h text PRIMARY KEY, mime text NOT NULL, b64 text NOT NULL, size integer NOT NULL, created bigint NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS app.file_scopes (h text NOT NULL, scope text NOT NULL, PRIMARY KEY (h, scope))",
+  "CREATE TABLE IF NOT EXISTS app.rl (k text PRIMARY KEY, n integer NOT NULL, until bigint NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS app.backups (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, at bigint NOT NULL, reason text, docs integer, size integer, data text NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS app.oplog (id text PRIMARY KEY, at bigint NOT NULL, note text, result text)"
+];
+const PG_TABLE_RE = new RegExp("\\b(FROM|INTO|UPDATE|JOIN)\\s+(" + PG_TABLES.join("|") + ")\\b", "gi");
+/** SQLite 문법 SQL → Postgres: ? → $1 …(작은따옴표 글자 안은 그대로) · 표 이름 → app.표 · 같은 created 끼리 키 순서를 바이트 순으로 */
+function pgSql(sql) {
+  let out = "", n = 0, quoted = false;
+  for (const ch of String(sql)) { if (ch === "'") quoted = !quoted; out += !quoted && ch === "?" ? "$" + ++n : ch; }
+  return out.replace(PG_TABLE_RE, (m, kw, t) => kw + " app." + t).replace(/\bORDER BY created, k\b/g, 'ORDER BY created, k COLLATE "C"');
+}
+/** 연결 주소를 로그 · 오류에 남기지 않게 (비밀번호가 들어 있어요) */
+const scrub = (s) => String(s || "").replace(/postgres(?:ql)?:\/\/[^\s'"]+/gi, "postgres://…");
+function pgClient(url) {
+  const postgres = require("postgres");
+  let host = "";
+  try { host = new URL(url).hostname; } catch (e) { throw new Error("SUPABASE_DB_URL 형식이 맞지 않아요 (postgres://… 연결 문자열)"); }
+  const local = /^(localhost|127\.0\.0\.1|::1|\[::1\])$/.test(host); // 로컬 시험(PGlite)만 암호화 없이
+  const sql = postgres(url, {
+    prepare: false, // Supabase 연결 풀러(트랜잭션 모드)는 미리 준비한 문장을 못 써요
+    max: Number(process.env.PG_POOL_MAX) || 1, // 서버 함수 하나에 연결 1개 (요청마다 함수가 새로 떠도 연결이 너무 많아지지 않게)
+    idle_timeout: 20, connect_timeout: 15,
+    ssl: local ? false : "require",
+    onnotice: () => {},
+    types: { bigint: { to: 20, from: [20], serialize: (x) => String(x), parse: (x) => Number(x) } } // ms 시각 · 개수는 숫자로 (SQLite 와 같게)
+  });
+  const shape = (r) => ({ rows: Array.from(r, (x) => Object.assign({}, x)), affected: r.command === "SELECT" ? 0 : r.count || 0 });
+  const run = async (q, s) => shape(await q.unsafe(pgSql(s.sql), (s.args || []).map((a) => (a === undefined ? null : a))));
+  async function batch(stmts) {
+    try {
+      if (stmts.length === 1) return [await run(sql, stmts[0])];
+      return await sql.begin(async (tx) => { const out = []; for (const s of stmts) out.push(await run(tx, s)); return out; });
+    } catch (e) { e.message = scrub(e.message); throw e; }
+  }
+  // 표 만들기는 한 번에(문장 여러 개를 한 왕복으로)
+  const init = () => sql.unsafe(PG_SCHEMA.join(";\n")).catch((e) => { e.message = scrub(e.message); throw e; });
+  return { kind: "postgres", batch, init, end: () => sql.end({ timeout: 5 }), sql };
+}
+
+/* ---------------- 쓰기 멈춤 (DC_READONLY) ---------------- */
+const readonly = () => process.env.DC_READONLY === "1";
+const isWrite = (sql) => /^\s*(insert|update|delete|replace)\b/i.test(sql);
+const RO_OK = /^\s*(insert\s+into|update|delete\s+from)\s+(rl|backups|oplog)\b/i; // 점검 중에도 쓰는 표
+function readonlyError() {
+  const e = new Error("지금 잠시 점검 중이라 저장하지 못했어요. 10~15분 뒤에 다시 시도해 주세요.");
+  e.code = "DC_READONLY"; e.status = 503;
+  return e;
+}
+const isReadonlyError = (e) => !!(e && e.code === "DC_READONLY");
+
 let client = null, ready = null;
+function driverName() { return String(process.env.DB_DRIVER || "").trim().toLowerCase(); }
 function getClient() {
   if (client) return client;
-  if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) client = tursoClient(process.env.TURSO_DATABASE_URL, process.env.TURSO_AUTH_TOKEN);
+  const d = driverName();
+  if (d === "supabase" || d === "postgres") {
+    if (!process.env.SUPABASE_DB_URL) throw new Error("DB_DRIVER=" + d + " 인데 SUPABASE_DB_URL 이 없어요 (Vercel 환경 변수)");
+    client = pgClient(process.env.SUPABASE_DB_URL);
+  } else if (d && d !== "turso") throw new Error("DB_DRIVER 값을 모르겠어요: " + d + " (turso · supabase)");
+  else if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) client = tursoClient(process.env.TURSO_DATABASE_URL, process.env.TURSO_AUTH_TOKEN);
   else if (process.env.CLASS_SQLITE) client = sqliteClient(process.env.CLASS_SQLITE);
   else throw new Error("데이터베이스 설정이 없어요 (TURSO_DATABASE_URL / TURSO_AUTH_TOKEN)");
   return client;
 }
 async function db() {
   const c = getClient();
-  if (!ready) ready = c.batch(SCHEMA.map((sql) => ({ sql }))).catch((e) => { ready = null; throw e; });
+  if (!ready) ready = (c.init ? c.init() : c.batch(SCHEMA.map((sql) => ({ sql })))).catch((e) => { ready = null; throw e; });
   await ready;
   return c;
 }
-async function exec(sql, args) { return (await (await db()).batch([{ sql, args }]))[0]; }
-async function batch(stmts) { return (await db()).batch(stmts); }
+async function batch(stmts) {
+  if (readonly() && stmts.some((s) => isWrite(s.sql) && !RO_OK.test(s.sql))) throw readonlyError();
+  return (await db()).batch(stmts);
+}
+/** SQL 한 문장 (SQLite 문법으로 — Postgres 에서는 pgSql 이 바꿔요) */
+async function exec(sql, args) { return (await batch([{ sql, args }]))[0]; }
+/** 스크립트 · 빌드가 끝날 때: Postgres 연결 닫기 (안 닫으면 프로세스가 20초 기다려요) */
+async function close() { const c = client; client = null; ready = null; if (c && c.end) await c.end(); }
 
 /* ---------------- 문서 ---------------- */
 const parse = (row) => (row.v == null ? null : JSON.parse(row.v));
@@ -144,8 +226,9 @@ async function rlCheck(keys, limit) {
 /** 실패 한 번 기록 — windowMs 를 주면 그 길이로 세요 (기본 15분 · 하루 기준 잠금은 24시간: api/auth.js) */
 async function rlFail(keys, windowMs) {
   const now = Date.now(), W = Number(windowMs) > 0 ? Number(windowMs) : RL_WINDOW;
+  // 기존 줄의 값은 rl.n · rl.until 로 (Postgres 는 그냥 until 이라고 쓰면 새로 넣는 줄 값과 헷갈린다고 막아요 · SQLite 도 같은 뜻)
   await batch(keys.map((k) => ({
-    sql: "INSERT INTO rl (k, n, until) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = CASE WHEN until < ? THEN 1 ELSE n + 1 END, until = CASE WHEN until < ? THEN ? ELSE until END",
+    sql: "INSERT INTO rl (k, n, until) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = CASE WHEN rl.until < ? THEN 1 ELSE rl.n + 1 END, until = CASE WHEN rl.until < ? THEN ? ELSE rl.until END",
     args: [k, now + W, now, now, now + W]
   })));
 }
@@ -185,4 +268,53 @@ async function restoreRows(rows) {
 async function opsDone() { return new Set((await exec("SELECT id FROM oplog")).rows.map((r) => r.id)); }
 async function opMark(id, note, result) { await exec("INSERT INTO oplog (id, at, note, result) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO NOTHING", [id, Date.now(), note || "", JSON.stringify(result || {}).slice(0, 2000)]); }
 
-module.exports = { exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, listBackups, backupRows, restoreRows, opsDone, opMark, kind: () => getClient().kind };
+/* ---------------- 처음 데이터 · 일회성 작업이 쓰는 것 (init.js — 예전엔 거기서 SQL 을 직접 썼어요) ---------------- */
+/** 문서 여러 개를 한 번에 넣기 (이미 있는 키는 그대로) — rows: [{ k, v: JSON 글자, created }] */
+async function insertDocs(rows) {
+  const now = Date.now();
+  const stmts = rows.map((r) => ({ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?) ON CONFLICT(k) DO NOTHING", args: [r.k, r.v, now, r.created] }));
+  for (let i = 0; i < stmts.length; i += 40) await batch(stmts.slice(i, i + 40));
+  return stmts.length;
+}
+/** sys 문서(epoch) — 버전 검사 없이 바꾸고, 없으면 맨 앞(created -1)에 만들어요 */
+async function putSys(json) {
+  const r = await exec("UPDATE docs SET v = ?, ver = ver + 1, updated = ? WHERE k = 'sys'", [json, Date.now()]);
+  if (!r.affected) await exec("INSERT INTO docs (k, v, ver, updated, created) VALUES ('sys', ?, 1, ?, -1) ON CONFLICT(k) DO NOTHING", [json, Date.now()]);
+}
+/** 모든 문서 (지운 것도) — 일회성 작업이 지금 상태를 읽을 때 */
+async function allDocRows() { return (await exec("SELECT k, v, ver FROM docs")).rows; }
+
+/* ---------------- 배포 기록용 확인 (DB 전환 A0) ---------------- */
+/** 사진 · 첨부 개수와 크기 (읽기만) */
+async function fileStats() {
+  const r = (await exec("SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS total, COALESCE(MAX(size), 0) AS max FROM files")).rows[0] || {};
+  return { n: Number(r.n) || 0, total: Number(r.total) || 0, max: Number(r.max) || 0 };
+}
+/** Supabase 접속 확인 — 지금 쓰는 DB 와 따로 연결해 버전 · 왕복 시간 · 지역 · 포트 · app 표가 있는지만 봐요 (주소 · 비밀번호는 안 적어요 · 실패해도 빌드는 계속) */
+async function pgProbe(url) {
+  url = url || process.env.SUPABASE_DB_URL;
+  if (!url) return { ok: false, why: "off" };
+  let u = null;
+  try { u = new URL(url); } catch (e) { return { ok: false, why: "연결 문자열 형식이 맞지 않아요 (postgres://… 로 시작해야 해요)" }; }
+  const m = /^aws-\d+-([a-z0-9-]+)\.pooler\.supabase\.com$/i.exec(u.hostname), port = Number(u.port) || 5432;
+  const info = { region: m ? m[1] : "", port, pooler: !!m };
+  let c = null;
+  try {
+    c = pgClient(url);
+    const t0 = Date.now();
+    const version = (await c.sql.unsafe("SHOW server_version"))[0].server_version;
+    const connectMs = Date.now() - t0, pings = [];
+    for (let i = 0; i < 3; i++) { const a = Date.now(); await c.sql.unsafe("SELECT 1"); pings.push(Date.now() - a); }
+    const has = (await c.sql.unsafe("SELECT to_regclass('app.docs') IS NOT NULL AS has"))[0].has;
+    const docs = has ? Number((await c.sql.unsafe("SELECT COUNT(*) AS n FROM app.docs WHERE v IS NOT NULL"))[0].n) : null;
+    return Object.assign(info, { ok: true, version, connectMs, pingMs: Math.min.apply(null, pings), app: !!has, docs });
+  } catch (e) {
+    return Object.assign(info, { ok: false, why: scrub((e && e.message) || e).slice(0, 200) });
+  } finally { if (c) await c.end().catch(() => {}); }
+}
+
+module.exports = {
+  exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, listBackups, backupRows, restoreRows, opsDone, opMark,
+  insertDocs, putSys, allDocRows, fileStats, pgProbe, close, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
+  kind: () => getClient().kind
+};

@@ -178,7 +178,7 @@ async function vdur(req, res, b) {
     // 기억해 두기 (동시에 다른 요청이 썼으면 다시 읽어서 합쳐요) — 오래된 것부터 정리
     // 처음 쓰는 서버(빈 데이터베이스)면 기본 데이터를 먼저 넣어요 — 이 문서가 먼저 생기면 처음 채우기를 건너뛰어서
     if (!row) await require("./_lib/init").ensureSeeded();
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 4 && !store.readonly(); i++) { // 쓰기 멈춤(점검) 중에는 기억만 건너뛰고 길이는 그대로 알려 줘요
       const cur = i ? await store.getDoc("vdur") : row, v = Object.assign({}, (cur && cur.v) || {});
       Object.keys(got).forEach((k) => { v[k] = { s: got[k], at: now }; });
       const ks = Object.keys(v); if (ks.length > VD_KEEP) ks.sort((a, z) => (v[a].at || 0) - (v[z].at || 0)).slice(0, ks.length - VD_KEEP).forEach((k) => delete v[k]);

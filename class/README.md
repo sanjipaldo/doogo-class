@@ -72,7 +72,17 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **예시 계정이 정식 서버에 생기지 않게 (2026-11-01)**: 예전 마스터 화면은 운영자 · 파트너 목록이 비어 있으면 예시 운영자(김매니저 manager · 박정산 finance)와 예시 파트너(하지원 partner) — 모두 비밀번호 = 아이디 — 와 예시 이용료 · 입점 문의를 만들어 서버에도 저장했어요. 이제 서버에 연결된 화면에서는 빈 목록으로 시작하고 예시는 시안(서버 없음)에서만 만들어요(`admin.js` `STAFF` · `AFF` · `seedAffInq`). 운영자 계정은 서버에서 마스터와 같은 권한이라 일회성 작업 `2026-11-01-demo-staff-stop` 이 **비밀번호가 아직 예시 그대로인** 예시 운영자 계정만 중지해요(지우지 않음 · 마스터 › 운영자 계정에서 다시 켤 수 있어요). 예시 파트너는 그대로 두었어요 — 쓰지 않으면 마스터 › 파트너에서 중지하거나 비밀번호를 바꿔 주세요.
 - 서버 자동 백업(`backups` 표, 최근 40개): 배포할 때마다 · 초기화나 복원 전에 자동으로 남습니다. 마스터 → 데이터 관리 → ‘서버 자동 백업’에서 목록을 보고 ‘이 시점으로’ 되돌리거나 ‘지금 백업’을 누를 수 있습니다(되돌리기 전 상태도 다시 백업). 사진 · 첨부(`files`)는 초기화해도 지우지 않아 백업으로 되돌릴 때 그대로 보입니다.
 
-환경변수: `MASTER_PASSWORD`(마스터 비밀번호 — Vercel → doogo-class → Settings → Environment Variables 에서 바꾸고 다시 배포), `SESSION_SECRET`(선택, 없으면 데이터베이스 토큰으로 서명 키를 만듭니다).
+환경변수: `MASTER_PASSWORD`(마스터 비밀번호 — Vercel → doogo-class → Settings → Environment Variables 에서 바꾸고 다시 배포), `SESSION_SECRET`(로그인 쿠키 서명 키 — 넣으면 그 키로 서명하고 예전 키(Turso 토큰으로 만든 키) 쿠키도 받아 줘서 아무도 로그아웃되지 않아요. 운영 · 미리보기에서 이것과 Turso 토큰이 둘 다 없으면 로그인을 막아요 — 누구나 아는 기본 키로 서명하지 않게).
+
+#### DB 전환 준비 — Turso → Supabase 1부 A1 (2026-11-05)
+
+계획서: ‘DB 전환 계획서 · 설계서 (Turso → Supabase)’ 문서. 1부는 지금 표 6개를 Supabase Postgres 의 `app` 스키마에 같은 모양으로 옮기고, 화면 · API 코드는 그대로 둬요.
+
+- **어느 DB 에 붙는지 — `DB_DRIVER`**: 비우면(또는 `turso`) 지금처럼 Turso(로컬은 `CLASS_SQLITE`). `supabase` 면 `SUPABASE_DB_URL`(Supabase › Connect › **Transaction pooler**, 포트 6543)의 Postgres. 바꾸는 곳은 `api/_lib/store.js` 하나 — 같은 SQL 을 `pgSql` 이 Postgres 에 맞게만 바꿔요(`?` → `$1` · 표 이름 → `app.표` · 같은 시각 문서는 키를 바이트 순(`COLLATE "C"`)으로 SQLite 와 같은 순서). 문서(`v`)는 글자 그대로(`text`) — 키 순서 · 공백이 한 글자도 안 바뀌어요. 여러 문장(`batch`)은 한 트랜잭션(중간에 실패하면 전부 취소). 연결: npm `postgres` 3.4.9 · 미리 준비한 문장 끔(풀러 트랜잭션 모드) · 함수마다 연결 1개 · 숫자(ms 시각 · 개수)는 숫자로. 다른 점 하나: `LIKE` 가 영문 대소문자를 가려요(키 앞부분은 모두 코드가 만든 같은 글자라 결과는 같아요). `init.js` 가 직접 쓰던 SQL 3곳은 저장소 함수(`insertDocs` · `putSys` · `allDocRows`)로 옮겼어요.
+- **로그인 실패 횟수 SQL**: `ON CONFLICT … DO UPDATE` 에서 기존 줄 값을 `rl.n` · `rl.until` 로 (Postgres 는 그냥 `until` 이면 새 줄 값과 헷갈린다고 막아요 · SQLite 도 같은 뜻).
+- **쓰기 멈춤 — `DC_READONLY=1`** (운영 전환 당일 복사하는 동안): 문서 · 사진 쓰기는 `503 { error: "readonly" }` + ‘잠시 점검 중’ 안내(`http.js`). 화면은 바뀐 내용을 들고 있다가 30초 안쪽으로 다시 보내서 점검이 끝나면 저장돼요(`db.js` → `main.js` 안내 ‘이 창을 열어 두시면…’). 읽기 · 로그인(실패 횟수 `rl`) · 배포 전 백업(`backups`) · 작업 기록(`oplog`)은 그대로라 점검 중에도 들어가서 확인할 수 있어요. 배포 단계는 백업만 하고 일회성 작업 · 기본값 채우기는 건너뛰어요. 영상 길이 기억(`vdur`)은 점검 중엔 건너뛰고 길이는 그대로 알려 줘요.
+- **배포 기록 (A0 확인용 · 읽기만)**: `[db] 사진 · 첨부: N개 · 합계 · 가장 큰 것` · Supabase 를 아직 안 쓰는데 `SUPABASE_DB_URL` 이 있으면 `[db] Supabase 연결 확인: 됐어요 · Postgres 버전 · 지역(ap-northeast-2 = 서울) · 포트 6543(트랜잭션 풀러) · 왕복 ms · app 표 있음/빈 DB` (주소 · 비밀번호는 안 적어요 · 실패해도 빌드는 계속 · 포트가 6543 이 아니면 주의 한 줄). 빌드 끝에 DB 연결을 닫아요(`store.close`).
+- **로컬 시험 Postgres — PGlite** (Node 안에서 도는 진짜 Postgres, Docker · 인터넷 없이): `npm --prefix class/scripts/pg ci` (한 번) → `TEST_DB=pg node scripts/vod-test.js` 가 같은 서버 시험을 Postgres 로 돌려요(운영과 같은 `postgres` 드라이버로 TCP 접속 — `scripts/pg/server.js`). 결과: SQLite 545개 · Postgres 546개 통과. 운영 빌드(Vercel)는 이 폴더를 설치하지 않아요 — 저장소 맨 위 `package.json` 에는 `postgres` 드라이버만.
 
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 

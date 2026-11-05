@@ -10,20 +10,31 @@ const COACH = require("../../coach-perms");
 const COOKIE = { student: "dc_s", admin: "dc_a" };
 const MAX_AGE = 30 * 24 * 3600;
 
-const key = () => crypto.createHash("sha256").update("doogo-class-session:" + (process.env.SESSION_SECRET || process.env.TURSO_AUTH_TOKEN || "local-dev-secret")).digest();
+/* 로그인 서명 키 (2026-11 DB 전환 준비)
+ *  SESSION_SECRET 이 있으면 그 키로 서명하고, 예전 키(TURSO_AUTH_TOKEN 으로 만든 키 — 지금까지 운영이 쓰던 키)로 서명된 쿠키도 받아 줘요
+ *  → SESSION_SECRET 을 새로 넣어도 아무도 로그아웃되지 않고, 나중에 Turso 를 떼어도(A6) 새 키로 그대로 돼요 (예전 쿠키는 30일 안에 끝나요)
+ *  운영 · 미리보기(Vercel)에서 둘 다 없으면 누구나 아는 기본 키로 서명하지 않고 막아요 — 그 키로는 로그인 쿠키를 위조할 수 있어서 */
+const keyOf = (s) => crypto.createHash("sha256").update("doogo-class-session:" + s).digest();
+function keys() {
+  const sec = process.env.SESSION_SECRET, legacy = process.env.TURSO_AUTH_TOKEN;
+  if (sec) return legacy && legacy !== sec ? [keyOf(sec), keyOf(legacy)] : [keyOf(sec)];
+  if (legacy) return [keyOf(legacy)];
+  if (process.env.VERCEL) throw new Error("로그인 서명 키가 없어요 — Vercel 환경 변수 SESSION_SECRET 을 넣어 주세요");
+  return [keyOf("local-dev-secret")]; // 로컬 개발 · 시험만
+}
 const b64u = (buf) => Buffer.from(buf).toString("base64").replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
 const unb64u = (s) => Buffer.from(String(s).replace(/-/g, "+").replace(/_/g, "/"), "base64");
 
 function sign(payload) {
   const body = b64u(JSON.stringify(Object.assign({}, payload, { exp: Date.now() + MAX_AGE * 1000 })));
-  return body + "." + b64u(crypto.createHmac("sha256", key()).update(body).digest());
+  return body + "." + b64u(crypto.createHmac("sha256", keys()[0]).update(body).digest());
 }
 function verify(token) {
   if (!token || token.indexOf(".") < 0) return null;
   const [body, sig] = token.split(".");
-  const want = crypto.createHmac("sha256", key()).update(body).digest();
   const got = unb64u(sig);
-  if (got.length !== want.length || !crypto.timingSafeEqual(got, want)) return null;
+  const okSig = keys().some((k) => { const want = crypto.createHmac("sha256", k).update(body).digest(); return got.length === want.length && crypto.timingSafeEqual(got, want); });
+  if (!okSig) return null;
   try { const p = JSON.parse(unb64u(body).toString("utf8")); return p.exp > Date.now() ? p : null; } catch (e) { return null; }
 }
 function cookies(req) {

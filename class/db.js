@@ -741,7 +741,12 @@
     if (payload !== undefined) opt.body = JSON.stringify(payload);
     const r = await fetch("api/" + name, opt);
     const j = await r.json().catch(() => ({ error: "server" }));
-    if (r.status >= 500) throw new Error(j.message || j.error || "server " + r.status);
+    if (r.status >= 500) {
+      const e = new Error(j.message || j.error || "server " + r.status);
+      // 서버 점검(쓰기 멈춤 · DB 옮기는 동안): 바뀐 내용은 그대로 들고 있다가 다시 보내요 — 안내만 ‘점검 중’으로
+      if (j.error === "readonly") e.readonly = true;
+      throw e;
+    }
     return j;
   }
   /** 서버가 있는지 확인하고 처음 데이터를 받는다. 서버가 없으면 false (이 브라우저 저장 모드) */
@@ -1036,7 +1041,7 @@
       emit("saving", false);
     } catch (e) {
       R.fails++;
-      emit("offline", e.message);
+      emit("offline", e.readonly ? { readonly: true, message: e.message } : e.message);
       setTimeout(flush, Math.min(30000, 1500 * R.fails));
     } finally {
       R.busy = false;

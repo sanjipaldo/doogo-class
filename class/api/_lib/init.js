@@ -8,23 +8,20 @@ const oneoff = require("./oneoff");
 
 /** 문서들을 한 번에 넣는다 (이미 있는 키는 건너뜀). order 는 화면 순서(created) */
 async function insertAll(map) {
-  const now = Date.now();
-  const stmts = [], files = [];
+  const rows = [], files = [];
   Object.keys(map).forEach((k, i) => {
     const v0 = JSON.parse(JSON.stringify(map[k]));
     const ex = extractFiles(v0, (p) => access.fileScope(k, p, v0));
     ex.files.forEach((f) => files.push(f));
-    stmts.push({ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?) ON CONFLICT(k) DO NOTHING", args: [k, JSON.stringify(ex.value), now, i] });
+    rows.push({ k, v: JSON.stringify(ex.value), created: i });
   });
-  for (let i = 0; i < stmts.length; i += 40) await store.batch(stmts.slice(i, i + 40));
+  const n = await store.insertDocs(rows);
   for (const f of files) await store.putFile(f.h, f.mime, f.b64, f.scope);
-  return stmts.length;
+  return n;
 }
 async function setEpoch() {
-  const row = await store.getDoc("sys");
   const v = { epoch: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) };
-  if (row) await store.exec("UPDATE docs SET v = ?, ver = ver + 1, updated = ? WHERE k = 'sys'", [JSON.stringify(v), Date.now()]);
-  else await store.exec("INSERT INTO docs (k, v, ver, updated, created) VALUES ('sys', ?, 1, ?, -1) ON CONFLICT(k) DO NOTHING", [JSON.stringify(v), Date.now()]);
+  await store.putSys(JSON.stringify(v));
   return v.epoch;
 }
 /** 비어 있으면 체험 데이터로 시작 */
@@ -57,7 +54,7 @@ async function runPendingOps(log) {
   // when(): 아직 할 수 없는 작업(예: 환경 변수를 기다리는 작업)은 대기 목록에서 빼요 — 기록도 안 해서 조건이 맞는 배포 때 돌아요
   const pending = oneoff.OPS.filter((op) => !done.has(op.id) && (!op.when || op.when()));
   if (!pending.length) return [];
-  const rows = (await store.exec("SELECT k, v, ver FROM docs")).rows;
+  const rows = await store.allDocRows();
   const cur = {}, ver = {};
   rows.forEach((r) => { cur[r.k] = r.v == null ? null : JSON.parse(r.v); ver[r.k] = r.ver; });
   const get = (k) => (cur[k] == null ? cur[k] : JSON.parse(JSON.stringify(cur[k])));

@@ -1,0 +1,9 @@
+{
+  "name": "doogo-class-pg-test",
+  "private": true,
+  "description": "로컬 시험 전용 Postgres (PGlite · Node 안에서 도는 진짜 Postgres) — 운영 빌드(Vercel)는 이 폴더를 설치하지 않아요. 설치: npm --prefix class/scripts/pg ci",
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
+    "@electric-sql/pglite-socket": "0.2.14"
+  }
+}

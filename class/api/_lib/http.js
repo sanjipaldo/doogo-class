@@ -26,6 +26,8 @@ function handler(methods, fn) {
       if (methods.indexOf(req.method) === -1) return send(res, 405, { error: "method" });
       await fn(req, res);
     } catch (e) {
+      // 쓰기 멈춤(DC_READONLY · 운영 전환 당일): 503 + 안내 — 화면은 바뀐 내용을 들고 있다가 다시 보내요 (오류 기록은 남기지 않아요)
+      if (e && e.code === "DC_READONLY") { if (!res.headersSent) send(res, 503, { error: "readonly", message: e.message }); return; }
       console.error("[api]", req.method, req.url, e && e.stack ? e.stack : e);
       if (!res.headersSent) send(res, 500, { error: "server", message: String((e && e.message) || e).slice(0, 200) });
     }

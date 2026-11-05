@@ -100,7 +100,8 @@
   function onRemote(type, info) {
     if (type === "reset") { location.reload(); return; }
     if (type === "error") { notify(info, "warn"); return; }
-    if (type === "offline") { notify("인터넷 연결이 불안정해 저장을 다시 시도하고 있어요.", "warn", "offline"); return; }
+    // 서버 점검(쓰기 멈춤) 중이면 그 안내를 · 아니면 연결 안내 — 둘 다 바뀐 내용은 들고 있다가 다시 보내요
+    if (type === "offline") { notify(info && info.readonly ? "잠시 점검 중이에요. 이 창을 열어 두시면 점검이 끝난 뒤 고친 내용이 자동으로 저장돼요." : "인터넷 연결이 불안정해 저장을 다시 시도하고 있어요.", "warn", "offline"); return; }
     if (type === "saving" && info === false) { const t = document.querySelector('.toast[data-key="offline"]'); if (t) t.remove(); return; }
     if (type !== "change") return;
     reconcile();

@@ -3,3 +3,5 @@
 .site
 scripts/demo-videos/out/
 scripts/demo-videos/f-*/
+# 로컬 시험 전용 Postgres(PGlite) 도구 — 설치 결과는 저장소에 넣지 않아요
+scripts/pg/node_modules/

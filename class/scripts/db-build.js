@@ -12,18 +12,32 @@ const init = require("../api/_lib/init");
 
 (async () => {
   const onVercel = !!process.env.VERCEL;
+  const pgOn = /^(supabase|postgres)$/i.test(String(process.env.DB_DRIVER || "").trim()); // DB 전환: DB_DRIVER=supabase → Supabase(Postgres)
   // 로컬에서 빌드 단계를 시험할 때만: CLASS_SQLITE 파일 (Vercel 에서는 쓰지 않아요)
   const localDb = !onVercel && !!process.env.CLASS_SQLITE;
-  if (!localDb && (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN)) {
+  if (pgOn && !process.env.SUPABASE_DB_URL) { console.error("[db] DB_DRIVER=supabase 인데 SUPABASE_DB_URL 환경변수가 없어요. Vercel 환경 변수를 확인해 주세요."); process.exit(1); }
+  if (!pgOn && !localDb && (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN)) {
     if (onVercel) { console.error("[db] TURSO_DATABASE_URL / TURSO_AUTH_TOKEN 환경변수가 없어요. Vercel 프로젝트에 Turso 를 연결해 주세요."); process.exit(1); }
     console.log("[db] 데이터베이스 환경변수가 없어 건너뜁니다 (로컬)");
     return;
   }
   const prod = process.env.VERCEL_ENV === "production";
   const staging = !prod && process.env.DB_ROLE === "staging";
-  console.log("[db] Turso 연결 확인 중… (" + (process.env.VERCEL_ENV || "local") + ")");
+  console.log("[db] " + (pgOn ? "Supabase(Postgres)" : localDb && !process.env.TURSO_DATABASE_URL ? "로컬 SQLite" : "Turso") + " 연결 확인 중… (" + (process.env.VERCEL_ENV || "local") + ")");
   const before = await store.countDocs();
   console.log("[db] 저장된 문서 " + before + "개");
+  // DB 전환 A0: 사진 · 첨부 크기 (읽기만) · Supabase 를 아직 안 쓰는데 연결 문자열이 있으면 접속만 확인 (주소 · 비밀번호는 안 적어요 · 실패해도 빌드는 계속)
+  try { const fs0 = await store.fileStats(); console.log("[db] 사진 · 첨부: " + fs0.n + "개 · 합계 " + (fs0.total / 1048576).toFixed(1) + "MB · 가장 큰 것 " + Math.round(fs0.max / 1024) + "KB"); }
+  catch (e) { console.log("[db] 사진 · 첨부 크기를 못 쟀어요 (빌드는 계속)"); }
+  if (!pgOn && process.env.SUPABASE_DB_URL) {
+    const pr = await store.pgProbe();
+    const where = (pr.region ? "지역 " + pr.region + (pr.region === "ap-northeast-2" ? "(서울)" : "") + " · " : "") + "포트 " + pr.port + (pr.port === 6543 ? "(트랜잭션 풀러)" : "");
+    if (pr.ok) console.log("[db] Supabase 연결 확인: 됐어요 · Postgres " + pr.version + " · " + where + " · 왕복 " + pr.pingMs + "ms" + (pr.app ? " · app 표 있음(문서 " + pr.docs + "개)" : " · 아직 빈 DB"));
+    else console.log("[db] Supabase 연결 확인 실패: " + pr.why + " · " + where);
+    if (pr.port !== 6543 || !pr.pooler) console.log("[db] 주의: Supabase › Connect › Transaction pooler 주소(포트 6543)를 넣어 주세요 — 서버 함수가 요청마다 새로 떠서 직접 연결(5432)은 연결 수가 모자랄 수 있어요");
+  }
+  const ro = store.readonly();
+  if (ro) console.log("[db] 쓰기 멈춤(DC_READONLY=1) 중: 백업만 하고 일회성 작업 · 기본값 채우기는 건너뛰어요");
   if (!process.env.MASTER_PASSWORD) console.warn("[db] 주의: MASTER_PASSWORD 환경변수가 없어 마스터 로그인이 막혀 있어요.");
   // 포트원 결제 연결 확인 (4단계 4-2): 키가 있으면 없는 결제를 한 번 조회해 상점 아이디 · API Secret 이 맞는지만 봐요 (빌드는 멈추지 않아요 · 키 값은 안 적어요)
   try {
@@ -48,6 +62,7 @@ const init = require("../api/_lib/init");
   }
   const b = await store.backup("배포 전 자동 백업" + (process.env.VERCEL_GIT_COMMIT_SHA ? " (" + process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) + ")" : ""));
   console.log("[db] 배포 전 백업: " + (b ? "문서 " + b.docs + "개 · " + Math.round(b.size / 1024) + "KB" : "비어 있어 건너뜀"));
+  if (ro) return;
   if (await init.ensureSeeded()) console.log("[db] 비어 있어서 체험 데이터로 시작했어요 (" + (await store.countDocs()) + "개)");
   if (staging) {
     // 운영과 같은 순서: 스토어 데이터(마스터가 스토어를 처음 열 때 생겨요)가 생긴 뒤에 일회성 작업을 돌려요
@@ -62,4 +77,4 @@ const init = require("../api/_lib/init");
   if (!ran.length) console.log("[db] 새로 할 일회성 작업 없음");
   const m = await init.migrate();
   console.log("[db] 빠진 기본값 채우기: " + (m.changed.length ? m.changed.join(", ") : "바뀐 것 없음"));
-})().catch((e) => { console.error("[db] 실패:", e && e.message ? e.message : e); process.exit(1); });
+})().then(() => store.close()).catch((e) => { console.error("[db] 실패:", e && e.message ? e.message : e); process.exit(1); });
