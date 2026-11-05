@@ -1759,6 +1759,26 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const vsrc25 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), psrc25 = fs.readFileSync(path.join(ROOT, "api/_lib/vodprice.js"), "utf8"), idx25 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
     ok(/window\.DCS\.price\.make\(/.test(vsrc25) && /function plansOf\(p\) \{ return PRC\(\)\.plansOf\(p\); \}/.test(vsrc25) && !/PLAN_DAYS\.map\(/.test(vsrc25) && /require\("\.\.\/\.\.\/shared\/price"\)/.test(psrc25) && !/PLAN_DAYS\.map\(/.test(psrc25) && /<script src="shared\/price\.js"><\/script>[\s\S]*<script src="main\.js">/.test(idx25) && !/<script src="vod\.js">/.test(idx25) /* vod.js 는 main.js 가 영역에 맞게 받아요 — index.html 의 공용 모듈 다음 (4단계 화면 나눠 받기) */,
       "가격 규칙은 한 곳(shared/price.js): 화면 · 서버 모두 그 모듈을 쓰고 따로 계산하지 않아요 · 화면은 vod.js 보다 먼저 읽어요 (index.html 공용 모듈 → main.js 가 영역 파일)");
+    // 한국 시간 날짜 (2026-11-05): 화면도 서버와 같은 한국 날짜 · 시각으로 계산 — 뉴질랜드(한국보다 4시간 빠름) 브라우저에서 할인 마감일 · 얼리버드 마지막 날 밤에도 화면 금액 = 서버 금액
+    const nzOut = require("child_process").spawnSync(process.execPath, ["-e", `
+      const PR = require(${JSON.stringify(path.join(ROOT, "shared/price.js"))}), VP = require(${JSON.stringify(path.join(TMP, "class/api/_lib/vodprice.js"))}), K = PR.KST;
+      const now = Date.parse("2026-11-20T20:30:00+09:00"); // 한국 11/20 20:30 = 뉴질랜드 11/21 00:30
+      const cat = { products: [
+        { id: "fl", type: "live", status: "on", price: 0, eventAt: "2026-11-17T19:30", eventMin: 90, next: "v1", ebPrice: 199000, ebDays: 3 },
+        { id: "v1", type: "vod", status: "on", price: 330000, sale: 249000, plans: { 180: {}, 365: { price: 290000 } } },
+        { id: "s1", type: "vod", status: "on", price: 200000, sale: 150000, saleEnd: "2026-11-20", plans: { 180: {}, 365: {} } }
+      ], settings: {}, biz: { flive: true } };
+      const pad = (n) => String(n).padStart(2, "0"), loc = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+      const mk = (c) => PR.make(Object.assign({ products: () => cat.products, settings: () => cat.settings, biz: () => cat.biz, now: () => now, dgOpen: () => false }, c));
+      const client = mk({ today: () => K.day(now), time: K.time, dayOf: K.day, addDays: K.addDays, endOfDay: K.endOfDay }); // 지금 vod.js
+      const old = mk({ today: () => loc(new Date(now)), time: (s) => new Date(s).getTime() || 0, dayOf: (ms) => loc(new Date(ms)), addDays: (d, n) => { const x = new Date(d + "T00:00:00"); x.setDate(x.getDate() + n); return loc(x); }, endOfDay: (d) => new Date(d + "T23:59:59").getTime() }); // 예전 vod.js (이 기기 시간대)
+      const srv = VP.pricer(cat, now), pl = (X, p) => X.plansOf(p).map((x) => x.d + ":" + x.sale).join(",");
+      console.log(JSON.stringify({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone, local: loc(new Date(now)), srv: ["v1", "s1"].map((id) => pl(srv, srv.product(id))), client: ["v1", "s1"].map((id) => pl(client, cat.products.find((p) => p.id === id))), old: ["v1", "s1"].map((id) => pl(old, cat.products.find((p) => p.id === id))) }));
+    `], { env: { PATH: process.env.PATH, TZ: "Pacific/Auckland" }, encoding: "utf8" });
+    let nz25 = {}; try { nz25 = JSON.parse(nzOut.stdout.trim()); } catch (e) { nz25 = { err: nzOut.stderr || nzOut.stdout }; }
+    ok(nz25.local === "2026-11-21" && JSON.stringify(nz25.client) === JSON.stringify(nz25.srv) && /180:150000/.test(nz25.srv[1]) && /180:199000/.test(nz25.srv[0]) && JSON.stringify(nz25.old) !== JSON.stringify(nz25.srv)
+      && /window\.DCS\.price\.KST/.test(vsrc25) && /time: \(s\) => KSTD\(\)\.time\(s\), dayOf: \(ms\) => KSTD\(\)\.day\(ms\)/.test(vsrc25) && /today = \(\) => KSTD\(\)\.today\(\)/.test(vsrc25) && /PR\.KST\.day/.test(psrc25),
+      "결제 날짜는 한국 시간: 뉴질랜드 브라우저(이미 11/21)에서도 할인 마감일(11/20) 할인가 · 얼리버드 마지막 날 가격이 서버와 같아요 (예전 기기 시간대 계산은 달라서 ‘가격이 방금 바뀌었어요’로 막혔어요)", nz25);
   }
 
   {

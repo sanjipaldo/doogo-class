@@ -3,7 +3,7 @@
  *   make(ctx) → 계산 함수들. ctx 는 부를 때마다 읽는 함수예요 (값이 바뀌면 다음 계산부터 바로 반영):
  *     products() · settings() · biz()   상품 목록 · 판매 설정 · 판매 영역 (화면: 스토어 데이터 · 서버: 결제 가격표 vcat)
  *     now() · today()                   지금 시각(ms) · 오늘 "YYYY-MM-DD"
- *     time(s) · dayOf(ms) · addDays(d, n) · endOfDay(d)   시각 읽기 · 날짜 계산 (화면: 이 기기 시간대 · 서버: 한국 시간)
+ *     time(s) · dayOf(ms) · addDays(d, n) · endOfDay(d)   시각 읽기 · 날짜 계산 (화면 · 서버 모두 한국 시간 — 아래 KST · 2026-11-05)
  *     dgOpen(p)                         두잉고 VOD 강의실이 열린 강의인지 (화면: 강사 확인 · 서버: 가격표의 dg 칸)
  *  · 브라우저: <script src="shared/price.js"> → window.DCS.price · Node: require("./shared/price") */
 (function (root, make) {
@@ -28,6 +28,14 @@
   const isBook = (p) => typeOf(p) === "book";
   /** 무료 LIVE(0원 LIVE · 설명회) */
   const isFreeEv = (p) => !!p && isEvent(p) && !(Number(p.price) > 0);
+  /** 한국 시간 날짜 · 시각 (2026-11-05) — 결제 금액은 서버가 한국 시간으로 정해서, 화면도 같은 한국 날짜로 계산해요
+   *  (예전에는 화면이 이 기기 시간대 → 뉴질랜드처럼 한국보다 빠른 곳에서 할인 마감일 밤에 ‘가격이 방금 바뀌었어요’로 결제가 막혔어요) */
+  const KST_MS = 9 * 3600e3;
+  const kstDay = (ms) => new Date(Number(ms) + KST_MS).toISOString().slice(0, 10);
+  const kstAddDays = (d, n) => kstDay(Date.parse(d + "T00:00:00+09:00") + n * 864e5);
+  /** "2026-11-17T19:30" 처럼 시간대 없이 적은 시각은 한국 시간으로 읽어요 (시간대가 붙어 있으면 그대로) */
+  const kstTime = (s) => { if (!s) return 0; const str = String(s); const t = Date.parse(/([zZ]|[+-]\d\d:?\d\d)$/.test(str) ? str : str + (str.length <= 16 ? ":00" : "") + "+09:00"); return isNaN(t) ? 0 : t; };
+  const KST = { day: kstDay, addDays: kstAddDays, time: kstTime, endOfDay: (d) => kstTime(d + "T23:59:59"), today: () => kstDay(Date.now()) };
 
   function make(ctx) {
     const S = () => ctx.settings() || {};
@@ -94,5 +102,5 @@
     }
     return { bizOn, evEnd, funnelOf, funnelTo, basePrice, ebOf, priceOf, plansOf, defPlan, planOf, y365, coachOf, teaOf, extendPct, extendOf, rebuySet, rebuyPct, shipOf, couponOff };
   }
-  return { make, TYPES, BIZ_DEF, PLAN_DAYS, PLAN_OLD, r1k, perMonth, rbPrice, typeOf, isEvent, isBook, isFreeEv };
+  return { make, TYPES, BIZ_DEF, PLAN_DAYS, PLAN_OLD, r1k, perMonth, rbPrice, typeOf, isEvent, isBook, isFreeEv, KST };
 });

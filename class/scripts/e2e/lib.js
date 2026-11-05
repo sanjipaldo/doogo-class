@@ -116,8 +116,8 @@ function makeRun(name, shotDir) {
 /* ---------- 화면 도우미 (지금 화면 · 나중 Next.js 화면이 같은 주소 · 같은 결과를 내야 해요) ---------- */
 /** 새 브라우저 창 — 운영(www.doogoclass.com)처럼 ‘#’ 없는 깨끗한 주소로 (index.html 이 dc:clean 을 보고 켜요) */
 async function newPage(browser, opts) {
-  // 한국 사용자처럼 서울 시간대 — 서버가 ‘오늘’을 한국 날짜로 정해서, 시험 컴퓨터 시간대(UTC)와 날짜가 갈리는 밤 0~9시(한국)에 할인 마감일 같은 값이 어긋나지 않게 (2026-11-05)
-  const ctx = await browser.newContext(Object.assign({ viewport: { width: 1280, height: 900 }, timezoneId: "Asia/Seoul" }, opts || {}));
+  // 한국 사용자처럼 서울 시간대(E2E_TZ 로 바꿔 볼 수 있어요 — 예: Pacific/Auckland) — 서버가 ‘오늘’을 한국 날짜로 정해서, 시험 컴퓨터 시간대(UTC)와 날짜가 갈리는 밤 0~9시(한국)에 할인 마감일 같은 값이 어긋나지 않게 (2026-11-05)
+  const ctx = await browser.newContext(Object.assign({ viewport: { width: 1280, height: 900 }, timezoneId: process.env.E2E_TZ || "Asia/Seoul" }, opts || {}));
   await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); } catch (e) { /* 저장소를 못 쓰면 #주소로 */ } });
   return ctx.newPage();
 }

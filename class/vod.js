@@ -11,7 +11,9 @@
 (function () {
   "use strict";
   const esc = (s) => DB.esc(s), won = (n) => DB.won(n), icon = (n, c) => window.icon(n, c);
-  const now = () => Date.now(), today = () => DB.date.todayStr();
+  // ‘오늘’은 한국 날짜 (2026-11-05) — 할인 마감 · 쿠폰 기간 · 얼리버드를 서버(한국 시간)와 같은 날짜로 봐요 (뉴질랜드 등 다른 시간대에서도 결제 금액이 서버와 같게)
+  const KSTD = () => window.DCS.price.KST;
+  const now = () => Date.now(), today = () => KSTD().today();
   const KEY_ME = "doinggo:vod-me", KEY_OUT = "doinggo:vod-out", KEY_TOPIC = "doinggo:vod-topics";
   // 정식 서버(/api)에 붙어 있으면 회원 · 주문 · 후기 · 문의는 서버 문서로 오고 가요 (db.js · api/_lib/vodaccess.js)
   const SRV = () => !!(window.DB && DB.remote && DB.remote.on);
@@ -635,12 +637,11 @@
   const isFreeEv = window.DCS.price.isFreeEv;
   const evEnd = (p) => PRC().evEnd(p);
   // 가격 계산 규칙은 화면 · 서버 공용 모듈(shared/price.js — Next.js 전환 2단계)에 있어요. 여기서는 이 화면의 ‘지금 값’을 넘겨요
-  //  (시각은 예전처럼 이 기기 시간대 — 결제 금액은 늘 서버가 같은 규칙 · 한국 시간으로 다시 계산해요)
+  //  (시각 · 날짜는 서버와 같은 한국 시간 — 2026-11-05 · 결제 금액은 늘 서버가 같은 규칙으로 다시 계산해요)
   function PRC() {
     return PRC.x || (PRC.x = window.DCS.price.make({
       products: () => V().products, settings: () => STG(), biz: () => V().biz, now: () => now(), today: () => today(),
-      time: (s) => { const t = s ? new Date(s).getTime() : NaN; return isNaN(t) ? 0 : t; },
-      dayOf: (ms) => DB.date.toStr(new Date(ms)), addDays: (d, n) => DB.date.addDays(d, n), endOfDay: (d) => new Date(d + "T23:59:59").getTime(),
+      time: (s) => KSTD().time(s), dayOf: (ms) => KSTD().day(ms), addDays: (d, n) => KSTD().addDays(d, n), endOfDay: (d) => KSTD().endOfDay(d),
       dgOpen: (p) => dgOpen(p)
     }));
   }

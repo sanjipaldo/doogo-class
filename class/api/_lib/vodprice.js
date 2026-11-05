@@ -11,11 +11,8 @@ const planLabel = (d) => { const x = PLAN_DAYS.find((y) => y[0] === Number(d)); 
 
 /** 종이책: 한 주문에 몇 권까지 · 배송비(주문마다 한 번) */
 const BOOK_MAX = 10;
-const KST = 9 * 3600e3;
-const kstDay = (ms) => new Date(ms + KST).toISOString().slice(0, 10);
-const addDays = (d, n) => kstDay(Date.parse(d + "T00:00:00+09:00") + n * 864e5);
-/** "2026-11-17T19:30" 처럼 시간대 없이 적은 시각은 한국 시간으로 읽어요 (화면은 한국 브라우저 기준) */
-const kst = (s) => { if (!s) return 0; const str = String(s); const t = Date.parse(/([zZ]|[+-]\d\d:?\d\d)$/.test(str) ? str : str + (str.length <= 16 ? ":00" : "") + "+09:00"); return isNaN(t) ? 0 : t; };
+// 한국 시간 날짜 · 시각 — 화면(vod.js)과 같은 공용 도우미(shared/price.js KST)
+const kstDay = PR.KST.day, addDays = PR.KST.addDays, kst = PR.KST.time;
 
 function pricer(cat, nowMs) {
   const now = nowMs || Date.now(), P = (cat && cat.products) || [], S = (cat && cat.settings) || {}, B = (cat && cat.biz) || {};
