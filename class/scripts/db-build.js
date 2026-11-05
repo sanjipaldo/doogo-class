@@ -44,7 +44,8 @@ const init = require("../api/_lib/init");
     const where = (pr.region ? "지역 " + pr.region + (pr.region === "ap-northeast-2" ? "(서울)" : "") + " · " : "") + "포트 " + pr.port + (pr.port === 6543 ? "(트랜잭션 풀러)" : "");
     if (pr.ok) console.log("[db] Supabase 연결 확인: 됐어요 · Postgres " + pr.version + " · " + where + " · 왕복 " + pr.pingMs + "ms" + (pr.app ? " · app 표 있음(문서 " + pr.docs + "개)" : " · 아직 빈 DB"));
     else console.log("[db] Supabase 연결 확인 실패: " + pr.why + " · " + where);
-    if (pr.port !== 6543 || !pr.pooler) console.log("[db] 주의: Supabase › Connect › Transaction pooler 주소(포트 6543)를 넣어 주세요 — 서버 함수가 요청마다 새로 떠서 직접 연결(5432)은 연결 수가 모자랄 수 있어요");
+    if (!pr.pooler && /\.supabase\.co$/i.test(pr.host || "")) console.log("[db] 주의: 이 주소는 Supabase 전용 풀러 · 직접 연결(db.….supabase.co)이에요 — IPv6 전용이라 Vercel 에서 안 붙어요. Supabase › Connect › Transaction pooler 에서 ‘Shared Pooler’(aws-…pooler.supabase.com · 포트 6543) 주소로 바꿔 주세요");
+    else if (pr.port !== 6543 || !pr.pooler) console.log("[db] 주의: Supabase › Connect › Transaction pooler(Shared Pooler) 주소(aws-…pooler.supabase.com · 포트 6543)를 넣어 주세요 — 서버 함수가 요청마다 새로 떠서 직접 연결(5432)은 연결 수가 모자랄 수 있어요");
   }
   const ro = store.readonly();
   if (ro) console.log("[db] 쓰기 멈춤(DC_READONLY=1) 중: 백업만 하고 일회성 작업 · 기본값 채우기는 건너뛰어요");

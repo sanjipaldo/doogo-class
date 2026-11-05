@@ -93,7 +93,8 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **배포 때 옮기기 — `DB_MOVE`**: `turso-to-supabase` · `supabase-to-turso`(sync) · `supabase-to-turso-since:<ms>` · `verify`. 빌드 단계가 다른 일보다 먼저 옮기고 확인 — 실패하면 빌드가 멈춰 그 배포는 올라가지 않아요. **운영에서는 쓰기 멈춤(`DC_READONLY=1`) 배포가 먼저 떠 있어야** 옮겨요(같은 배포에서 켜면 지금 떠 있는 배포가 아직 저장을 받으니까). 옮긴 뒤에는 `DB_MOVE` 를 지워요.
 - **안전장치**: 운영에서 Supabase 가 비어 있는데 `DB_DRIVER=supabase` 로 배포하면(옮기기 전) 체험 데이터로 채우지 않고 빌드를 멈춰요.
 - 시험: 서버 시험 — SQLite 552개 · Postgres 556개 통과 (시험 데이터 전체를 Postgres 로 · 다시 SQLite 로 옮겨도 한 글자도 안 달라요 · 몰래 바꾼 문서는 잡혀요 · anon 은 표 · 보기 모두 막혀요). 화면 시험 11묶음 190개 — SQLite · Postgres(`E2E_DB=pg`) 둘 다 통과 (A1 완료 기준).
-- **환경 변수만 바꾼 뒤 다시 배포**: Vercel 의 ‘Redeploy’ 는 같은 커밋이라 빌드 건너뛰기(`scripts/ignore-build.sh` — 화면 · 서버 파일이 그대로면 건너뜀)에 걸려 취소돼요. 새 값이 빌드에 들어가려면 커밋이 하나 있어야 해요(설명 글 고침도 돼요).
+- **환경 변수만 바꾼 뒤 다시 배포**: 빌드 건너뛰기(`scripts/ignore-build.sh` — 화면 · 서버 파일이 그대로면 건너뜀)가 같은 커밋의 다시 배포(Vercel ‘Redeploy’)도 건너뛰어 새 값이 안 들어갔어요(2026-11-05). 이제 **같은 커밋을 다시 배포하면 빌드해요** — 환경 변수를 바꾼 뒤 Redeploy 를 누르면 돼요.
+- **Supabase 연결 문자열은 Shared Pooler**: Pro 요금제의 Connect 창은 전용 풀러(Dedicated Pooler · `db.<프로젝트>.supabase.co:6543`)를 먼저 보여 주는데, 이 주소는 IPv6 전용이라 Vercel(IPv4)에서 `ENETUNREACH` 로 안 붙어요. **Transaction pooler › Shared Pooler**(`aws-…-ap-northeast-2.pooler.supabase.com:6543`, 사용자 `postgres.<프로젝트>`) 주소를 넣어요. 배포 기록이 이 경우를 알려 줘요.
 
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 

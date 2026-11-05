@@ -314,7 +314,8 @@ async function pgProbe(url) {
   let u = null;
   try { u = new URL(url); } catch (e) { return { ok: false, why: "연결 문자열 형식이 맞지 않아요 (postgres://… 로 시작해야 해요)" }; }
   const m = /^aws-\d+-([a-z0-9-]+)\.pooler\.supabase\.com$/i.exec(u.hostname), port = Number(u.port) || 5432;
-  const info = { region: m ? m[1] : "", port, pooler: !!m };
+  // host: 어떤 종류 주소인지 알리는 데만 (프로젝트 주소 · 비밀번호는 기록에 안 적어요)
+  const info = { region: m ? m[1] : "", port, pooler: !!m, host: m ? "pooler" : /\.supabase\.co$/i.test(u.hostname) ? "db.supabase.co" : /^(127\.0\.0\.1|localhost)$/.test(u.hostname) ? "local" : "other" };
   let c = null;
   try {
     c = pgClient(url);
