@@ -31,8 +31,24 @@ const init = require("../api/_lib/init");
   // A2: Supabase 보안(공개 API 역할 막기 · 표 6개 RLS) · 사람이 읽는 보기 6개 — 배포마다 (여러 번 돌려도 같아요 · api/_lib/pgsetup.js)
   if (pgOn) { await store.pgSetup(); console.log("[db] Supabase 보안 · 보기: 공개 API 역할(anon · authenticated) 막음 · 표 6개 RLS · 보기 6개(v_orders · v_members · v_students · v_cohorts · v_bills · v_inquiries)"); }
   // 사진 · 첨부 크기 (읽기만) · Supabase 접속 정보(버전 · 지역 · 포트 · 왕복 — 주소 · 비밀번호는 안 적어요 · 빌드 서버(미국 동부) 기준 왕복)
-  try { const fs0 = await store.fileStats(); console.log("[db] 사진 · 첨부: " + fs0.n + "개 · 합계 " + (fs0.total / 1048576).toFixed(1) + "MB · 가장 큰 것 " + Math.round(fs0.max / 1024) + "KB"); }
+  try { const fs0 = await store.fileStats(); console.log("[db] 사진 · 첨부: " + fs0.n + "개 · 합계 " + (fs0.total / 1048576).toFixed(1) + "MB · 가장 큰 것 " + Math.round(fs0.max / 1024) + "KB · 내용이 DB " + (fs0.n - fs0.inStorage) + "개 · Storage " + fs0.inStorage + "개"); }
   catch (e) { console.log("[db] 사진 · 첨부 크기를 못 쟀어요 (빌드는 계속)"); }
+  // 2부 B1: 사진 · 첨부 내용은 Supabase Storage 비공개 버킷 (api/_lib/blob.js) — 버킷이 없으면 비공개로 만들고, 공개로 바뀌어 있으면 빌드를 멈춰요
+  const blob = require("../api/_lib/blob");
+  if (blob.configured()) {
+    let bk;
+    try { bk = await blob.ensureBucket(); }
+    catch (e) { if (blob.on()) throw e; console.log("[db] Storage 확인을 못 했어요 (FILES_STORE 가 꺼져 있어 빌드는 계속): " + e.message); bk = null; }
+    if (bk && bk.public) { console.error("[db] Storage 버킷 " + bk.id + " 이 공개(public)로 되어 있어요 — 볼 수 있는 범위 확인을 건너뛰게 돼요. Supabase › Storage 에서 비공개로 바꾼 뒤 다시 배포해 주세요"); process.exit(1); }
+    if (bk) console.log("[db] Storage 버킷 " + bk.id + ": 비공개" + (bk.created ? " · 새로 만들었어요" : "") + " · 새 파일 내용은 " + (blob.on() ? "Storage 에 (FILES_STORE=supabase)" : "예전처럼 DB 에 (FILES_STORE 를 supabase 로 하면 Storage)"));
+  } else if (/^supabase$/i.test(String(process.env.FILES_STORE || "").trim())) console.log("[db] 주의: FILES_STORE=supabase 인데 SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY 가 없어서 새 파일은 예전처럼 DB 에 저장돼요");
+  // 한 번만: FILES_MOVE=to-storage | to-db | verify — 이미 있는 파일을 옮기고 파일마다 확인 (하나라도 다르면 빌드 멈춤 · 끝나면 FILES_MOVE 는 지워요)
+  if (process.env.FILES_MOVE) {
+    const FM = require("./files-move"), mode = String(process.env.FILES_MOVE).trim();
+    if (mode !== "verify" && !prod && !staging && onVercel) console.log("[db] 미리보기 배포라 사진 · 첨부는 옮기지 않아요 (FILES_MOVE 는 운영 · 시험용 DB(DB_ROLE=staging)에서만)");
+    else if (mode !== "verify" && store.readonly()) console.log("[db] 쓰기 멈춤(DC_READONLY=1) 중이라 사진 · 첨부는 옮기지 않아요 (FILES_MOVE=" + mode + ")");
+    else { const fr = await FM.run(mode); console.log("[db] " + FM.line(fr)); if (fr.bad.length) { console.error("[db] 사진 · 첨부 확인이 맞지 않아 빌드를 멈춰요"); process.exit(1); } }
+  }
   if (pgOn) {
     const pr = await store.pgProbe();
     const where = (pr.region ? "지역 " + pr.region + (pr.region === "ap-northeast-2" ? "(서울)" : "") + " · " : "") + "포트 " + pr.port + (pr.port === 6543 ? "(트랜잭션 풀러)" : "");

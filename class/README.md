@@ -124,6 +124,26 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **남긴 것**: 로컬 개발 · 시험용 SQLite(`CLASS_SQLITE` · `node:sqlite` — 서버 시험 · 화면 시험이 SQLite · Postgres 둘 다로 돌아요) · `db-move.js`(SQLite ↔ Postgres 복사 · 확인 — 화면 시험이 쓰고, `SUPABASE_DB_URL=… node scripts/db-move.js supabase sqlite:backup.db copy` 로 Supabase 를 내 컴퓨터 파일로 받아 둘 수도 있어요) · `DC_READONLY`(점검 때 저장 멈춤).
 - **운영 배포 · 정리 끝 (2026-11-05)**: main `d0d020e` 운영 배포(Supabase · 서울 `icn1` · 서버 오류 0) → Vercel Storage 에서 Turso 연결 해제(`TURSO_DATABASE_URL` · `TURSO_AUTH_TOKEN` 빠짐) → Supabase › Database › Backups 확인 → Turso DB `doogo-class-db` · `doogo-class-staging` 삭제. Turso 연동(Integration) 자체는 두고푸드(`doogofood-db`)가 써서 남겨 뒀어요. 남은 `DB_MOVE` · `DC_READONLY` 환경 변수도 지웠어요(점검 때 저장을 멈추려면 Production 에 `DC_READONLY=1` 을 다시 넣고 배포).
 
+#### DB 전환 2부 B1 — 사진 · 첨부 내용을 Supabase Storage 비공개 버킷으로 (2026-11-05)
+
+- **무엇이 바뀌나**: 파일 목록(`app.files`) · 볼 수 있는 범위(`app.file_scopes`)는 그대로 DB 에, **내용(바이트)만** Supabase Storage 비공개 버킷 `class-files` 에 둬요(`api/_lib/blob.js` — 의존성 없이 Storage REST API 를 `fetch` 로). 주소는 예전 그대로 `/api/file?h=해시` — 서버가 범위(pub · adm · vodp:클래스)를 확인한 뒤 Storage 에서 꺼내 보내요(버킷은 비공개 · 공개 주소 없음). DB 의 `files.b64` 가 `''` 이면 ‘내용은 Storage 에’, 차 있으면 예전처럼 DB 에서 바로.
+- **스위치 = 되돌리기**: `FILES_STORE=supabase` 일 때만 새로 올리는 파일을 Storage 에 둬요. 끄면 새 파일은 다시 DB 에(이미 Storage 에 있는 파일은 계속 Storage 에서 읽어요). 완전히 되돌리려면 `FILES_MOVE=to-db` 로 한 번 배포(Storage → DB · 파일마다 크기 확인) — `files` 표는 그대로라 언제든 돌아갈 수 있어요.
+- **환경 변수** (Vercel · Preview(doogo-staging) · Production(doogo-prod) 따로):
+
+  | 이름 | 값 | 비고 |
+  |---|---|---|
+  | `SUPABASE_URL` | `https://<프로젝트>.supabase.co` | Supabase › Project Settings › Data API(또는 API) › Project URL |
+  | `SUPABASE_SERVICE_ROLE_KEY` | 서버 전용 비밀 키 | Supabase › Project Settings › API Keys › `secret`(sb_secret_…) 또는 예전 `service_role` · **Sensitive** 로 · 채팅 · 저장소에 붙이지 않기 |
+  | `FILES_STORE` | `supabase` | 영역 스위치 (없으면 예전처럼 DB) |
+  | `FILES_BUCKET` | (선택) 기본 `class-files` | 배포 때 없으면 비공개(5MB 한도)로 만들어요 |
+  | `FILES_MOVE` | `to-storage` · `to-db` · `verify` | 한 번만 — 이미 있는 파일 옮기기 · 확인. 끝나면 지워요 (운영 · 시험용 DB(DB_ROLE=staging)에서만, `verify` 는 어디서나) |
+
+- **옮기기** (`scripts/files-move.js` · 배포 빌드가 `FILES_MOVE` 를 보고 돌려요 · 로컬 `node scripts/files-move.js <to-storage|to-db|verify>`): `to-storage` 는 파일마다 Storage 에 올리고 → 다시 받아 바이트가 같은지 확인한 뒤에만 DB 의 b64 를 비워요(그 사이 바뀌었으면 그대로). `verify` 는 Storage 표시 파일이 모두 Storage 에 있고 크기가 맞는지. 하나라도 맞지 않으면 빌드가 멈춰요.
+- **배포 빌드 기록**: `[db] 사진 · 첨부: n개 · … · 내용이 DB a개 · Storage b개` · `[db] Storage 버킷 class-files: 비공개 · 새 파일 내용은 Storage 에 (FILES_STORE=supabase)`. 버킷이 공개(public)로 바뀌어 있으면 **빌드를 멈춰요**(범위 확인을 건너뛰게 되니까). 키 · 주소는 기록에 안 남겨요.
+- **Storage 가 고장 나면**: 올리기 503 `storage`(‘잠시 뒤 다시 올려 주세요’ · DB 에 빈 목록도 안 생겨요) · 받기 503. 키는 새 `sb_secret_…`(apikey 칸만) · 예전 service_role JWT(Authorization 도) 둘 다 돼요.
+- **시험**: 서버 시험 38번(가짜 Storage `scripts/fake-storage.js` — 버킷 만들기 · 범위별 받기 · 같은 파일 다시 안 올림 · 옮기기 · 사라진 파일 잡기 · 되돌리기 · 고장 · 키 두 종류 · 배포 빌드(진짜 HTTP)) · 화면 시험 `E2E_FILES=storage node scripts/e2e/run.js`(시험 DB 의 파일 내용을 모두 가짜 Storage 로 옮기고 서버를 `FILES_STORE=supabase` 로 — 화면이 보는 사진 · 첨부가 전부 Storage 에서 와요).
+- **순서**: ① 미리보기에 `SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY`(doogo-staging) · `FILES_STORE=supabase` → 미리보기 배포(버킷 생김 · 비공개 확인) → 사진 올려 보기 ② `FILES_MOVE=to-storage` 로 미리보기 한 번(시험용 DB) → `FILES_MOVE=verify` ③ 운영도 같은 순서(doogo-prod 키 · 운영 배포는 따로 여쭤봐요).
+
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
 ```bash
@@ -155,8 +175,8 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 |---|---|
 | `data.js` | 첫 실행 기본값 — 강사 4명(문대표·부알남·갓농부·초이), 문대표 콘텐츠, 기수, 수강생, 예시 제출 기록 |
 | `db.js` | 공용 데이터 계층 — 저장/불러오기(서버 모드: 문서 나누기 · 바뀐 부분 보내기 · 변경 받기), 기수 주차 계산, 일정 생성, 진행률, 세션 |
-| `api/` | 서버 (Vercel 함수) — `_lib/`에 저장소(Supabase Postgres · 로컬 SQLite) · 로그인 · 권한 · 처음 데이터 |
-| `scripts/` | `db-build.js`(배포 때 데이터베이스 준비) · `site.js`(배포할 화면 파일만 `.site`로 모으기) · `dev-server.js`(로컬 서버 모드) |
+| `api/` | 서버 (Vercel 함수) — `_lib/`에 저장소(Supabase Postgres · 로컬 SQLite) · 사진 · 첨부 내용(`blob.js` · Supabase Storage 비공개 버킷) · 로그인 · 권한 · 처음 데이터 |
+| `scripts/` | `db-build.js`(배포 때 데이터베이스 준비 · Storage 버킷 확인 · `FILES_MOVE`) · `files-move.js`(사진 · 첨부 DB ↔ Storage 옮기기 · 확인) · `site.js`(배포할 화면 파일만 `.site`로 모으기) · `dev-server.js`(로컬 서버 모드) |
 | `icons.js` | 아이콘 (Lucide) — `<svg class="icon lucide lucide-<이름>">` (Lucide 공식 클래스 규칙) |
 | `tags.js` | 분석 · 마케팅 도구 연결 — 마스터 › 첫 화면 · 사업자 정보 › 분석 · 마케팅 도구에 넣은 것만 정식 주소에서 불러와요 · 개인정보처리방침 ‘쿠키’ 항목 문구 |
 | `app.js` | 수강생 센터 — 로그인·수강 신청, 기본 메뉴 17개(두고 클래스 이름), 자동검수, AI 조교, 학습 노트 · 용어 사전 · 모범 과제 · 라이브 다시보기, 강사 미리보기. 강사를 고르기 전 첫 로그인 화면은 특정 강사 색이 아니라 두고 클래스(흰 바탕 + 여기어때 레드, 강사 프로필 사진 목록 · 입점 문의 링크)로 보이고, 강사를 고르면 그 강사의 로그인 화면으로 바뀌어요 (모양은 `home.css` 맨 아래 `.login-dc`) |

@@ -3,6 +3,7 @@
  *   node scripts/e2e/run.js                 모든 테스트 (시험 DB를 새로 만들어 테스트마다 새 복사본으로)
  *   node scripts/e2e/run.js routes logins    고른 테스트만
  *   E2E_FIXTURE=/tmp/fx node scripts/e2e/run.js   만들어 둔 시험 DB 다시 쓰기 (fixture.js 로 만든 폴더)
+ *   E2E_FILES=storage node scripts/e2e/run.js    사진 · 첨부를 가짜 Supabase Storage 에 두고 (DB 전환 2부 B1)
  *   E2E_SHOTS=/tmp/shots …                  실패한 화면 사진을 남길 폴더
  *   E2E_BASE=https://<미리보기 주소> E2E_INFO=info.json node scripts/e2e/run.js
  *                                           만들어 둔 시험 배포(시험용 DB)에 그대로 — 읽기만 하는 테스트(routes)만 돌고,
@@ -15,7 +16,7 @@ const path = require("path");
 const L = require("./lib");
 const F = require("./fixture");
 
-const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "split", "react", "reactdg", "reactct", "reactpm"].filter((n) => fs.existsSync(path.join(__dirname, "specs", n + ".js")));
+const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "files", "split", "react", "reactdg", "reactct", "reactpm"].filter((n) => fs.existsSync(path.join(__dirname, "specs", n + ".js")));
 
 (async () => {
   const want = process.argv.slice(2).filter((a) => !a.startsWith("-"));
@@ -38,6 +39,7 @@ const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "spli
     fx = await F.build(path.join(work, "fx"));
   }
   if (!remote && process.env.E2E_DB === "pg") console.log("[e2e] 저장소: Postgres (PGlite · 테스트마다 시험 DB 를 옮기기 도구로 복사 · 문서마다 확인)");
+  if (!remote && process.env.E2E_FILES === "storage") console.log("[e2e] 사진 · 첨부: 가짜 Supabase Storage (진짜 HTTP · 비공개 버킷 · FILES_STORE=supabase · 시험 DB 의 파일 내용도 모두 Storage 로)");
   const browser = await L.chromium().launch();
   const results = [];
   for (const name of list) {
@@ -52,7 +54,7 @@ const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "spli
       await spec.run({ base: srv.base, info: fx.info, browser, run, L, F });
     } catch (e) {
       run.checks.push({ ok: false, label: "테스트가 도중에 멈췄어요", info: String((e && e.stack) || e).slice(0, 1500) });
-    } finally { await srv.stop(); if (db) fs.rmSync(db, { force: true }); }
+    } finally { const stg = srv.storage ? srv.storage() : null; await srv.stop(); if (db) fs.rmSync(db, { force: true }); if (stg) console.log("  [Storage] 옮겨 둔 파일 " + stg.moved + "개 · 화면이 받은 " + stg.gets + "번 · 새로 올린 " + stg.puts + "번"); }
     if (run.errs.length) run.checks.push({ ok: false, label: "페이지 오류 · 저장 거절이 없어야 해요", info: run.errs.slice(0, 12).join("\n") });
     const fail = run.checks.filter((c) => !c.ok);
     results.push({ name, title: spec.title, n: run.checks.length, fail, ms: Date.now() - t0 });

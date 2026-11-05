@@ -14,6 +14,7 @@ function deployIncludes() {
 }
 fs.cpSync(path.join(ROOT, "api"), path.join(TMP, "class/api"), { recursive: true });
 fs.cpSync(path.join(ROOT, "data.js"), path.join(TMP, "class/data.js")); fs.cpSync(path.join(ROOT, "db.js"), path.join(TMP, "class/db.js")); fs.cpSync(path.join(ROOT, "coach-perms.js"), path.join(TMP, "class/coach-perms.js")); fs.cpSync(path.join(ROOT, "shared"), path.join(TMP, "class/shared"), { recursive: true });
+fs.mkdirSync(path.join(TMP, "class/scripts")); ["db-build.js", "files-move.js"].forEach((f) => fs.cpSync(path.join(ROOT, "scripts", f), path.join(TMP, "class/scripts", f))); // 2부 B1: 빌드 단계 · 파일 옮기기 (같은 저장소 모듈)
 fs.symlinkSync(path.join(ROOT, "..", "node_modules"), path.join(TMP, "node_modules"), "dir"); // 공식 SDK (저장소 맨 위 npm install)
 const WH = crypto.randomBytes(24).toString("base64");
 Object.assign(process.env, { CLASS_SQLITE: path.join(TMP, "t.db"), SESSION_SECRET: "test-session", VOD_SERVER_AUTH: "1", PORTONE_STORE_ID: "store-test", PORTONE_API_SECRET: "ps-test", PORTONE_CHANNEL_CARD: "channel-key-card", PORTONE_CHANNEL_KAKAOPAY: "channel-key-kp", PORTONE_WEBHOOK_SECRET: "whsec_" + WH, KAKAO_REST_KEY: "rest-test", KAKAO_CLIENT_SECRET: "cs-test", KAKAO_REDIRECT_URI: "https://www.doogoclass.com/api/vod-kakao", KAKAO_ADMIN_KEY: "admin-test" });
@@ -22,6 +23,8 @@ const auth = require(path.join(TMP, "class/api/_lib/auth.js"));
 
 // ---------- 가짜 외부 서버 ----------
 const PG = {}, calls = [], PAY = [], AI = { reqs: [], next: null }, SOL = [], RES = [], VDC = [];
+// 2부 B1: 가짜 Supabase Storage (새 키 sb_secret_… · 예전 service_role JWT 키 둘 다)
+const FAKE_ST = require(path.join(ROOT, "scripts/fake-storage.js")), FS38 = FAKE_ST.make("sb_secret_test38"), FSJ = FAKE_ST.make("eyJhbGciOi.legacy.jwt38");
 let kakaoUser = null;
 global.fetch = async (url, opt) => {
   opt = opt || {}; const u = new URL(url); calls.push(opt.method === "POST" ? "POST " + u.host + u.pathname : "GET " + u.host + u.pathname);
@@ -33,6 +36,9 @@ global.fetch = async (url, opt) => {
     if (m[2]) { const b = JSON.parse(opt.body); const p = PG[id]; if (p && p.failCancel) return J(400, { type: "CANCEL_FAILED", message: "취소 실패 (시험)" }); if (p && p.cancelSt === "FAILED") return J(200, { cancellation: { id: "cx_" + calls.length, status: "FAILED", totalAmount: 0 } }); const amt = b.amount != null ? b.amount : p.amount.total - (p.amount.cancelled || 0); p.amount.cancelled = (p.amount.cancelled || 0) + amt; p.status = p.amount.cancelled >= p.amount.total ? "CANCELLED" : "PARTIAL_CANCELLED"; p.lastCancel = b; if (p.onCancel) await p.onCancel(); return J(200, { cancellation: { id: "cx_" + calls.length, status: p.cancelSt || "SUCCEEDED", totalAmount: amt } }); }
     return PG[id] ? J(200, PG[id]) : J(404, { type: "PAYMENT_NOT_FOUND" });
   }
+  if (u.host === "st38.supabase.test") return FS38.fetchLike(url, opt);
+  if (u.host === "jwt38.supabase.test") return FSJ.fetchLike(url, opt);
+  if (u.host === "down38.supabase.test") return J(500, { statusCode: "500", error: "internal" });
   if (u.host === "kauth.kakao.com") return J(200, { access_token: "at-" + opt.body.match(/code=([^&]+)/)[1] });
   if (u.host === "kapi.kakao.com") {
     if (u.pathname === "/v2/user/me") return J(200, kakaoUser);
@@ -63,7 +69,7 @@ function call(name, { method = "POST", body, query = {}, headers = {}, raw } = {
     const ck = Object.keys(jar).map((k) => k + "=" + encodeURIComponent(jar[k])).join("; ");
     const req = { method, url: "/api/" + name, query, headers: Object.assign({ host: "www.doogoclass.com", cookie: ck, "x-forwarded-for": "1.2.3.4" }, headers), body: raw != null ? undefined : body, rawBody: raw, socket: {} };
     const hd = {}; const res = { statusCode: 200, headersSent: false, setHeader(k, v) { hd[k.toLowerCase()] = v; }, getHeader(k) { return hd[k.toLowerCase()]; },
-      end(s) { [].concat(hd["set-cookie"] || []).forEach((c) => { const [kv] = c.split(";"); const i = kv.indexOf("="); const k = kv.slice(0, i), v = decodeURIComponent(kv.slice(i + 1)); if (v) jar[k] = v; else delete jar[k]; }); let j = null; try { j = JSON.parse(s); } catch (e) {} done({ status: this.statusCode, json: j, location: hd.location }); } };
+      end(s) { [].concat(hd["set-cookie"] || []).forEach((c) => { const [kv] = c.split(";"); const i = kv.indexOf("="); const k = kv.slice(0, i), v = decodeURIComponent(kv.slice(i + 1)); if (v) jar[k] = v; else delete jar[k]; }); let j = null; try { j = JSON.parse(s); } catch (e) {} done({ status: this.statusCode, json: j, location: hd.location, headers: hd, body: s }); } };
     API(name)(req, res);
   });
 }
@@ -2272,6 +2278,128 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       await B.end(); await pgB.stop();
     }
     await live.end();
+  }
+
+  {
+    console.log("38) DB 전환 2부 B1: 사진 · 첨부 내용은 Supabase Storage 비공개 버킷 · 주소(/api/file) · 볼 수 있는 범위는 그대로");
+    const st38 = require(path.join(TMP, "class/api/_lib/store.js")), BL = require(path.join(TMP, "class/api/_lib/blob.js")), FM = require(path.join(TMP, "class/scripts/files-move.js"));
+    const ENV38 = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "FILES_STORE", "FILES_BUCKET"], keep38 = {};
+    ENV38.forEach((k) => { keep38[k] = process.env[k]; });
+    const setSt = (o) => { ENV38.forEach((k) => delete process.env[k]); Object.assign(process.env, o); };
+    const ON = { SUPABASE_URL: "https://st38.supabase.test", SUPABASE_SERVICE_ROLE_KEY: "sb_secret_test38", FILES_STORE: "supabase", FILES_BUCKET: "class-files" };
+    const rowOf = async (h) => (await st38.exec("SELECT b64, size FROM files WHERE h = ?", [h])).rows[0];
+    const hOf = (url) => new URL("http://x" + url).searchParams.get("h");
+    const objPuts = () => FS38.log.filter((x) => /^POST \/storage\/v1\/object\//.test(x)).length;
+    const asMaster = () => useJar({ dc_a: auth.sign({ r: "master" }) });
+    const asBuyer = () => { useJar(jarB); delete jar.dc_s; };
+    try {
+      const before38 = await st38.fileStats();
+      // 스위치가 꺼져 있으면(기본) 예전처럼 DB 에 — Storage 를 부르지도 않아요
+      asMaster();
+      const off = crypto.randomBytes(48);
+      r = await call("file", { body: { data: "data:image/png;base64," + off.toString("base64"), scope: "pub" } });
+      const rOff = r.json.ok ? await rowOf(hOf(r.json.url)) : null;
+      ok(r.json.ok && rOff && rOff.b64 === off.toString("base64") && FS38.log.length === 0 && before38.inStorage === 0 && before38.n > 0,
+        "스위치(FILES_STORE)가 꺼져 있으면 예전처럼 DB 에 저장 · Storage 는 부르지도 않아요 · 지금까지 파일 " + before38.n + "개는 모두 DB 에", { before38, log: FS38.log.length });
+      setSt(ON);
+      const b1 = await BL.ensureBucket(), b2 = await BL.ensureBucket();
+      ok(b1.created && !b1.public && !b2.created && FS38.buckets.get("class-files").public === false && FS38.buckets.get("class-files").file_size_limit === 5 * 1024 * 1024,
+        "Storage 버킷: 없으면 비공개(5MB 한도)로 만들고 · 두 번째는 그대로", { b1, b2 });
+      // 새로 올리는 공개 사진 → Storage 에 · DB 는 ''(표시만) · 주소 그대로 · 누구나 받음
+      const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), crypto.randomBytes(300)]);
+      asMaster();
+      r = await call("file", { body: { data: "data:image/png;base64," + png.toString("base64"), scope: "pub" } });
+      const hp = r.json.ok ? hOf(r.json.url) : "", rp = hp ? await rowOf(hp) : null, op = FS38.objects.get("class-files/" + hp);
+      useJar({});
+      const gp = hp ? await call("file", { method: "GET", query: { h: hp } }) : {};
+      ok(r.json.ok && /^\/api\/file\?h=[0-9a-f]{40}$/.test(r.json.url) && rp && rp.b64 === "" && Number(rp.size) === png.length && op && op.buf.equals(png) && op.type === "image/png" && FS38.log.length > 0
+        && gp.status === 200 && Buffer.isBuffer(gp.body) && gp.body.equals(png) && gp.headers["content-type"] === "image/png" && /^public/.test(gp.headers["cache-control"]),
+        "새 공개 사진: 내용은 Storage(비공개 버킷) · DB 는 목록 · 크기만 · 주소 /api/file?h= 그대로 · 방문자도 같은 바이트를 받음", { ok: r.json.ok, b64: rp && rp.b64.length, st: gp.status });
+      // 유료 수업 자료(vodp:v5) → 방문자 403 · 산 회원 200 · 받은 내용이 올린 것과 같아요
+      const pdf38 = Buffer.from("%PDF-1.4 B1 Storage 수업 자료 " + crypto.randomBytes(40).toString("hex"));
+      asMaster();
+      r = await call("file", { body: { data: "data:application/pdf;base64," + pdf38.toString("base64"), scope: "vodp:v5" } });
+      const hv = r.json.ok ? hOf(r.json.url) : "";
+      useJar({}); const gv0 = await call("file", { method: "GET", query: { h: hv } });
+      asBuyer(); const gv1 = await call("file", { method: "GET", query: { h: hv } });
+      ok(hv && gv0.status === 403 && gv1.status === 200 && Buffer.isBuffer(gv1.body) && gv1.body.equals(pdf38) && /attachment/.test(String(gv1.headers["content-disposition"] || "")) && /^private/.test(gv1.headers["cache-control"]),
+        "유료 수업 자료도 Storage 에: 방문자 403 · 산 회원만 200(같은 바이트) · 볼 수 있는 범위(file_scopes)는 DB 그대로 확인", { v0: gv0.status, v1: gv1.status });
+      // 제출 서류(adm) → 운영자만
+      const adm = Buffer.from("%PDF-1.4 사업자등록증 시험 " + crypto.randomBytes(20).toString("hex"));
+      asMaster(); r = await call("file", { body: { data: "data:application/pdf;base64," + adm.toString("base64"), scope: "adm" } });
+      const ha = r.json.ok ? hOf(r.json.url) : "";
+      asBuyer(); const ga0 = await call("file", { method: "GET", query: { h: ha } });
+      asMaster(); const ga1 = await call("file", { method: "GET", query: { h: ha } });
+      ok(ha && ga0.status === 403 && ga1.status === 200 && ga1.body.equals(adm), "제출 서류(adm)도 Storage 에: 회원 403 · 운영자만 200", { a0: ga0.status, a1: ga1.status });
+      // 같은 파일을 다른 범위로 또 올리면 Storage 에는 다시 안 올리고 범위만 더해요
+      const puts0 = objPuts();
+      asMaster();
+      r = await call("file", { body: { data: "data:application/pdf;base64," + pdf38.toString("base64"), scope: "pub" } });
+      const puts1 = objPuts(), sc = (await st38.exec("SELECT scope FROM file_scopes WHERE h = ? ORDER BY scope", [hv])).rows.map((x) => x.scope).join(",");
+      ok(r.json.ok && puts1 === puts0 && sc === "pub,vodp:v5", "같은 내용(같은 해시)은 Storage 에 다시 안 올리고 범위만 더해요", { puts0, puts1, sc });
+      // 예전 파일(DB 에 b64) → FILES_MOVE=to-storage: 파일마다 올리고 다시 받아 비교 → DB 는 '' · 받는 내용 그대로
+      const oldH = (await st38.exec("SELECT h FROM files WHERE b64 <> '' ORDER BY h")).rows.map((x) => x.h), oldBuf = {};
+      for (const h of oldH) oldBuf[h] = Buffer.from((await rowOf(h)).b64, "base64");
+      const nAll = (await st38.fileStats()).n;
+      const m1 = await FM.run("to-storage"), m2 = await FM.run("to-storage"), v1 = await FM.run("verify");
+      const allSame = oldH.every((h) => { const o = FS38.objects.get("class-files/" + h); return o && o.buf.equals(oldBuf[h]); });
+      asBuyer(); const g12 = await call("file", { method: "GET", query: { h: fh } });
+      ok(oldH.length > 0 && m1.moved === oldH.length && !m1.bad.length && m2.total === 0 && v1.inDb === 0 && v1.inStorage === nAll && !v1.bad.length && allSame && g12.status === 200 && g12.body.equals(oldBuf[fh]),
+        "예전 파일 옮기기(to-storage): " + m1.moved + "개를 파일마다 다시 받아 비교한 뒤에만 DB 를 비워요 · 두 번째는 할 일 없음 · 확인(verify) 모두 맞음 · 예전 주소 그대로 같은 바이트", { m1: FM.line(m1), v1: FM.line(v1), g: g12.status });
+      // Storage 에서 하나가 사라지면 확인(verify)이 잡아요 → 배포 때 빌드가 멈춰요
+      const lostK = "class-files/" + oldH[0], lost = FS38.objects.get(lostK); FS38.objects.delete(lostK);
+      const v2 = await FM.run("verify"); asMaster(); const gl = await call("file", { method: "GET", query: { h: oldH[0] } }); FS38.objects.set(lostK, lost);
+      ok(v2.bad.length === 1 && /Storage 에 없어요/.test(v2.bad[0]) && /문제 1개/.test(FM.line(v2)) && gl.status === 404, "Storage 에서 파일이 사라지면 확인이 잡아요 (배포 때 FILES_MOVE=verify → 빌드 멈춤) · 그 주소는 404", { bad: v2.bad, gl: gl.status });
+      // 막힐 요청(방문자 → 유료 자료)에는 Storage 를 부르지 않아요 · 범위를 먼저 확인
+      const gets0 = FS38.log.filter((x) => /^GET \/storage\/v1\/object\//.test(x)).length;
+      asBuyer(); const gx = await call("file", { method: "GET", query: { h: ha } });
+      const gets1 = FS38.log.filter((x) => /^GET \/storage\/v1\/object\//.test(x)).length;
+      ok(gx.status === 403 && gets1 === gets0, "막힐 요청(회원 → 운영자 전용 서류)은 범위를 먼저 보고 403 — Storage 에서 꺼내지도 않아요", { st: gx.status, gets0, gets1 });
+      // 되돌리기(to-db): Storage → DB b64 · 스위치 · 설정을 빼도 그대로 받음
+      const d1 = await FM.run("to-db"); setSt({});
+      const leftSt = Number((await st38.exec("SELECT COUNT(*) AS n FROM files WHERE b64 = ''")).rows[0].n);
+      asBuyer(); const gb = await call("file", { method: "GET", query: { h: hv } });
+      ok(d1.moved === nAll && !d1.bad.length && leftSt === 0 && gb.status === 200 && gb.body.equals(pdf38), "되돌리기(to-db): Storage 의 파일을 다시 DB 에 · Storage 설정을 빼도 그대로 받음 (끄기 = 되돌리기)", { d1: FM.line(d1), leftSt, gb: gb.status });
+      // Storage 에 내용만 있는데 설정이 빠지면 받기 503(storage) · Storage 가 고장 나면 올리기 503 · DB 에 목록도 안 생겨요
+      setSt(ON); await FM.run("to-storage"); setSt({});
+      useJar({}); const gn = await call("file", { method: "GET", query: { h: hp } });
+      setSt(Object.assign({}, ON, { SUPABASE_URL: "https://down38.supabase.test" }));
+      asMaster();
+      const fresh = crypto.randomBytes(64), freshB64 = fresh.toString("base64");
+      r = await call("file", { body: { data: "data:image/png;base64," + freshB64, scope: "pub" } });
+      const nFresh = Number((await st38.exec("SELECT COUNT(*) AS n FROM files WHERE h = ?", [crypto.createHash("sha256").update(freshB64).digest("hex").slice(0, 40)])).rows[0].n);
+      ok(gn.status === 503 && gn.json && gn.json.error === "storage" && r.status === 503 && r.json.error === "storage" && /잠시 뒤/.test(r.json.message) && nFresh === 0,
+        "Storage 설정이 빠지면 받기 503 · Storage 가 고장 나면 올리기 503(잠시 뒤 다시) · 이때 DB 에 목록도 안 생겨요(빈 파일 없음)", { gn: gn.status, up: r.status, nFresh });
+      // 예전 service_role(JWT) 키 · 키가 틀리면
+      setSt(Object.assign({}, ON, { SUPABASE_URL: "https://jwt38.supabase.test", SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOi.legacy.jwt38" }));
+      const bj = await BL.ensureBucket(); await BL.put("abc123", "text/plain", Buffer.from("jwt")); const gj = await BL.get("abc123"), gnone = await BL.get("nope404");
+      setSt(Object.assign({}, ON, { SUPABASE_SERVICE_ROLE_KEY: "sb_secret_wrong" }));
+      let wrong = ""; try { await BL.get(oldH[0]); } catch (e) { wrong = e.message + " " + e.code; }
+      ok(bj.created && gj && gj.toString() === "jwt" && gnone === null && /401/.test(wrong) && / BLOB$/.test(wrong) && !/sb_secret|supabase\.test/.test(wrong),
+        "키: 새 secret 키(apikey 칸만) · 예전 service_role JWT 키(Authorization 도) 둘 다 · 없는 파일은 null · 틀린 키는 401 (오류에 키 · 주소는 안 남겨요)", { wrong });
+      setSt(ON); await FM.run("to-db"); setSt({}); // 이 시험 DB 는 다시 예전처럼 (DB 에)
+      // 배포 빌드(db-build.js): 버킷을 비공개로 만들고 · FILES_MOVE 로 옮기고 확인 · 공개 버킷이면 멈춤 — 진짜 HTTP 가짜 서버 · 따로 만든 SQLite 파일
+      const FSH = FAKE_ST.make("sb_secret_build38"), srv = await FSH.serve();
+      const bdb = path.join(TMP, "b38.db"), C38 = st38.openClient({ kind: "sqlite", file: bdb });
+      await C38.init();
+      const f1 = crypto.randomBytes(120).toString("base64"), f2 = crypto.randomBytes(90).toString("base64"), fh1 = crypto.createHash("sha256").update(f1).digest("hex").slice(0, 40), fh2 = crypto.createHash("sha256").update(f2).digest("hex").slice(0, 40);
+      await C38.batch([{ sql: "INSERT INTO files (h, mime, b64, size, created) VALUES (?, ?, ?, ?, ?)", args: [fh1, "image/png", f1, Math.floor(f1.length * 0.75), Date.now()] }, { sql: "INSERT INTO files (h, mime, b64, size, created) VALUES (?, ?, ?, ?, ?)", args: [fh2, "application/pdf", f2, Math.floor(f2.length * 0.75), Date.now()] },
+        { sql: "INSERT INTO file_scopes (h, scope) VALUES (?, ?)", args: [fh1, "pub"] }, { sql: "INSERT INTO file_scopes (h, scope) VALUES (?, ?)", args: [fh2, "vodp:v5"] }]);
+      await C38.end();
+      const runB = (env) => new Promise((resolve) => { const ch = require("child_process").spawn(process.execPath, [path.join(TMP, "class/scripts/db-build.js")], { env: Object.assign({ PATH: process.env.PATH, NODE_NO_WARNINGS: "1", CLASS_SQLITE: bdb, MASTER_PASSWORD: "x", SESSION_SECRET: "s", SUPABASE_URL: srv.url, SUPABASE_SERVICE_ROLE_KEY: "sb_secret_build38", FILES_STORE: "supabase" }, env) }); let o = ""; ch.stdout.on("data", (d) => (o += d)); ch.stderr.on("data", (d) => (o += d)); ch.on("close", (code) => resolve({ code, o, db: o.split("\n").filter((l) => /^\[db\]/.test(l)) })); });
+      const o1 = await runB({ FILES_MOVE: "to-storage" }), o2 = await runB({ FILES_MOVE: "verify" });
+      const C38b = st38.openClient({ kind: "sqlite", file: bdb }), emptied = Number((await C38b.batch([{ sql: "SELECT COUNT(*) AS n FROM files WHERE b64 = ''" }]))[0].rows[0].n); await C38b.end();
+      ok(o1.code === 0 && /Storage 버킷 class-files: 비공개 · 새로 만들었어요 · 새 파일 내용은 Storage 에/.test(o1.o) && /사진 · 첨부 옮기기 \(DB → Storage\): 2\/2개 .* 파일마다 내용 확인 맞음/.test(o1.o) && FSH.buckets.get("class-files").public === false
+        && FSH.objects.get("class-files/" + fh1).buf.equals(Buffer.from(f1, "base64")) && emptied === 2 && o2.code === 0 && /사진 · 첨부 확인: 전체 2개 · DB 0 · Storage 2 · 모두 맞아요/.test(o2.o) && !/sb_secret_build38/.test(o1.o + o2.o),
+        "배포 빌드: 버킷을 비공개로 만들고(기록) · FILES_MOVE=to-storage 로 옮기고 파일마다 확인 · FILES_MOVE=verify 모두 맞음 · 키는 기록에 없음", o1.db.concat(o2.db).filter((l) => /Storage|사진/.test(l)));
+      FSH.objects.delete("class-files/" + fh2);
+      const o3 = await runB({ FILES_MOVE: "verify" });
+      FSH.buckets.get("class-files").public = true;
+      const o4 = await runB({});
+      await srv.stop();
+      ok(o3.code === 1 && /문제 1개/.test(o3.o) && /빌드를 멈춰요/.test(o3.o) && o4.code === 1 && /공개\(public\)로 되어 있어요/.test(o4.o),
+        "배포 빌드: Storage 에서 파일이 사라졌으면 빌드 멈춤 · 버킷이 공개(public)로 바뀌어 있으면 빌드 멈춤 (범위 확인을 건너뛰게 되니까)", { o3: o3.db.slice(-2), o4: o4.db.slice(-1) });
+    } finally { setSt(Object.fromEntries(Object.entries(keep38).filter(([, v]) => v != null))); useJar({}); }
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

@@ -187,19 +187,39 @@ async function writeDoc(k, v, prevVer, created) {
 async function countDocs() { return (await exec("SELECT COUNT(*) AS n FROM docs WHERE v IS NOT NULL")).rows[0].n; }
 
 /* ---------------- 파일 ---------------- */
+// 2부 B1 (2026-11-05): FILES_STORE=supabase 면 내용(바이트)은 Supabase Storage 비공개 버킷에 · DB 의 b64 는 '' (‘Storage 에 있어요’ 표시) — api/_lib/blob.js
+//   목록 · 볼 수 있는 범위(file_scopes)는 그대로 DB. 예전처럼 b64 가 차 있는 파일은 DB 에서 바로 읽어요 (영역 스위치를 꺼도 Storage 파일은 계속 읽어요)
+const blob = () => require("./blob");
 async function putFile(h, mime, b64, scope) {
+  if (readonly()) throw readonlyError();
+  let stored = b64;
+  if (blob().on()) {
+    // 이미 있는 파일(같은 해시 = 같은 내용)은 범위만 더해요 — Storage 에 다시 올리지 않게
+    const had = (await exec("SELECT b64 FROM files WHERE h = ?", [h])).rows[0];
+    if (!had) { await blob().put(h, mime, Buffer.from(b64, "base64")); stored = ""; }
+  }
   await batch([
-    { sql: "INSERT INTO files (h, mime, b64, size, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(h) DO NOTHING", args: [h, mime, b64, Math.floor(b64.length * 0.75), Date.now()] },
+    { sql: "INSERT INTO files (h, mime, b64, size, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(h) DO NOTHING", args: [h, mime, stored, Buffer.byteLength(b64, "base64"), Date.now()] },
     { sql: "INSERT INTO file_scopes (h, scope) VALUES (?, ?) ON CONFLICT(h, scope) DO NOTHING", args: [h, scope] }
   ]);
 }
+/** 파일 한 개 → { mime, scopes, where("db" | "storage"), size, body() } | null
+ *  내용은 body() 로 따로 받아요 (→ Buffer | null) — 볼 수 있는 범위를 먼저 확인하고 Storage 에서 꺼내게 (막힐 요청에 Storage 를 부르지 않아요) */
 async function getFile(h) {
   const [f, s] = await batch([
-    { sql: "SELECT mime, b64 FROM files WHERE h = ?", args: [h] },
+    { sql: "SELECT mime, b64, size FROM files WHERE h = ?", args: [h] },
     { sql: "SELECT scope FROM file_scopes WHERE h = ?", args: [h] }
   ]);
   if (!f.rows.length) return null;
-  return { mime: f.rows[0].mime, b64: f.rows[0].b64, scopes: s.rows.map((x) => x.scope) };
+  const row = f.rows[0], scopes = s.rows.map((x) => x.scope);
+  if (row.b64) return { mime: row.mime, scopes, where: "db", size: Number(row.size) || 0, body: async () => Buffer.from(row.b64, "base64") };
+  return {
+    mime: row.mime, scopes, where: "storage", size: Number(row.size) || 0,
+    body: async () => {
+      if (!blob().configured()) { const e = new Error("파일 내용이 Storage 에 있는데 SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY 가 없어요"); e.code = "BLOB"; e.status = 503; throw e; }
+      return blob().get(h);
+    }
+  };
 }
 
 /* ---------------- 로그인 실패 제한 ---------------- */
@@ -273,8 +293,8 @@ async function allDocRows() { return (await exec("SELECT k, v, ver FROM docs")).
 /* ---------------- 배포 기록용 확인 (DB 전환 A0) ---------------- */
 /** 사진 · 첨부 개수와 크기 (읽기만) */
 async function fileStats() {
-  const r = (await exec("SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS total, COALESCE(MAX(size), 0) AS max FROM files")).rows[0] || {};
-  return { n: Number(r.n) || 0, total: Number(r.total) || 0, max: Number(r.max) || 0 };
+  const r = (await exec("SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS total, COALESCE(MAX(size), 0) AS max, COALESCE(SUM(CASE WHEN b64 = '' THEN 1 ELSE 0 END), 0) AS st FROM files")).rows[0] || {};
+  return { n: Number(r.n) || 0, total: Number(r.total) || 0, max: Number(r.max) || 0, inStorage: Number(r.st) || 0 };
 }
 /** Supabase 접속 확인 — 지금 쓰는 DB 와 따로 연결해 버전 · 왕복 시간 · 지역 · 포트 · app 표가 있는지만 봐요 (주소 · 비밀번호는 안 적어요 · 실패해도 빌드는 계속) */
 async function pgProbe(url) {

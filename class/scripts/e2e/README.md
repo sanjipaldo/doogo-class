@@ -11,10 +11,11 @@ node scripts/e2e/run.js routes idle  # 고른 것만
 node scripts/e2e/fixture.js /tmp/fx  # 시험 DB만 만들기 → E2E_FIXTURE=/tmp/fx 로 다시 쓰기
 E2E_SERVER=next node scripts/e2e/run.js              # Next.js 서버로 (먼저 저장소 맨 위에서 node class/scripts/site.js public && npx next build)
 E2E_SERVER=next E2E_REACT=1 node scripts/e2e/run.js  # React 화면을 모두 켠 채로 같은 테스트 (react* 테스트가 고른 값은 그대로)
+E2E_FILES=storage node scripts/e2e/run.js            # 사진 · 첨부를 가짜 Supabase Storage(진짜 HTTP · 비공개 버킷)에 두고 (DB 전환 2부 B1 · E2E_SERVER · E2E_DB 와 같이 써도 돼요)
 ```
 
 - Playwright(chromium)가 설치된 컴퓨터에서 돌려요. 배포 빌드가 무거워지지 않게 저장소 `package.json`에는 넣지 않아요.
-- **운영 DB · 운영 사이트에는 접속하지 않아요.** 테스트 서버(`scripts/dev-server.js`)를 시험용 SQLite 파일로 띄우고, 운영 비밀 값(Turso · 포트원 · 카카오 · AI 키)은 넘기지 않아요 (`lib.js` `cleanEnv`).
+- **운영 DB · 운영 사이트에는 접속하지 않아요.** 테스트 서버(`scripts/dev-server.js`)를 시험용 SQLite 파일로 띄우고, 운영 비밀 값(DB · Storage · 포트원 · 카카오 · AI 키)은 넘기지 않아요 (`lib.js` `cleanEnv`).
 - 시험 DB는 운영과 같은 순서로 만들어요: 처음 데이터(data.js) → 마스터가 스토어를 한 번 열어 스토어 데이터 · 결제 가격표 올림 → 배포 빌드처럼 일회성 작업 전부 + 기본값 채우기 (`fixture.js`).
 - 체험 계정 이름 · 뒷자리는 코드에 적지 않고 시험 DB에서 읽어요 (`fixture.json`).
 - 화면은 운영처럼 `#` 없는 깨끗한 주소로 열어요 (`dc:clean`).
@@ -31,6 +32,7 @@ E2E_SERVER=next E2E_REACT=1 node scripts/e2e/run.js  # React 화면을 모두 �
 | center | 강사센터 저장이 서버에 남음 (새로 고친 뒤에도) · 마스터 강사 정산 화면(상품 종류 탭 · 정산 규칙) |
 | idle | 자동 로그아웃: 강사센터 30분 무동작 · 29분 그대로 · 강사센터 밖 탭은 새로 고치지 않음 · 수강생 · 회원은 창을 닫고 60분 뒤 (브라우저 시계를 앞으로 돌려서) |
 | split | 화면 나눠 받기 (4-3단계) — 영역별 파일만 받고 · 영역을 옮길 때 나머지를 받아 같은 화면이 그려짐 |
+| files | 사진 · 첨부: 마스터가 올린 공개 사진 · 수업 자료(vodp) · 서류(adm) — 방문자는 사진만(화면에 보임) · 나머지 403 · 같은 크기 · 캐시 머리말 · 없는 파일 404 (`E2E_FILES=storage` 면 가짜 Supabase Storage 를 거쳐요) |
 | react · reactdg | React 화면(스토어 · 회원 · 두잉고 강의실)이 예전 화면과 같은 구조 · 누르기 (Next.js 서버 `E2E_SERVER=next` 에서만) |
 | reactct | 강사센터 · 코치 · VOD 탭 · 마스터 · 운영자(스태프) 계정 화면이 예전 화면과 같은 구조 (PC · 휴대폰) · 운영 화면 · 무료강의 · 강사 소개 페이지 편집 · 클래스 세팅 · 마스터 화면 누르기 (Next.js 서버에서만) |
 | reactpm | 마스터가 화면에서 만든 파트너 · 온드미디어 계정으로 파트너센터 · 온드미디어 센터가 예전 화면과 같은 구조 · 탭 · 고르기 · 찾기 (Next.js 서버에서만) |

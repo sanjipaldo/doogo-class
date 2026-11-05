@@ -44,7 +44,22 @@ async function waitHttp(url, ms) {
  *  서버를 Postgres 로 띄워요 (DB 전환 1부 A1 · A3 · 설치: npm --prefix class/scripts/pg ci). opts.sqlite: 시험 DB 를 만드는 동안은 SQLite 그대로 */
 async function startServer(dbFile, opts) {
   const port = await freePort();
-  let pg = null, dbEnv = { CLASS_SQLITE: dbFile };
+  let pg = null, dbEnv = { CLASS_SQLITE: dbFile }, st = null;
+  // E2E_FILES=storage: 사진 · 첨부 내용을 가짜 Supabase Storage(진짜 HTTP · scripts/fake-storage.js)에 두고 서버를 FILES_STORE=supabase 로 (DB 전환 2부 B1)
+  //   시험 DB 의 파일 내용도 모두 Storage 로 옮겨(DB 는 '') — 화면이 보는 사진 · 첨부가 전부 Storage 에서 와요
+  if (process.env.E2E_FILES === "storage" && dbFile && !(opts && opts.sqlite)) {
+    const key = "sb_secret_e2e", FS = require(path.join(ROOT, "scripts", "fake-storage.js")).make(key), srv = await FS.serve();
+    FS.buckets.set("class-files", { id: "class-files", name: "class-files", public: false, file_size_limit: 5 * 1024 * 1024 });
+    const store = require(path.join(ROOT, "api", "_lib", "store.js")), c = store.openClient({ kind: "sqlite", file: dbFile });
+    const rows = (await c.batch([{ sql: "SELECT h, mime, b64 FROM files WHERE b64 <> ''" }]))[0].rows;
+    for (const f of rows) {
+      const r = FS.handle("POST", "/storage/v1/object/class-files/" + f.h, { apikey: key, "x-upsert": "true", "content-type": f.mime }, Buffer.from(f.b64, "base64"));
+      if (r.status !== 200) throw new Error("가짜 Storage 에 못 올렸어요: " + r.status);
+    }
+    if (rows.length) await c.batch([{ sql: "UPDATE files SET b64 = '' WHERE b64 <> ''" }]);
+    await c.end();
+    st = { FS, srv, moved: rows.length, env: { SUPABASE_URL: srv.url, SUPABASE_SERVICE_ROLE_KEY: key, FILES_STORE: "supabase" } };
+  }
   if (process.env.E2E_DB === "pg" && dbFile && !(opts && opts.sqlite)) {
     pg = await require(path.join(ROOT, "scripts", "pg", "server.js")).start();
     const store = require(path.join(ROOT, "api", "_lib", "store.js")), MV = require(path.join(ROOT, "scripts", "db-move.js"));
@@ -52,7 +67,7 @@ async function startServer(dbFile, opts) {
     try { await MV.move(store.openClient({ kind: "sqlite", file: dbFile }), dst, { mode: "copy" }); } finally { await dst.end(); }
     dbEnv = { DB_DRIVER: "supabase", SUPABASE_DB_URL: pg.url };
   }
-  const env = cleanEnv(Object.assign(dbEnv, { VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1" }));
+  const env = cleanEnv(Object.assign(dbEnv, st ? st.env : {}, { VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1" }));
   // E2E_SERVER=next: Next.js 서버로 (Next.js 전환 1단계~ · 먼저 저장소 맨 위에서 node class/scripts/site.js public && npx next build)
   const next = process.env.E2E_SERVER === "next", repo = path.join(ROOT, "..");
   if (next && !fs.existsSync(path.join(repo, ".next", "BUILD_ID"))) throw new Error("Next.js 빌드가 없어요: 저장소 맨 위에서 node class/scripts/site.js public && npx next build");
@@ -64,7 +79,9 @@ async function startServer(dbFile, opts) {
   child.stderr.on("data", (b) => log.push(String(b)));
   const base = "http://127.0.0.1:" + port;
   await waitHttp(base + "/api/vod-config");
-  return { base, log, pg: !!pg, stop: () => new Promise((r) => { if (child.exitCode != null) return r(); child.once("exit", () => r()); child.kill(); }).then(() => (pg ? pg.stop() : null)) };
+  // storage: 가짜 Storage 가 받은 요청 수 (올리기 · 받기) — 이 테스트에서 화면이 정말 Storage 를 거쳤는지
+  const storage = st ? () => ({ moved: st.moved, puts: st.FS.log.filter((x) => /^POST \/storage\/v1\/object\//.test(x)).length, gets: st.FS.log.filter((x) => /^GET \/storage\/v1\/object\//.test(x)).length }) : null;
+  return { base, log, pg: !!pg, storage, stop: () => new Promise((r) => { if (child.exitCode != null) return r(); child.once("exit", () => r()); child.kill(); }).then(() => (pg ? pg.stop() : null)).then(() => (st ? st.srv.stop() : null)) };
 }
 
 /** 같은 시험 DB에 서버 코드(일회성 작업 등)를 따로 돌리기 — 운영 값 없이 */

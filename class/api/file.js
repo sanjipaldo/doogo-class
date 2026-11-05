@@ -1,5 +1,6 @@
 /* GET /api/file?h=해시 — 사진·첨부 파일. 볼 수 있는 사람에게만 (공개 페이지 사진은 누구나)
  * POST /api/file { data: "data:…;base64,…", scope }  운영자(마스터 · 강사 · 코치)가 파일 하나 올리기 → { url }
+ *   내용은 FILES_STORE=supabase 면 Supabase Storage 비공개 버킷에 (2부 B1 · api/_lib/blob.js) · 아니면 예전처럼 DB 에 — 주소는 어느 쪽이든 같아요
  *   scope: pub (클래스 사진 · 배너 — 누구나) · adm (제출 서류 — 운영자만) · vodp:<클래스> (수업 자료 · 전자책 — 그 클래스를 산 회원 · 운영자만)
  *   전자책 파일을 산 회원이 받아 가면 그 주문에 내려받은 때(dlAt)를 남겨요 → 바로 취소(100% 환불) 판단 */
 "use strict";
@@ -21,7 +22,8 @@ async function upload(req, res) {
   const b64 = data.slice(m[0].length);
   if (b64.length > MAX_B64) return send(res, 413, { error: "too-large" });
   const h = crypto.createHash("sha256").update(b64).digest("hex").slice(0, 40);
-  await store.putFile(h, m[1].toLowerCase(), b64, scope);
+  try { await store.putFile(h, m[1].toLowerCase(), b64, scope); }
+  catch (e) { if (e && e.code === "BLOB") { console.error("[file] storage", e.message); return send(res, 503, { error: "storage", message: "파일 저장소에 잠깐 문제가 있어요. 잠시 뒤 다시 올려 주세요." }); } throw e; }
   send(res, 200, { ok: true, url: "/api/file?h=" + h });
 }
 
@@ -33,9 +35,13 @@ module.exports = handler(["GET", "POST"], async (req, res) => {
   if (!f) return send(res, 404, { error: "notfound" });
   const pub = f.scopes.indexOf("pub") !== -1, ids = pub ? null : await auth.identify(req);
   if (!pub && !access.canReadFile(f.scopes, ids)) return send(res, 403, { error: "forbidden" });
-  // 산 회원이 전자책 파일을 받아 가면 주문에 내려받은 때를 남겨요 (바로 취소 판단)
+  // 범위를 확인한 뒤에 내용을 꺼내요 — DB(예전) 또는 Supabase Storage 비공개 버킷(2부 B1) · 어디에 있든 이 주소 그대로
+  let buf;
+  try { buf = await f.body(); }
+  catch (e) { if (e && e.code === "BLOB") { console.error("[file] storage", e.message); return send(res, 503, { error: "storage" }); } throw e; }
+  if (!buf) return send(res, 404, { error: "notfound" });
+  // 산 회원이 전자책 파일을 받아 가면 주문에 내려받은 때를 남겨요 (바로 취소 판단 · 내용을 꺼낸 뒤에만)
   if (!pub && ids && ids.vod && !ids.admin) for (const sc of f.scopes) if (/^vodp:/.test(sc)) await require("./_lib/vodaccess").markEbookDl(ids, sc.slice(5)).catch((e) => console.error("[file] ebook dl", e && e.message));
-  const buf = Buffer.from(f.b64, "base64");
   res.statusCode = 200;
   res.setHeader("Content-Type", f.mime);
   res.setHeader("Content-Length", String(buf.length));
