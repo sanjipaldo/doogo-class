@@ -165,6 +165,23 @@ async function batch(stmts) {
 async function exec(sql, args) { return (await batch([{ sql, args }]))[0]; }
 /** 스크립트 · 빌드가 끝날 때: Postgres 연결 닫기 (안 닫으면 프로세스가 20초 기다려요) */
 async function close() { const c = client; client = null; ready = null; if (c && c.end) await c.end(); }
+/** Supabase 보안 · 사람이 읽는 보기 (A2 · api/_lib/pgsetup.js) — 지금 저장소가 Postgres 일 때만 · 배포 때 · 여러 번 돌려도 같아요 */
+async function pgSetup() {
+  const c = await db();
+  if (c.kind !== "postgres") return false;
+  await c.sql.unsafe(require("./pgsetup").setupSql()).catch((e) => { e.message = scrub(e.message); throw e; });
+  return true;
+}
+/** 따로 여는 연결 — 옮기기 도구(scripts/db-move.js)가 두 DB 를 한꺼번에 열 때 (지금 저장소 · 쓰기 멈춤과 상관없이)
+ *  o: { kind: "turso", url, token } · { kind: "sqlite", file } · { kind: "postgres", url } → { kind, batch, init, end } (SQL 은 SQLite 문법 그대로) */
+function openClient(o) {
+  o = o || {};
+  const c = o.kind === "postgres" ? pgClient(o.url) : o.kind === "turso" ? tursoClient(o.url, o.token) : o.kind === "sqlite" ? sqliteClient(o.file) : null;
+  if (!c) throw new Error("모르는 DB 종류예요: " + o.kind + " (turso · sqlite · postgres)");
+  if (!c.init) c.init = () => c.batch(SCHEMA.map((sql) => ({ sql })));
+  if (!c.end) c.end = async () => {};
+  return c;
+}
 
 /* ---------------- 문서 ---------------- */
 const parse = (row) => (row.v == null ? null : JSON.parse(row.v));
@@ -315,6 +332,6 @@ async function pgProbe(url) {
 
 module.exports = {
   exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, listBackups, backupRows, restoreRows, opsDone, opMark,
-  insertDocs, putSys, allDocRows, fileStats, pgProbe, close, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
+  insertDocs, putSys, allDocRows, fileStats, pgProbe, pgSetup, close, openClient, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
   kind: () => getClient().kind
 };

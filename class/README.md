@@ -82,7 +82,17 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **로그인 실패 횟수 SQL**: `ON CONFLICT … DO UPDATE` 에서 기존 줄 값을 `rl.n` · `rl.until` 로 (Postgres 는 그냥 `until` 이면 새 줄 값과 헷갈린다고 막아요 · SQLite 도 같은 뜻).
 - **쓰기 멈춤 — `DC_READONLY=1`** (운영 전환 당일 복사하는 동안): 문서 · 사진 쓰기는 `503 { error: "readonly" }` + ‘잠시 점검 중’ 안내(`http.js`). 화면은 바뀐 내용을 들고 있다가 30초 안쪽으로 다시 보내서 점검이 끝나면 저장돼요(`db.js` → `main.js` 안내 ‘이 창을 열어 두시면…’). 읽기 · 로그인(실패 횟수 `rl`) · 배포 전 백업(`backups`) · 작업 기록(`oplog`)은 그대로라 점검 중에도 들어가서 확인할 수 있어요. 배포 단계는 백업만 하고 일회성 작업 · 기본값 채우기는 건너뛰어요. 영상 길이 기억(`vdur`)은 점검 중엔 건너뛰고 길이는 그대로 알려 줘요.
 - **배포 기록 (A0 확인용 · 읽기만)**: `[db] 사진 · 첨부: N개 · 합계 · 가장 큰 것` · Supabase 를 아직 안 쓰는데 `SUPABASE_DB_URL` 이 있으면 `[db] Supabase 연결 확인: 됐어요 · Postgres 버전 · 지역(ap-northeast-2 = 서울) · 포트 6543(트랜잭션 풀러) · 왕복 ms · app 표 있음/빈 DB` (주소 · 비밀번호는 안 적어요 · 실패해도 빌드는 계속 · 포트가 6543 이 아니면 주의 한 줄). 빌드 끝에 DB 연결을 닫아요(`store.close`).
-- **로컬 시험 Postgres — PGlite** (Node 안에서 도는 진짜 Postgres, Docker · 인터넷 없이): `npm --prefix class/scripts/pg ci` (한 번) → `TEST_DB=pg node scripts/vod-test.js` 가 같은 서버 시험을 Postgres 로 돌려요(운영과 같은 `postgres` 드라이버로 TCP 접속 — `scripts/pg/server.js`). 결과: SQLite 545개 · Postgres 546개 통과. 운영 빌드(Vercel)는 이 폴더를 설치하지 않아요 — 저장소 맨 위 `package.json` 에는 `postgres` 드라이버만.
+- **로컬 시험 Postgres — PGlite** (Node 안에서 도는 진짜 Postgres, Docker · 인터넷 없이): `npm --prefix class/scripts/pg ci` (한 번) → `TEST_DB=pg node scripts/vod-test.js` 가 같은 서버 시험을 Postgres 로 돌려요(운영과 같은 `postgres` 드라이버로 TCP 접속 — `scripts/pg/server.js`). 화면 시험은 `E2E_DB=pg E2E_SERVER=next node scripts/e2e/run.js …` — 테스트마다 시험 DB(SQLite)를 옮기기 도구로 PGlite 에 복사해서 서버를 Postgres 로 띄워요. 운영 빌드(Vercel)는 이 폴더를 설치하지 않아요 — 저장소 맨 위 `package.json` 에는 `postgres` 드라이버만.
+
+#### DB 전환 1부 A2 · A3 — Supabase 보안 · 사람이 읽는 보기 · 옮기기 도구 (2026-11-05)
+
+- **보안 (A2 · `api/_lib/pgsetup.js`)**: 배포 때(`DB_DRIVER=supabase`) 한 번씩 · 여러 번 돌려도 같아요. Supabase 공개 API 역할(`anon` · `authenticated` — 브라우저에 주는 키)은 `app` 스키마 · 표 · 보기 · 함수 권한을 모두 빼고, 표 6개 모두 RLS(정책 없음 = 공개 API 로는 한 줄도 안 보여요 · 이미 켜져 있으면 그대로). 우리 서버(표 주인 `postgres`)는 그대로 읽고 써요.
+- **사람이 읽는 보기 6개** (Supabase › Table Editor 에서 표처럼 · 읽기만 · 열 이름 한국어 · `security_invoker`): `app.v_orders`(주문번호 · 회원 · 구매자 · 강의 · 결제 금액 · 결제 수단 · 상태 · 포트원 상태 · 주문 · 결제 · 환불 시각) · `app.v_members`(회원 · 가입 경로 · 이름 · 이메일 · 전화 · 포인트 · 마케팅 동의 · 가입일 · 주문 수 — **비밀번호 해시 없음**) · `app.v_students`(강사 · 기수 · 이름 · 상태 · 신청일 — **전화 뒷자리(로그인 숫자) 없음**) · `app.v_cohorts`(기수 목록을 줄로) · `app.v_bills`(이용료 신청 · 입금 · 계산서 · 취소) · `app.v_inquiries`(입점 문의 + 1:1 문의).
+- **SQL 파일**: `class/scripts/supabase.sql` = 표 6개 + 보안 + 보기 (Supabase › SQL Editor 에 붙여 돌려도 배포와 같은 결과 · `node class/scripts/pg-sql.js` 로 다시 만들어요 · 시험이 코드와 같은지 확인 · `scripts/` 라 공개 사이트로는 안 나가요).
+- **옮기기 도구 (A3 · `scripts/db-move.js`)**: 문서 · 사진(나눠 읽기 — 25개 또는 4MB씩) · 볼 수 있는 범위 · 작업 기록 · 최근 백업 5개를 옮기고 **문서마다 해시**(키 · 글자 · 버전 · 순서 · 바뀐 시각) · 사진마다 해시로 확인 — 하나라도 다르면 실패. 모드: `copy`(받는 쪽이 비어 있을 때만 · 이미 같은 내용이면 확인만) · `sync`(받는 쪽을 먼저 그 DB 백업에 남기고 똑같이 — 되돌리기 전체) · `since:<ms>`(그 뒤 바뀐 것만 — 되돌리기) · `verify`(비교만). 로그인 실패 횟수(`rl`)는 옮기지 않아요.
+- **배포 때 옮기기 — `DB_MOVE`**: `turso-to-supabase` · `supabase-to-turso`(sync) · `supabase-to-turso-since:<ms>` · `verify`. 빌드 단계가 다른 일보다 먼저 옮기고 확인 — 실패하면 빌드가 멈춰 그 배포는 올라가지 않아요. **운영에서는 쓰기 멈춤(`DC_READONLY=1`) 배포가 먼저 떠 있어야** 옮겨요(같은 배포에서 켜면 지금 떠 있는 배포가 아직 저장을 받으니까). 옮긴 뒤에는 `DB_MOVE` 를 지워요.
+- **안전장치**: 운영에서 Supabase 가 비어 있는데 `DB_DRIVER=supabase` 로 배포하면(옮기기 전) 체험 데이터로 채우지 않고 빌드를 멈춰요.
+- 시험: 서버 시험 — SQLite 552개 · Postgres 556개 통과 (시험 데이터 전체를 Postgres 로 · 다시 SQLite 로 옮겨도 한 글자도 안 달라요 · 몰래 바꾼 문서는 잡혀요 · anon 은 표 · 보기 모두 막혀요).
 
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 

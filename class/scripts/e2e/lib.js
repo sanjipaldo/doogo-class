@@ -39,10 +39,20 @@ async function waitHttp(url, ms) {
   }
 }
 
-/** 시험용 DB 파일로 테스트 서버 띄우기 → { base, stop, log } */
-async function startServer(dbFile) {
+/** 시험용 DB 파일로 테스트 서버 띄우기 → { base, stop, log }
+ *  E2E_DB=pg: 그 시험 DB(SQLite)를 운영 전환과 같은 옮기기 도구(scripts/db-move.js · copy + 문서마다 확인)로 PGlite(Postgres)에 옮겨
+ *  서버를 Postgres 로 띄워요 (DB 전환 1부 A1 · A3 · 설치: npm --prefix class/scripts/pg ci). opts.sqlite: 시험 DB 를 만드는 동안은 SQLite 그대로 */
+async function startServer(dbFile, opts) {
   const port = await freePort();
-  const env = cleanEnv({ CLASS_SQLITE: dbFile, VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1" });
+  let pg = null, dbEnv = { CLASS_SQLITE: dbFile };
+  if (process.env.E2E_DB === "pg" && dbFile && !(opts && opts.sqlite)) {
+    pg = await require(path.join(ROOT, "scripts", "pg", "server.js")).start();
+    const store = require(path.join(ROOT, "api", "_lib", "store.js")), MV = require(path.join(ROOT, "scripts", "db-move.js"));
+    const dst = store.openClient({ kind: "postgres", url: pg.url });
+    try { await MV.move(store.openClient({ kind: "sqlite", file: dbFile }), dst, { mode: "copy" }); } finally { await dst.end(); }
+    dbEnv = { DB_DRIVER: "supabase", SUPABASE_DB_URL: pg.url };
+  }
+  const env = cleanEnv(Object.assign(dbEnv, { VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1" }));
   // E2E_SERVER=next: Next.js 서버로 (Next.js 전환 1단계~ · 먼저 저장소 맨 위에서 node class/scripts/site.js public && npx next build)
   const next = process.env.E2E_SERVER === "next", repo = path.join(ROOT, "..");
   if (next && !fs.existsSync(path.join(repo, ".next", "BUILD_ID"))) throw new Error("Next.js 빌드가 없어요: 저장소 맨 위에서 node class/scripts/site.js public && npx next build");
@@ -54,7 +64,7 @@ async function startServer(dbFile) {
   child.stderr.on("data", (b) => log.push(String(b)));
   const base = "http://127.0.0.1:" + port;
   await waitHttp(base + "/api/vod-config");
-  return { base, log, stop: () => new Promise((r) => { if (child.exitCode != null) return r(); child.once("exit", () => r()); child.kill(); }) };
+  return { base, log, pg: !!pg, stop: () => new Promise((r) => { if (child.exitCode != null) return r(); child.once("exit", () => r()); child.kill(); }).then(() => (pg ? pg.stop() : null)) };
 }
 
 /** 같은 시험 DB에 서버 코드(일회성 작업 등)를 따로 돌리기 — 운영 값 없이 */

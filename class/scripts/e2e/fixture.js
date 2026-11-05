@@ -60,7 +60,7 @@ async function build(dir) {
   fs.mkdirSync(dir, { recursive: true });
   const db = path.join(dir, "fixture.db");
   fs.rmSync(db, { force: true });
-  let srv = await L.startServer(db);
+  let srv = await L.startServer(db, { sqlite: true }); // 시험 DB 는 늘 SQLite 로 만들고, E2E_DB=pg 면 테스트마다 Postgres 로 옮겨요 (lib.startServer)
   try {
     await (await fetch(srv.base + "/api/bootstrap")).json(); // 처음 데이터 채우기
     await masterOpensStore(srv.base);

@@ -30,7 +30,13 @@ async function start(opts) {
   const server = new PGLiteSocketServer({ db, port, host: "127.0.0.1", maxConnections: opts.maxConnections || 4 });
   await server.start();
   const url = "postgres://postgres:postgres@127.0.0.1:" + port + "/postgres";
-  return { url, port, db, stop: async () => { try { await server.stop(); } finally { await db.close(); } } };
+  // 끌 때: 소켓 서버가 연결 닫힘을 한 박자 늦게(setImmediate) 처리해서, 그게 끝난 뒤에 DB 를 닫아요 (먼저 닫으면 닫힌 DB 를 건드려 오류)
+  const stop = async () => {
+    try { await server.stop(); } catch (e) { /* 이미 꺼짐 */ }
+    await new Promise((r) => setTimeout(r, 100));
+    await db.close().catch(() => {});
+  };
+  return { url, port, db, stop };
 }
 
 module.exports = { start };

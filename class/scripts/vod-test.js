@@ -2188,6 +2188,65 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(pkg36.dependencies.postgres === "3.4.9" && !Object.keys(pkg36.dependencies).concat(Object.keys(pkg36.devDependencies || {})).some((d) => /pglite/.test(d)), "운영 빌드 의존성: postgres 드라이버(3.4.9)만 · 시험용 PGlite 는 class/scripts/pg 폴더에만", pkg36.dependencies);
   }
 
+  {
+    console.log("37) DB 전환 1부 A2 · A3: Supabase 보안 · 사람이 읽는 보기 · 옮기기 도구(복사 · 확인 · 되돌리기)");
+    const st37 = require(path.join(TMP, "class/api/_lib/store.js")), MV = require(path.join(ROOT, "scripts/db-move.js")), PS = require(path.join(ROOT, "api/_lib/pgsetup.js")), pgRun = process.env.TEST_DB === "pg";
+    const sqlFile = fs.readFileSync(path.join(ROOT, "scripts/supabase.sql"), "utf8");
+    ok(sqlFile === PS.fullSql(st37.PG_SCHEMA) && /security_invoker = true/.test(sqlFile) && !/pwHash|phone4/.test(sqlFile) && PS.VIEW_NAMES.length === 6,
+      "class/scripts/supabase.sql = 코드(표 6개 · 보안 · 보기 6개) 그대로 (Supabase › SQL Editor 에 붙여도 같은 결과) · 보기에 비밀번호 해시 · 전화 뒷자리 없음 · 공개 사이트로는 안 나가요(scripts/)");
+    // 지금 시험 DB(서버 시험 500여 개가 쓴 주문 · 회원 · 사진 · 백업 · 작업 기록) → 새 DB 로 복사 → 문서마다 확인
+    const live = pgRun ? st37.openClient({ kind: "postgres", url: process.env.SUPABASE_DB_URL }) : st37.openClient({ kind: "sqlite", file: process.env.CLASS_SQLITE });
+    const pgB = pgRun ? await require(path.join(ROOT, "scripts/pg/server.js")).start() : null;
+    const B = pgRun ? st37.openClient({ kind: "postgres", url: pgB.url }) : st37.openClient({ kind: "sqlite", file: path.join(TMP, "move-b.db") });
+    const C = st37.openClient({ kind: "sqlite", file: path.join(TMP, "move-c.db") });
+    const m1 = await MV.move(live, B, { mode: "copy" }), m2 = await MV.move(live, B, { mode: "copy" });
+    ok(m1.ok && m1.docs > 30 && m1.ops > 20 && m1.verify.ok && m2.skipped && m2.verify.ok, "옮기기(copy): 지금 시험 DB → 새 " + (pgRun ? "Postgres" : "SQLite") + " — 문서 " + m1.docs + "개 · 사진 " + m1.files + "개 · 작업 기록 " + m1.ops + "개 · 백업 " + m1.backups + "개, 문서마다 해시 맞음 · 다시 돌리면 확인만", { docs: m1.docs, files: m1.files, ops: m1.ops, bk: m1.backups });
+    const m3 = await MV.move(B, C, { mode: "copy" }), v3 = await MV.verify(live, C);
+    ok(m3.ok && v3.ok, "한 번 더 옮겨도(" + (pgRun ? "Postgres → SQLite" : "SQLite → SQLite") + ") 처음 DB 와 문서 · 사진 · 범위 · 작업 기록이 한 글자도 안 달라요", MV.brief(v3));
+    await C.batch([{ sql: "UPDATE docs SET v = ? WHERE k = 'meta'", args: ['{"tampered":1}'] }]);
+    let tam = null; try { await MV.move(B, C, { mode: "copy" }); } catch (e) { tam = e.message; }
+    const v4 = await MV.verify(B, C);
+    ok(!v4.ok && v4.docs.bad.some((x) => /^meta /.test(x)) && /달라요/.test(tam || ""), "받는 쪽 문서 하나가 다르면 확인에서 잡히고 copy 는 멈춰요 (덮어쓰지 않음)", { bad: v4.docs.bad.slice(0, 3), tam: (tam || "").slice(0, 80) });
+    const m5 = await MV.move(B, C, { mode: "sync" }), v5 = await MV.verify(B, C), bk5 = (await C.batch([{ sql: "SELECT reason FROM backups ORDER BY id DESC LIMIT 1" }]))[0].rows[0];
+    ok(m5.ok && v5.ok && bk5 && /sync/.test(bk5.reason), "되돌리기(sync): 받는 쪽을 그 DB 백업에 먼저 남기고 보내는 쪽과 똑같이", { backed: m5.backed, reason: bk5 && bk5.reason });
+    const t5 = Date.now(); await new Promise((r) => setTimeout(r, 5));
+    await B.batch([{ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?)", args: ["zz37:new", '{"n":1}', Date.now(), Date.now()] }, { sql: "UPDATE docs SET v = ?, ver = ver + 1, updated = ? WHERE k = 'meta'", args: ['{"after":1}', Date.now()] }]);
+    const m6 = await MV.move(B, C, { mode: "since", since: t5 }), v6 = await MV.verify(B, C);
+    ok(m6.ok && m6.docs === 2 && v6.ok, "되돌리기(since): 전환 뒤 바뀐 문서(2개)만 옮겨도 전체가 같아져요", { docs: m6.docs });
+    // 배포 때 DB_MOVE: 운영은 쓰기 멈춤이 먼저 · 모르는 값은 멈춤 (연결하기 전에)
+    const envM = { e: process.env.VERCEL_ENV, r: process.env.DC_READONLY };
+    let g1 = null, g2 = null;
+    try { process.env.VERCEL_ENV = "production"; delete process.env.DC_READONLY; try { await MV.runFromEnv("turso-to-supabase"); } catch (e) { g1 = e.message; } try { await MV.runFromEnv("drop-everything"); } catch (e) { g2 = e.message; } }
+    finally { if (envM.e == null) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = envM.e; if (envM.r != null) process.env.DC_READONLY = envM.r; }
+    ok(/쓰기 멈춤/.test(g1 || "") && /모르겠어요/.test(g2 || ""), "배포 때 옮기기(DB_MOVE): 운영은 쓰기 멈춤(DC_READONLY=1) 배포가 먼저 떠 있어야 하고 · 모르는 값은 멈춰요", { g1, g2 });
+    if (pgRun) {
+      // 보안: Supabase 처럼 anon · authenticated 역할에 일부러 권한을 줘 둬도 배포 때 보안 SQL 이 다 빼요
+      const sq = B.sql;
+      await sq.unsafe("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF; IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF; END $$; GRANT USAGE ON SCHEMA app TO anon; GRANT SELECT ON ALL TABLES IN SCHEMA app TO anon;");
+      const asAnon = (rel) => sq.begin(async (tx) => { await tx.unsafe("SET LOCAL ROLE anon"); return (await tx.unsafe("SELECT count(*) AS n FROM " + rel))[0].n; }).then((n) => "보임 " + n, (e) => "막힘");
+      const before37 = await asAnon("app.docs");
+      await sq.unsafe(PS.setupSql()); await sq.unsafe(PS.setupSql());
+      const after37 = { docs: await asAnon("app.docs"), files: await asAnon("app.files"), orders: await asAnon("app.v_orders"), members: await asAnon("app.v_members") };
+      const rls = (await sq.unsafe("SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'app'::regnamespace AND relkind = 'r' AND relrowsecurity"))[0].n;
+      ok(/보임/.test(before37) && Object.values(after37).every((x) => x === "막힘") && Number(rls) === 6, "Supabase 보안(배포마다 · 두 번 돌려도 같음): 공개 API 역할 anon · authenticated 는 표 · 보기 모두 막힘 · 표 6개 RLS — 우리 서버는 그대로", { before37, after37, rls });
+      const cnt = async (sql) => Number((await sq.unsafe(sql))[0].n);
+      const vo = await cnt("SELECT count(*) AS n FROM app.docs WHERE kind = 'vo' AND v IS NOT NULL"), vm = await cnt("SELECT count(*) AS n FROM app.docs WHERE kind = 'vm' AND v IS NOT NULL"), stu = await cnt("SELECT count(*) AS n FROM app.docs WHERE kind = 'stu' AND v IS NOT NULL");
+      const vOrders = await cnt("SELECT count(*) AS n FROM app.v_orders"), vMembers = await cnt("SELECT count(*) AS n FROM app.v_members"), vStu = await cnt("SELECT count(*) AS n FROM app.v_students");
+      const row = (await sq.unsafe("SELECT * FROM app.v_orders WHERE \"결제 금액\" IS NOT NULL LIMIT 1"))[0] || {}, mrow = (await sq.unsafe("SELECT * FROM app.v_members LIMIT 1"))[0] || {};
+      for (const v of PS.VIEW_NAMES) await sq.unsafe("SELECT * FROM app." + v + " LIMIT 50"); // 보기마다 시험 데이터 전체로 한 번씩 (형식이 이상한 값이 있어도 안 깨지게)
+      ok(vo > 0 && vOrders === vo && vMembers === vm && vStu === stu && row["주문번호"] && row["주문 시각"] instanceof Date && !("pwHash" in mrow) && mrow["회원 id"],
+        "사람이 읽는 보기: 주문 " + vOrders + " · 회원 " + vMembers + " · 수강생 " + vStu + "줄 = 문서 수 그대로 · 시각은 날짜로 · 회원 비밀번호 해시는 안 보여요", { vo, vOrders, vm, vMembers, cols: Object.keys(row).slice(0, 6) });
+      // 운영 Supabase 가 비어 있는데 DB_DRIVER=supabase 로 배포하면 체험 데이터를 넣지 않고 멈춰요
+      const pgE = await require(path.join(ROOT, "scripts/pg/server.js")).start();
+      const outE = await new Promise((resolve) => { const ch = require("child_process").spawn(process.execPath, [path.join(ROOT, "scripts/db-build.js")], { cwd: ROOT, env: { PATH: process.env.PATH, NODE_NO_WARNINGS: "1", VERCEL_ENV: "production", DB_DRIVER: "supabase", SUPABASE_DB_URL: pgE.url, MASTER_PASSWORD: "x" } }); let s = ""; ch.stdout.on("data", (d) => (s += d)); ch.stderr.on("data", (d) => (s += d)); ch.on("close", (code) => resolve({ code, s })); });
+      const leftE = st37.openClient({ kind: "postgres", url: pgE.url }), nE = Number((await leftE.batch([{ sql: "SELECT COUNT(*) AS n FROM docs" }]))[0].rows[0].n);
+      await leftE.end(); await pgE.stop();
+      ok(outE.code === 1 && /운영 Supabase 가 비어 있어요/.test(outE.s) && nE === 0, "운영 배포 안전장치: Supabase 가 비어 있으면(옮기기 전) 체험 데이터로 채우지 않고 빌드를 멈춰요", { code: outE.code, nE, msg: outE.s.split("\n").filter((l) => /\[db\]/.test(l)).slice(-1)[0] });
+      await B.end(); await pgB.stop();
+    }
+    await live.end();
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

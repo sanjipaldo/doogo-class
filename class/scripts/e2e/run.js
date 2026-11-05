@@ -37,6 +37,7 @@ const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "spli
     console.log("[e2e] 시험 DB 만드는 중… (처음 데이터 → 스토어 → 일회성 작업)");
     fx = await F.build(path.join(work, "fx"));
   }
+  if (!remote && process.env.E2E_DB === "pg") console.log("[e2e] 저장소: Postgres (PGlite · 테스트마다 시험 DB 를 옮기기 도구로 복사 · 문서마다 확인)");
   const browser = await L.chromium().launch();
   const results = [];
   for (const name of list) {

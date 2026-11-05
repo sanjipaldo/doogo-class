@@ -23,9 +23,19 @@ const init = require("../api/_lib/init");
   }
   const prod = process.env.VERCEL_ENV === "production";
   const staging = !prod && process.env.DB_ROLE === "staging";
+  // DB 전환 A3 · A5: DB_MOVE 가 있으면 다른 일보다 먼저 옮기고 확인 (실패하면 빌드가 멈춰 이 배포는 올라가지 않아요 · scripts/db-move.js)
+  if (process.env.DB_MOVE) {
+    const mv = await require("./db-move").runFromEnv(process.env.DB_MOVE, (s) => console.log("[db] " + s));
+    console.log("[db] " + mv.text);
+    if (!mv.ok) { console.error("[db] 비교가 맞지 않아 빌드를 멈춰요"); process.exit(1); }
+  }
   console.log("[db] " + (pgOn ? "Supabase(Postgres)" : localDb && !process.env.TURSO_DATABASE_URL ? "로컬 SQLite" : "Turso") + " 연결 확인 중… (" + (process.env.VERCEL_ENV || "local") + ")");
   const before = await store.countDocs();
   console.log("[db] 저장된 문서 " + before + "개");
+  // 운영 Supabase 가 비어 있으면 체험 데이터로 채우지 않고 멈춰요 — 데이터를 옮기기(DB_MOVE) 전에 DB_DRIVER=supabase 로 배포했을 때
+  if (prod && pgOn && before === 0) { console.error("[db] 운영 Supabase 가 비어 있어요. 데이터를 옮기기 전(DB_MOVE=turso-to-supabase)에는 DB_DRIVER=supabase 로 운영 배포를 하지 않아요 — 빌드를 멈춰요"); process.exit(1); }
+  // A2: Supabase 보안(공개 API 역할 막기 · 표 6개 RLS) · 사람이 읽는 보기 6개 — 배포마다 (여러 번 돌려도 같아요 · api/_lib/pgsetup.js)
+  if (pgOn) { await store.pgSetup(); console.log("[db] Supabase 보안 · 보기: 공개 API 역할(anon · authenticated) 막음 · 표 6개 RLS · 보기 6개(v_orders · v_members · v_students · v_cohorts · v_bills · v_inquiries)"); }
   // DB 전환 A0: 사진 · 첨부 크기 (읽기만) · Supabase 를 아직 안 쓰는데 연결 문자열이 있으면 접속만 확인 (주소 · 비밀번호는 안 적어요 · 실패해도 빌드는 계속)
   try { const fs0 = await store.fileStats(); console.log("[db] 사진 · 첨부: " + fs0.n + "개 · 합계 " + (fs0.total / 1048576).toFixed(1) + "MB · 가장 큰 것 " + Math.round(fs0.max / 1024) + "KB"); }
   catch (e) { console.log("[db] 사진 · 첨부 크기를 못 쟀어요 (빌드는 계속)"); }
