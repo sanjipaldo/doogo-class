@@ -1594,6 +1594,12 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       const ad5 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), app5 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), bd5 = fs.readFileSync(path.join(ROOT, "../ui/dg/Board.jsx"), "utf8"), hp5 = fs.readFileSync(path.join(ROOT, "../ui/dg/HomePage.jsx"), "utf8");
       ok(["pl-lt-", "pl-le-", "pl-lm-", "pl-lp-", "pl-lc-", "pl-wd-"].every((n) => ad5.indexOf('name="' + n) >= 0) && /name="ev-end"/.test(ad5) && /id="pl-end" name="pl-end"/.test(ad5) && /id="pl-place" name="pl-place"/.test(ad5) && /classOver: Object\.keys\(lec\)\.length \? lec : undefined/.test(ad5) && /F\("end", "끝나는 시간/.test(ad5),
         "기수 설계 창(마스터 · 강사센터): 메인 강사 강의 표(날짜 · 시작 · 끝 · 방식 · 장소 · 주제) · 기본 끝나는 시간 · 기본 장소 · 특별 일정 끝나는 시간 · 강사센터 일정 추가에도 끝나는 시간");
+      const cs5 = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8"), lay5 = (sel) => { const m = cs5.match(new RegExp("\\n\\" + sel + " \\{[^}]*grid-template-areas: ([^;]+);")); return m ? m[1] : ""; };
+      ok(/\.pl-left \{[^}]*container-type: inline-size/.test(cs5) && /\.a-modal\.xl:has\(\.pl-form\) \{ max-width: 1180px; \}/.test(cs5) &&
+        /"date date date"/.test(lay5(".pl-ev")) && /"time end end"/.test(lay5(".pl-ev")) && /"date date"/.test(lay5(".pl-lec")) && /"time end"/.test(lay5(".pl-lec")) &&
+        /@media \(min-width: 721px\) \{ @container \(min-width: 610px\) \{ \.pl-ev \{[^}]*"type date time end del"/.test(cs5) && /@media \(min-width: 721px\) \{ @container \(min-width: 570px\) \{ \.pl-lec \{[^}]*"date time end mode"/.test(cs5) &&
+        !/@media \(max-width: 720px\) \{[^@]*\.pl-ev \{/.test(cs5) && /placeholder="장소 또는 링크 \(선택\)"/.test(ad5),
+        "기수 설계 창 칸 배치: 왼쪽 칸 폭(@container) 기준 — 휴대폰 · 좁은 칸은 날짜 한 줄 · 시작 · 끝 나란히, 한 줄 5칸(특별 일정) · 4칸(메인 강사 강의)은 PC 넓은 칸에서만 (날짜 · 시간 글자 안 잘리게)", { ev: lay5(".pl-ev"), lec: lay5(".pl-lec") });
       ok(/DB\.evTime\(e\) \? " · " \+ esc\(DB\.evTime\(e\)\)/.test(app5) && /DB\.evTime\(e\) \? " · " \+ DB\.evTime\(e\)/.test(bd5) && /class="ag-tm"/.test(app5) && /className="ag-tm"/.test(bd5) && /DB\.evTime\(e\) \? " " \+ DB\.evTime\(e\)/.test(hp5) && /DB\.isWeekLec\(e\)/.test(app5) && /DB\.isWeekLec\(e\)/.test(bd5),
         "수강생 화면(예전 · React 같이): 홈 다가오는 일정 · 일정 카드 · 이달 목록에 ‘13:30~18:30’ · 온라인 주차 강의도 과제 버튼");
       const pubC = AC.view("cohorts:moon", [{ id: "c4", name: "3기", classUrl: "https://zoom.us/j/x", classOver: { 3: { mode: "online", url: "https://zoom.us/j/y", topic: "자사몰" } } }], {});

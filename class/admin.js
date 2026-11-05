@@ -744,7 +744,7 @@
       '<input class="a-input a-sm" name="ev-time" type="time" value="' + esc(e.time || "") + '" aria-label="시작 시간">' +
       '<input class="a-input a-sm" name="ev-end" type="time" value="' + esc(e.end || "") + '" aria-label="끝나는 시간">' +
       '<input class="a-input a-sm" name="ev-title" maxlength="80" value="' + esc(e.title || "") + '" placeholder="일정 이름 (비우면 종류 이름)" aria-label="일정 이름">' +
-      '<input class="a-input a-sm" name="ev-place" maxlength="300" value="' + esc(e.url || e.place || "") + '" placeholder="장소 또는 입장 링크 (선택)" aria-label="장소 또는 링크">' +
+      '<input class="a-input a-sm" name="ev-place" maxlength="300" value="' + esc(e.url || e.place || "") + '" placeholder="장소 또는 링크 (선택)" aria-label="장소 또는 링크">' +
       '<button type="button" class="a-icon-btn sm" data-action="plan-ev-del" aria-label="이 일정 지우기">' + icon("x", "sm") + "</button></div>";
   }
   /** 설계 창 — iid 강사 · co 기수 (없으면 새 기수: 마스터만) */

@@ -2636,12 +2636,21 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 .vda-dur.is-real::before { content: "실제"; font-weight: 600; opacity: .75; }
 
 /* 기수 · 일정 설계 (마스터 › 기수 · 일정 설계 · 강사센터 › 기수 관리) */
+@media (min-width: 721px) { .a-modal.xl:has(.pl-form) { max-width: 1180px; } } /* 설계 창은 조금 넓게 — 왼쪽 칸에 날짜 · 시작 · 끝이 한 줄에 다 보이게 */
 .pl-cols { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+/* 왼쪽 칸 폭에 맞춰 줄 배치를 바꿔요(@container) — 창 폭이 아니라 실제 칸 폭 기준이라 노트북 · 태블릿 · 휴대폰 어디서나 날짜 · 시간이 안 잘려요
+ * 칸 하나에 필요한 폭(한국어 표기 ‘2026. 11. 21.’ · ‘오후 01:30’ · 재 본 값): PC 글자 14px 날짜 132 · 시간 127 · 휴대폰 글자 16px 날짜 149 · 시간 139
+ * 5칸 한 줄(특별 일정) · 4칸 한 줄(메인 강사 강의)은 PC(721px~)에서만 — 휴대폰 화면은 글자가 커서 줄을 나눠요 */
+.pl-left { min-width: 0; container-type: inline-size; }
 .pl-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; font-size: 15px; font-weight: 700; color: var(--m-ink); }
 .pl-h small { font-size: 12.5px; font-weight: 500; color: var(--m-slate); }
 .pl-left .pl-h:not(:first-child) { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--m-hairline-soft); }
 .pl-evs { display: grid; gap: 8px; }
-.pl-ev { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, .9fr) minmax(0, .9fr) 32px; grid-template-areas: "type date time end del" "title title title place place"; gap: 6px; padding: 10px; border: 1px solid var(--m-hairline); border-radius: 12px; background: var(--m-surface); }
+/* 특별 일정 한 줄 — 좁을 때(기본 · 휴대폰): 종류 + 지우기 / 날짜 / 시작 · 끝 / 이름 / 장소
+ * 첫 칸 = 50% − 3px → ‘time end end’ 에서 시작 · 끝이 같은 폭 · 440px~: 종류 + 날짜 한 줄 · PC 610px~: 종류 · 날짜 · 시작 · 끝 한 줄 */
+.pl-ev { display: grid; grid-template-columns: calc(50% - 3px) minmax(0, 1fr) 32px; grid-template-areas: "type type del" "date date date" "time end end" "title title title" "place place place"; gap: 6px; padding: 10px; border: 1px solid var(--m-hairline); border-radius: 12px; background: var(--m-surface); }
+@container (min-width: 440px) { .pl-ev { grid-template-areas: "type date del" "time end end" "title title title" "place place place"; } }
+@media (min-width: 721px) { @container (min-width: 610px) { .pl-ev { grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) 32px; grid-template-areas: "type date time end del" "title title title place place"; } } }
 .pl-ev [name="ev-type"] { grid-area: type; } .pl-ev [name="ev-date"] { grid-area: date; } .pl-ev [name="ev-time"] { grid-area: time; } .pl-ev [name="ev-end"] { grid-area: end; }
 .pl-ev [name="ev-title"] { grid-area: title; } .pl-ev [name="ev-place"] { grid-area: place; } .pl-ev .a-icon-btn { grid-area: del; align-self: center; }
 .pl-ev .a-input { min-width: 0; }
@@ -2676,12 +2685,25 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 .pl-tilde { color: var(--m-slate); font-weight: 700; }
 /* 메인 강사 강의 (주차마다 날짜 · 시작 ~ 끝 · 방식 · 장소 · 주제) */
 .pl-lec-list { display: grid; gap: 8px; }
-.pl-lec { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, .9fr); grid-template-areas: "head head head head" "date time end mode" "place place topic topic"; gap: 6px; padding: 10px; border: 1px solid var(--m-hairline); border-radius: 12px; background: var(--m-surface); }
+/* 좁을 때(기본 · 휴대폰): 날짜 / 시작 · 끝 / 방식 · 장소 / 주제 · 480px~: 날짜 · 시작 · 끝 / 방식 · 장소 / 주제 · PC 570px~: 날짜 · 시작 · 끝 · 방식 한 줄 */
+.pl-lec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "date date" "time end" "mode place" "topic topic"; gap: 6px; padding: 10px; border: 1px solid var(--m-hairline); border-radius: 12px; background: var(--m-surface); }
+@container (min-width: 480px) { .pl-lec { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "head head head" "date time end" "mode place place" "topic topic topic"; } }
+@media (min-width: 721px) { @container (min-width: 570px) { .pl-lec { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, .85fr); grid-template-areas: "head head head head" "date time end mode" "place place topic topic"; } } }
 .pl-lec-h { grid-area: head; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
 .pl-lec-h small { color: var(--m-slate); font-size: 12px; font-variant-numeric: tabular-nums; }
 .pl-lec-d { grid-area: date; } .pl-lec-t { grid-area: time; } .pl-lec-e { grid-area: end; } .pl-lec-m { grid-area: mode; } .pl-lec-p { grid-area: place; } .pl-lec-c { grid-area: topic; }
 .pl-lec .a-input { min-width: 0; }
 .pl-lec-d:disabled { opacity: .7; }
+/* 아주 좁은 칸(360px 안팎 휴대폰): 안쪽 여백을 줄여 시작 · 끝을 나란히 · 더 좁으면(320px 휴대폰) 한 줄에 하나씩 */
+@container (max-width: 379px) {
+  .pl-ev, .pl-lec { padding: 8px; }
+  .pl-ev .a-input, .pl-lec .a-input { padding-left: 8px; padding-right: 8px; }
+  .pl-ev .a-input:focus, .pl-lec .a-input:focus { padding-left: 7px; padding-right: 7px; }
+}
+@container (max-width: 289px) {
+  .pl-ev { grid-template-areas: "type type del" "date date date" "time time time" "end end end" "title title title" "place place place"; }
+  .pl-lec { grid-template-areas: "head head" "date date" "time time" "end end" "mode mode" "place place" "topic topic"; }
+}
 .pl-t { min-width: 0; overflow-wrap: anywhere; }
 .pl-ins { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 16px; padding-bottom: 4px; scrollbar-width: thin; }
 .pl-ins-b { flex: none; display: grid; gap: 2px; min-width: 120px; padding: 10px 14px; border: 1px solid var(--m-hairline); border-radius: 14px; background: var(--m-canvas); color: var(--m-ink); text-align: left; font: inherit; cursor: pointer; }
@@ -2701,8 +2723,6 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
   .pl-pv { max-height: none; }
 }
 @media (max-width: 720px) {
-  .pl-ev { grid-template-columns: repeat(3, minmax(0, 1fr)) 32px; grid-template-areas: "type type type del" "date time end end" "title title title title" "place place place place"; }
-  .pl-lec { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "date mode" "time end" "place place" "topic topic"; }
   .pl-list li { grid-template-columns: 86px minmax(0, 1fr); }
   .pl-list li .a-pill { grid-column: 2; justify-self: start; }
   .pl-list li .pl-t { grid-column: 1 / -1; padding-left: 2px; }
