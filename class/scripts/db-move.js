@@ -125,7 +125,7 @@ async function move(src, dst, o) {
 /** 배포 때 한 줄 기록 */
 function line(res, from, to) {
   if (res.skipped) return from + " → " + to + ": 이미 같은 내용이에요 (확인만 · " + brief(res.verify) + ")";
-  return from + " → " + to + " (" + res.mode + "): 문서 " + res.docs + "개 · 사진 " + res.files + "개 · 범위 " + res.scopes + "개 · 작업 기록 " + res.ops + "개" + (res.backups ? " · 백업 " + res.backups + "개" : "") + (res.removed ? " · 받는 쪽에만 있던 문서 " + res.removed + "개 지움(먼저 백업)" : "") + " · 확인: 문서마다 해시 맞음 · " + (res.ms / 1000).toFixed(1) + "초";
+  return from + " → " + to + " (" + res.mode + "): 문서 " + res.docs + "개 · 사진 " + res.files + "개 · 범위 " + res.scopes + "개 · 작업 기록 " + res.ops + "개" + (res.backups ? " · 백업 " + res.backups + "개" : "") + (res.backed ? " · 받는 쪽 문서 " + res.backed + "개 먼저 백업(그 DB 백업 목록 ‘옮기기(sync) 전 자동 백업’)" : "") + (res.removed ? " · 받는 쪽에만 있던 문서 " + res.removed + "개 지움(먼저 백업)" : "") + " · 확인: 문서마다 해시 맞음 · " + (res.ms / 1000).toFixed(1) + "초";
 }
 
 /** 환경 변수로 여는 연결: turso · supabase */

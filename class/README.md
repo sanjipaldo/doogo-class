@@ -102,6 +102,7 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **옮기기**: Preview 에 `DB_MOVE=turso-to-supabase` + `DB_DRIVER=supabase` 를 넣고 다시 배포 → `[db] 옮기기 Turso → Supabase (copy): 문서 46개 · 작업 기록 31개 · 백업 5개 · 확인: 문서마다 해시 맞음 · 36.7초` → 보안 · 보기 6개 적용 → 미리보기가 Supabase 로 떠요(문서 37개 · 시험용 표시 그대로).
 - **복사 뒤 `DB_MOVE` 는 바로 껐어요**(Vercel 에서 Development 로만 남김 — 지워도 돼요). 남겨 두면 다음 미리보기 빌드가 ‘받는 DB 에 이미 문서가 있고 달라요’로 멈춰요(복사는 빈 DB 에만).
 - **되돌리기(시험용)**: Preview `DB_DRIVER` 를 지우고 다시 배포 → 미리보기가 시험용 Turso 로(복사는 Turso 를 바꾸지 않아요 · Supabase 에서 고친 내용까지 돌려놓으려면 `DB_MOVE=supabase-to-turso` 로 한 번).
+- **되돌리기 리허설 (A3 · 시험용 3번 중 2 · 3번째, 2026-11-05)**: 미리보기에서 저장 확인 뒤 Preview `DB_MOVE` 를 잠깐 바꿔 다시 배포 — ① `supabase-to-turso-since:<복사 직전 ms>` → `Supabase → Turso (since): 문서 5개(복사 뒤 고친 것) · 확인: 문서마다 해시 맞음 · 4.1초` ② `supabase-to-turso` → `Supabase → Turso (sync): 문서 46개 · 작업 기록 31개 · 확인: 문서마다 해시 맞음 · 6.3초`(받는 쪽 Turso 를 먼저 그 DB 백업에). 두 번 모두 미리보기는 계속 Supabase 로 떴고, 끝난 뒤 `DB_MOVE` 는 다시 Development 로. 이제 sync 기록에 ‘받는 쪽 문서 N개 먼저 백업’도 나와요.
 - **운영은 그대로 Turso** — Production 환경 변수는 안 바꿨어요.
 
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):

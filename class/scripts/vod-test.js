@@ -2216,7 +2216,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const v4 = await MV.verify(B, C);
     ok(!v4.ok && v4.docs.bad.some((x) => /^meta /.test(x)) && /달라요/.test(tam || ""), "받는 쪽 문서 하나가 다르면 확인에서 잡히고 copy 는 멈춰요 (덮어쓰지 않음)", { bad: v4.docs.bad.slice(0, 3), tam: (tam || "").slice(0, 80) });
     const m5 = await MV.move(B, C, { mode: "sync" }), v5 = await MV.verify(B, C), bk5 = (await C.batch([{ sql: "SELECT reason FROM backups ORDER BY id DESC LIMIT 1" }]))[0].rows[0];
-    ok(m5.ok && v5.ok && bk5 && /sync/.test(bk5.reason), "되돌리기(sync): 받는 쪽을 그 DB 백업에 먼저 남기고 보내는 쪽과 똑같이", { backed: m5.backed, reason: bk5 && bk5.reason });
+    ok(m5.ok && v5.ok && bk5 && /sync/.test(bk5.reason) && m5.backed > 0 && new RegExp("받는 쪽 문서 " + m5.backed + "개 먼저 백업").test(MV.line(m5, "A", "B")), "되돌리기(sync): 받는 쪽을 그 DB 백업에 먼저 남기고 보내는 쪽과 똑같이 · 배포 기록에 먼저 백업한 문서 수", { backed: m5.backed, reason: bk5 && bk5.reason, line: MV.line(m5, "A", "B") });
     const t5 = Date.now(); await new Promise((r) => setTimeout(r, 5));
     await B.batch([{ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?)", args: ["zz37:new", '{"n":1}', Date.now(), Date.now()] }, { sql: "UPDATE docs SET v = ?, ver = ver + 1, updated = ? WHERE k = 'meta'", args: ['{"after":1}', Date.now()] }]);
     const m6 = await MV.move(B, C, { mode: "since", since: t5 }), v6 = await MV.verify(B, C);
