@@ -122,7 +122,7 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **코드**: Turso 연결(`store.js` 의 HTTP 클라이언트) · 배포용 옮기기(`DB_MOVE` · `db-move.js runFromEnv`) · 예전 로그인 키(Turso 토큰으로 만든 키)를 뺐어요. `db-build.js` 는 Supabase 만 — `SUPABASE_DB_URL` 이 없으면 멈추고, 접속 정보(버전 · 지역 · 포트 · 왕복)를 기록하고, 접속이 비밀번호로 실패하면 `[db] 고칠 곳:` 을 알려 줘요. `DB_MOVE` 가 남아 있으면 ‘더 이상 안 써요’ 경고만.
 - **로그인**: `SESSION_SECRET` 하나로만 서명 · 확인 — 이 배포 전에 예전 키로 로그인했던 사람은 한 번 다시 로그인.
 - **남긴 것**: 로컬 개발 · 시험용 SQLite(`CLASS_SQLITE` · `node:sqlite` — 서버 시험 · 화면 시험이 SQLite · Postgres 둘 다로 돌아요) · `db-move.js`(SQLite ↔ Postgres 복사 · 확인 — 화면 시험이 쓰고, `SUPABASE_DB_URL=… node scripts/db-move.js supabase sqlite:backup.db copy` 로 Supabase 를 내 컴퓨터 파일로 받아 둘 수도 있어요) · `DC_READONLY`(점검 때 저장 멈춤).
-- **Vercel · Turso 에서 할 일 (사람이)**: Vercel › doogo-class › Storage(또는 Integrations) › Turso 연결 해제 → `TURSO_DATABASE_URL` · `TURSO_AUTH_TOKEN` 이 빠져요. 남은 `DB_MOVE` · `DC_READONLY` 환경 변수도 지워도 돼요. Supabase › Database › Backups 에 백업이 있는지 본 뒤 Turso 대시보드에서 운영(`doogo-class-db`) · 시험용(`doogo-class-staging`) DB 를 지워요.
+- **운영 배포 · 정리 끝 (2026-11-05)**: main `d0d020e` 운영 배포(Supabase · 서울 `icn1` · 서버 오류 0) → Vercel Storage 에서 Turso 연결 해제(`TURSO_DATABASE_URL` · `TURSO_AUTH_TOKEN` 빠짐) → Supabase › Database › Backups 확인 → Turso DB `doogo-class-db` · `doogo-class-staging` 삭제. Turso 연동(Integration) 자체는 두고푸드(`doogofood-db`)가 써서 남겨 뒀어요. 남은 `DB_MOVE`(Development) · `DC_READONLY`(0) 환경 변수는 안 써요(지워도 돼요).
 
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
