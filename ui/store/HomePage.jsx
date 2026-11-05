@@ -5,7 +5,7 @@
  *  · 어떤 배너 · 섹션 · 클래스를 어떤 순서로 보여 줄지는 예전 계산 그대로 (VOD.liveBanners · homeRails · railItems · catTabs · teachHome)
  *  · 배너 몇 번째 · 멈춤 · 고른 분야 탭은 예전처럼 다른 화면에 다녀와도 남아요 (VOD.homeUi)
  *  · 검색 · 공유 미리보기는 서버가 예전처럼 넣어요 (app/(react)/layout.js → pagemeta) */
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Shell from "./Shell.jsx";
 import Card, { AnyCard } from "./Card.jsx";
 import { TcCard } from "./TeachersPage.jsx";
@@ -146,7 +146,8 @@ function Topics({ r, onTopic }) {
 /** 가로 줄 진행 막대 (예전 wireRails 의 data-prog) */
 function Prog({ id }) {
   const [st, setSt] = useState({ w: "100.00%", l: "0.00%", one: true });
-  useEffect(() => {
+  // 화면에 보이기 전에 재요 (예전 wireRails 처럼 첫 화면부터 맞는 막대)
+  useLayoutEffect(() => {
     const el = document.getElementById(id); if (!el) return undefined;
     const upd = () => { const sw = el.scrollWidth, cw = el.clientWidth, w = sw > cw + 2 ? cw / sw : 1, nx = { w: (w * 100).toFixed(2) + "%", l: (sw > cw ? (el.scrollLeft / sw) * 100 : 0).toFixed(2) + "%", one: w >= 1 }; setSt((s) => (s.w === nx.w && s.l === nx.l && s.one === nx.one ? s : nx)); };
     el.addEventListener("scroll", upd, { passive: true }); upd();
@@ -159,7 +160,8 @@ function Prog({ id }) {
  *  · 마우스로 끌어 넘기기도 같이 묶어요 (예전 dragWire 그대로 — 끄는 동안 표시는 data-dragging 이라 React 가 그린 class 는 그대로) */
 function TeachArrows({ id }) {
   const [st, setSt] = useState({ start: true, end: true });
-  useEffect(() => {
+  // 화면에 보이기 전에 재요 (첫 화면부터 ‘다음’ 화살표가 켜져 있게)
+  useLayoutEffect(() => {
     const el = document.getElementById(id); if (!el) return undefined;
     const upd = () => { const e = VOD().railEnds(el); setSt((s) => (s.start === e.start && s.end === e.end ? s : { start: e.start, end: e.end })); };
     let t = 0; const onSc = () => { clearTimeout(t); t = setTimeout(upd, 60); };

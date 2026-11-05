@@ -3,7 +3,7 @@
  *  · 전체 클래스 /vod/c/all · 분야 /vod/c/<분야> (?tab= 종류 · ?sort= 순서)
  *  · 오픈 예정 /vod/c/soon · BEST /vod/c/best · 새로 열린 /vod/c/new · 무료 특강 /vod/c/free · 없는 분야 · 검색 /vod/search?q=
  *  · 어떤 클래스를 어떤 순서로 보여 줄지는 예전 계산 그대로 (VOD.allView · listView) */
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import Shell from "./Shell.jsx";
 import Card, { AnyCard } from "./Card.jsx";
 import { EmptyBox } from "./TeachersPage.jsx";
@@ -17,7 +17,8 @@ const TITLE = "DOOGO CLASS — 돈 되는 클래스";
 /** 가로 줄 넘기기 (예전 pager + wireRails 의 쪽수 표시) — 줄(id)을 넘기면 지금 쪽 / 전체 쪽 · 끝이면 버튼이 꺼져요 */
 export function Pager({ id }) {
   const [st, setSt] = useState({ cur: 1, total: 1 });
-  useEffect(() => {
+  // 그리자마자(화면에 보이기 전에) 쪽수를 재요 — 예전 화면처럼 첫 화면부터 ‘1 / 2’ (useEffect 면 잠깐 ‘1 / 1’ · 다음 버튼 꺼짐이 보였어요)
+  useLayoutEffect(() => {
     const el = document.getElementById(id); if (!el) return undefined;
     const upd = () => { const i = VOD().railInfo(el); setSt((s) => (s.cur === i.cur && s.total === i.total ? s : i)); };
     let t = 0; const onSc = () => { clearTimeout(t); t = setTimeout(upd, 60); };
