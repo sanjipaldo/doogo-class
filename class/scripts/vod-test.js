@@ -2226,26 +2226,28 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const st37 = require(path.join(TMP, "class/api/_lib/store.js")), MV = require(path.join(ROOT, "scripts/db-move.js")), PS = require(path.join(ROOT, "api/_lib/pgsetup.js")), pgRun = process.env.TEST_DB === "pg";
     const sqlFile = fs.readFileSync(path.join(ROOT, "scripts/supabase.sql"), "utf8");
     ok(sqlFile === PS.fullSql(st37.PG_SCHEMA) && /security_invoker = true/.test(sqlFile) && !/pwHash|phone4/.test(sqlFile) && PS.VIEW_NAMES.length === 6,
-      "class/scripts/supabase.sql = 코드(표 6개 · 보안 · 보기 6개) 그대로 (Supabase › SQL Editor 에 붙여도 같은 결과) · 보기에 비밀번호 해시 · 전화 뒷자리 없음 · 공개 사이트로는 안 나가요(scripts/)");
+      "class/scripts/supabase.sql = 코드(표 35개 · 보안 · 보기 6개 · 2부 표 설명) 그대로 (Supabase › SQL Editor 에 붙여도 같은 결과) · 보기에 비밀번호 해시 · 전화 뒷자리 없음 · 공개 사이트로는 안 나가요(scripts/)");
     // 지금 시험 DB(서버 시험 500여 개가 쓴 주문 · 회원 · 사진 · 백업 · 작업 기록) → 새 DB 로 복사 → 문서마다 확인
     const live = pgRun ? st37.openClient({ kind: "postgres", url: process.env.SUPABASE_DB_URL }) : st37.openClient({ kind: "sqlite", file: process.env.CLASS_SQLITE });
     const pgB = pgRun ? await require(path.join(ROOT, "scripts/pg/server.js")).start() : null;
     const B = pgRun ? st37.openClient({ kind: "postgres", url: pgB.url }) : st37.openClient({ kind: "sqlite", file: path.join(TMP, "move-b.db") });
     const C = st37.openClient({ kind: "sqlite", file: path.join(TMP, "move-c.db") });
     const m1 = await MV.move(live, B, { mode: "copy" }), m2 = await MV.move(live, B, { mode: "copy" });
-    ok(m1.ok && m1.docs > 30 && m1.ops > 20 && m1.verify.ok && m2.skipped && m2.verify.ok, "옮기기(copy): 지금 시험 DB → 새 " + (pgRun ? "Postgres" : "SQLite") + " — 문서 " + m1.docs + "개 · 사진 " + m1.files + "개 · 작업 기록 " + m1.ops + "개 · 백업 " + m1.backups + "개, 문서마다 해시 맞음 · 다시 돌리면 확인만", { docs: m1.docs, files: m1.files, ops: m1.ops, bk: m1.backups });
+    // 2부: 영역 스위치(DB_AREAS)가 켜져 있으면 문서 일부는 영역 표(orders · settings …)에 — 둘 다 세요
+    const AR37 = require(path.join(TMP, "class/api/_lib/areas.js")), metaT37 = AR37.route("meta"), metaTab = metaT37 && AR37.modeOf(metaT37) === "only" ? metaT37.table : "docs";
+    ok(m1.ok && m1.docs + (m1.areas || 0) > 30 && m1.ops > 20 && m1.verify.ok && m2.skipped && m2.verify.ok, "옮기기(copy): 지금 시험 DB → 새 " + (pgRun ? "Postgres" : "SQLite") + " — 문서 " + m1.docs + "개 · 사진 " + m1.files + "개 · 작업 기록 " + m1.ops + "개 · 백업 " + m1.backups + "개, 문서마다 해시 맞음 · 다시 돌리면 확인만", { docs: m1.docs, files: m1.files, ops: m1.ops, bk: m1.backups });
     const m3 = await MV.move(B, C, { mode: "copy" }), v3 = await MV.verify(live, C);
     ok(m3.ok && v3.ok, "한 번 더 옮겨도(" + (pgRun ? "Postgres → SQLite" : "SQLite → SQLite") + ") 처음 DB 와 문서 · 사진 · 범위 · 작업 기록이 한 글자도 안 달라요", MV.brief(v3));
-    await C.batch([{ sql: "UPDATE docs SET v = ? WHERE k = 'meta'", args: ['{"tampered":1}'] }]);
+    await C.batch([{ sql: "UPDATE " + metaTab + " SET v = ? WHERE k = 'meta'", args: ['{"tampered":1}'] }]);
     let tam = null; try { await MV.move(B, C, { mode: "copy" }); } catch (e) { tam = e.message; }
     const v4 = await MV.verify(B, C);
-    ok(!v4.ok && v4.docs.bad.some((x) => /^meta /.test(x)) && /달라요/.test(tam || ""), "받는 쪽 문서 하나가 다르면 확인에서 잡히고 copy 는 멈춰요 (덮어쓰지 않음)", { bad: v4.docs.bad.slice(0, 3), tam: (tam || "").slice(0, 80) });
+    ok(!v4.ok && v4.docs.bad.concat(v4.areas.bad).some((x) => /^(settings\|)?meta /.test(x)) && /달라요/.test(tam || ""), "받는 쪽 문서 하나가 다르면 확인에서 잡히고 copy 는 멈춰요 (덮어쓰지 않음)", { bad: v4.docs.bad.slice(0, 3), tam: (tam || "").slice(0, 80) });
     const m5 = await MV.move(B, C, { mode: "sync" }), v5 = await MV.verify(B, C), bk5 = (await C.batch([{ sql: "SELECT reason FROM backups ORDER BY id DESC LIMIT 1" }]))[0].rows[0];
     ok(m5.ok && v5.ok && bk5 && /sync/.test(bk5.reason) && m5.backed > 0 && new RegExp("받는 쪽 문서 " + m5.backed + "개 먼저 백업").test(MV.line(m5, "A", "B")), "되돌리기(sync): 받는 쪽을 그 DB 백업에 먼저 남기고 보내는 쪽과 똑같이 · 배포 기록에 먼저 백업한 문서 수", { backed: m5.backed, reason: bk5 && bk5.reason, line: MV.line(m5, "A", "B") });
     const t5 = Date.now(); await new Promise((r) => setTimeout(r, 5));
-    await B.batch([{ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?)", args: ["zz37:new", '{"n":1}', Date.now(), Date.now()] }, { sql: "UPDATE docs SET v = ?, ver = ver + 1, updated = ? WHERE k = 'meta'", args: ['{"after":1}', Date.now()] }]);
+    await B.batch([{ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?)", args: ["zz37:new", '{"n":1}', Date.now(), Date.now()] }, { sql: "UPDATE " + metaTab + " SET v = ?, ver = ver + 1, updated = ? WHERE k = 'meta'", args: ['{"after":1}', Date.now()] }]);
     const m6 = await MV.move(B, C, { mode: "since", since: t5 }), v6 = await MV.verify(B, C);
-    ok(m6.ok && m6.docs === 2 && v6.ok, "되돌리기(since): 전환 뒤 바뀐 문서(2개)만 옮겨도 전체가 같아져요", { docs: m6.docs });
+    ok(m6.ok && m6.docs + (m6.areas || 0) === 2 && v6.ok, "되돌리기(since): 전환 뒤 바뀐 문서(2개)만 옮겨도 전체가 같아져요", { docs: m6.docs });
     // Turso 정리(A6 · 2026-11-05): Turso 연결 · 배포용 DB_MOVE 는 빠졌고, DB_DRIVER=turso 면 분명하게 멈춰요 · Vercel 에서는 SQLite 파일이 있어도 Supabase 만
     const srcA6 = ["api/_lib/store.js", "api/_lib/auth.js", "scripts/db-build.js", "scripts/db-move.js", "scripts/dev-server.js"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8"));
     const runA6 = (env) => require("child_process").spawnSync(process.execPath, ["-e", "require(" + JSON.stringify(path.join(ROOT, "api/_lib/store.js")) + ").countDocs().then(() => console.log('ok'), (e) => console.log('ERR ' + e.message))"], { env: Object.assign({ PATH: process.env.PATH }, env), encoding: "utf8" }).stdout.trim();
@@ -2259,11 +2261,13 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       const asAnon = (rel) => sq.begin(async (tx) => { await tx.unsafe("SET LOCAL ROLE anon"); return (await tx.unsafe("SELECT count(*) AS n FROM " + rel))[0].n; }).then((n) => "보임 " + n, (e) => "막힘");
       const before37 = await asAnon("app.docs");
       await sq.unsafe(PS.setupSql()); await sq.unsafe(PS.setupSql());
-      const after37 = { docs: await asAnon("app.docs"), files: await asAnon("app.files"), orders: await asAnon("app.v_orders"), members: await asAnon("app.v_members") };
+      const after37 = { docs: await asAnon("app.docs"), files: await asAnon("app.files"), orders: await asAnon("app.v_orders"), members: await asAnon("app.v_members"), ordersTab: await asAnon("app.orders"), membersTab: await asAnon("app.members"), staffTab: await asAnon("app.staff") };
       const rls = (await sq.unsafe("SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'app'::regnamespace AND relkind = 'r' AND relrowsecurity"))[0].n;
-      ok(/보임/.test(before37) && Object.values(after37).every((x) => x === "막힘") && Number(rls) === 6, "Supabase 보안(배포마다 · 두 번 돌려도 같음): 공개 API 역할 anon · authenticated 는 표 · 보기 모두 막힘 · 표 6개 RLS — 우리 서버는 그대로", { before37, after37, rls });
+      ok(/보임/.test(before37) && Object.values(after37).every((x) => x === "막힘") && Number(rls) === PS.TABLES.length && PS.TABLES.length === 35, "Supabase 보안(배포마다 · 두 번 돌려도 같음): 공개 API 역할 anon · authenticated 는 표 · 보기 · 2부 영역 표(orders · members · staff …) 모두 막힘 · 표 " + PS.TABLES.length + "개 모두 RLS — 우리 서버는 그대로", { before37, after37, rls });
       const cnt = async (sql) => Number((await sq.unsafe(sql))[0].n);
-      const vo = await cnt("SELECT count(*) AS n FROM app.docs WHERE kind = 'vo' AND v IS NOT NULL"), vm = await cnt("SELECT count(*) AS n FROM app.docs WHERE kind = 'vm' AND v IS NOT NULL"), stu = await cnt("SELECT count(*) AS n FROM app.docs WHERE kind = 'stu' AND v IS NOT NULL");
+      // 2부: 문서는 docs 또는 영역 표(orders · members · students)에 — 스위치 칸에 따라 (같은 키는 한 번만)
+      const both = (kind, tab) => cnt("SELECT count(DISTINCT k) AS n FROM (SELECT k FROM app.docs WHERE kind = '" + kind + "' AND v IS NOT NULL UNION ALL SELECT k FROM app." + tab + " WHERE v IS NOT NULL) x");
+      const vo = await both("vo", "orders"), vm = await both("vm", "members"), stu = await both("stu", "students");
       const vOrders = await cnt("SELECT count(*) AS n FROM app.v_orders"), vMembers = await cnt("SELECT count(*) AS n FROM app.v_members"), vStu = await cnt("SELECT count(*) AS n FROM app.v_students");
       const row = (await sq.unsafe("SELECT * FROM app.v_orders WHERE \"결제 금액\" IS NOT NULL LIMIT 1"))[0] || {}, mrow = (await sq.unsafe("SELECT * FROM app.v_members LIMIT 1"))[0] || {};
       for (const v of PS.VIEW_NAMES) await sq.unsafe("SELECT * FROM app." + v + " LIMIT 50"); // 보기마다 시험 데이터 전체로 한 번씩 (형식이 이상한 값이 있어도 안 깨지게)
@@ -2400,6 +2404,78 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       ok(o3.code === 1 && /문제 1개/.test(o3.o) && /빌드를 멈춰요/.test(o3.o) && o4.code === 1 && /공개\(public\)로 되어 있어요/.test(o4.o),
         "배포 빌드: Storage 에서 파일이 사라졌으면 빌드 멈춤 · 버킷이 공개(public)로 바뀌어 있으면 빌드 멈춤 (범위 확인을 건너뛰게 되니까)", { o3: o3.db.slice(-2), o4: o4.db.slice(-1) });
     } finally { setSt(Object.fromEntries(Object.entries(keep38).filter(([, v]) => v != null))); useJar({}); }
+  }
+
+  {
+    console.log("39) DB 전환 2부 B2~B6: 문서 종류마다 제 표 — 영역 스위치를 한 칸씩 (off → dual → table → only → 되돌리기) · 내용 그대로 · 열 · 한 건씩 표");
+    const st39 = require(path.join(TMP, "class/api/_lib/store.js")), AR = require(path.join(TMP, "class/api/_lib/areas.js")), AS = require(path.join(TMP, "class/api/_lib/areasync.js"));
+    const env0 = process.env.DB_AREAS, m0 = AR.modes().B2;
+    const setM = (m) => { process.env.DB_AREAS = "all:" + m; };
+    const snap = async () => new Map((await st39.allDocRows()).map((r) => [r.k, (r.v == null ? "∅" : r.v) + "|" + r.ver]));
+    const sameSnap = (a, b) => a.size === b.size && [...a].every(([k, x]) => b.get(k) === x);
+    const physDocs = async () => (await st39.exec("SELECT k FROM docs")).rows.map((r) => r.k);
+    async function stepTo(target) {
+      const seq = AR.ORDER, out = []; let i = seq.indexOf(AR.modes().B2); const j = seq.indexOf(target);
+      while (i !== j) { i += i < j ? 1 : -1; setM(seq[i]); const r = await AS.sync({ write: true }); out.push({ mode: seq[i], ok: r.ok, lines: r.lines }); if (!r.ok) break; }
+      return out;
+    }
+    try {
+      // 지금 칸을 기록 (시험이 어느 칸으로 시작했든) → 내용 기준
+      const r0 = await AS.sync({ write: true, force: true }), base = await snap();
+      const nRouted = [...base.keys()].filter((k) => AR.route(k)).length;
+      ok(r0.ok && base.size > 100 && nRouted > base.size - 5, "시작: 지금 칸(" + m0 + ")을 기록 · 문서 " + base.size + "개 중 " + nRouted + "개가 영역 표 대상 (docs 에 남는 건 sys 같은 몇 개)", { ok: r0.ok, size: base.size, nRouted, lines: r0.lines.slice(0, 2) });
+      // 칸 건너뛰기는 막혀요
+      const down = await stepTo("off"); setM("only");
+      const jump = await AS.check();
+      ok(down.every((x) => x.ok) && !jump.ok && /한 칸씩/.test(jump.bad.join(" ")), "off 에서 only 로 바로 가려 하면 막혀요 (배포 중 예전 서버가 쓰는 내용을 놓치지 않게 · 한 칸씩)", jump.bad.slice(0, 1));
+      setM("off");
+      // off → dual → table → only : 칸마다 내용이 한 글자도 안 바뀌어요
+      const steps = [];
+      for (const m of ["dual", "table", "only"]) { const r = await stepTo(m); steps.push({ m, ok: r.every((x) => x.ok), same: sameSnap(await snap(), base), docs: (await physDocs()).filter((k) => AR.route(k)).length, line: (r[0] && r[0].lines[0]) || "" }); }
+      ok(steps.every((x) => x.ok && x.same) && steps[0].docs === nRouted && steps[2].docs === 0,
+        "off → dual(같이 쓰기 · 표 채움) → table(표에서 읽기) → only(docs 의 그 문서 지움): 칸마다 맞추기 · 비교 통과 · 읽히는 내용(문서 " + base.size + "개 글자 · 버전) 그대로", steps.map((x) => [x.m, x.ok, x.same, x.docs]));
+      // only: 열 · 한 건씩 표가 문서와 같아요 · 비밀번호는 표에 없어요
+      const ordK = [...base.keys()].find((k) => /^vo:/.test(k) && JSON.parse((base.get(k).split("|")[0]) || "{}").amount > 0);
+      const ord = JSON.parse((await st39.getDoc(ordK)).v ? JSON.stringify((await st39.getDoc(ordK)).v) : "{}"), ordRow = (await st39.exec("SELECT * FROM orders WHERE k = ?", [ordK])).rows[0];
+      const vb = (await st39.getDoc("vbank")) || { v: { recent: [] } }, dep = (await st39.exec("SELECT COUNT(*) AS n FROM bank_deposits WHERE k = 'vbank'")).rows[0].n;
+      const meta = (await st39.getDoc("meta")).v, staffRows = (await st39.exec("SELECT * FROM staff")).rows, memRow = (await st39.exec("SELECT * FROM members LIMIT 1")).rows[0] || {};
+      const prodRows = (await st39.exec("SELECT COUNT(*) AS n FROM products WHERE k = 'meta'")).rows[0].n, cohRows = (await st39.exec("SELECT COUNT(*) AS n FROM cohorts")).rows[0].n;
+      const cohDocs = [...base.keys()].filter((k) => /^cohorts:/.test(k)).reduce((a, k) => a + (JSON.parse(base.get(k).split("|")[0]) || []).length, 0);
+      ok(ordRow && Number(ordRow.amount) === ord.amount && ordRow.status === ord.status && ordRow.mid === ord.mid && Number(dep) === (vb.v.recent || []).length && Number(prodRows) === meta.vod.products.length && Number(cohRows) === cohDocs
+        && staffRows.length === (meta.staff || []).length + (meta.affiliates || []).length && staffRows.every((r) => !("pw" in r) && !("pwHash" in r)) && !("pw_hash" in memRow) && !("pwHash" in memRow),
+        "영역 표 열 · 한 건씩 표: 주문 금액 · 상태 · 회원 = 문서 · 입금 알림 " + dep + "줄 · 상품 " + prodRows + "줄 · 기수 " + cohRows + "줄 · 운영자 · 파트너 " + staffRows.length + "줄 (비밀번호 · 해시 열 없음)", { amount: ordRow && ordRow.amount, dep, prodRows, cohRows, staff: staffRows.length });
+      // only 에서 쓰기 · 버전 충돌 · 변경 받기
+      const t39 = Date.now(); await new Promise((r) => setTimeout(r, 5));
+      const cur = await st39.getDoc(ordK), w1 = await st39.writeDoc(ordK, Object.assign({}, cur.v, { memo39: "only 에서 씀" }), cur.ver), w2 = await st39.writeDoc(ordK, Object.assign({}, cur.v, { memo39: "늦은 저장" }), cur.ver);
+      const w3 = await st39.writeDoc("vr:rv39", { id: "rv39", pid: "v5", mid: "m39", name: "시OO", rating: 5, text: "좋아요", at: Date.now() }, null);
+      const feed = (await st39.listDocs({ since: t39 })).map((r) => r.k), pre = (await st39.listDocs({ prefixes: ["vr:%"] })).map((r) => r.k), rvRow = (await st39.exec("SELECT rating, pid FROM reviews WHERE k = 'vr:rv39'")).rows[0];
+      ok(w1 === cur.ver + 1 && w2 === false && w3 === 1 && feed.includes(ordK) && feed.includes("vr:rv39") && pre.includes("vr:rv39") && rvRow && Number(rvRow.rating) === 5 && !(await physDocs()).includes("vr:rv39"),
+        "only 에서 저장 · 늦은 저장은 버전 충돌(false) · 새 후기 → 제 표에만 · 열(별점)도 · 변경 받기(since) · 접두사 목록에 보여요", { w1, w2, w3, feed: feed.length, rvRow });
+      // 백업 → 되돌리기(restore) 도 영역 표로
+      const bk = await st39.backup("시험 39"), rows = await st39.backupRows((await st39.listBackups())[0].id), nRestore = await st39.restoreRows(rows), afterR = await snap();
+      ok(bk && bk.docs === rows.length && nRestore === rows.length && [...afterR.keys()].length === rows.length && JSON.stringify((await st39.getDoc(ordK)).v.memo39) === '"only 에서 씀"',
+        "백업 · 되돌리기: only 에서도 문서 " + rows.length + "개가 백업에 · 되돌리면 제 표로 (내용 그대로 · 버전은 올라가요)", { bk: bk && bk.docs, n: nRestore });
+      const base2 = await snap();
+      // 같은 버전인데 내용이 다르면 맞추기가 멈춰요 (사람이 봐야)
+      await stepTo("table");
+      await st39.exec("UPDATE docs SET v = ? WHERE k = ?", ['{"tampered":39}', ordK]);
+      const tam = await AS.sync({ write: true });
+      await st39.exec("UPDATE docs SET v = (SELECT v FROM orders WHERE k = ?) WHERE k = ?", [ordK, ordK]);
+      const fixed = await AS.sync({ write: true });
+      ok(!tam.ok && /같은데 내용이 달라요/.test(tam.lines.join(" ")) && fixed.ok, "docs 와 제 표가 버전은 같은데 내용이 다르면 맞추기가 고치지 않고 멈춰요 (배포 빌드도 멈춤) · 고친 뒤엔 통과", tam.lines.filter((l) => /문제/.test(l)).slice(0, 1));
+      // 되돌리기: only → table → dual → off — only 에서 쓴 것까지 docs 에 다 돌아와요
+      const back = await stepTo("off"), offDocs = await physDocs(), backSnap = await snap();
+      ok(back.every((x) => x.ok) && sameSnap(backSnap, base2) && offDocs.includes("vr:rv39") && offDocs.includes(ordK),
+        "되돌리기 table → dual → off: 칸마다 통과 · only 에서 쓴 후기 · 주문 메모까지 docs 에 그대로 (스위치를 끄면 예전처럼)", back.map((x) => [x.mode, x.ok]));
+      // 배포 빌드: 칸 건너뛰기는 멈춤 · 한 칸이면 비교 기록 (진짜 db-build.js · 로컬은 비교만)
+      const cp = require("child_process"), dbEnv = process.env.TEST_DB === "pg" ? { DB_DRIVER: "supabase", SUPABASE_DB_URL: process.env.SUPABASE_DB_URL } : { CLASS_SQLITE: process.env.CLASS_SQLITE };
+      const runB = (areas) => new Promise((resolve) => { const ch = cp.spawn(process.execPath, [path.join(TMP, "class/scripts/db-build.js")], { env: Object.assign({ PATH: process.env.PATH, NODE_NO_WARNINGS: "1", MASTER_PASSWORD: "x", SESSION_SECRET: "s", DB_AREAS: areas }, dbEnv) }); let o = ""; ch.stdout.on("data", (d) => (o += d)); ch.stderr.on("data", (d) => (o += d)); ch.on("close", (code) => resolve({ code, o })); });
+      const bj = await runB("all:table"), bd = await runB("B2:dual");
+      ok(bj.code === 1 && /한 칸씩/.test(bj.o) && bd.code === 0 && /2부 B2 주문 · 결제: dual \(지난 배포 off\)/.test(bd.o) && /비교만/.test(bd.o), "배포 빌드: off 에서 table 로 바로는 멈춤(지금 배포 그대로) · 한 칸(dual)이면 영역마다 docs = 표 비교를 기록 (미리보기 · 로컬은 비교만)", bd.o.split("\n").filter((l) => /2부/.test(l)).slice(0, 2));
+      // 시험을 시작한 칸으로
+      const ret = await stepTo(m0);
+      ok(ret.every((x) => x.ok) && sameSnap(await snap(), base2), "시험을 시작한 칸(" + m0 + ")으로 돌아와도 내용 그대로", ret.map((x) => x.mode));
+    } finally { if (env0 == null) delete process.env.DB_AREAS; else process.env.DB_AREAS = env0; }
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

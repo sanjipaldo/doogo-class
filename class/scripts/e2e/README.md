@@ -12,6 +12,7 @@ node scripts/e2e/fixture.js /tmp/fx  # 시험 DB만 만들기 → E2E_FIXTURE=/t
 E2E_SERVER=next node scripts/e2e/run.js              # Next.js 서버로 (먼저 저장소 맨 위에서 node class/scripts/site.js public && npx next build)
 E2E_SERVER=next E2E_REACT=1 node scripts/e2e/run.js  # React 화면을 모두 켠 채로 같은 테스트 (react* 테스트가 고른 값은 그대로)
 E2E_FILES=storage node scripts/e2e/run.js            # 사진 · 첨부를 가짜 Supabase Storage(진짜 HTTP · 비공개 버킷)에 두고 (DB 전환 2부 B1 · E2E_SERVER · E2E_DB 와 같이 써도 돼요)
+E2E_AREAS=all:only node scripts/e2e/run.js           # 문서 종류마다 제 표에서 읽고 쓰기 (DB 전환 2부 B2~B6 · off · dual · table · only · 영역마다 B2:dual,B3:only 처럼)
 ```
 
 - Playwright(chromium)가 설치된 컴퓨터에서 돌려요. 배포 빌드가 무거워지지 않게 저장소 `package.json`에는 넣지 않아요.

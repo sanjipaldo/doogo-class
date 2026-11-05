@@ -4,6 +4,7 @@
  *   node scripts/e2e/run.js routes logins    고른 테스트만
  *   E2E_FIXTURE=/tmp/fx node scripts/e2e/run.js   만들어 둔 시험 DB 다시 쓰기 (fixture.js 로 만든 폴더)
  *   E2E_FILES=storage node scripts/e2e/run.js    사진 · 첨부를 가짜 Supabase Storage 에 두고 (DB 전환 2부 B1)
+ *   E2E_AREAS=all:only node scripts/e2e/run.js   문서 종류마다 제 표에서 (DB 전환 2부 B2~B6 · off · dual · table · only)
  *   E2E_SHOTS=/tmp/shots …                  실패한 화면 사진을 남길 폴더
  *   E2E_BASE=https://<미리보기 주소> E2E_INFO=info.json node scripts/e2e/run.js
  *                                           만들어 둔 시험 배포(시험용 DB)에 그대로 — 읽기만 하는 테스트(routes)만 돌고,
@@ -39,6 +40,7 @@ const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "file
     fx = await F.build(path.join(work, "fx"));
   }
   if (!remote && process.env.E2E_DB === "pg") console.log("[e2e] 저장소: Postgres (PGlite · 테스트마다 시험 DB 를 옮기기 도구로 복사 · 문서마다 확인)");
+  if (!remote && process.env.E2E_AREAS) console.log("[e2e] 2부 영역 스위치: " + process.env.E2E_AREAS + " (시험 DB 마다 그 칸으로 맞춘 뒤 · 서버도 같은 스위치)");
   if (!remote && process.env.E2E_FILES === "storage") console.log("[e2e] 사진 · 첨부: 가짜 Supabase Storage (진짜 HTTP · 비공개 버킷 · FILES_STORE=supabase · 시험 DB 의 파일 내용도 모두 Storage 로)");
   const browser = await L.chromium().launch();
   const results = [];

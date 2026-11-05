@@ -3,12 +3,14 @@
  *  같은 SQL 을 class/scripts/supabase.sql 로도 저장해 둬요 — Supabase › SQL Editor 에 붙여 돌려도 같은 결과 (node scripts/pg-sql.js 로 다시 만들어요)
  *
  *  보안: 표는 app 스키마에만. Supabase 공개 API 역할(anon · authenticated — 브라우저에 주는 키)은 스키마 · 표 · 보기 권한을 다 빼고,
- *        표 6개 모두 RLS 를 켜요(정책이 없으면 공개 API 로는 한 줄도 안 보여요). 우리 서버(표 주인 postgres)는 그대로 읽고 써요.
+ *        표 모두(1부 6개 + 2부 영역 표) RLS 를 켜요(정책이 없으면 공개 API 로는 한 줄도 안 보여요). 우리 서버(표 주인 postgres)는 그대로 읽고 써요.
  *  보기: 대표님이 Supabase › Table Editor 에서 표처럼 읽는 용 (읽기만 · 열 이름은 한국어). 회원 비밀번호 해시 · 수강생 전화 뒷자리(로그인 숫자)는 넣지 않아요.
  *        보기는 security_invoker — 보는 사람 권한으로 돌아서 공개 API 역할은 RLS 에 막혀요. */
 "use strict";
+const AR = require("./areas");
 
-const TABLES = ["docs", "files", "file_scopes", "rl", "backups", "oplog"];
+// 1부 표 6개 + 2부 영역 표(orders · members · students … · area_state) — 모두 RLS
+const TABLES = ["docs", "files", "file_scopes", "rl", "backups", "oplog"].concat(AR.tableNames());
 
 const SECURE = [
   "-- 공개 API 역할(anon · authenticated)은 app 스키마에 아무것도 못 해요 (그 역할이 있는 DB 에서만 · 로컬 시험 DB 엔 없어요)",
@@ -26,7 +28,7 @@ BEGIN
   END LOOP;
 END $$`,
   "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA app FROM PUBLIC",
-  "-- 표 6개 모두 RLS (정책 없음 = 공개 API 로는 한 줄도 안 보여요 · 이미 켜져 있으면 그대로 — 잠금 없이)",
+  "-- 표 모두 RLS (정책 없음 = 공개 API 로는 한 줄도 안 보여요 · 이미 켜져 있으면 그대로 — 잠금 없이)",
   `DO $$
 DECLARE t text;
 BEGIN
@@ -45,7 +47,11 @@ BEGIN RETURN NULLIF(t, '')::numeric; EXCEPTION WHEN others THEN RETURN NULL; END
   "CREATE OR REPLACE FUNCTION app.ms_ts(t text) RETURNS timestamptz LANGUAGE sql IMMUTABLE AS $$ SELECT to_timestamp(app.try_num(t) / 1000.0) $$"
 ];
 
-const src = (kind) => "(SELECT k, v::json AS d FROM app.docs WHERE kind = '" + kind + "' AND v IS NOT NULL) x";
+/* 보기가 읽는 곳: 1부는 docs, 2부 영역 표가 생긴 뒤에는 docs + 제 표 중 버전이 높은 쪽 (스위치가 어느 칸이든 같은 결과) */
+const AREA_OF = { vo: "orders", vm: "members", stu: "students", cohorts: "cohort_lists", bill: "bills", inq: "partner_inquiries", vq: "member_inquiries" };
+const src = (kind) => AREA_OF[kind]
+  ? "(SELECT DISTINCT ON (k) k, v::json AS d FROM (SELECT k, v, ver FROM app.docs WHERE kind = '" + kind + "' AND v IS NOT NULL UNION ALL SELECT k, v, ver FROM app." + AREA_OF[kind] + " WHERE v IS NOT NULL) s ORDER BY k, ver DESC) x"
+  : "(SELECT k, v::json AS d FROM app.docs WHERE kind = '" + kind + "' AND v IS NOT NULL) x";
 const yes = (f) => "COALESCE(d->>'" + f + "', '') = 'true'";
 const VIEWS = [
   `CREATE OR REPLACE VIEW app.v_orders WITH (security_invoker = true) AS
@@ -82,13 +88,27 @@ FROM ${src("vq")}`
 ];
 const VIEW_NAMES = ["v_orders", "v_members", "v_students", "v_cohorts", "v_bills", "v_inquiries"];
 
+/* 2부 영역 표 설명 — Supabase › Table Editor 에서 표 · 열 이름 옆에 한국어로 보여요 */
+const lit = (t) => "'" + String(t).replace(/'/g, "''") + "'";
+const COMMENTS = [];
+AR.TABLES.forEach((t) => {
+  COMMENTS.push("COMMENT ON TABLE app." + t.table + " IS " + lit("2부 " + t.area + " · " + t.label + " — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)"));
+  COMMENTS.push("COMMENT ON COLUMN app." + t.table + ".k IS " + lit("문서 키"), "COMMENT ON COLUMN app." + t.table + ".v IS " + lit("문서 JSON (지운 문서는 비어 있어요)"));
+  t.cols.forEach((c) => COMMENTS.push("COMMENT ON COLUMN app." + t.table + "." + AR.q(c[0]) + " IS " + lit(c[3])));
+});
+AR.CHILDREN.forEach((c) => {
+  COMMENTS.push("COMMENT ON TABLE app." + c.table + " IS " + lit("2부 · " + c.label + " — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)"));
+  c.cols.forEach((x) => COMMENTS.push("COMMENT ON COLUMN app." + c.table + "." + AR.q(x[0]) + " IS " + lit(x[3])));
+});
+COMMENTS.push("COMMENT ON TABLE app.area_state IS " + lit("2부 영역 스위치를 마지막 배포에서 어느 칸(off · dual · table · only)으로 맞췄는지"));
+
 /** 배포 때 돌리는 SQL (표는 store.js 가 먼저 만들어요) */
-const setupSql = () => SECURE.concat(FUNCS, VIEWS).filter((s) => !/^--/.test(s)).join(";\n") + ";";
+const setupSql = () => SECURE.concat(FUNCS, VIEWS, COMMENTS).filter((s) => !/^--/.test(s)).join(";\n") + ";";
 /** class/scripts/supabase.sql — 표 · 보안 · 보기 전부 (Supabase › SQL Editor 에 붙여도 같은 결과) */
 function fullSql(pgSchema) {
   const head = "-- 두고클래스 Supabase(Postgres) — DB 전환 1부 (class/api/_lib/store.js PG_SCHEMA + api/_lib/pgsetup.js)\n-- 이 파일은 node class/scripts/pg-sql.js 로 만들어요 (손으로 고치지 마세요 · 시험이 같은지 확인해요)\n-- 여러 번 돌려도 같아요. 배포(DB_DRIVER=supabase)가 같은 SQL 을 자동으로 돌려요.\n\n";
   const part = (t, list) => "-- ---------- " + t + " ----------\n" + list.map((s) => (/^--/.test(s) ? s : s + ";")).join("\n\n") + "\n";
-  return head + part("표 6개 (app 스키마)", pgSchema) + "\n" + part("보안: 공개 API 막기 · RLS", SECURE) + "\n" + part("보기가 쓰는 함수", FUNCS) + "\n" + part("사람이 읽는 보기 (읽기만)", VIEWS);
+  return head + part("표 (app 스키마 · 1부 6개 + 2부 영역 표)", pgSchema) + "\n" + part("보안: 공개 API 막기 · RLS", SECURE) + "\n" + part("보기가 쓰는 함수", FUNCS) + "\n" + part("사람이 읽는 보기 (읽기만)", VIEWS) + "\n" + part("2부 영역 표 설명 (Table Editor 에 한국어로)", COMMENTS);
 }
 
-module.exports = { TABLES, SECURE, FUNCS, VIEWS, VIEW_NAMES, setupSql, fullSql };
+module.exports = { TABLES, SECURE, FUNCS, VIEWS, VIEW_NAMES, COMMENTS, setupSql, fullSql };

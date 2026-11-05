@@ -144,6 +144,27 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **시험**: 서버 시험 38번(가짜 Storage `scripts/fake-storage.js` — 버킷 만들기 · 범위별 받기 · 같은 파일 다시 안 올림 · 옮기기 · 사라진 파일 잡기 · 되돌리기 · 고장 · 키 두 종류 · 배포 빌드(진짜 HTTP)) · 화면 시험 `E2E_FILES=storage node scripts/e2e/run.js`(시험 DB 의 파일 내용을 모두 가짜 Storage 로 옮기고 서버를 `FILES_STORE=supabase` 로 — 화면이 보는 사진 · 첨부가 전부 Storage 에서 와요).
 - **순서**: ① 미리보기에 `SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY`(doogo-staging) · `FILES_STORE=supabase` → 미리보기 배포(버킷 생김 · 비공개 확인) → 사진 올려 보기 ② `FILES_MOVE=to-storage` 로 미리보기 한 번(시험용 DB) → `FILES_MOVE=verify` ③ 운영도 같은 순서(doogo-prod 키 · 운영 배포는 따로 여쭤봐요).
 
+#### DB 전환 2부 B2~B6 — 문서 종류마다 제 표 (2026-11-05)
+
+- **무엇이 바뀌나**: 지금까지 거의 모든 데이터가 `docs` 표 한 곳에 JSON 문서로 있었어요. 이제 문서 종류마다 제 표가 있어요 (`api/_lib/areas.js`):
+
+  | 영역 | 문서 → 표 (한 건씩 표) |
+  |---|---|
+  | B2 주문 · 결제 | `vo:` → `orders` · `vpay:` → `payments` (`payment_orders`) · `vbank` → `bank_log` (`bank_deposits`) |
+  | B3 DOOGO CLASS 회원 | `vm:` → `members` · `vme:` · `vmk:` → `member_logins` · `vp:` → `vod_progress` (`vod_progress_items`) |
+  | B4 두잉고 강의실 | `ins:` → `instructors` (`coaches`) · `cohorts:` → `cohort_lists` (`cohorts`) · `stu:` → `students` · `prog:` → `progress` · `content:` → `contents` |
+  | B5 이용료 · 문의 · 후기 · 지급 | `bill:` → `bills` · `inq:` → `partner_inquiries` · `vq:` → `member_inquiries` · `vr:` → `reviews` · `vpl:` → `pledges` · `vpo:` → `payout_lists` (`payouts`) |
+  | B6 설정 · 상품 · 쿠폰 · 운영자 | `meta` · `vcat` · `vdur` · `vstat` · `vmsg` · `vupd` → `settings` (`products` · `coupons` · `staff` · `partner_payouts`) |
+
+  표 한 줄 = 문서 하나: `v` 는 예전 문서 글자 **그대로**(화면 · API 가 받는 모양이 한 글자도 안 바뀌어요) + 사람이 읽고 찾고 더하는 값은 열(금액 · 상태 · 회원 · 시각 …). 열과 한 건씩 표는 저장할 때마다 같은 트랜잭션에서 `v` 로 다시 만들어 어긋나지 않아요. 비밀번호 · 해시 · 로그인 숫자(전화 뒷자리)는 열로 꺼내지 않아요. Supabase › Table Editor 에서 표 · 열 이름 옆에 한국어 설명이 보여요. `docs` 에는 `sys` 처럼 영역이 없는 문서만 남아요.
+- **바꾼 곳은 저장소 하나**: `store.js` 의 함수들(getDocs · listDocs · writeDoc · insertDocs · backup · restore …)이 키를 보고 docs 또는 제 표로 보내요(문서 ↔ 표 어댑터). 화면 · API · 일회성 작업 코드는 그대로.
+- **영역 스위치 `DB_AREAS`** (Vercel 환경 변수 · 예: `all:dual` · `B2:table,B3:dual`): `off`(기본 · 예전처럼) → `dual`(같이 쓰기 · 읽기는 docs) → `table`(같이 쓰기 · 읽기는 제 표) → `only`(제 표에만 · docs 의 그 문서는 배포 때 지움). **한 칸씩만** — 배포하는 동안 예전 서버 함수가 쓰는 내용을 놓치지 않게, 배포 빌드가 지난 칸(`area_state` 표)을 기억해 건너뛰면 멈춰요.
+- **배포 빌드** (`api/_lib/areasync.js`): 칸 건너뛰기 확인 → 배포 전 백업 → 영역마다 docs ↔ 제 표 맞추기(버전이 높은 쪽으로 · 같은 버전인데 내용이 다르면 고치지 않고 **멈춤**) → 열 · 한 건씩 표 다시 → `only` 면 docs 정리 → 비교(문서 수 · 글자 · 버전 · 열)를 기록 (`[db] 2부 B2 주문 · 결제: dual · orders docs 12 = 표 12 · … · 맞음`). 미리보기 · 쓰기 멈춤 중에는 비교만. 로컬: `node scripts/areas.js status|verify|sync`.
+- **되돌리기**: 한 칸씩 거꾸로 (`only` → `table` 이면 배포 때 표 → docs 로 다시 채워요 → `dual` → `off`). 시험에서 only 에서 쓴 내용까지 off 로 돌아와도 그대로인 것을 확인해요.
+- **보기(v_orders …)**: docs 와 제 표 중 버전이 높은 쪽을 읽어서 스위치가 어느 칸이든 같은 결과. 표 35개 모두 RLS · 공개 API 역할은 막혀 있어요.
+- **시험**: 서버 시험 전체(578개)를 `DB_AREAS=all:off · dual · table · only` × SQLite · Postgres 로 · 39번은 실제 시험 데이터를 off → dual → table → only → off 로 옮기며 칸마다 내용 비교 · 칸 건너뛰기 · 내용 다름 멈춤 · 열 · 한 건씩 표 · only 에서 쓰기 · 버전 충돌 · 백업 · 되돌리기 · 배포 빌드. 화면 시험 `E2E_AREAS=all:only node scripts/e2e/run.js`.
+- **순서**: 미리보기(시험용 DB) `DB_AREAS=all:dual` → `all:table` → `all:only` (배포마다 기록 확인) → 운영도 같은 순서 (운영 배포는 따로 여쭤봐요).
+
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
 ```bash
@@ -176,7 +197,7 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 | `data.js` | 첫 실행 기본값 — 강사 4명(문대표·부알남·갓농부·초이), 문대표 콘텐츠, 기수, 수강생, 예시 제출 기록 |
 | `db.js` | 공용 데이터 계층 — 저장/불러오기(서버 모드: 문서 나누기 · 바뀐 부분 보내기 · 변경 받기), 기수 주차 계산, 일정 생성, 진행률, 세션 |
 | `api/` | 서버 (Vercel 함수) — `_lib/`에 저장소(Supabase Postgres · 로컬 SQLite) · 사진 · 첨부 내용(`blob.js` · Supabase Storage 비공개 버킷) · 로그인 · 권한 · 처음 데이터 |
-| `scripts/` | `db-build.js`(배포 때 데이터베이스 준비 · Storage 버킷 확인 · `FILES_MOVE`) · `files-move.js`(사진 · 첨부 DB ↔ Storage 옮기기 · 확인) · `site.js`(배포할 화면 파일만 `.site`로 모으기) · `dev-server.js`(로컬 서버 모드) |
+| `scripts/` | `db-build.js`(배포 때 데이터베이스 준비 · Storage 버킷 확인 · `FILES_MOVE` · 2부 영역 표 맞추기) · `files-move.js`(사진 · 첨부 DB ↔ Storage 옮기기 · 확인) · `areas.js`(2부 영역 표 보기 · 맞추기) · `site.js`(배포할 화면 파일만 `.site`로 모으기) · `dev-server.js`(로컬 서버 모드) |
 | `icons.js` | 아이콘 (Lucide) — `<svg class="icon lucide lucide-<이름>">` (Lucide 공식 클래스 규칙) |
 | `tags.js` | 분석 · 마케팅 도구 연결 — 마스터 › 첫 화면 · 사업자 정보 › 분석 · 마케팅 도구에 넣은 것만 정식 주소에서 불러와요 · 개인정보처리방침 ‘쿠키’ 항목 문구 |
 | `app.js` | 수강생 센터 — 로그인·수강 신청, 기본 메뉴 17개(두고 클래스 이름), 자동검수, AI 조교, 학습 노트 · 용어 사전 · 모범 과제 · 라이브 다시보기, 강사 미리보기. 강사를 고르기 전 첫 로그인 화면은 특정 강사 색이 아니라 두고 클래스(흰 바탕 + 여기어때 레드, 강사 프로필 사진 목록 · 입점 문의 링크)로 보이고, 강사를 고르면 그 강사의 로그인 화면으로 바뀌어요 (모양은 `home.css` 맨 아래 `.login-dc`) |

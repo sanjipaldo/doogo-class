@@ -19,6 +19,7 @@
 "use strict";
 const crypto = require("crypto");
 const store = require("../api/_lib/store");
+const AR = require("../api/_lib/areas");
 
 const CHUNK = 40, FILE_CHUNK = 5;
 const q = async (c, sql, args) => (await c.batch([{ sql, args: args || [] }]))[0].rows;
@@ -46,7 +47,12 @@ async function fileRows(c) {
   return out;
 }
 async function snapshot(c) {
+  // 2부: 영역 표(orders · members …)도 문서처럼 — 키 앞에 표 이름을 붙여 비교 (열 · 자식 표는 받는 쪽에서 v 로 다시 만들어요)
+  const areas = [];
+  for (const t of AR.TABLES) (await q(c, "SELECT k, v, ver, updated, created FROM " + t.table)).forEach((r) => areas.push(Object.assign({ t: t.table }, r)));
   return {
+    areas,
+    astate: await q(c, "SELECT id, mode, at, note FROM area_state"),
     docs: await q(c, "SELECT k, v, ver, updated, created FROM docs"),
     files: await fileRows(c),
     scopes: await q(c, "SELECT h, scope FROM file_scopes"),
@@ -69,12 +75,14 @@ async function verify(src, dst, o) {
     docs: cmp(a.docs, b.docs, (x) => x.k, docSig, !!(o.extraDocs || only), only ? (x) => only.has(x.k) : null),
     files: cmp(a.files, b.files, (x) => x.h, fileSig, !!o.extraOther),
     scopes: cmp(a.scopes, b.scopes, (x) => x.h + "|" + x.scope, () => "1", !!o.extraOther),
-    ops: cmp(a.ops, b.ops, (x) => x.id, (x) => sha([x.id, N(x.at), x.note == null ? "" : x.note, x.result == null ? "" : x.result].join("\u0001")), !!o.extraOther)
+    ops: cmp(a.ops, b.ops, (x) => x.id, (x) => sha([x.id, N(x.at), x.note == null ? "" : x.note, x.result == null ? "" : x.result].join("\u0001")), !!o.extraOther),
+    areas: cmp(a.areas, b.areas, (x) => x.t + "|" + x.k, docSig, !!(o.extraDocs || only), only ? (x) => only.has(x.t + "|" + x.k) : null),
+    astate: cmp(a.astate, b.astate, (x) => x.id, (x) => x.mode, !!o.extraOther)
   };
-  r.ok = ["docs", "files", "scopes", "ops"].every((t) => !r[t].bad.length);
+  r.ok = ["docs", "files", "scopes", "ops", "areas", "astate"].every((t) => !r[t].bad.length);
   return r;
 }
-const brief = (v) => ["docs", "files", "scopes", "ops"].map((t) => ({ docs: "문서", files: "사진", scopes: "범위", ops: "작업 기록" })[t] + " " + v[t].src + "→" + v[t].dst + (v[t].bad.length ? " (다름 " + v[t].bad.length + ": " + v[t].bad.slice(0, 5).join(", ") + ")" : "")).join(" · ");
+const brief = (v) => ["docs", "files", "scopes", "ops", "areas", "astate"].map((t) => ({ docs: "문서", files: "사진", scopes: "범위", ops: "작업 기록", areas: "영역 표", astate: "영역 스위치" })[t] + " " + v[t].src + "→" + v[t].dst + (v[t].bad.length ? " (다름 " + v[t].bad.length + ": " + v[t].bad.slice(0, 5).join(", ") + ")" : "")).join(" · ");
 
 /** 옮기기 — mode: copy · sync · since (o.since = ms) */
 async function move(src, dst, o) {
@@ -84,7 +92,8 @@ async function move(src, dst, o) {
   const since = mode === "since" ? Number(o.since) : null;
   if (mode === "since" && !(since > 0)) throw new Error("since 모드는 기준 시각(ms)이 필요해요");
   await src.init(); await dst.init();
-  const dstN = Number((await q(dst, "SELECT COUNT(*) AS n FROM docs"))[0].n);
+  let dstN = Number((await q(dst, "SELECT COUNT(*) AS n FROM docs"))[0].n);
+  for (const t of AR.TABLES) dstN += Number((await q(dst, "SELECT COUNT(*) AS n FROM " + t.table))[0].n);
   if (mode === "copy" && dstN > 0) {
     const v0 = await verify(src, dst);
     if (v0.ok) return { ok: true, mode, skipped: true, verify: v0, ms: Date.now() - t0 };
@@ -93,6 +102,7 @@ async function move(src, dst, o) {
   }
   const a = await snapshot(src);
   const docs = since ? a.docs.filter((r) => N(r.updated) > since) : a.docs;
+  const adocs = since ? a.areas.filter((r) => N(r.updated) > since) : a.areas;
   const files = since ? a.files.filter((r) => N(r.created) > since) : a.files;
   let removed = 0, backed = null;
   if (mode === "sync") {
@@ -102,8 +112,18 @@ async function move(src, dst, o) {
     const keep = new Set(a.docs.map((r) => r.k)), gone = cur.filter((r) => !keep.has(r.k)).map((r) => r.k);
     await chunked(dst, gone.map((k) => ({ sql: "DELETE FROM docs WHERE k = ?", args: [k] })), CHUNK);
     removed = gone.length;
+    // 2부 영역 표도 같게 (받는 쪽에만 있는 줄은 지워요 · 받는 쪽 백업에는 docs 만 — 영역 표는 보내는 쪽 내용으로 다시 채워져요)
+    const keepA = new Set(a.areas.map((r) => r.t + "|" + r.k));
+    for (const t of AR.TABLES) {
+      const curA = await q(dst, "SELECT k FROM " + t.table), goneA = curA.filter((r) => !keepA.has(t.table + "|" + r.k));
+      await chunked(dst, [].concat.apply([], goneA.map((r) => AR.tableDelete(t, r.k))), CHUNK);
+      removed += goneA.length;
+    }
   }
   await chunked(dst, docs.map((r) => ({ sql: UPSERT_DOC, args: [r.k, r.v == null ? null : String(r.v), N(r.ver), N(r.updated), N(r.created)] })), CHUNK);
+  const byT = new Map(AR.TABLES.map((t) => [t.table, t]));
+  await chunked(dst, [].concat.apply([], adocs.map((r) => AR.tableStmts(byT.get(r.t), r, dst.kind))), CHUNK);
+  await chunked(dst, a.astate.map((r) => ({ sql: "INSERT INTO area_state (id, mode, at, note) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET mode = excluded.mode, at = excluded.at, note = excluded.note", args: [r.id, r.mode, N(r.at), r.note == null ? null : r.note] })), CHUNK);
   await chunked(dst, files.map((r) => ({ sql: INS_FILE, args: [r.h, r.mime, r.b64, N(r.size), N(r.created)] })), FILE_CHUNK);
   await chunked(dst, a.scopes.map((r) => ({ sql: INS_SCOPE, args: [r.h, r.scope] })), CHUNK);
   await chunked(dst, a.ops.map((r) => ({ sql: INS_OP, args: [r.id, N(r.at), r.note == null ? null : r.note, r.result == null ? null : r.result] })), CHUNK);
@@ -112,8 +132,8 @@ async function move(src, dst, o) {
     const bks = await q(src, "SELECT at, reason, docs, size, data FROM backups ORDER BY id DESC LIMIT " + Math.max(0, Math.min(40, Number(o.backups) >= 0 ? Number(o.backups) : 5)));
     for (const r of bks.reverse()) { await q(dst, INS_BK, [N(r.at), r.reason, N(r.docs), N(r.size), r.data]); bk++; }
   }
-  const v = await verify(src, dst, mode === "since" ? { keys: docs.map((r) => r.k), extraOther: true } : mode === "sync" ? { extraOther: true } : {});
-  const res = { ok: v.ok, mode, docs: docs.length, files: files.length, scopes: a.scopes.length, ops: a.ops.length, backups: bk, removed, backed, verify: v, ms: Date.now() - t0 };
+  const v = await verify(src, dst, mode === "since" ? { keys: docs.map((r) => r.k).concat(adocs.map((r) => r.t + "|" + r.k)), extraOther: true } : mode === "sync" ? { extraOther: true } : {});
+  const res = { ok: v.ok, mode, docs: docs.length, areas: adocs.length, files: files.length, scopes: a.scopes.length, ops: a.ops.length, backups: bk, removed, backed, verify: v, ms: Date.now() - t0 };
   if (!v.ok) { const e = new Error("옮긴 뒤 확인이 맞지 않아요 — " + brief(v)); e.result = res; throw e; }
   return res;
 }

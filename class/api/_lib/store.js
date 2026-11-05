@@ -16,10 +16,13 @@
  *   Postgres 에서는 같은 SQL 을 조금만 바꿔 써요(pgSql): ? → $1 · 표 이름 → app.표 · 같은 created 끼리는 키를 바이트 순(COLLATE "C",
  *   SQLite 와 같은 순서) · 여러 문장(batch)은 한 트랜잭션(중간에 실패하면 전부 취소). 문서(v)는 글자 그대로(text) — 키 순서 · 공백이 한 글자도 안 바뀌게.
  *   다른 점 하나: LIKE 가 영문 대소문자를 가려요(SQLite 는 안 가림) — 키 앞부분은 모두 코드가 만든 같은 글자라 결과는 같아요.
+ * 2부 B2~B6 (2026-11-05 · api/_lib/areas.js): 문서 종류마다 제 표(orders · members · students …) — 영역 스위치 DB_AREAS(off · dual · table · only)에 따라
+ *   이 파일의 함수들이 키를 보고 docs 또는 제 표로 보내요(문서 ↔ 표 어댑터). 화면 · API 는 그대로 — 표 한 줄의 v 가 예전 문서 글자 그대로예요.
  * 쓰기 멈춤 (DC_READONLY=1 · 점검 · DB 옮기는 동안): 문서 · 사진 쓰기는 503 ‘잠시 점검 중’ (화면은 변경을 들고 있다가 다시 보내요).
  *   읽기 · 로그인 실패 횟수(rl) · 배포 전 백업(backups) · 작업 기록(oplog)은 그대로 — 점검 중에도 들어가서 확인할 수 있게
  */
 "use strict";
+const AR = require("./areas");
 
 const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS docs (k TEXT PRIMARY KEY, v TEXT, ver INTEGER NOT NULL DEFAULT 1, updated INTEGER NOT NULL, created INTEGER NOT NULL)",
@@ -29,7 +32,7 @@ const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS rl (k TEXT PRIMARY KEY, n INTEGER NOT NULL, until INTEGER NOT NULL)",
   "CREATE TABLE IF NOT EXISTS backups (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, reason TEXT, docs INTEGER, size INTEGER, data TEXT NOT NULL)",
   "CREATE TABLE IF NOT EXISTS oplog (id TEXT PRIMARY KEY, at INTEGER NOT NULL, note TEXT, result TEXT)"
-];
+].concat(AR.schema("sqlite")); // 2부: 영역 표 (스위치가 꺼져 있어도 표는 만들어 둬요 — 비어 있을 뿐)
 
 /* 로컬 개발용: Node 22+ 내장 SQLite (같은 SQL) */
 function sqliteClient(file) {
@@ -42,12 +45,22 @@ function sqliteClient(file) {
     const info = st.run(...args);
     return { rows: [], affected: Number(info.changes) || 0 };
   };
-  return { kind: "sqlite", batch: async (stmts) => stmts.map(run) };
+  // 트랜잭션: 문서 + 제 표 + 자식 표를 한 번에 (2부) — 같은 연결이라 차례대로 (lock)
+  let lock = Promise.resolve();
+  const tx = (fn) => {
+    const go = lock.then(async () => {
+      d.exec("BEGIN IMMEDIATE");
+      try { const out = await fn(async (s) => run(s)); d.exec("COMMIT"); return out; } catch (e) { try { d.exec("ROLLBACK"); } catch (e2) { /* 이미 끝남 */ } throw e; }
+    });
+    lock = go.catch(() => {});
+    return go;
+  };
+  return { kind: "sqlite", batch: async (stmts) => { await lock; return stmts.map(run); }, tx };
 }
 
 /* ---------------- Postgres (Supabase) ---------------- */
 /* 같은 표 6개 — app 스키마 (Supabase 공개 API(anon 키)는 public 스키마만 열어요 · 권한 막기와 보기는 pgsetup.js 가 배포 때) */
-const PG_TABLES = ["docs", "files", "file_scopes", "rl", "backups", "oplog"];
+const PG_TABLES = ["docs", "files", "file_scopes", "rl", "backups", "oplog"].concat(AR.tableNames());
 const PG_SCHEMA = [
   "CREATE SCHEMA IF NOT EXISTS app",
   "CREATE TABLE IF NOT EXISTS app.docs (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, kind text GENERATED ALWAYS AS (split_part(k, ':', 1)) STORED)",
@@ -59,7 +72,7 @@ const PG_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS app.rl (k text PRIMARY KEY, n integer NOT NULL, until bigint NOT NULL)",
   "CREATE TABLE IF NOT EXISTS app.backups (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, at bigint NOT NULL, reason text, docs integer, size integer, data text NOT NULL)",
   "CREATE TABLE IF NOT EXISTS app.oplog (id text PRIMARY KEY, at bigint NOT NULL, note text, result text)"
-];
+].concat(AR.schema("pg"));
 const PG_TABLE_RE = new RegExp("\\b(FROM|INTO|UPDATE|JOIN)\\s+(" + PG_TABLES.join("|") + ")\\b", "gi");
 /** SQLite 문법 SQL → Postgres: ? → $1 …(작은따옴표 글자 안은 그대로) · 표 이름 → app.표 · 같은 created 끼리 키 순서를 바이트 순으로 */
 function pgSql(sql) {
@@ -90,9 +103,11 @@ function pgClient(url) {
       return await sql.begin(async (tx) => { const out = []; for (const s of stmts) out.push(await run(tx, s)); return out; });
     } catch (e) { e.message = scrub(e.message); throw e; }
   }
+  // 트랜잭션 안에서 앞 문장 결과를 보고 다음 문장을 정해요 (2부: 버전이 맞을 때만 제 표 · 자식 표도)
+  const tx = (fn) => sql.begin((t) => fn((s) => run(t, s))).catch((e) => { e.message = scrub(e.message); throw e; });
   // 표 만들기는 한 번에(문장 여러 개를 한 왕복으로)
   const init = () => sql.unsafe(PG_SCHEMA.join(";\n")).catch((e) => { e.message = scrub(e.message); throw e; });
-  return { kind: "postgres", batch, init, end: () => sql.end({ timeout: 5 }), sql };
+  return { kind: "postgres", batch, tx, init, end: () => sql.end({ timeout: 5 }), sql };
 }
 
 /* ---------------- 쓰기 멈춤 (DC_READONLY) ---------------- */
@@ -154,10 +169,26 @@ function openClient(o) {
 
 /* ---------------- 문서 ---------------- */
 const parse = (row) => (row.v == null ? null : JSON.parse(row.v));
+/* 2부: 읽는 곳 — 영역이 table · only 면 제 표에서, 아니면 docs 에서 (dual 은 docs) */
+const srcOf = (k) => { const t = AR.route(k); return t && AR.readsTable(t) ? t.table : "docs"; };
+/** 읽는 곳 전부를 한 SQL 로 (UNION ALL) — cols: "k, v, ver" 처럼 · where: 표마다 붙일 조건(args 는 표마다 되풀이) · tabs: 볼 영역 표(기본: 제 표에서 읽는 것 전부) */
+function readUnion(cols, where, args, tabs) {
+  tabs = tabs || AR.TABLES.filter(AR.readsTable);
+  const w = where ? " WHERE " + where : "";
+  if (!tabs.length) return { sql: "SELECT " + cols + " FROM docs" + w, args: (args || []).slice(), single: true };
+  const ex = tabs.map(AR.keyCond), parts = [], all = [];
+  parts.push("SELECT " + cols + " FROM docs WHERE " + (where ? "(" + where + ") AND " : "") + "NOT (" + ex.map((e) => e.sql).join(" OR ") + ")");
+  all.push.apply(all, args || []); ex.forEach((e) => all.push.apply(all, e.args));
+  tabs.forEach((t) => { parts.push("SELECT " + cols + " FROM " + t.table + w); all.push.apply(all, args || []); });
+  return { sql: parts.join(" UNION ALL "), args: all, single: false };
+}
 async function getDocs(keys) {
   if (!keys.length) return {};
-  const out = {};
-  const res = await exec("SELECT k, v, ver FROM docs WHERE k IN (" + keys.map(() => "?").join(",") + ")", keys);
+  const out = {}, groups = new Map();
+  keys.forEach((k) => { const src = srcOf(k); if (!groups.has(src)) groups.set(src, []); groups.get(src).push(k); });
+  const parts = [], args = [];
+  for (const [src, ks] of groups) { parts.push("SELECT k, v, ver FROM " + src + " WHERE k IN (" + ks.map(() => "?").join(",") + ")"); args.push.apply(args, ks); }
+  const res = await exec(parts.join(" UNION ALL "), args);
   res.rows.forEach((r) => { out[r.k] = { v: parse(r), ver: r.ver }; });
   return out;
 }
@@ -170,13 +201,37 @@ async function listDocs(opts) {
   if (opts.prefixes) {
     where.push("(" + opts.prefixes.map((p) => { if (p.endsWith("%")) { args.push(p); return "k LIKE ?"; } args.push(p); return "k = ?"; }).join(" OR ") + ")");
   }
-  const res = await exec("SELECT k, v, ver, created FROM docs WHERE " + where.join(" AND ") + " ORDER BY created, k", args);
+  const tabs = AR.TABLES.filter((t) => AR.readsTable(t) && (!opts.prefixes || opts.prefixes.some((p) => AR.overlaps(t, p))));
+  const u = readUnion("k, v, ver, created", where.join(" AND "), args, tabs);
+  const res = await exec(u.single ? u.sql + " ORDER BY created, k" : "SELECT k, v, ver, created FROM (" + u.sql + ") u ORDER BY created, k", u.args);
   return res.rows.map((r) => ({ k: r.k, v: parse(r), ver: r.ver }));
+}
+/** 2부: 먼저 쓴 곳(P) 말고 같이 써야 하는 곳 — docs 그대로 · 제 표(열 · 자식 표 다시) */
+function mirrorStmts(t, row, kind, P) {
+  const out = [];
+  if (P !== "docs" && AR.writesDocs(t)) out.push(AR.docsUpsert(row));
+  if (AR.writesTable(t)) out.push.apply(out, AR.tableStmts(t, row, kind));
+  return out;
 }
 /** 낙관적 잠금으로 쓰기 — 그새 다른 사람이 바꿨으면 false (다시 읽어서 다시 적용) */
 async function writeDoc(k, v, prevVer, created) {
   const now = Date.now();
   const json = v == null ? null : JSON.stringify(v);
+  const t = AR.route(k);
+  if (t && AR.writesTable(t)) {
+    // 2부: 읽는 곳(P)에 버전 확인하며 쓰고 → 맞았을 때만 같은 트랜잭션에서 다른 곳 · 열 · 자식 표도
+    if (readonly()) throw readonlyError();
+    const c = await db(), P = AR.readsTable(t) ? t.table : "docs";
+    return c.tx(async (run) => {
+      const r = prevVer == null
+        ? await run({ sql: "INSERT INTO " + P + " (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?) ON CONFLICT(k) DO NOTHING", args: [k, json, now, created == null ? now : created] })
+        : await run({ sql: "UPDATE " + P + " SET v = ?, ver = ver + 1, updated = ? WHERE k = ? AND ver = ?", args: [json, now, k, prevVer] });
+      if (!r.affected) return false;
+      const row = (await run({ sql: "SELECT k, v, ver, updated, created FROM " + P + " WHERE k = ?", args: [k] })).rows[0];
+      for (const s of mirrorStmts(t, row, c.kind, P)) await run(s);
+      return Number(row.ver);
+    });
+  }
   if (prevVer == null) {
     const r = await exec("INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?) ON CONFLICT(k) DO NOTHING", [k, json, now, created == null ? now : created]);
     return r.affected ? 1 : false;
@@ -184,7 +239,10 @@ async function writeDoc(k, v, prevVer, created) {
   const r = await exec("UPDATE docs SET v = ?, ver = ver + 1, updated = ? WHERE k = ? AND ver = ?", [json, now, k, prevVer]);
   return r.affected ? prevVer + 1 : false;
 }
-async function countDocs() { return (await exec("SELECT COUNT(*) AS n FROM docs WHERE v IS NOT NULL")).rows[0].n; }
+async function countDocs() {
+  const u = readUnion("k", "v IS NOT NULL");
+  return Number((await exec(u.single ? "SELECT COUNT(*) AS n FROM docs WHERE v IS NOT NULL" : "SELECT COUNT(*) AS n FROM (" + u.sql + ") u", u.args)).rows[0].n);
+}
 
 /* ---------------- 파일 ---------------- */
 // 2부 B1 (2026-11-05): FILES_STORE=supabase 면 내용(바이트)은 Supabase Storage 비공개 버킷에 · DB 의 b64 는 '' (‘Storage 에 있어요’ 표시) — api/_lib/blob.js
@@ -241,12 +299,13 @@ async function rlFail(keys, windowMs) {
 async function rlClear(keys) { await batch(keys.map((k) => ({ sql: "DELETE FROM rl WHERE k = ?", args: [k] }))); }
 
 /* 초기화(마스터) — 문서를 지운다. 사진·첨부(files)는 백업으로 되돌릴 때 필요하니 남겨 둔다 */
-async function wipe() { await batch([{ sql: "DELETE FROM docs" }, { sql: "DELETE FROM rl" }]); }
+async function wipe() { await batch([{ sql: "DELETE FROM docs" }, { sql: "DELETE FROM rl" }].concat(AR.TABLES.map((t) => ({ sql: "DELETE FROM " + t.table })), AR.CHILDREN.map((c) => ({ sql: "DELETE FROM " + c.table })))); }
 
 /* ---------------- 백업 ---------------- */
 const KEEP_BACKUPS = 40;
 async function backup(reason) {
-  const rows = (await exec("SELECT k, v, ver, updated, created FROM docs")).rows;
+  const u = readUnion("k, v, ver, updated, created"); // 2부: 제 표에서 읽는 영역은 제 표에서 (백업 모양은 그대로 — 문서 줄 목록)
+  const rows = (await exec(u.sql, u.args)).rows;
   if (!rows.length) return null;
   const data = JSON.stringify(rows);
   await exec("INSERT INTO backups (at, reason, docs, size, data) VALUES (?, ?, ?, ?, ?)", [Date.now(), String(reason || "").slice(0, 120), rows.length, data.length, data]);
@@ -261,12 +320,18 @@ async function backupRows(id) {
 /** 백업 그대로 문서를 되돌린다 (지금 상태도 먼저 백업) */
 async function restoreRows(rows) {
   // 버전은 지금보다 크게 — 되돌리기 전에 열려 있던 화면의 저장이 되돌린 내용을 덮어쓰지 못하게
-  const cur = {};
-  (await exec("SELECT k, ver FROM docs")).rows.forEach((r) => { cur[r.k] = r.ver; });
-  await batch([{ sql: "DELETE FROM docs" }]);
-  const now = Date.now();
-  const stmts = rows.map((r) => ({ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(k) DO NOTHING", args: [r.k, r.v, Math.max(r.ver || 1, cur[r.k] || 0) + 1, now, r.created] }));
-  for (let i = 0; i < stmts.length; i += 40) await batch(stmts.slice(i, i + 40));
+  const cur = {}, u = readUnion("k, ver");
+  (await exec(u.sql, u.args)).rows.forEach((r) => { cur[r.k] = r.ver; });
+  await batch([{ sql: "DELETE FROM docs" }].concat(AR.TABLES.filter(AR.writesTable).map((t) => ({ sql: "DELETE FROM " + t.table })), AR.TABLES.filter(AR.writesTable).reduce((a, t) => a.concat((t.children || []).map((c) => ({ sql: "DELETE FROM " + c.table }))), [])));
+  const now = Date.now(), kind = (await db()).kind;
+  const stmts = [];
+  rows.forEach((r) => {
+    const row = { k: r.k, v: r.v, ver: Math.max(r.ver || 1, cur[r.k] || 0) + 1, updated: now, created: r.created };
+    const t = AR.route(r.k);
+    if (t && AR.writesTable(t)) { stmts.push((AR.writesDocs(t) ? [AR.docsUpsert(row)] : []).concat(AR.tableStmts(t, row, kind))); return; }
+    stmts.push([{ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(k) DO NOTHING", args: [row.k, row.v, row.ver, row.updated, row.created] }]);
+  });
+  for (let i = 0; i < stmts.length; i += 40) await batch([].concat.apply([], stmts.slice(i, i + 40)));
   return stmts.length;
 }
 
@@ -277,10 +342,24 @@ async function opMark(id, note, result) { await exec("INSERT INTO oplog (id, at,
 /* ---------------- 처음 데이터 · 일회성 작업이 쓰는 것 (init.js — 예전엔 거기서 SQL 을 직접 썼어요) ---------------- */
 /** 문서 여러 개를 한 번에 넣기 (이미 있는 키는 그대로) — rows: [{ k, v: JSON 글자, created }] */
 async function insertDocs(rows) {
-  const now = Date.now();
-  const stmts = rows.map((r) => ({ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?) ON CONFLICT(k) DO NOTHING", args: [r.k, r.v, now, r.created] }));
+  const now = Date.now(), plain = [], routed = [];
+  rows.forEach((r) => { const t = AR.route(r.k); if (t && AR.writesTable(t)) routed.push([t, r]); else plain.push(r); });
+  const stmts = plain.map((r) => ({ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?) ON CONFLICT(k) DO NOTHING", args: [r.k, r.v, now, r.created] }));
   for (let i = 0; i < stmts.length; i += 40) await batch(stmts.slice(i, i + 40));
-  return stmts.length;
+  if (routed.length) {
+    // 2부: 읽는 곳에 없을 때만 넣고, 넣었으면 같은 트랜잭션에서 다른 곳 · 열 · 자식 표도
+    if (readonly()) throw readonlyError();
+    const c = await db();
+    for (const [t, r] of routed) {
+      const P = AR.readsTable(t) ? t.table : "docs";
+      await c.tx(async (run) => {
+        const x = await run({ sql: "INSERT INTO " + P + " (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?) ON CONFLICT(k) DO NOTHING", args: [r.k, r.v, now, r.created] });
+        if (!x.affected) return;
+        for (const s of mirrorStmts(t, { k: r.k, v: r.v, ver: 1, updated: now, created: r.created }, c.kind, P)) await run(s);
+      });
+    }
+  }
+  return rows.length;
 }
 /** sys 문서(epoch) — 버전 검사 없이 바꾸고, 없으면 맨 앞(created -1)에 만들어요 */
 async function putSys(json) {
@@ -288,7 +367,7 @@ async function putSys(json) {
   if (!r.affected) await exec("INSERT INTO docs (k, v, ver, updated, created) VALUES ('sys', ?, 1, ?, -1) ON CONFLICT(k) DO NOTHING", [json, Date.now()]);
 }
 /** 모든 문서 (지운 것도) — 일회성 작업이 지금 상태를 읽을 때 */
-async function allDocRows() { return (await exec("SELECT k, v, ver FROM docs")).rows; }
+async function allDocRows() { const u = readUnion("k, v, ver"); return (await exec(u.sql, u.args)).rows; }
 
 /* ---------------- 배포 기록용 확인 (DB 전환 A0) ---------------- */
 /** 사진 · 첨부 개수와 크기 (읽기만) */
@@ -339,6 +418,6 @@ function pgAuthHint(u, why, pooler) {
 
 module.exports = {
   exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, listBackups, backupRows, restoreRows, opsDone, opMark,
-  insertDocs, putSys, allDocRows, fileStats, pgProbe, pgAuthHint, pgSetup, close, openClient, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
+  insertDocs, putSys, allDocRows, fileStats, readUnion, db, pgProbe, pgAuthHint, pgSetup, close, openClient, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
   kind: () => getClient().kind
 };

@@ -2,6 +2,7 @@
  *  운영(production) 배포: 표 만들기 · Supabase 보안 · 보기 → 지금 데이터 백업 → 비어 있으면 멈춤(운영) → 요청받은 일회성 작업(oneoff.js, 한 번만)
  *    → 새 기본값 채우기(빠진 칸만, 저장된 내용은 그대로)
  *  미리보기 배포: 연결만 확인 (데이터를 바꾸지 않음)
+ *  2부 B2~B6 영역 스위치(DB_AREAS): 칸 건너뛰기를 막고 → 배포 전 백업 → 영역 표 맞추기 · 비교(다르면 멈춤) → 일회성 작업 · 기본값 (api/_lib/areasync.js)
  *  시험용 미리보기 (DB_ROLE=staging · 미리보기 환경에 시험용 DB(doogo-staging)를 따로 연결했을 때, 2026-11 Next.js 전환 0단계):
  *    시험용 표시(oplog '__staging-db__')가 있는 DB에서만 처음 데이터 · 일회성 작업 · 기본값 채우기를 돌려요.
  *    빈 DB면 표시를 먼저 남기고 시작, 표시가 없는데 데이터가 있는 DB(운영 DB일 수 있음)면 아무것도 바꾸지 않고 빌드를 멈춰요
@@ -59,6 +60,15 @@ const init = require("../api/_lib/init");
   }
   const ro = store.readonly();
   if (ro) console.log("[db] 쓰기 멈춤(DC_READONLY=1) 중: 백업만 하고 일회성 작업 · 기본값 채우기는 건너뛰어요");
+  // 2부 B2~B6: 영역 스위치(DB_AREAS) — 칸 건너뛰기는 먼저 막고(백업 전), 맞추기 · 비교는 백업 뒤에 (api/_lib/areasync.js)
+  const AS = require("../api/_lib/areasync"), AR = require("../api/_lib/areas");
+  const areaCheck = await AS.check();
+  if (!areaCheck.ok) { areaCheck.bad.forEach((b) => console.error("[db] 2부 영역: " + b)); console.error("[db] 영역 스위치(DB_AREAS)를 한 칸씩만 바꿔 다시 배포해 주세요 — 빌드를 멈춰요"); process.exit(1); }
+  const areasUsed = AR.anyOn() || Object.keys(areaCheck.state).length > 0;
+  if (areasUsed && (ro || (!prod && !staging))) {
+    const ar = await AS.sync({ write: false });
+    ar.lines.forEach((l) => console.log("[db] " + l + " (비교만)"));
+  }
   if (!process.env.MASTER_PASSWORD) console.warn("[db] 주의: MASTER_PASSWORD 환경변수가 없어 마스터 로그인이 막혀 있어요.");
   // 포트원 결제 연결 확인 (4단계 4-2): 키가 있으면 없는 결제를 한 번 조회해 상점 아이디 · API Secret 이 맞는지만 봐요 (빌드는 멈추지 않아요 · 키 값은 안 적어요)
   try {
@@ -84,6 +94,11 @@ const init = require("../api/_lib/init");
   const b = await store.backup("배포 전 자동 백업" + (process.env.VERCEL_GIT_COMMIT_SHA ? " (" + process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) + ")" : ""));
   console.log("[db] 배포 전 백업: " + (b ? "문서 " + b.docs + "개 · " + Math.round(b.size / 1024) + "KB" : "비어 있어 건너뜀"));
   if (ro) return;
+  if (areasUsed) {
+    const ar = await AS.sync({ write: true });
+    ar.lines.forEach((l) => console.log("[db] " + l));
+    if (!ar.ok) { console.error("[db] 2부 영역 표가 docs 와 맞지 않아 빌드를 멈춰요 (지금 배포는 그대로) — 위 ‘문제’를 봐 주세요"); process.exit(1); }
+  }
   if (await init.ensureSeeded()) console.log("[db] 비어 있어서 체험 데이터로 시작했어요 (" + (await store.countDocs()) + "개)");
   if (staging) {
     // 운영과 같은 순서: 스토어 데이터(마스터가 스토어를 처음 열 때 생겨요)가 생긴 뒤에 일회성 작업을 돌려요
