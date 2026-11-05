@@ -2493,6 +2493,7 @@ a.login-vod:hover { filter: brightness(.97); }
 .ag-ev { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
 .ag-ev .cal-chip { flex: none; max-width: 46%; font-size: 11px; }
 .ag-t { min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.45; color: var(--ink); word-break: keep-all; overflow-wrap: anywhere; }
+.ag-tm { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--mute); white-space: nowrap; }
 @media (max-width: 720px) {
   .cal2 { padding: 16px 12px; }
   .cal2 .cal { gap: 3px; }

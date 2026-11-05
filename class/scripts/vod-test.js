@@ -1573,6 +1573,58 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     w = OO.moonCalV2(cvGet);
     ok(!Object.keys(w.writes).length && w.result.skipped && OO.OPS.some((x) => x.id === "2026-11-04-moon-cal-v2" && x.run === OO.moonCalV2) && OO.OPS.findIndex((x) => x.id === "2026-11-04-moon-cal-v2") > OO.OPS.findIndex((x) => x.id === "2026-11-03-moon-cohort-dates"),
       "일회성(문대표 캘린더): 다시 돌려도 그대로 · 기수 일정 작업 뒤에 돌아요", w);
+    // 메인 강사 강의를 주차마다 (2026-11-05): 날짜 · 시작 ~ 끝 · 장소 · 방식(오프라인 · 온라인) · 주제 + 모든 일정에 끝나는 시간
+    { const vm5 = require("vm"), ls5 = new Map(), sb5 = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls5.has(k) ? ls5.get(k) : null), setItem: (k, v) => ls5.set(k, String(v)), removeItem: (k) => ls5.delete(k), key: () => null, length: 0 } };
+      sb5.window = sb5; vm5.createContext(sb5); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm5.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb5, { filename: f })); sb5.DB.load();
+      const D5 = sb5.DB, g5 = { id: "x5", instructorId: "moon", startDate: "2026-11-21", classDow: 6, weeks: 4, curriculumId: "cur-4w", classTime: "10:30", classPlace: "본관", classDates: { 2: "2026-11-22" },
+        classOver: { 1: { time: "13:30", end: "18:30", place: "3층", topic: "해외 건기식 OT" }, 2: { time: "09:00", end: "13:30", place: "3층", topic: "브랜딩" }, 3: { mode: "online", url: "https://zoom.us/j/1", topic: "자사몰" }, 4: { time: "09:00" } } };
+      const ev5 = D5.events("moon", g5), lec5 = ev5.filter((e) => D5.isWeekLec(e)), dl5 = ev5.filter((e) => e.type === "deadline").map((e) => e.date), rp5 = ev5.filter((e) => e.type === "replay").map((e) => e.date);
+      ok(lec5.map((e) => e.date).join() === "2026-11-21,2026-11-22,2026-12-05,2026-12-12" && lec5[0].type === "open" && lec5[0].time === "13:30" && lec5[0].end === "18:30" && lec5[0].place === "3층" && lec5[0].title === "1주차 오프라인 강의 — 해외 건기식 OT" && D5.evTime(lec5[0]) === "13:30~18:30" &&
+        lec5[1].title === "2주차 오프라인 강의 — 브랜딩" && D5.evTime(lec5[1]) === "09:00~13:30",
+        "메인 강사 강의: 주차마다 날짜(11/21 · 11/22 · 12/5 · 12/12) · 13:30~18:30 · 장소 · 주제(커리큘럼 제목 대신) · 시간은 제목에 붙이지 않고 따로", lec5.map((e) => [e.date, e.type, D5.evTime(e), e.place, e.title]));
+      ok(lec5[2].type === "online" && lec5[2].title === "3주차 온라인 강의 — 자사몰" && lec5[2].place === "" && lec5[2].url === "https://zoom.us/j/1" && lec5[2].time === "10:30" && D5.calChip("moon", lec5[2]).s === "3주차" && D5.calChip("moon", lec5[2]).l === "3주차 온라인 강의" && D5.calMain(lec5[2]),
+        "메인 강사 강의: 온라인(줌) 주차는 ‘온라인 강의’(같은 강의 날 색) · 기본 장소를 안 붙이고 입장 링크 · 시작은 기본 시간", lec5[2]);
+      ok(lec5[3].time === "09:00" && lec5[3].end === "" && lec5[3].place === "본관" && D5.lectureOf("moon", Object.assign({}, g5, { classEnd: "12:00", classOver: {} }), { no: 4, title: "t" }).end === "12:00" && D5.lectureOf("moon", Object.assign({}, g5, { classEnd: "12:00" }), { no: 4, title: "t" }).end === "",
+        "메인 강사 강의: 비운 칸은 기수 기본값(장소 · 끝나는 시간) — 그 주차만 시작을 바꾸고 끝을 비우면 끝은 비워요");
+      ok(dl5.join() === "2026-11-27,2026-12-04,2026-12-11,2026-12-18" && rp5.join() === "2026-11-23,2026-11-24,2026-12-07,2026-12-14", "메인 강사 강의: 과제 마감은 주마다 그대로 · 녹화본은 그 주차 강의 이틀 뒤", { dl5, rp5 });
+      const sc5 = D5.content("moon").schedule; sc5.push({ id: "z5", type: "challenge", title: "챌린지 1회차", time: "19:00", end: "21:00", scope: "cohort", cohortId: "x5", date: "2026-11-25" }, { id: "z6", type: "qna", title: "Q&A", time: "", end: "21:00", scope: "cohort", cohortId: "x5", date: "2026-11-26" });
+      const zs = D5.events("moon", g5).filter((e) => e.id === "z5" || e.id === "z6");
+      ok(zs.length === 2 && D5.evTime(zs[0]) === "19:00~21:00" && zs[1].end === "" && D5.evTime(zs[1]) === "" && D5.evTime({ time: "19:00" }) === "19:00" && D5.calChip("moon", zs[0]).l === "19:00 챌린지 1회차",
+        "모든 일정에 끝나는 시간: ‘19:00~21:00’ (시작 시간이 없으면 끝도 안 보여요 · 달력 칸은 시작만)", zs);
+      const ad5 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), app5 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), bd5 = fs.readFileSync(path.join(ROOT, "../ui/dg/Board.jsx"), "utf8"), hp5 = fs.readFileSync(path.join(ROOT, "../ui/dg/HomePage.jsx"), "utf8");
+      ok(["pl-lt-", "pl-le-", "pl-lm-", "pl-lp-", "pl-lc-", "pl-wd-"].every((n) => ad5.indexOf('name="' + n) >= 0) && /name="ev-end"/.test(ad5) && /id="pl-end" name="pl-end"/.test(ad5) && /id="pl-place" name="pl-place"/.test(ad5) && /classOver: Object\.keys\(lec\)\.length \? lec : undefined/.test(ad5) && /F\("end", "끝나는 시간/.test(ad5),
+        "기수 설계 창(마스터 · 강사센터): 메인 강사 강의 표(날짜 · 시작 · 끝 · 방식 · 장소 · 주제) · 기본 끝나는 시간 · 기본 장소 · 특별 일정 끝나는 시간 · 강사센터 일정 추가에도 끝나는 시간");
+      ok(/DB\.evTime\(e\) \? " · " \+ esc\(DB\.evTime\(e\)\)/.test(app5) && /DB\.evTime\(e\) \? " · " \+ DB\.evTime\(e\)/.test(bd5) && /class="ag-tm"/.test(app5) && /className="ag-tm"/.test(bd5) && /DB\.evTime\(e\) \? " " \+ DB\.evTime\(e\)/.test(hp5) && /DB\.isWeekLec\(e\)/.test(app5) && /DB\.isWeekLec\(e\)/.test(bd5),
+        "수강생 화면(예전 · React 같이): 홈 다가오는 일정 · 일정 카드 · 이달 목록에 ‘13:30~18:30’ · 온라인 주차 강의도 과제 버튼");
+      const pubC = AC.view("cohorts:moon", [{ id: "c4", name: "3기", classUrl: "https://zoom.us/j/x", classOver: { 3: { mode: "online", url: "https://zoom.us/j/y", topic: "자사몰" } } }], {});
+      ok(pubC && pubC[0] && !pubC[0].classUrl && pubC[0].classOver && pubC[0].classOver[3].topic === "자사몰" && !pubC[0].classOver[3].url, "공개(로그인 전) 기수 정보: 입장 링크는 빼요 — 기수 칸 · 주차별 강의 둘 다", pubC);
+    }
+    // 일회성: 두잉고 LIVE 기수 정리 + 문대표 3기 메인 강사 강의 (2026-11-05)
+    { const LV = {
+        "cohorts:moon": [{ id: "c1", name: "1기", startDate: "2026-01-24", classDow: 6 }, { id: "c2", name: "2기", startDate: "2026-08-29", classDow: 6 }, { id: "c4", name: "3기", startDate: "2026-11-21", classDow: 6, weeks: 4, curriculumId: "cur-4w", classTime: "10:30" }, { id: "c9", name: "예전 3기", startDate: "2026-10-01" }],
+        "cohorts:farmer": [{ id: "f1", name: "1기", startDate: "2026-10-01" }], "cohorts:choi": [{ id: "y1", name: "1기", startDate: "2026-10-01" }], "cohorts:hoon": [],
+        "content:moon": { brand: {}, schedule: [{ id: "e-m3-bonus", type: "online", title: "문대표 - 5주차 온라인 강의", time: "19:00", url: "https://zoom.us/j/z", scope: "cohort", cohortId: "c4", date: "2026-12-15" }, { id: "e-m3-ch1", type: "challenge", title: "챌린지 1회차", time: "", scope: "cohort", cohortId: "c4", date: "2026-11-25" }] },
+        "content:farmer": { brand: {}, schedule: [{ id: "fa", type: "qna", title: "f1 라이브", scope: "cohort", cohortId: "f1", date: "2026-10-05" }, { id: "fb", type: "qna", title: "모든 기수", scope: "all", week: 1, dow: 2 }] },
+        "stu:moon:s9": { id: "s9", cohortId: "c9", name: "체험" }, "stu:farmer:vs1": { id: "vs1", cohortId: "vod:farmer", track: "vod" },
+        "bill:choi:b1": { id: "b1", instructorId: "choi", cohortId: "y1" }, "bill:farmer:b2": { id: "b2", instructorId: "farmer", cohortId: "f1", canceledAt: 1 } };
+      const lvGet = (k) => (LV[k] !== undefined ? JSON.parse(JSON.stringify(LV[k])) : undefined), lvKeys = (pre) => Object.keys(LV).filter((k) => k.indexOf(pre) === 0);
+      w = OO.liveLectures(lvGet, lvKeys);
+      const m3 = w.writes["cohorts:moon"].find((x) => x.id === "c4"), z5 = w.writes["content:moon"].schedule.find((e) => e.date === "2026-12-15");
+      ok(w.writes["cohorts:farmer"] && !w.writes["cohorts:farmer"].length && w.writes["content:farmer"].schedule.map((e) => e.id).join() === "fb" && !w.writes["cohorts:choi"] && !w.writes["cohorts:hoon"] && w.writes["cohorts:moon"].length === 4 &&
+        w.result.removed.join() === "farmer 1기 (f1)" && w.result.kept.length === 2 && w.result.kept.some((x) => /choi 1기.*이용료 1건/.test(x)) && w.result.kept.some((x) => /moon 예전 3기.*수강생 1명/.test(x)),
+        "일회성(LIVE 기수 정리): 다른 강사 기수는 지우고 그 기수 일정도(모든 기수 반복 일정 · VOD 수강생은 그대로) · 수강생이나 이용료 기록(취소 안 한 것)이 있으면 남기고 적어요 · 문대표 1~3기는 그대로", w.result);
+      ok(m3 && JSON.stringify(m3.classDates) === JSON.stringify({ 2: "2026-11-22" }) && m3.classOver[1].time === "13:30" && m3.classOver[1].end === "18:30" && m3.classOver[1].place === "3층" && m3.classOver[1].topic === "해외 건기식 OT" && m3.classOver[2].topic === "브랜딩" && m3.classOver[3].end === "13:00" && m3.classOver[3].topic === "자사몰" && m3.classOver[4].place === "2층" && m3.classOver[4].topic === "자동화" && m3.classTime === "10:30",
+        "일회성(문대표 3기): 2주차만 11/22(일) (3 · 4주차는 매주 토요일 그대로) · 주차마다 시간 · 끝나는 시간 · 장소 · 주제", m3);
+      ok(z5 && z5.id === "e-m3-bonus" && z5.type === "online" && z5.time === "19:00" && z5.end === "22:00" && z5.place === "ZOOM 라이브" && z5.title === "5주차 온라인 강의 — 광고의 모든것" && z5.url === "https://zoom.us/j/z" && w.writes["content:moon"].schedule.length === 2,
+        "일회성(문대표 3기): 5주차 줌 강의 12/15 19:00~22:00 ZOOM 라이브 · 광고의 모든것 (있던 일정을 고쳐요 · 입장 링크 그대로)", z5);
+      const ev3 = (() => { const sbx = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } }; sbx.window = sbx; require("vm").createContext(sbx); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => require("vm").runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sbx, { filename: f })); sbx.DB.load(); return sbx.DB.events("moon", Object.assign({ instructorId: "moon" }, m3)).filter((e) => sbx.DB.isWeekLec(e)).map((e) => e.date + " " + sbx.DB.evTime(e) + " " + e.place + " " + e.title); })();
+      ok(ev3.join(" | ") === "2026-11-21 13:30~18:30 3층 1주차 오프라인 강의 — 해외 건기식 OT | 2026-11-22 09:00~13:30 3층 2주차 오프라인 강의 — 브랜딩 | 2026-12-05 09:00~13:00 3층 3주차 오프라인 강의 — 자사몰 | 2026-12-12 09:00~13:30 2층 4주차 오프라인 강의 — 자동화",
+        "일회성(문대표 3기): 수강생 일정에 대표님이 주신 그대로 — 11/21 13:30~18:30 3층 · 11/22 09:00~13:30 3층 · 12/5 09:00~13:00 3층 · 12/12 09:00~13:30 2층", ev3);
+      Object.keys(w.writes).forEach((k) => { LV[k] = w.writes[k]; });
+      const w2 = OO.liveLectures(lvGet, lvKeys), m3b = w2.writes["cohorts:moon"].find((x) => x.id === "c4"), z5b = w2.writes["content:moon"].schedule.find((e) => e.date === "2026-12-15");
+      ok(JSON.stringify(m3b) === JSON.stringify(m3) && JSON.stringify(z5b) === JSON.stringify(z5) && !w2.result.removed.length && w2.writes["content:moon"].schedule.length === 2 && OO.OPS.findIndex((x) => x.id === "2026-11-05-live-lectures") > OO.OPS.findIndex((x) => x.id === "2026-11-04-moon-cal-v2"),
+        "일회성(LIVE 기수 정리 · 3기 강의): 다시 돌려도 같은 결과 · 캘린더 작업 뒤에 돌아요", w2.result);
+    }
     // 정산: 체험 계정 주문(demo)은 정산에서 빼요 · 자동 로그아웃
     const ad24 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mj24 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8");
     ok(/const os = VD\(\)\.orders\.filter\(\(o\) => !o\.demo/.test(ad24) && /if \(o\.demo\) return;/.test(ad24), "정산: 체험 계정 0원 주문은 강사 정산 건수에 넣지 않아요");

@@ -455,6 +455,20 @@
   const cohortStatus = (co) => SCH.cohortStatus(co, cohortWeeks(co), todayStr());
   const STATUS_LABEL = { upcoming: "모집 중", running: "진행 중", ended: "종료" };
   const currentWeek = (co) => SCH.currentWeek(co, cohortWeeks(co), todayStr());
+  /* 주차 강의를 하나씩 정하기 (2026-11-05): co.classOver = { "1": { time, end, place, url, mode, topic } }
+   *  메인 강사 강의는 주마다 날짜 · 시간 · 장소 · 방식(오프라인 · 줌)이 다를 때가 많아요 — 날짜는 그대로 classDates, 나머지는 여기
+   *  비운 칸은 기수 기본값(강의 시간 classTime ~ 끝나는 시간 classEnd · 기본 장소 classPlace · 입장 링크 classUrl) → 강사 기본 정보(liveTime · liveUrl) */
+  const classOverOf = (co, no) => { const m = co && co.classOver, v = m && typeof m === "object" ? m[String(no)] : null; return v && typeof v === "object" ? v : {}; };
+  /** 주차 강의 하나 → { date, time, end, place, url, mode("online" | ""), topic(비면 커리큘럼 주차 제목) }
+   *  · 그 주차만 시작 시간을 바꾸고 끝나는 시간을 비우면 끝나는 시간은 비워요 (기본 끝나는 시간이 시작보다 빠를 수 있어서) · 온라인 주차는 기본 장소를 안 붙여요 */
+  function lectureOf(instId, co, w) {
+    const c = content(instId), b = (c && c.brand) || {}, o = classOverOf(co, w.no), on = o.mode === "online";
+    return { date: classDate(co, w.no), time: o.time || co.classTime || b.liveTime || "", end: o.end || (o.time ? "" : co.classEnd || ""), place: o.place || (on ? "" : co.classPlace || ""), url: o.url || co.classUrl || b.liveUrl || "", mode: on ? "online" : "", topic: o.topic || w.title || "" };
+  }
+  /** 일정 시간 글씨 — 19:00~22:00 (끝나는 시간이 있으면) · 19:00 · 없으면 "" */
+  const evTime = (e) => (e && e.time ? e.time + (e.end ? "~" + e.end : "") : "");
+  /** 기수에서 생기는 주차 강의인지 (오프라인 · 온라인 주차 둘 다) */
+  const isWeekLec = (e) => !!(e && e.auto && (e.type === "open" || e.type === "online"));
   /* ---------------- 성장 레벨 (주차가 지날 때마다 한 단계씩) ---------------- */
   const LEVEL_SET = [
     { key: "seed", name: "씨앗", icon: "lvSeed" }, { key: "leaf", name: "풀잎", icon: "lvLeaf" }, { key: "branch", name: "가지", icon: "lvBranch" },
@@ -521,7 +535,7 @@
   const calMain = (e) => e.type === "open" || e.type === "online";
   function calChip(instId, e) {
     const L = evLabel(instId, e.type), wk = e.week ? e.week + "주차 " : "";
-    if (e.auto && e.type === "open") return { s: e.week ? e.week + "주차" : calShort(instId), l: wk + L };
+    if (isWeekLec(e)) return { s: e.week ? e.week + "주차" : calShort(instId), l: wk + L };
     if (e.auto && e.type === "deadline") return { s: e.week ? e.week + "주 마감" : "마감", l: wk + L };
     if (e.auto && e.type === "replay") return { s: e.week ? e.week + "주 녹화" : CAL_SHORT.replay, l: wk + L };
     const t = String(e.title || "").trim(), n = /(\d+)\s*(주차|회차|회)/.exec(t), base = e.type === "open" ? calShort(instId) : CAL_SHORT[e.type] || L;
@@ -533,13 +547,12 @@
     const c = content(instId);
     if (!c || !co) return [];
     const out = [];
-    // 주차 강의 날짜: 기수에 ‘매주 무슨 요일’을 정했으면 그 주의 그 요일, 아니면 주차 시작일
-    const time = co.classTime || c.brand.liveTime || "";
-    const url = co.classUrl || c.brand.liveUrl || "";
+    // 주차 강의: 날짜(주차별로 바꾼 날 → 매주 강의 요일 → 주차 시작일) · 시간 · 끝나는 시간 · 장소 · 방식 · 주제는 주차마다 정할 수 있어요 (lectureOf)
+    //  시간은 제목에 붙이지 않고 따로(time · end) — 화면이 ‘13:30~18:30’ 으로 보여 줘요 (evTime)
     const g = calCfg(instId), openWord = (g && g.labels && g.labels.open) || "강의", rpAfter = g && g.types && g.types.indexOf("replay") >= 0 && g.replayAfter != null ? Number(g.replayAfter) : null;
     weeksOf(co).forEach((w) => {
-      const date = classDate(co, w.no);
-      out.push({ date, time, type: "open", week: w.no, title: w.no + "주차 " + openWord + " — " + w.title + (time ? " (" + time + ")" : ""), url, auto: true });
+      const lc = lectureOf(instId, co, w), date = lc.date, type = lc.mode === "online" ? "online" : "open";
+      out.push({ date, time: lc.time, end: lc.end, type, week: w.no, title: w.no + "주차 " + (type === "online" ? evLabel(instId, "online") : openWord) + " — " + lc.topic, url: lc.url, place: lc.place, auto: true });
       if (rpAfter != null) out.push({ date: addDays(date, rpAfter), time: "", type: "replay", week: w.no, title: w.no + "주차 강의 녹화본 업로드", auto: true });
       out.push({ date: weekDeadline(co, w.no), time: "", type: "deadline", week: w.no, title: w.no + "주차 과제 마감", auto: true });
     });
@@ -547,7 +560,7 @@
       let date = null;
       if (e.scope === "cohort") { if (e.cohortId === co.id) date = e.date; }
       else if ((Number(e.week) || 1) <= cohortWeeks(co)) date = SCH.weekDow(co, e.week, e.dow);
-      if (date) out.push({ date, time: e.time || "", type: e.type, week: e.scope === "cohort" ? null : Number(e.week), title: e.title, url: e.url || "", place: e.place || "", id: e.id });
+      if (date) out.push({ date, time: e.time || "", end: e.time ? e.end || "" : "", type: e.type, week: e.scope === "cohort" ? null : Number(e.week), title: e.title, url: e.url || "", place: e.place || "", id: e.id });
     });
     return out.sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99")));
   }
@@ -1091,7 +1104,7 @@
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
     curricula, curriculum, curriculumOf, weeksOf, cohortWeeks,
     weekOpen, weekDeadline, baseClassDate, cohortEnd, cohortStatus, STATUS_LABEL, currentWeek, LEVEL_SET, levelSteps, level, currentCohort, nextCohortName,
-    EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort, calChip, calMain, CAL_ORDER,
+    EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort, calChip, calMain, CAL_ORDER, classOverOf, lectureOf, evTime, isWeekLec,
     REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, applyTrack, siteInfo, saveSite, SITE_DEFAULT, opsKakao,
     BILLING_DEFAULT, BILL_VAT, BILL_STATE, billingInfo, saveBilling, bills, saveBill, removeBill, billMoney, billState, won,
     THEMES, themeOf, STUDENT_MENUS, LIB_MENUS, CUSTOM_ICONS, menuConfig, menuOn, libOn, isCustom, NOTE_PROMPTS, botNameOf,

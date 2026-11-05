@@ -100,7 +100,7 @@
   // 커리큘럼 편집 화면에서 지금 고른 커리큘럼 (기본: 기본 커리큘럼)
   const CUR = () => { const cu = DB.curriculum(IID(), ui.curId); ui.curId = cu ? cu.id : "main"; return cu; };
   const usedBy = (curId) => DB.cohortsOf(IID()).filter((co) => (co.curriculumId || "main") === curId);
-  const classText = (co) => (co.classDow !== undefined && co.classDow !== null && co.classDow !== "" ? "매주 " + DOW[Number(co.classDow)] + "요일" : "주차 시작일") + (co.classTime ? " " + co.classTime : "");
+  const classText = (co) => (co.classDow !== undefined && co.classDow !== null && co.classDow !== "" ? "매주 " + DOW[Number(co.classDow)] + "요일" : "주차 시작일") + (co.classTime ? " " + co.classTime + (co.classEnd ? "~" + co.classEnd : "") : "") + (co.classOver && Object.keys(co.classOver).length ? " · 주차별 따로" : "");
   /** 받침에 맞는 조사: josa("공지", "을", "를") → "공지를" · josa("상담 중", "으로", "로") → "상담 중으로" */
   const josa = (w, withB, noB) => { const t = String(w == null ? "" : w), c = t.charCodeAt(t.length - 1); if (!(c >= 0xac00 && c <= 0xd7a3)) return t + noB; const jong = (c - 0xac00) % 28; return t + (jong === 0 || (withB === "으로" && jong === 8) ? noB : withB); };
   const pill = (label, cls) => '<span class="a-pill ' + cls + '">' + esc(label) + "</span>";
@@ -590,7 +590,8 @@
     return '<div class="a-weeks">' + c.weeks.map((w) => {
       const open = DB.weekOpen(co, w.no), dl = DB.weekDeadline(co, w.no);
       const st = t > dl ? "past" : t >= open ? "now" : "next";
-      const moved = co.classDates && co.classDates[w.no] ? '<em class="a-week-mv">강의 ' + esc(mdDow(DB.classDate(co, w.no))) + "</em>" : "";
+      const ov = (co.classOver || {})[w.no], lc = (co.classDates && co.classDates[w.no]) || ov ? DB.lectureOf(co.instructorId, co, w) : null;
+      const moved = lc ? '<em class="a-week-mv">강의 ' + esc(mdDow(lc.date) + (lc.time ? " " + lc.time + (lc.end ? "~" + lc.end : "") : "") + (lc.mode === "online" ? " · 온라인" : lc.place ? " · " + lc.place : "")) + "</em>" : "";
       return '<div class="a-week ' + st + '"><b>' + w.no + "주차" + moved + "</b><span>" + fmtMD(open) + " ~ " + fmtMD(dl) + "</span><small>" + esc(w.title) + "</small></div>";
     }).join("") + "</div>";
   }
@@ -740,7 +741,8 @@
     return '<div class="pl-ev" data-id="' + esc(e.id || "") + '">' +
       '<select class="a-input a-sm" name="ev-type" aria-label="종류">' + PLAN_KINDS.map((k) => '<option value="' + k + '"' + ((e.type || "free") === k ? " selected" : "") + ">" + esc(DB.evLabel(iid, k)) + "</option>").join("") + "</select>" +
       '<input class="a-input a-sm" name="ev-date" type="date" value="' + esc(e.date || "") + '" aria-label="날짜">' +
-      '<input class="a-input a-sm" name="ev-time" type="time" value="' + esc(e.time || "") + '" aria-label="시간">' +
+      '<input class="a-input a-sm" name="ev-time" type="time" value="' + esc(e.time || "") + '" aria-label="시작 시간">' +
+      '<input class="a-input a-sm" name="ev-end" type="time" value="' + esc(e.end || "") + '" aria-label="끝나는 시간">' +
       '<input class="a-input a-sm" name="ev-title" maxlength="80" value="' + esc(e.title || "") + '" placeholder="일정 이름 (비우면 종류 이름)" aria-label="일정 이름">' +
       '<input class="a-input a-sm" name="ev-place" maxlength="300" value="' + esc(e.url || e.place || "") + '" placeholder="장소 또는 입장 링크 (선택)" aria-label="장소 또는 링크">' +
       '<button type="button" class="a-icon-btn sm" data-action="plan-ev-del" aria-label="이 일정 지우기">' + icon("x", "sm") + "</button></div>";
@@ -751,7 +753,7 @@
     if (isNew && !planMaster()) return;
     if (isNew) {
       const after = last ? addDays(DB.cohortEnd(last), 1) : todayStr(), dow = last && last.classDow != null && last.classDow !== "" ? Number(last.classDow) : 6;
-      co = { name: DB.nextCohortName(iid), startDate: addDays(after, (dow - parseDate(after).getDay() + 7) % 7), classDow: last ? last.classDow : dow, classTime: last ? last.classTime : brand.liveTime, curriculumId: last ? last.curriculumId : undefined, recruiting: true };
+      co = { name: DB.nextCohortName(iid), startDate: addDays(after, (dow - parseDate(after).getDay() + 7) % 7), classDow: last ? last.classDow : dow, classTime: last ? last.classTime : brand.liveTime, classEnd: last ? last.classEnd : undefined, classPlace: last ? last.classPlace : undefined, curriculumId: last ? last.curriculumId : undefined, recruiting: true };
     }
     const curs = DB.curricula(iid), curId = co.curriculumId || "main", n = (DB.studentsOf(iid).filter((s) => s.cohortId === co.id)).length;
     openModal(isNew ? "새 기수 설계 · " + insName(iid) : insName(iid) + " " + co.name + " 설계",
@@ -763,11 +765,13 @@
           '<div class="a-form-row"><div class="a-field"><label for="pl-cur">커리큘럼</label><select class="a-input" id="pl-cur" name="pl-cur">' + curs.map((x) => '<option value="' + x.id + '"' + (x.id === curId ? " selected" : "") + ">" + esc(x.name) + " · " + x.weeks.length + "주</option>").join("") + "</select></div>" +
             '<div class="a-field"><label for="pl-weeks">진행 주차</label><select class="a-input" id="pl-weeks" name="pl-weeks" data-cur="' + esc(curId) + '">' + planWeekOpts(iid, curId, co.weeks) + "</select></div></div>" +
           '<div class="a-form-row"><div class="a-field"><label for="pl-dow">매주 강의 요일</label><select class="a-input" id="pl-dow" name="pl-dow"><option value="">1주차 강의일과 같은 요일</option>' + DOW.map((d, i) => '<option value="' + i + '"' + (co.classDow !== undefined && co.classDow !== null && co.classDow !== "" && Number(co.classDow) === i ? " selected" : "") + ">매주 " + d + "요일</option>").join("") + "</select></div>" +
-            '<div class="a-field"><label for="pl-time">강의 시간</label><input class="a-input" id="pl-time" name="pl-time" type="time" value="' + esc(co.classTime || brand.liveTime || "") + '"></div></div>' +
-          '<p class="a-muted p-small pl-hint">1주차 강의일부터 일주일씩 주차가 열리고, 진행 주차는 커리큘럼 앞에서부터 그만큼만 진행해요. 매주 강의 요일을 고르면 그 주의 그 요일이 강의일이에요.</p>' +
-          '<details class="pl-wds"' + (co.classDates && Object.keys(co.classDates).length ? " open" : "") + '><summary>' + icon("calendar", "xs") + ' 주차별 강의일 바꾸기 <small>그 주차만 다른 날(예: 5주차는 수요일)에 강의할 때 · 비우면 매주 강의 요일대로</small></summary><div id="pl-wds">' + planWdHtml(iid, planDraftOf(co, [])) + "</div></details>" +
-          '<div class="a-field"><label for="pl-url">강의 입장 링크 <small>(줌 등 · 비우면 기본 정보의 링크)</small></label><input class="a-input" id="pl-url" name="pl-url" type="url" value="' + esc(co.classUrl || "") + '" placeholder="https://zoom.us/j/…"></div>' +
+            '<div class="a-field"><label for="pl-time">기본 강의 시간 <small>시작 ~ 끝</small></label><div class="pl-tr"><input class="a-input" id="pl-time" name="pl-time" type="time" value="' + esc(co.classTime || brand.liveTime || "") + '" aria-label="기본 시작 시간"><span class="pl-tilde" aria-hidden="true">~</span><input class="a-input" id="pl-end" name="pl-end" type="time" value="' + esc(co.classEnd || "") + '" aria-label="기본 끝나는 시간"></div></div></div>' +
+          '<div class="a-form-row"><div class="a-field"><label for="pl-place">기본 장소 <small>(오프라인 강의 · 예: 3층)</small></label><input class="a-input" id="pl-place" name="pl-place" maxlength="120" value="' + esc(co.classPlace || "") + '" placeholder="예: 3층 강의실"></div>' +
+            '<div class="a-field"><label for="pl-url">강의 입장 링크 <small>(줌 등 · 비우면 기본 정보의 링크)</small></label><input class="a-input" id="pl-url" name="pl-url" type="url" value="' + esc(co.classUrl || "") + '" placeholder="https://zoom.us/j/…"></div></div>' +
+          '<p class="a-muted p-small pl-hint">1주차 강의일부터 일주일씩 주차가 열리고, 진행 주차는 커리큘럼 앞에서부터 그만큼만 진행해요. 매주 강의 요일을 고르면 그 주의 그 요일이 강의일이에요. 주마다 다르면 아래 ‘메인 강사 강의’에서 그 주차만 바꿔요.</p>' +
           '<label class="a-check"><input type="checkbox" name="pl-rec"' + (co.recruiting ? " checked" : "") + "><span>수강생 로그인 화면에서 이 기수로 수강 신청 받기</span></label>" +
+          '<h3 class="pl-h">' + icon("video", "sm") + ' 메인 강사 강의 <small>주차마다 날짜 · 시작 ~ 끝 · 오프라인/온라인(줌) · 장소 · 주제를 따로 정해요 · 비운 칸은 위 기본값</small></h3>' +
+          '<div id="pl-wds" class="pl-lecs">' + planLecHtml(iid, planDraftOf(co, [])) + "</div>" +
           '<h3 class="pl-h">' + icon("calendar", "sm") + " 이 기수 특별 일정 <small>무료 강의 · 오프라인 강의 · 챌린지 · 라이브 등</small></h3>" +
           '<div class="pl-evs" id="pl-evs">' + planEvs(iid, co.id).map((e) => planRow(iid, e)).join("") + "</div>" +
           '<div class="pl-add">' + ["free", "offline", "challenge", "qna"].map((k) => btn(icon("plus", "xs") + esc(DB.evLabel(iid, k)), "plan-ev-add", "a-btn-ghost a-btn-sm", ' data-k="' + k + '"')).join("") + btn(icon("plus", "xs") + "기타 일정", "plan-ev-add", "a-btn-ghost a-btn-sm", ' data-k="event"') + "</div>" +
@@ -781,22 +785,49 @@
     return Array.from({ length: max }, (_, i) => i + 1).map((k) => '<option value="' + k + '"' + (k === v ? " selected" : "") + ">" + k + "주" + (k === max ? " (전체)" : "") + "</option>").join("");
   }
   /** 설계 창 값으로 만든 임시 기수 (미리보기 · 주차별 강의일 계산용) */
-  const planFake = (iid, c, withDates) => ({ id: "_plan", instructorId: iid, startDate: c.startDate, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime, classDates: withDates === false ? undefined : c.classDates });
-  /** 주차별 강의일 칸 (2주차부터 — 1주차는 ‘1주차 강의일’) */
-  function planWdHtml(iid, d) {
+  const planFake = (iid, c, withDates) => ({ id: "_plan", instructorId: iid, startDate: c.startDate, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime, classEnd: c.classEnd, classPlace: c.classPlace, classOver: planLo(c.classOver), classDates: withDates === false ? undefined : c.classDates });
+  /** 설계 창의 주차별 강의 값 → 저장 모양 (빈 칸은 빼요 · 장소 칸에 http 링크를 적으면 입장 링크로) */
+  const planLo = (lo) => {
+    const out = {};
+    Object.keys(lo || {}).forEach((no) => {
+      const o = lo[no] || {}, x = {}, pl = String(o.place || o.url || "").trim();
+      if (o.time) x.time = o.time; if (o.end) x.end = o.end; if (o.mode === "online") x.mode = "online";
+      if (pl) { if (/^https?:\/\//i.test(pl)) x.url = pl; else x.place = pl.slice(0, 120); }
+      if (o.topic) x.topic = String(o.topic).slice(0, 80);
+      if (Object.keys(x).length) out[no] = x;
+    });
+    return out;
+  };
+  /** 메인 강사 강의 — 주차마다 날짜 · 시작 ~ 끝 · 방식(오프라인 · 온라인) · 장소(또는 입장 링크) · 주제
+   *  비운 칸은 기수 기본값 · 날짜는 classDates(2주차부터 — 1주차는 ‘1주차 강의일’) · 나머지는 classOver */
+  function planLecHtml(iid, d) {
     const c = d.co;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.startDate || "")) return '<p class="a-muted p-small">1주차 강의일을 먼저 골라 주세요.</p>';
-    const base = planFake(iid, c, false), wk = DB.weeksOf(base).filter((w) => w.no > 1);
-    if (!wk.length) return '<p class="a-muted p-small">2주차부터 바꿀 수 있어요.</p>';
-    return '<div class="pl-wd-list">' + wk.map((w) => { const v = (c.classDates || {})[w.no] || ""; return '<label class="pl-wd"><span><b>' + w.no + "주차</b><small>기본 " + mdDow(DB.baseClassDate(base, w.no)) + '</small></span><input class="a-input a-sm" type="date" name="pl-wd-' + w.no + '" value="' + esc(v) + '" aria-label="' + w.no + '주차 강의일"></label>'; }).join("") + "</div>";
+    const base = planFake(iid, c, false), wk = DB.weeksOf(base);
+    if (!wk.length) return '<p class="a-muted p-small">커리큘럼에 주차가 없어요.</p>';
+    const brand = (DB.content(iid) || {}).brand || {}, dt = c.classTime || brand.liveTime || "", tr = dt ? dt + (c.classEnd ? "~" + c.classEnd : "") : "", dp = c.classPlace || "";
+    return '<div class="pl-lec-list">' + wk.map((w) => {
+      const no = w.no, o = (c.classOver || {})[no] || {}, def = mdDow(no === 1 ? c.startDate : DB.baseClassDate(base, no)), pl = o.url || o.place || "";
+      return '<div class="pl-lec" data-no="' + no + '">' +
+        '<div class="pl-lec-h"><b>' + no + "주차</b><small>기본 " + esc(def) + (tr ? " " + esc(tr) : "") + (dp ? " · " + esc(dp) : "") + "</small></div>" +
+        (no === 1 ? '<input class="a-input a-sm pl-lec-d" type="date" value="' + esc(c.startDate) + '" disabled title="1주차 강의일은 위 ‘1주차 강의일’에서 바꿔요" aria-label="1주차 강의일 (위에서 바꿔요)">'
+          : '<input class="a-input a-sm pl-lec-d" type="date" name="pl-wd-' + no + '" value="' + esc((c.classDates || {})[no] || "") + '" aria-label="' + no + '주차 강의일 (비우면 기본)">') +
+        '<input class="a-input a-sm pl-lec-t" type="time" name="pl-lt-' + no + '" value="' + esc(o.time || "") + '" aria-label="' + no + '주차 시작 시간 (비우면 기본)">' +
+        '<input class="a-input a-sm pl-lec-e" type="time" name="pl-le-' + no + '" value="' + esc(o.end || "") + '" aria-label="' + no + '주차 끝나는 시간">' +
+        '<select class="a-input a-sm pl-lec-m" name="pl-lm-' + no + '" aria-label="' + no + '주차 방식"><option value="">오프라인</option><option value="online"' + (o.mode === "online" ? " selected" : "") + ">온라인 (줌)</option></select>" +
+        '<input class="a-input a-sm pl-lec-p" name="pl-lp-' + no + '" maxlength="300" value="' + esc(pl) + '" placeholder="' + esc(dp ? "장소 (기본 " + dp + ") 또는 입장 링크" : "장소 또는 입장 링크") + '" aria-label="' + no + '주차 장소 또는 입장 링크">' +
+        '<input class="a-input a-sm pl-lec-c" name="pl-lc-' + no + '" maxlength="80" value="' + esc(o.topic || "") + '" placeholder="' + esc("주제 (기본: " + (w.title || no + "주차") + ")") + '" aria-label="' + no + '주차 주제">' +
+        "</div>";
+    }).join("") + "</div>";
   }
-  const planWdSig = (c) => [c.startDate, c.curriculumId, c.weeks, c.classDow].join("|");
-  const planDraftOf = (co, evs) => ({ co: { id: co.id, name: co.name, startDate: co.startDate, curriculumId: co.curriculumId || "main", weeks: Number(co.weeks) || 0, classDow: co.classDow == null ? "" : String(co.classDow), classTime: co.classTime || "", classUrl: co.classUrl || "", recruiting: !!co.recruiting, classDates: Object.assign({}, co.classDates || {}) }, evs: (evs || []).map((e) => ({ id: e.id, type: e.type, date: e.date, time: e.time || "", title: e.title || "", place: e.url || e.place || "" })) });
+  const planWdSig = (c) => [c.startDate, c.curriculumId, c.weeks, c.classDow, c.classTime, c.classEnd, c.classPlace].join("|");
+  const planDraftOf = (co, evs) => ({ co: { id: co.id, name: co.name, startDate: co.startDate, curriculumId: co.curriculumId || "main", weeks: Number(co.weeks) || 0, classDow: co.classDow == null ? "" : String(co.classDow), classTime: co.classTime || "", classEnd: co.classEnd || "", classPlace: co.classPlace || "", classUrl: co.classUrl || "", recruiting: !!co.recruiting, classDates: Object.assign({}, co.classDates || {}), classOver: JSON.parse(JSON.stringify(co.classOver || {})) }, evs: (evs || []).map((e) => ({ id: e.id, type: e.type, date: e.date, time: e.time || "", end: e.end || "", title: e.title || "", place: e.url || e.place || "" })) });
   function planRead(f) {
     const g = (n) => { const x = f.elements.namedItem(n); return x ? String(x.value || "").trim() : ""; };
     const cd = {}; Array.from(f.querySelectorAll('[name^="pl-wd-"]')).forEach((x) => { const v = String(x.value || "").trim(); if (v) cd[x.name.slice(6)] = v; });
-    return { co: { id: f.dataset.id, name: g("pl-name"), startDate: g("pl-start"), curriculumId: g("pl-cur") || "main", weeks: Number(g("pl-weeks")) || 0, classDow: g("pl-dow"), classTime: g("pl-time"), classUrl: g("pl-url"), recruiting: !!(f.elements.namedItem("pl-rec") || {}).checked, classDates: cd },
-      evs: Array.from(f.querySelectorAll(".pl-ev")).map((r) => { const v = (n) => String((r.querySelector('[name="' + n + '"]') || {}).value || "").trim(); return { id: r.dataset.id || "", type: v("ev-type"), date: v("ev-date"), time: v("ev-time"), title: v("ev-title"), place: v("ev-place") }; }) };
+    const lo = {}; Array.from(f.querySelectorAll(".pl-lec[data-no]")).forEach((r) => { const no = r.dataset.no, v = (k) => String((r.querySelector('[name="pl-' + k + "-" + no + '"]') || {}).value || "").trim(); const o = { time: v("lt"), end: v("le"), mode: v("lm"), place: v("lp"), topic: v("lc") }; if (o.time || o.end || o.mode || o.place || o.topic) lo[no] = o; });
+    return { co: { id: f.dataset.id, name: g("pl-name"), startDate: g("pl-start"), curriculumId: g("pl-cur") || "main", weeks: Number(g("pl-weeks")) || 0, classDow: g("pl-dow"), classTime: g("pl-time"), classEnd: g("pl-end"), classPlace: g("pl-place"), classUrl: g("pl-url"), recruiting: !!(f.elements.namedItem("pl-rec") || {}).checked, classDates: cd, classOver: lo },
+      evs: Array.from(f.querySelectorAll(".pl-ev")).map((r) => { const v = (n) => String((r.querySelector('[name="' + n + '"]') || {}).value || "").trim(); return { id: r.dataset.id || "", type: v("ev-type"), date: v("ev-date"), time: v("ev-time"), end: v("ev-end"), title: v("ev-title"), place: v("ev-place") }; }) };
   }
   /** 저장 전 미리보기 — 주차 강의 · 과제 마감 · 모든 기수 반복 일정 + 이 기수 특별 일정을 날짜순으로 */
   function planPreviewHtml(iid, d) {
@@ -804,11 +835,11 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.startDate || "")) return '<p class="a-muted">1주차 강의일을 고르면 일정이 보여요.</p>';
     const fake = planFake(iid, c);
     const L = (t) => DB.evLabel(iid, t), wk = DB.weeksOf(fake), first = DB.classDate(fake, 1), lastD = DB.classDate(fake, wk.length);
-    const list = DB.events(iid, fake).concat(d.evs.filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date)).map((e) => ({ date: e.date, time: e.time, type: e.type, title: e.title || L(e.type), place: e.place, special: true })))
+    const list = DB.events(iid, fake).concat(d.evs.filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date)).map((e) => ({ date: e.date, time: e.time, end: e.time ? e.end : "", type: e.type, title: e.title || L(e.type), place: e.place, special: true })))
       .sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99")));
     const cls = { open: "info", online: "info", deadline: "bad", free: "warn", offline: "dark", challenge: "ok", qna: "warn", bonus: "warn", guest: "guest", event: "dark", notice: "mute", replay: "info" };
     return '<div class="pl-sum"><b>' + wk.length + "주 과정</b><span>1주차 " + mdDow(first) + " → " + wk.length + "주차 " + mdDow(lastD) + "</span><small>마지막 과제 마감 " + mdDow(DB.cohortEnd(fake)) + "</small></div>" +
-      '<ul class="pl-list">' + list.map((e) => '<li class="' + (e.special ? "sp" : e.type === "deadline" ? "dl" : "") + '"><span class="pl-d">' + mdDow(e.date) + (e.time ? " " + esc(e.time) : "") + "</span>" + pill(L(e.type), cls[e.type] || "mute") + "<span class=\"pl-t\">" + esc(e.title) + (e.place && !/^https?:/i.test(e.place) ? ' <small class="a-muted">· ' + esc(e.place) + "</small>" : "") + "</span></li>").join("") + "</ul>";
+      '<ul class="pl-list">' + list.map((e) => '<li class="' + (e.special ? "sp" : e.type === "deadline" ? "dl" : "") + '"><span class="pl-d">' + mdDow(e.date) + (DB.evTime(e) ? "<small>" + esc(DB.evTime(e)) + "</small>" : "") + "</span>" + pill(L(e.type), cls[e.type] || "mute") + "<span class=\"pl-t\">" + esc(e.title) + (e.place && !/^https?:/i.test(e.place) ? ' <small class="a-muted">· ' + esc(e.place) + "</small>" : "") + "</span></li>").join("") + "</ul>";
   }
   function refreshPlanPv() {
     const f = document.getElementById("plan-form"), box = document.getElementById("pl-pv");
@@ -817,7 +848,7 @@
     // 커리큘럼을 바꾸면 진행 주차 칸도 그 커리큘럼 길이에 맞게
     if (ws && ws.dataset.cur !== d.co.curriculumId) { const keep = ws.selectedIndex === ws.options.length - 1 ? 0 : Number(ws.value); ws.innerHTML = planWeekOpts(iid, d.co.curriculumId, keep); ws.dataset.cur = d.co.curriculumId; d.co.weeks = Number(ws.value) || 0; }
     const wb = document.getElementById("pl-wds"), sig = planWdSig(d.co);
-    if (wb && wb.dataset.sig !== sig) { if (wb.dataset.sig) wb.innerHTML = planWdHtml(iid, d); wb.dataset.sig = sig; }
+    if (wb && wb.dataset.sig !== sig) { if (wb.dataset.sig) wb.innerHTML = planLecHtml(iid, d); wb.dataset.sig = sig; }
     box.innerHTML = planPreviewHtml(iid, d);
   }
   function savePlan(f) {
@@ -829,6 +860,14 @@
     const evs = d.evs.filter((e) => e.date || e.title || e.place);
     const bad = evs.find((e) => !/^\d{4}-\d{2}-\d{2}$/.test(e.date));
     if (bad) { err.textContent = "‘" + (bad.title || DB.evLabel(iid, bad.type)) + "’ 일정의 날짜를 골라 주세요."; return; }
+    // 시간: HH:MM · 끝나는 시간은 시작 시간 뒤 (밤 12시를 넘기는 강의는 없어요)
+    const TM = /^([01]\d|2[0-3]):[0-5]\d$/, brandT = ((DB.content(iid) || {}).brand || {}).liveTime || "";
+    const badEnd = evs.find((e) => e.end && (!TM.test(e.end) || !e.time || e.end <= e.time));
+    if (badEnd) { err.textContent = "‘" + (badEnd.title || DB.evLabel(iid, badEnd.type)) + "’ 일정의 " + (badEnd.time ? "끝나는 시간은 시작 시간(" + badEnd.time + ")보다 뒤여야 해요." : "시작 시간을 먼저 적어 주세요."); return; }
+    if ((c.classTime && !TM.test(c.classTime)) || (c.classEnd && !TM.test(c.classEnd))) { err.textContent = "기본 강의 시간을 다시 골라 주세요."; return; }
+    if (c.classEnd && !(c.classTime || brandT)) { err.textContent = "기본 강의 시작 시간을 먼저 골라 주세요."; return; }
+    if (c.classEnd && c.classEnd <= (c.classTime || brandT)) { err.textContent = "기본 강의 끝나는 시간은 시작 시간(" + (c.classTime || brandT) + ")보다 뒤여야 해요."; return; }
+    if (c.classPlace && /^https?:\/\//i.test(c.classPlace)) { err.textContent = "기본 장소에는 장소를 적어 주세요. 입장 링크는 ‘강의 입장 링크’ 칸에 넣어요."; return; }
     if (!c.id && DB.cohortsOf(iid).some((x) => x.name === c.name)) { err.textContent = "같은 이름의 기수가 이미 있어요."; return; }
     const cu = DB.curriculum(iid, c.curriculumId), full = cu ? cu.weeks.length : 0;
     // 주차별 강의일: 진행 주차 안 · 2주차부터 · 1주차 강의일 뒤 · 기본과 다른 날만 남겨요
@@ -840,7 +879,18 @@
       if (v <= c.startDate) { err.textContent = n + "주차 강의일은 1주차 강의일(" + mdDow(c.startDate) + ") 뒤여야 해요."; return; }
       if (v !== DB.baseClassDate(base, n)) cd[n] = v;
     }
-    const fields = { name: c.name, startDate: c.startDate, recruiting: c.recruiting, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks > 0 && c.weeks < full ? c.weeks : undefined, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime || undefined, classUrl: c.classUrl || undefined, classDates: Object.keys(cd).length ? cd : undefined };
+    // 메인 강사 강의(주차별): 진행 주차 안만 · 시간 형식 · 끝나는 시간은 그 주차 시작 시간 뒤
+    const lo = planLo(c.classOver), lec = {};
+    for (const no of Object.keys(lo)) {
+      const n = Number(no), o = lo[no];
+      if (!(n >= 1 && n <= wkN)) continue;
+      if ((o.time && !TM.test(o.time)) || (o.end && !TM.test(o.end))) { err.textContent = n + "주차 강의 시간을 다시 골라 주세요."; return; }
+      const st = o.time || c.classTime || brandT;
+      if (o.end && !st) { err.textContent = n + "주차 시작 시간을 먼저 골라 주세요."; return; }
+      if (o.end && o.end <= st) { err.textContent = n + "주차 끝나는 시간은 시작 시간(" + st + ")보다 뒤여야 해요."; return; }
+      lec[n] = o;
+    }
+    const fields = { name: c.name, startDate: c.startDate, recruiting: c.recruiting, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks > 0 && c.weeks < full ? c.weeks : undefined, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime || undefined, classEnd: c.classEnd || undefined, classPlace: c.classPlace || undefined, classUrl: c.classUrl || undefined, classDates: Object.keys(cd).length ? cd : undefined, classOver: Object.keys(lec).length ? lec : undefined };
     let co = c.id ? DB.cohort(c.id) : null;
     if (c.id && !co) { err.textContent = "기수를 찾지 못했어요. 새로고침해 주세요."; return; }
     if (!co) { if (!planMaster()) return; co = { id: DB.uid("c"), instructorId: iid }; DB.data.cohorts.push(co); }
@@ -848,6 +898,7 @@
     const ct = DB.content(iid);
     ct.schedule = ct.schedule.filter((e) => !(e.scope === "cohort" && e.cohortId === co.id)).concat(evs.map((e) => {
       const o = { id: e.id || DB.uid("e"), type: PLAN_KINDS.indexOf(e.type) >= 0 ? e.type : "event", title: e.title || DB.evLabel(iid, e.type), time: e.time || "", scope: "cohort", cohortId: co.id, date: e.date };
+      if (e.time && e.end) o.end = e.end;
       if (/^https?:\/\//i.test(e.place)) o.url = e.place; else if (e.place) o.place = e.place;
       return o;
     }));
@@ -858,7 +909,7 @@
   const planSplit = (iid, coId, page) => dgSplit("plan:" + (page || "home") + ":" + iid + ":" + coId);
   function planChips(iid, co) {
     const sp = planEvs(iid, co.id), L = (t) => DB.evLabel(iid, t);
-    return sp.length ? '<div class="pl-chips">' + sp.map((e) => '<span class="pl-chip ' + esc(e.type) + '"><b>' + esc(L(e.type)) + "</b>" + mdDow(e.date) + (e.time ? " " + esc(e.time) : "") + (e.title && e.title !== L(e.type) ? " · " + esc(e.title) : "") + "</span>").join("") + "</div>" : "";
+    return sp.length ? '<div class="pl-chips">' + sp.map((e) => '<span class="pl-chip ' + esc(e.type) + '"><b>' + esc(L(e.type)) + "</b>" + mdDow(e.date) + (DB.evTime(e) ? " " + esc(DB.evTime(e)) : "") + (e.title && e.title !== L(e.type) ? " · " + esc(e.title) : "") + "</span>").join("") + "</div>" : "";
   }
   /** 기수 카드 (마스터 설계 화면) */
   function planCard(iid, co) {
@@ -1051,7 +1102,8 @@
       fields: [
         F("type", "종류", "select", { options: () => DB.calManual(IID()).concat(PLAN_KINDS.filter((k) => DB.calManual(IID()).indexOf(k) < 0)).map((k) => [k, DB.evLabel(IID(), k) + (k === "open" ? " (추가 강의일)" : "")]) }),
         F("title", "일정 이름"),
-        F("time", "시간 (비워도 돼요)", "time"),
+        F("time", "시작 시간 (비워도 돼요)", "time"),
+        F("end", "끝나는 시간 (비워도 돼요)", "time", { hint: "넣으면 수강생 일정에 ‘19:00~22:00’ 처럼 보여요." }),
         F("place", "장소 (오프라인 강의 등, 선택)", "text", { hint: "예: 강남 OO스튜디오 3층 — 수강생 일정에 함께 보여요." }),
         F("url", "입장 링크 (줌·유튜브 라이브 등, 선택)", "url", { hint: "넣으면 수강생 일정과 홈에 ‘입장하기’ 버튼이 생겨요." }),
         F("scope", "반복", "select", { options: [["all", "모든 기수에 반복 (주차·요일로 지정)"], ["cohort", "특정 기수 하루만"]] }),
@@ -1296,6 +1348,10 @@
     if (form.dataset.coll === "event") {
       if (!item.title) { err.textContent = "일정 이름을 입력해 주세요."; return; }
       if (item.scope === "cohort" && (!item.cohortId || !item.date)) { err.textContent = "기수와 날짜를 골라 주세요."; return; }
+      // 끝나는 시간: 시작 시간이 있을 때만 · 시작보다 뒤
+      if (item.end && !item.time) { err.textContent = "끝나는 시간을 넣으려면 시작 시간도 골라 주세요."; return; }
+      if (item.end && item.end <= item.time) { err.textContent = "끝나는 시간은 시작 시간(" + item.time + ")보다 뒤여야 해요."; return; }
+      if (!item.end) delete item.end;
       if (item.scope === "cohort") { delete item.week; delete item.dow; } else { delete item.cohortId; delete item.date; item.week = Math.max(1, Number(item.week) || 1); }
     }
     if (!id) {
@@ -1468,9 +1524,9 @@
     const auto = ["open", "deadline"].concat(DB.calTypes(iid).indexOf("replay") >= 0 && DB.calManual(iid).indexOf("replay") < 0 ? ["replay"] : []).map((k) => "‘" + L(k) + "’").join(" · ");
     return head("수업 캘린더", auto + "은 기수 시작일로 자동 계산돼요. " + DB.calManual(iid).filter((k) => k !== "open").map(L).join(" · ") + " 같은 일정만 추가하세요. 기수 하나의 무료 강의 · 오프라인 강의 · 챌린지 날짜는 ‘기수 관리 › 일정 설계’에서 한 번에 정할 수도 있어요.", addBtn("event", "일정 추가")) +
       '<section class="a-card"><div class="a-card-head"><h2>추가한 일정</h2><span class="a-muted">' + c.schedule.length + "개</span></div>" +
-        simpleList("event", c.schedule, (e) => '<div class="a-item-main"><b>' + esc(e.title) + "</b><small>" + esc(DB.ruleText(e)) + (e.time ? " · " + esc(e.time) : "") + (e.place ? " · " + esc(e.place) : "") + "</small></div>" + pill(L(e.type), cls[e.type]), "추가한 일정이 없어요.") + "</section>" +
+        simpleList("event", c.schedule, (e) => '<div class="a-item-main"><b>' + esc(e.title) + "</b><small>" + esc(DB.ruleText(e)) + (DB.evTime(e) ? " · " + esc(DB.evTime(e)) : "") + (e.place ? " · " + esc(e.place) : "") + "</small></div>" + pill(L(e.type), cls[e.type]), "추가한 일정이 없어요.") + "</section>" +
       '<section class="a-card"><div class="a-card-head"><h2>기수별 전체 일정 미리보기</h2><select class="a-input a-sm" id="sched-cohort" aria-label="기수">' + cos.map((x) => '<option value="' + x.id + '"' + (x.id === ui.schedCohort ? " selected" : "") + ">" + esc(x.name) + "</option>").join("") + "</select>" + (co ? btn(icon("eye", "sm") + "수강생 화면 미리보기", "plan-pv", "a-btn-ghost a-btn-sm", ' data-iid="' + esc(iid) + '" data-id="' + esc(co.id) + '" data-pg="schedule"') : "") + "</div>" +
-        (co ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>날짜</th><th>종류</th><th>일정</th></tr></thead><tbody>' + DB.events(iid, co).map((e) => '<tr><td class="num">' + fmtMD(e.date) + (e.time ? " " + esc(e.time) : "") + "</td><td>" + pill(L(e.type), cls[e.type]) + "</td><td>" + esc(e.title) + (e.place ? ' <small class="a-muted">· ' + esc(e.place) + "</small>" : "") + (e.auto ? ' <small class="a-muted">자동</small>' : "") + "</td></tr>").join("") + "</tbody></table></div>" : emptyBox("calendar", "기수를 먼저 만들어 주세요.")) +
+        (co ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>날짜</th><th>종류</th><th>일정</th></tr></thead><tbody>' + DB.events(iid, co).map((e) => '<tr><td class="num">' + fmtMD(e.date) + (DB.evTime(e) ? " " + esc(DB.evTime(e)) : "") + "</td><td>" + pill(L(e.type), cls[e.type]) + "</td><td>" + esc(e.title) + (e.place ? ' <small class="a-muted">· ' + esc(e.place) + "</small>" : "") + (e.auto ? ' <small class="a-muted">자동</small>' : "") + "</td></tr>").join("") + "</tbody></table></div>" : emptyBox("calendar", "기수를 먼저 만들어 주세요.")) +
       "</section>";
   }
   function pageNotices() {
@@ -2511,6 +2567,8 @@
     if (f.curriculumId.value && f.curriculumId.value !== "main") co.curriculumId = f.curriculumId.value;
     if (last.classDow !== undefined && last.classDow !== null && last.classDow !== "") co.classDow = last.classDow;
     if (last.classTime) co.classTime = last.classTime;
+    if (last.classEnd) co.classEnd = last.classEnd;
+    if (last.classPlace) co.classPlace = last.classPlace;
     DB.data.cohorts.push(co);
     Object.assign(b, { cohortId: co.id, openedAt: todayStr(), cohortName: name, startDate: start, vat });
     DB.saveBill(b);

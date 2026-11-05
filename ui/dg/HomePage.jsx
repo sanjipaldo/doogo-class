@@ -111,7 +111,7 @@ function Upcoming({ upcoming, today }) {
   return (
     <section className="card"><div className="home-video-head"><h2><Icon n="calendar" />다가오는 일정</h2><a className="link-btn" href="#/schedule">전체 일정 <Icon n="arrowRight" c="sm" /></a></div>
       {upcoming.length ? upcoming.map((e, i) => { const d = DB.date.parseDate(e.date); return (
-        <div key={i} className="list-row"><span className={"date-pill" + (e.date === today ? " today" : "")}><small>{d.getMonth() + 1}월</small><b>{d.getDate()}</b></span><span className="lr-title"><i className={"ev-dot " + e.type} /> {e.title}{e.place ? <small className="lr-place"><Icon n="mapPin" c="xs" />{e.place}</small> : null}</span><span className="lr-date">{DOW[d.getDay()]}{e.time ? " " + e.time : ""}</span></div>); })
+        <div key={i} className="list-row"><span className={"date-pill" + (e.date === today ? " today" : "")}><small>{d.getMonth() + 1}월</small><b>{d.getDate()}</b></span><span className="lr-title"><i className={"ev-dot " + e.type} /> {e.title}{e.place ? <small className="lr-place"><Icon n="mapPin" c="xs" />{e.place}</small> : null}</span><span className="lr-date">{DOW[d.getDay()]}{DB.evTime(e) ? " " + DB.evTime(e) : ""}</span></div>); })
         : <p className="muted" style={{ margin: "0" }}>예정된 일정이 없습니다.</p>}</section>
   );
 }

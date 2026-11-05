@@ -809,7 +809,7 @@
     return '<section class="card"><div class="home-video-head"><h2>' + icon("calendar") + '다가오는 일정</h2><a class="link-btn" href="#/schedule">전체 일정 ' + icon("arrowRight", "sm") + "</a></div>" +
       (upcoming.length ? upcoming.map((e) => {
         const d = parseDate(e.date);
-        return '<div class="list-row"><span class="date-pill' + (e.date === today ? " today" : "") + '"><small>' + (d.getMonth() + 1) + "월</small><b>" + d.getDate() + '</b></span><span class="lr-title"><i class="ev-dot ' + e.type + '"></i> ' + esc(e.title) + (e.place ? '<small class="lr-place">' + icon("mapPin", "xs") + esc(e.place) + "</small>" : "") + '</span><span class="lr-date">' + DOW[d.getDay()] + (e.time ? " " + esc(e.time) : "") + "</span></div>";
+        return '<div class="list-row"><span class="date-pill' + (e.date === today ? " today" : "") + '"><small>' + (d.getMonth() + 1) + "월</small><b>" + d.getDate() + '</b></span><span class="lr-title"><i class="ev-dot ' + e.type + '"></i> ' + esc(e.title) + (e.place ? '<small class="lr-place">' + icon("mapPin", "xs") + esc(e.place) + "</small>" : "") + '</span><span class="lr-date">' + DOW[d.getDay()] + (DB.evTime(e) ? " " + esc(DB.evTime(e)) : "") + "</span></div>";
       }).join("") : '<p class="muted" style="margin:0">예정된 일정이 없습니다.</p>') + "</section>";
   }
 
@@ -1478,17 +1478,17 @@
       "</section>" +
       '<section class="card cal-selday"><div class="home-video-head"><h2>' + fmtKo(calSel) + '</h2><span class="tiny">' + sel.length + "건</span></div>" +
         (sel.length ? '<div class="stack">' + sel.map((e) =>
-          '<div class="ev-card"><i class="ev-dot ' + e.type + '"></i><div style="flex:1;min-width:0"><div class="tiny">' + esc(L(e.type)) + (e.week ? " · " + e.week + "주차" : "") + (e.time && e.type !== "open" ? " · " + esc(e.time) : "") + '</div><div class="ev-title">' + esc(e.title) + "</div>" + (e.place ? '<div class="tiny ev-place">' + icon("mapPin", "xs") + esc(e.place) + "</div>" : "") + "</div>" +
+          '<div class="ev-card"><i class="ev-dot ' + e.type + '"></i><div style="flex:1;min-width:0"><div class="tiny">' + esc(L(e.type)) + (e.week ? " · " + e.week + "주차" : "") + (DB.evTime(e) ? " · " + esc(DB.evTime(e)) : "") + '</div><div class="ev-title">' + esc(e.title) + "</div>" + (e.place ? '<div class="tiny ev-place">' + icon("mapPin", "xs") + esc(e.place) + "</div>" : "") + "</div>" +
           (e.url && e.date >= today ? liveBtn(e, true) : "") +
           (e.type === "replay" && e.date <= today ? (mainLec() ? '<span class="ev-acts">' + mainBtn("", "btn-secondary btn-sm", (mainLec().platform || "메인 강의실") + "에서 녹화본 보기") + "</span>" : on("replays") ? '<span class="ev-acts"><a class="btn btn-secondary btn-sm" href="#/replays">' + icon("play", "sm") + esc(ML("replays")) + "</a></span>" : "") : "") +
-          ((e.type === "open" || e.type === "deadline") && e.week && findWeek(e.week) ? '<span class="ev-acts">' + (on("curriculum") ? '<a class="btn btn-secondary btn-sm" href="#/curriculum">' + icon("book", "sm") + esc(ML("curriculum")) + " 보기</a>" : "") +
-            (on("missions") ? '<a class="btn btn-primary btn-sm" href="#/missions/' + e.week + '">' + icon("checks", "sm") + (e.type === "open" ? "과제 보기" : "과제 제출하기") + "</a>" : "") + "</span>" : "") + "</div>").join("") + "</div>"
+          ((e.type === "open" || DB.isWeekLec(e) || e.type === "deadline") && e.week && findWeek(e.week) ? '<span class="ev-acts">' + (on("curriculum") ? '<a class="btn btn-secondary btn-sm" href="#/curriculum">' + icon("book", "sm") + esc(ML("curriculum")) + " 보기</a>" : "") +
+            (on("missions") ? '<a class="btn btn-primary btn-sm" href="#/missions/' + e.week + '">' + icon("checks", "sm") + (e.type === "deadline" ? "과제 제출하기" : "과제 보기") + "</a>" : "") + "</span>" : "") + "</div>").join("") + "</div>"
           : '<p class="muted" style="margin:0">이 날은 일정이 없어요.</p>') +
       "</section>" +
       // 이번 달 일정을 날짜순 목록으로 — 휴대폰에서도 글씨로 한눈에
       (mon.length ? '<section class="card cal-agenda"><div class="home-video-head"><h2>' + (m + 1) + '월 일정 한눈에</h2><span class="tiny">' + mon.reduce((a, k) => a + byDate[k].length, 0) + "건</span></div>" +
         '<ol class="ag-list">' + mon.map((k) => { const d = parseDate(k); return '<li class="ag-day' + (k < today ? " past" : "") + (k === today ? " today" : "") + '"><span class="ag-date' + (d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : "") + '"><b>' + d.getDate() + "</b><small>" + DOW[d.getDay()] + (k === today ? " · 오늘" : "") + '</small></span><span class="ag-evs">' +
-          byDate[k].map((e) => '<span class="ag-ev"><span class="cal-chip t-' + e.type + '"><b>' + esc(L(e.type)) + '</b></span><span class="ag-t">' + esc(e.title) + "</span></span>").join("") + "</span></li>"; }).join("") + "</ol></section>" : "") + "</div>";
+          byDate[k].map((e) => '<span class="ag-ev"><span class="cal-chip t-' + e.type + '"><b>' + esc(L(e.type)) + '</b></span><span class="ag-t">' + (DB.evTime(e) ? '<span class="ag-tm">' + esc(DB.evTime(e)) + "</span> " : "") + esc(e.title) + "</span></span>").join("") + "</span></li>"; }).join("") + "</ol></section>" : "") + "</div>";
   }
 
   /* ---------------- 공지사항 ---------------- */
@@ -1774,7 +1774,7 @@
     }
     if (/(라이브|강의\s*일정|다음\s*강의|언제.*(강의|라이브)|일정)/.test(t)) {
       const n = myEvents().find((e) => e.date >= today && e.type !== "deadline");
-      return n ? { text: "다음 일정은 " + fmtMD(n.date) + (n.time ? " " + n.time : "") + " ‘" + n.title + "’ 입니다." + (on("replays") ? "\n지난 라이브는 ‘" + ML("replays") + "’에서 다시 볼 수 있어요." : ""), links: [[ML("schedule"), "#/schedule"]].concat(on("replays") ? [[ML("replays"), "#/replays"]] : []) }
+      return n ? { text: "다음 일정은 " + fmtMD(n.date) + (DB.evTime(n) ? " " + DB.evTime(n) : "") + " ‘" + n.title + "’" + (n.place && !/^https?:/i.test(n.place) ? " (" + n.place + ")" : "") + " 입니다." + (on("replays") ? "\n지난 라이브는 ‘" + ML("replays") + "’에서 다시 볼 수 있어요." : ""), links: [[ML("schedule"), "#/schedule"]].concat(on("replays") ? [[ML("replays"), "#/replays"]] : []) }
         : { text: "예정된 일정이 없어요. ‘" + ML("notices") + "’에 새 안내가 있는지 확인해 주세요.", links: [[ML("notices"), "#/notices"]] };
     }
     if (/(진행률|진도|몇\s*개|얼마나\s*했|남은\s*과제)/.test(t)) {

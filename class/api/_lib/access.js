@@ -90,7 +90,14 @@ function coachIns(v) {
   if (o.vodSettle && typeof o.vodSettle === "object") { const s = o.vodSettle; o.vodSettle = {}; ["type", "typeBy", "typeAt"].forEach((k) => { if (s[k] !== undefined) o.vodSettle[k] = s[k]; }); }
   return o;
 }
-function publicCohorts(list) { return (list || []).map((c) => { const o = {}; Object.keys(c).forEach((k) => { if (!/url|link|zoom/i.test(k)) o[k] = c[k]; }); return o; }); }
+// 입장 링크(줌 등)는 수강생 · 강사에게만 — 기수 칸(classUrl)과 주차별 강의(classOver 의 url) 둘 다 빼요
+function publicCohorts(list) {
+  return (list || []).map((c) => {
+    const o = {}; Object.keys(c).forEach((k) => { if (!/url|link|zoom/i.test(k)) o[k] = c[k]; });
+    if (o.classOver && typeof o.classOver === "object") { const lo = {}; Object.keys(o.classOver).forEach((n) => { const x = Object.assign({}, o.classOver[n]); Object.keys(x).forEach((k) => { if (/url|link|zoom/i.test(k)) delete x[k]; }); lo[n] = x; }); o.classOver = lo; }
+    return o;
+  });
+}
 function maskedStudent(s) { return { id: s.id, instructorId: s.instructorId, cohortId: s.cohortId, name: mask(s.name), status: s.status, appliedAt: s.appliedAt }; }
 function questionsOnly(p) {
   return { questions: ((p && p.questions) || []).map((q) => ({ id: q.id, at: q.at, category: q.category, title: "", body: "", images: [], answer: q.answer ? "•" : "" })) };

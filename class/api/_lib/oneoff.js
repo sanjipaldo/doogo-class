@@ -806,6 +806,77 @@ function launchTestClean(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 두잉고 LIVE 기수 정리 + 문대표 3기 메인 강사 강의 일정 (대표님 요청 2026-11-05) ----------
+ * ① 문대표 말고는 아직 LIVE 기수가 없어요 → 다른 강사 기수(그 기수만의 특별 일정도)를 지워요. VOD 수강생은 기수가 따로(vod:<강사>)라 그대로예요.
+ *    수강생(체험 계정 포함)이나 취소하지 않은 이용료 기록이 붙은 기수는 지우지 않고 결과에 적어요 (대표님이 확인)
+ * ② 문대표는 1기 · 2기 · 3기만 — 다른 기수가 있으면 같은 규칙으로 지우거나 남겨요
+ * ③ 3기 메인 강사 강의를 주차마다 (날짜 classDates · 시간 · 끝나는 시간 · 장소 · 주제 classOver)
+ *    1주차 11/21(토) 13:30~18:30 3층 해외 건기식 OT · 2주차 11/22(일) 09:00~13:30 3층 브랜딩 · 3주차 12/5(토) 09:00~13:00 3층 자사몰 · 4주차 12/12(토) 09:00~13:30 2층 자동화
+ *    5주차 12/15(화) 줌 19:00~22:00 광고의 모든것 — 커리큘럼(4주) 밖이라 이 기수 특별 일정(온라인 강의)으로 · 1주차 강의일이 11/21이 아니면 날짜는 건드리지 않고 적어요 */
+const MOON3_LEC = {
+  dates: { 2: "2026-11-22", 3: "2026-12-05", 4: "2026-12-12" },
+  over: {
+    1: { time: "13:30", end: "18:30", place: "3층", topic: "해외 건기식 OT" },
+    2: { time: "09:00", end: "13:30", place: "3층", topic: "브랜딩" },
+    3: { time: "09:00", end: "13:00", place: "3층", topic: "자사몰" },
+    4: { time: "09:00", end: "13:30", place: "2층", topic: "자동화" }
+  },
+  zoom: { id: "e-m3-zoom5", date: "2026-12-15", time: "19:00", end: "22:00", place: "ZOOM 라이브", title: "5주차 온라인 강의 — 광고의 모든것" }
+};
+const MOON_KEEP = ["1기", "2기", "3기"];
+function liveLectures(get, keys) {
+  const SCH = require("../../shared/schedule");
+  const writes = {}, result = { removed: [], kept: [], moon: [], zoom: "" };
+  keys("cohorts:").forEach((k) => {
+    const iid = k.slice(8), list = get(k);
+    if (!iid || !Array.isArray(list)) return;
+    const stus = keys("stu:" + iid + ":").map((x) => get(x)).filter(isObj), bills = keys("bill:" + iid + ":").map((x) => get(x)).filter((b) => isObj(b) && !b.canceledAt);
+    const out = [], gone = [];
+    list.forEach((co) => {
+      if (!isObj(co)) return;
+      if (iid === "moon" && MOON_KEEP.indexOf(co.name) >= 0) { out.push(co); return; }
+      const ns = stus.filter((x) => x.cohortId === co.id).length, nb = bills.filter((b) => b.cohortId === co.id).length;
+      if (ns || nb) { out.push(co); result.kept.push(iid + " " + (co.name || co.id) + " — 수강생 " + ns + "명 · 이용료 " + nb + "건이라 남김"); return; }
+      gone.push(co.id); result.removed.push(iid + " " + (co.name || co.id) + " (" + co.id + ")");
+    });
+    if (!gone.length) return;
+    writes[k] = out;
+    const ck = "content:" + iid, c = get(ck);
+    if (isObj(c) && Array.isArray(c.schedule)) {
+      const sched = c.schedule.filter((e) => !(isObj(e) && e.scope === "cohort" && gone.indexOf(e.cohortId) >= 0));
+      if (sched.length !== c.schedule.length) writes[ck] = Object.assign({}, c, { schedule: sched });
+    }
+  });
+  // ③ 문대표 3기
+  const mk = "cohorts:moon", ml = writes[mk] || get(mk);
+  const c3 = Array.isArray(ml) ? ml.find((x) => isObj(x) && x.id === "c4" && x.name === "3기") || ml.find((x) => isObj(x) && x.name === "3기") : null;
+  if (!c3) { result.moon.push("문대표 3기를 찾지 못했어요"); return { writes, result }; }
+  const n3 = Object.assign({}, c3), ov = Object.assign({}, isObj(c3.classOver) ? c3.classOver : {});
+  Object.keys(MOON3_LEC.over).forEach((n) => { ov[n] = Object.assign({}, isObj(ov[n]) ? ov[n] : {}, MOON3_LEC.over[n]); });
+  n3.classOver = ov;
+  if (c3.startDate === "2026-11-21") {
+    const cd = Object.assign({}, isObj(c3.classDates) ? c3.classDates : {});
+    Object.keys(MOON3_LEC.dates).forEach((n) => { const v = MOON3_LEC.dates[n]; if (v === SCH.baseClassDate(c3, Number(n))) delete cd[n]; else cd[n] = v; });
+    if (Object.keys(cd).length) n3.classDates = cd; else delete n3.classDates;
+    result.moon.push("3기 강의일 11/21 · 11/22 · 12/5 · 12/12 · 시간 · 장소 · 주제");
+  } else result.moon.push("3기 1주차 강의일이 " + c3.startDate + " 이라 날짜는 그대로 · 시간 · 장소 · 주제만");
+  writes[mk] = ml.map((x) => (x === c3 ? n3 : x));
+  // 5주차 줌 강의: 12/15 이 기수 온라인(예전 보너스) 강의를 찾아 시간 · 끝나는 시간 · 장소 · 이름을 (입장 링크는 그대로) — 없으면 새로
+  const ck = "content:moon", c = writes[ck] || get(ck), z = MOON3_LEC.zoom;
+  if (isObj(c) && Array.isArray(c.schedule)) {
+    let hit = false;
+    const sched = c.schedule.map((e) => {
+      if (hit || !isObj(e) || e.scope !== "cohort" || e.cohortId !== c3.id || e.date !== z.date || !(e.id === z.id || e.type === "online" || e.type === "bonus")) return e;
+      hit = true;
+      return Object.assign({}, e, { type: "online", time: z.time, end: z.end, place: z.place, title: z.title });
+    });
+    if (!hit) sched.push({ id: z.id, type: "online", title: z.title, time: z.time, end: z.end, place: z.place, scope: "cohort", cohortId: c3.id, date: z.date });
+    writes[ck] = Object.assign({}, c, { schedule: sched });
+    result.zoom = (hit ? "바꿈" : "새로 넣음") + " · 12/15 19:00~22:00 ZOOM 라이브";
+  }
+  return { writes, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -837,6 +908,7 @@ const OPS = [
   { id: "2026-11-03-launch-test-clean", note: "정식 운영: 테스트 데이터 정리 — 0000 테스트 수강생 · 예시 VOD 회원 기록 · 중복 체험단 · 010-0000-0000 테스트 회원 · 테스트 코치 · 예시 운영자 지우기 (체험 계정은 하나씩 남김)", run: launchTestClean },
   { id: "2026-11-03-moon-cohort-dates", note: "문대표 기수 일정: 1기 1/24~2/21 · 2기 8/29~9/23(5주차 수) · 지금 4기(11/21)를 3기로 + 5주차 보너스 강의 12/15(화) · 챌린지 4회(11/25 · 12/2 · 12/9 · 12/16) · 예시였던 예전 3기(10/1) 지우기", run: moonCohortDates },
   { id: "2026-11-04-moon-cal-v2", note: "문대표 수업 캘린더: 강의 녹화본 업로드를 오프라인 강의 이틀 뒤로 · 일정 종류 ‘온라인 강의’ · 3기 12/15 5주차 보너스 강의 → 5주차 온라인 강의 · 특강(행사) → 초청강사", run: moonCalV2 },
+  { id: "2026-11-05-live-lectures", note: "두잉고 LIVE 기수 정리: 문대표 말고 다른 강사 기수 지우기(수강생 · 이용료 기록이 있으면 남김) · 문대표 1~3기만 · 3기 메인 강사 강의(주차마다 날짜 · 시간 · 끝나는 시간 · 장소 · 주제) · 5주차 줌 강의 12/15 19:00~22:00", run: liveLectures },
 ];
 
-module.exports = { OPS, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
