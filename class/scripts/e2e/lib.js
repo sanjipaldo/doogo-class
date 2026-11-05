@@ -152,6 +152,8 @@ const domShape = (page, id) => page.evaluate((id) => {
   c.querySelectorAll("select").forEach((x, i) => { x.setAttribute("data-val", sels[i]); x.querySelectorAll("option").forEach((o) => o.removeAttribute("selected")); });
   // 자료실 열람자 표시(이름 · 기수 · 지금 시각)는 시각만 빼요
   c.querySelectorAll(".lib-wm span").forEach((el) => { el.textContent = el.textContent.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}$/, "M/D hh:mm"); });
+  // VOD 강의실 영상 워터마크(이름 · 지금 시각 · 30초마다 바뀜)도 시각만 빼요 — 두 화면을 찍는 사이에 분이 바뀌면 달라져요
+  c.querySelectorAll(".vt-wm-c").forEach((el) => { el.textContent = el.textContent.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}$/, "M/D hh:mm"); });
   // 예전 강의실이 #root 에 붙이는 ‘누가 그린 틀인지’ 표시(data-who)는 화면 모양이 아니라서 빼요
   c.removeAttribute("data-who");
   // 한국 · 뉴질랜드 시계(15초마다)는 시각만 빼요
