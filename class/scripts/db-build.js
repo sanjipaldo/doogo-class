@@ -30,7 +30,7 @@ const init = require("../api/_lib/init");
   // 운영 Supabase 가 비어 있으면 체험 데이터로 채우지 않고 멈춰요 — 연결 문자열이 다른(빈) 프로젝트를 가리킬 때
   if (prod && pgOn && before === 0) { console.error("[db] 운영 Supabase 가 비어 있어요. SUPABASE_DB_URL 이 운영 프로젝트(doogo-prod)를 가리키는지 확인해 주세요 — 체험 데이터로 채우지 않고 빌드를 멈춰요"); process.exit(1); }
   // A2: Supabase 보안(공개 API 역할 막기 · 표 6개 RLS) · 사람이 읽는 보기 6개 — 배포마다 (여러 번 돌려도 같아요 · api/_lib/pgsetup.js)
-  if (pgOn) { await store.pgSetup(); console.log("[db] Supabase 보안 · 보기: 공개 API 역할(anon · authenticated) 막음 · 표 6개 RLS · 보기 6개(v_orders · v_members · v_students · v_cohorts · v_bills · v_inquiries)"); }
+  if (pgOn) { await store.pgSetup(); console.log("[db] Supabase 보안 · 보기: 공개 API 역할(anon · authenticated) 막음 · 표 " + require("../api/_lib/pgsetup").TABLES.length + "개 RLS(2부 영역 표 포함) · 보기 6개(v_orders · v_members · v_students · v_cohorts · v_bills · v_inquiries) · 표 · 열 한국어 설명"); }
   // 사진 · 첨부 크기 (읽기만) · Supabase 접속 정보(버전 · 지역 · 포트 · 왕복 — 주소 · 비밀번호는 안 적어요 · 빌드 서버(미국 동부) 기준 왕복)
   try { const fs0 = await store.fileStats(); console.log("[db] 사진 · 첨부: " + fs0.n + "개 · 합계 " + (fs0.total / 1048576).toFixed(1) + "MB · 가장 큰 것 " + Math.round(fs0.max / 1024) + "KB · 내용이 DB " + (fs0.n - fs0.inStorage) + "개 · Storage " + fs0.inStorage + "개"); }
   catch (e) { console.log("[db] 사진 · 첨부 크기를 못 쟀어요 (빌드는 계속)"); }
