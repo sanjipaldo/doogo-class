@@ -3473,7 +3473,9 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-teach-g.vd-teach-rail { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 60px) / 4); gap: 20px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .vd-teach-g.vd-teach-rail::-webkit-scrollbar { display: none; }
 .vd-teach-rail > .vd-tc { scroll-snap-align: start; }
-.vd-teach-rail[data-dragging] { scroll-snap-type: none; cursor: grabbing; }
+.vd-teach-rail[data-dragging] { scroll-snap-type: none; cursor: grabbing; user-select: none; }
+/* 줄이 가로로 스크롤돼서(overflow) 바깥에 그린 초점 테두리가 잘려요 → 슬라이드 안의 링크는 안쪽에 그려요 (키보드로 옮겨 다닐 때) */
+.vd-teach-rail a:focus-visible { outline-offset: -2px; }
 @media (hover: hover) and (pointer: fine) { .vd-teach-rail[data-drag] { cursor: grab; } }
 .vd-teach-arr { position: absolute; z-index: 3; top: calc((100cqw - 60px) / 4 * 0.625); display: grid; place-items: center; width: 44px; height: 44px; margin-top: -22px; border-radius: 50%; background: #fff; color: var(--on1); box-shadow: 0 4px 14px rgba(17, 20, 24, .16), inset 0 0 0 1px var(--ln10); cursor: pointer; transition: opacity .2s ease, transform .2s ease; }
 .vd-teach-arr.prev { left: -22px; }

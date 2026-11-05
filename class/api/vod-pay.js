@@ -85,10 +85,26 @@ async function vbankIssued(paymentId, idx, orders, pay, total) {
   await useCouponPoints(orders[0] && orders[0].mid, orders, paymentId, idx.nos[0]);
   return { ok: true, vbank: true, no: idx.nos[0], orders: out };
 }
-/** 환불 반영: 주문 refunded + 쿠폰 · 포인트 돌려주기(전액 환불이고 규정이 켜져 있을 때) */
+/** 포트원 취소 결과 상태 — SUCCEEDED · REQUESTED(가상계좌 환불처럼 처리 중) · FAILED */
+const cancelSt = (r) => String((r && r.cancellation && r.cancellation.status) || "SUCCEEDED").toUpperCase();
+/** 포트원에서 전액 취소된 결제를 주문에 맞춰요 (웹훅 · 마스터 ‘포트원에서 조회’)
+ *  회원 바로 취소가 진행 중(rfLock 2분 안)이면 웹훅이 먼저 와도 그 취소로 기록하고 쿠폰 · 포인트도 돌려줘요 — 회원 취소 쪽 기록은 이미 환불이라 건너뛰어요 */
+async function syncCancelled(nos, why) {
+  const t = Date.now(), xs = [];
+  for (const no of nos) { const x = await V.get(V.K.order(no)); if (x) xs.push(x); }
+  const inst = xs.some((x) => x.status === "paid" && x.rfLock && t - x.rfLock < 120e3), rf = inst ? V.rfSet(await V.catalog()) : null;
+  for (const x of xs) {
+    if (x.status !== "paid") continue;
+    await markRefunded(x, x.amount, inst ? { kind: "instant", why: x.grp && x.grp !== x.no ? "함께 결제한 상품 같이 취소" : "회원 바로 취소", by: "회원", cancel: { id: "", at: t } } : { kind: "master", why, by: "포트원", cancel: { id: "", at: t } }, inst ? rf.restore : false);
+  }
+}
+/** 환불 반영: 주문 refunded + 쿠폰 · 포인트 돌려주기(전액 환불이고 규정이 켜져 있을 때)
+ *  이번 호출이 ‘결제 완료 → 환불’로 바꿨을 때만 뒤처리(판매 수 · 쿠폰 · 포인트)해요 — 포트원 웹훅과 회원 취소가 겹쳐도 한 번만 */
 async function markRefunded(o, amount, info, restore) {
   const at = Date.now();
-  const next = await V.update(V.K.order(o.no), (x) => { if (!x || x.status !== "paid") return undefined; delete x.rfLock; if (x.tea) x.tea.st = "cancel"; return Object.assign(x, { status: "refunded", refundedAt: at, refundAmount: amount, refundKind: info.kind, refundWhy: info.why, refundBy: info.by, pg: Object.assign({}, x.pg || {}, { cancel: info.cancel || null }) }, info.pay ? { refundPay: info.pay } : {}); });
+  let did = false;
+  const next = await V.update(V.K.order(o.no), (x) => { did = false; if (!x || x.status !== "paid") return undefined; did = true; delete x.rfLock; if (x.tea) x.tea.st = "cancel"; return Object.assign(x, { status: "refunded", refundedAt: at, refundAmount: amount, refundKind: info.kind, refundWhy: info.why, refundBy: info.by, pg: Object.assign({}, x.pg || {}, { cancel: info.cancel || null }) }, info.pay ? { refundPay: info.pay } : {}); });
+  if (!did) return next;
   if (next && next.status === "refunded") await VA.afterOrder(o, next);
   if (restore && amount === o.amount && (o.pointOff || o.mcid)) await V.update(V.K.member(o.mid), (m) => { if (!m) return undefined; if (o.pointOff) { m.points = (Number(m.points) || 0) + o.pointOff; (m.pointLog = m.pointLog || []).push({ at, amt: o.pointOff, why: "환불 · 포인트 돌려받음 (" + o.no + ")" }); } if (o.mcid) { const c = (m.coupons || []).find((x) => x.id === o.mcid); if (c) { c.usedAt = null; c.orderNo = ""; } } return m; });
   return next;
@@ -169,20 +185,21 @@ async function cancel(res, m, b) {
   const rf = V.rfSet(await V.catalog()), orders = await V.ordersOf(m.id);
   const adds = rf.addons ? orders.filter((x) => x.grp === o.no && x.status === "paid" && !(x.coach && Number(x.coach.used) > 0)) : [];
   const amount = o.amount + adds.reduce((a, x) => a + x.amount, 0), why = "회원 바로 취소 (결제 후 " + rf.days + "일 이내 · 재생 전)";
-  let cancelId = "";
+  let cancelId = "", cst = "";
   if ((q.way === "pg" || q.way === "vbank") && amount > 0) {
-    try {
-      const r = await portone.cancelPayment(o.paymentId, amount, why, q.way === "vbank" ? { bank: acct.bank, number: acct.number, holderName: acct.holder } : null);
-      cancelId = (r && r.cancellation && r.cancellation.id) || "";
-    } catch (e) {
-      console.error("[vod-pay] member cancel", o.no, e.message);
+    let r = null;
+    try { r = await portone.cancelPayment(o.paymentId, amount, why, q.way === "vbank" ? { bank: acct.bank, number: acct.number, holderName: acct.holder } : null); } catch (e) { console.error("[vod-pay] member cancel", o.no, e.message); }
+    cst = r ? cancelSt(r) : "ERROR";
+    if (cst === "FAILED" || cst === "ERROR") {
+      // 포트원이 취소하지 못했어요 → 주문은 결제 완료 그대로 · 잠금을 풀어 다시 시도할 수 있게
       await V.update(V.K.order(o.no), (x) => { if (!x || x.rfLock !== t) return undefined; delete x.rfLock; return x; });
-      return fail(res, 502, "결제 취소에 실패했어요. 잠시 뒤 다시 시도하거나 고객센터로 알려 주세요.");
+      return fail(res, 502, cst === "FAILED" && q.way === "vbank" ? "환불 계좌로 돌려드리지 못했어요. 은행 · 계좌번호 · 예금주(본인 명의)를 확인하고 다시 시도해 주세요." : "결제 취소에 실패했어요. 잠시 뒤 다시 시도하거나 고객센터로 알려 주세요.");
     }
+    cancelId = (r.cancellation && r.cancellation.id) || "";
   }
   // 무통장: 주문은 바로 취소 · 돈은 마스터가 환불 계좌로 송금 (환불 · 취소 관리 ‘계좌 송금 대기’)
   const pay = q.way === "bank" && amount > 0 ? Object.assign({}, acct, { amount, st: "wait", at: Date.now() }) : null;
-  for (const x of [o].concat(adds)) await markRefunded(x, x.amount, { kind: "instant", why: x === o ? "회원 바로 취소" : "함께 결제한 상품 같이 취소", by: "회원", cancel: { id: cancelId, at: Date.now() }, pay: x === o ? pay : null }, rf.restore);
+  for (const x of [o].concat(adds)) await markRefunded(x, x.amount, { kind: "instant", why: x === o ? "회원 바로 취소" : "함께 결제한 상품 같이 취소", by: "회원", cancel: Object.assign({ id: cancelId, at: Date.now() }, cst === "REQUESTED" ? { st: "requested" } : {}), pay: x === o ? pay : null }, rf.restore);
   send(res, 200, { ok: true, cancelId, amount, way: q.way });
 }
 async function cancelPending(res, m, b) {
@@ -227,11 +244,16 @@ async function refund(res, b) {
   if (!(amount >= 0 && amount <= o.amount)) return fail(res, 400, "환불 금액은 0원 ~ 결제 금액 사이로 적어 주세요.");
   const acct = refundAcct(b.refundAccount);
   if (o.method === "vbank" && amount > 0 && !acct) return fail(res, 400, "가상계좌 환불은 환불 받을 계좌(은행 · 계좌번호 · 예금주)가 필요해요.");
-  let cancelId = "";
+  let cancelId = "", cst = "";
   // 포트원으로 결제한 주문만 포트원 취소 — 무통장 입금은 마스터가 계좌로 돌려줘요 (기록만)
-  if (o.pg && o.pg.st === "paid" && amount > 0) { const r = await portone.cancelPayment(o.paymentId, amount, String(b.reason || "운영자 환불"), o.method === "vbank" ? { bank: acct.bank, number: acct.number, holderName: acct.holder } : null); cancelId = (r && r.cancellation && r.cancellation.id) || ""; }
+  if (o.pg && o.pg.st === "paid" && amount > 0) {
+    const r = await portone.cancelPayment(o.paymentId, amount, String(b.reason || "운영자 환불"), o.method === "vbank" ? { bank: acct.bank, number: acct.number, holderName: acct.holder } : null);
+    cst = cancelSt(r);
+    if (cst === "FAILED") return fail(res, 502, o.method === "vbank" ? "포트원이 환불 계좌로 돌려주지 못했어요. 은행 · 계좌번호 · 예금주를 확인해 주세요." : "포트원 결제 취소에 실패했어요. 포트원 관리자 화면에서 확인해 주세요.");
+    cancelId = (r && r.cancellation && r.cancellation.id) || "";
+  }
   const rf = V.rfSet(await V.catalog());
-  const next = await markRefunded(o, amount, { kind: amount < o.amount ? "partial" : "master", why: String(b.reason || "운영자 환불").slice(0, 100), by: "마스터", cancel: { id: cancelId, at: Date.now() } }, rf.restore);
+  const next = await markRefunded(o, amount, { kind: amount < o.amount ? "partial" : "master", why: String(b.reason || "운영자 환불").slice(0, 100), by: "마스터", cancel: Object.assign({ id: cancelId, at: Date.now() }, cst === "REQUESTED" ? { st: "requested" } : {}) }, rf.restore);
   send(res, 200, { ok: true, cancelId, order: next });
 }
 /** 포트원 결제 조회 (마스터): 결제수단 · 금액 · 영수증 · 취소 내역. 포트원은 결제 완료인데 주문이 대기면 결제 완료로, 포트원은 전액 취소인데 주문이 결제 완료면 환불로 맞춰요 */
@@ -253,7 +275,7 @@ async function pgInfo(res, b) {
   if (pay.status === "PAID" && o.status === "pending") { const r = await finalize(o.paymentId); if (r.ok) synced = "포트원에서 입금이 확인돼 결제 완료로 바꿨어요."; }
   else if (pay.status === "CANCELLED" && o.status === "paid") {
     const idx = await V.get(V.K.pay(o.paymentId));
-    for (const no of (idx && idx.nos) || [o.no]) { const x = await V.get(V.K.order(no)); if (x && x.status === "paid") await markRefunded(x, x.amount, { kind: "master", why: "포트원에서 취소됨", by: "포트원", cancel: { id: "", at: Date.now() } }, false); }
+    await syncCancelled((idx && idx.nos) || [o.no], "포트원에서 취소됨");
     synced = "포트원에서 이미 취소된 결제라 환불로 맞췄어요.";
   }
   send(res, 200, { ok: true, pay: payView(pay), synced });
@@ -312,7 +334,7 @@ async function webhook(req, res) {
   else if (pid && /Cancel/.test(ev.type || "")) {
     // 포트원 콘솔에서 직접 취소한 경우도 주문에 맞춰요
     const idx = await V.get(V.K.pay(pid)), pay = idx ? await portone.getPayment(pid).catch(() => null) : null;
-    if (idx && pay && /CANCELLED/.test(pay.status || "")) { for (const no of idx.nos) { const o = await V.get(V.K.order(no)); if (o && o.status === "paid" && pay.status === "CANCELLED") await markRefunded(o, o.amount, { kind: "master", why: "포트원에서 취소", by: "포트원", cancel: { at: Date.now() } }, false); } }
+    if (idx && pay && pay.status === "CANCELLED") await syncCancelled(idx.nos, "포트원에서 취소");
   }
   send(res, 200, { ok: true });
 }

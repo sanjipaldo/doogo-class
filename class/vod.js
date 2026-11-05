@@ -3573,7 +3573,8 @@
     const c = document.querySelector(".vd-hero-cnt b"); if (c) c.textContent = ui.slide + 1;
   }
   // 가로 줄: 화살표로 한 화면씩 넘기고, ‘지금 / 전체’ 쪽수를 맞춘다
-  function railStep(el) { const a = el.children[0], b = el.children[1]; if (!a) return { step: el.clientWidth, per: 1, n: 0 }; const step = b ? b.offsetLeft - a.offsetLeft : a.offsetWidth; const per = Math.max(1, Math.round((el.clientWidth + step - a.offsetWidth) / step)); return { step, per, n: el.children.length }; }
+  // 한 화면에 보이는 카드 수(per)는 줄 안쪽 여백을 뺀 폭으로 세요 — 태블릿(640~860px)은 양옆 여백 24px 까지 세면 3.3장 보이는데 4장씩 넘겨 한 명을 건너뛰었어요
+  function railStep(el) { const a = el.children[0], b = el.children[1]; if (!a) return { step: el.clientWidth, per: 1, n: 0 }; const step = b ? b.offsetLeft - a.offsetLeft : a.offsetWidth; const cs = getComputedStyle(el), w = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0); const per = Math.max(1, Math.round((w + step - a.offsetWidth) / step)); return { step, per, n: el.children.length }; }
   function railInfo(el) { const r = railStep(el), total = Math.max(1, Math.ceil(r.n / r.per)), cur = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 ? total : Math.min(total, Math.round(el.scrollLeft / (r.step * r.per)) + 1); return { cur, total }; }
   // 마우스로 끌어 넘기기 (PC 강사진 슬라이드) — 끈 뒤의 클릭은 막고, 놓으면 카드 한 장 단위로 맞춰요
   let railDrag = null;
@@ -3585,11 +3586,12 @@
   function dragWire(el) {
     if (!window.__vdDrag) {
       window.__vdDrag = true;
-      window.addEventListener("pointermove", (e) => { const d = railDrag; if (!d) return; const dx = e.clientX - d.x0; if (!d.moved && Math.abs(dx) > 6) { d.moved = true; d.el.dataset.dragging = "1"; } if (d.moved) d.el.scrollLeft = d.s0 - dx; });
-      window.addEventListener("pointerup", dragEnd); window.addEventListener("pointercancel", dragEnd);
+      // 버튼을 놓은 걸 놓쳐도(맥 ctrl+클릭 메뉴 · 다른 창으로 옮김) 끌기가 계속되지 않게: 버튼이 안 눌린 움직임 · 창을 벗어나면 끝내요
+      window.addEventListener("pointermove", (e) => { const d = railDrag; if (!d) return; if (!(e.buttons & 1)) { dragEnd(); return; } const dx = e.clientX - d.x0; if (!d.moved && Math.abs(dx) > 6) { d.moved = true; d.el.dataset.dragging = "1"; const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges(); } if (d.moved) d.el.scrollLeft = d.s0 - dx; });
+      window.addEventListener("pointerup", dragEnd); window.addEventListener("pointercancel", dragEnd); window.addEventListener("blur", dragEnd);
     }
     if (!el || el.__drag) return; el.__drag = true;
-    el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.button !== 0 || el.scrollWidth <= el.clientWidth) return; railDrag = { el, x0: e.clientX, s0: el.scrollLeft, moved: false }; });
+    el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.button !== 0 || e.ctrlKey || el.scrollWidth <= el.clientWidth) return; railDrag = { el, x0: e.clientX, s0: el.scrollLeft, moved: false }; });
     el.addEventListener("click", (e) => { if (el.__moved) { e.preventDefault(); e.stopPropagation(); el.__moved = false; } }, true);
     el.addEventListener("dragstart", (e) => e.preventDefault());
   }

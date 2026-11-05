@@ -30,7 +30,7 @@ global.fetch = async (url, opt) => {
     if (!/^PortOne ps-test$/.test((opt.headers || {}).Authorization || "")) return J(401, { type: "UNAUTHORIZED" });
     const m = u.pathname.match(/^\/payments\/([^/]+)(\/cancel|\/virtual-account\/close)?$/); const id = decodeURIComponent(m[1]);
     if (m[2] === "/virtual-account/close") { if (PG[id] && PG[id].status === "PAID") return J(409, { type: "PAYMENT_ALREADY_PAID", message: "이미 입금된 결제예요" }); if (PG[id]) PG[id].closed = true; return J(200, { closedAt: new Date().toISOString() }); }
-    if (m[2]) { const b = JSON.parse(opt.body); const p = PG[id]; if (p && p.failCancel) return J(400, { type: "CANCEL_FAILED", message: "취소 실패 (시험)" }); const amt = b.amount != null ? b.amount : p.amount.total - (p.amount.cancelled || 0); p.amount.cancelled = (p.amount.cancelled || 0) + amt; p.status = p.amount.cancelled >= p.amount.total ? "CANCELLED" : "PARTIAL_CANCELLED"; p.lastCancel = b; return J(200, { cancellation: { id: "cx_" + calls.length, status: "SUCCEEDED", totalAmount: amt } }); }
+    if (m[2]) { const b = JSON.parse(opt.body); const p = PG[id]; if (p && p.failCancel) return J(400, { type: "CANCEL_FAILED", message: "취소 실패 (시험)" }); if (p && p.cancelSt === "FAILED") return J(200, { cancellation: { id: "cx_" + calls.length, status: "FAILED", totalAmount: 0 } }); const amt = b.amount != null ? b.amount : p.amount.total - (p.amount.cancelled || 0); p.amount.cancelled = (p.amount.cancelled || 0) + amt; p.status = p.amount.cancelled >= p.amount.total ? "CANCELLED" : "PARTIAL_CANCELLED"; p.lastCancel = b; if (p.onCancel) await p.onCancel(); return J(200, { cancellation: { id: "cx_" + calls.length, status: p.cancelSt || "SUCCEEDED", totalAmount: amt } }); }
     return PG[id] ? J(200, PG[id]) : J(404, { type: "PAYMENT_NOT_FOUND" });
   }
   if (u.host === "kauth.kakao.com") return J(200, { access_token: "at-" + opt.body.match(/code=([^&]+)/)[1] });
@@ -186,6 +186,36 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   r = await call("vod-pay", { body: { action: "cancel", no: noL } });
   oL = (await store.getDoc("vo:" + noL)).v;
   ok(r.json.ok && oL.status === "refunded" && !oL.rfLock && PG[pL].status === "CANCELLED", "오래된 잠금(2분 지남)은 풀고 취소 · 끝나면 잠금 없음", { json: r.json, lock: oL.rfLock });
+  // 포트원이 취소하는 사이 웹훅(Transaction.Cancelled)이 먼저 와도: ‘회원 바로 취소’로 한 번만 기록 · 쓴 포인트는 한 번만 돌려받아요 (판매 수 · 쿠폰 · 포인트 뒤처리 한 번)
+  { const d0 = await store.getDoc("vm:" + oL.mid); await store.writeDoc("vm:" + oL.mid, Object.assign({}, d0.v, { points: 5000 }), d0.ver); }
+  r = await call("vod-pay", { body: { action: "prepare", pid: "v10", kind: "course", method: "card", points: 1000 } });
+  const pW = r.json.paymentId, noW = r.json.no; paidLike(pW, r.json.amount);
+  r = await call("vod-pay", { body: { action: "complete", paymentId: pW } });
+  const ptW0 = (await store.getDoc("vm:" + oL.mid)).v.points;
+  PG[pW].onCancel = async () => { const wb = JSON.stringify({ type: "Transaction.Cancelled", data: { paymentId: pW, storeId: "store-test" } }); await call("vod-pay", { raw: wb, headers: sign(wb) }); };
+  r = await call("vod-pay", { body: { action: "cancel", no: noW } });
+  delete PG[pW].onCancel;
+  { const oW = (await store.getDoc("vo:" + noW)).v, ptW1 = (await store.getDoc("vm:" + oL.mid)).v.points;
+    ok(r.json.ok && oW.status === "refunded" && oW.refundKind === "instant" && oW.refundBy === "회원" && !oW.rfLock && oW.pointOff === 1000 && ptW1 === ptW0 + 1000,
+      "웹훅이 회원 취소보다 먼저 와도 ‘회원 바로 취소’로 한 번만 기록 · 쓴 포인트 1,000은 한 번만 돌려받아요", { json: r.json, kind: oW.refundKind, by: oW.refundBy, pts: [ptW0, ptW1], off: oW.pointOff }); }
+  // 포트원 취소 결과가 FAILED → 주문은 결제 완료 그대로(잠금 풀림) · REQUESTED(처리 중) → 환불로 기록하고 ‘진행 중’ 표시
+  r = await call("vod-pay", { body: { action: "prepare", pid: "v10", kind: "course", method: "card" } });
+  const pF = r.json.paymentId, noF = r.json.no; paidLike(pF, r.json.amount);
+  r = await call("vod-pay", { body: { action: "complete", paymentId: pF } });
+  PG[pF].cancelSt = "FAILED";
+  r = await call("vod-pay", { body: { action: "cancel", no: noF } });
+  { const oF = (await store.getDoc("vo:" + noF)).v;
+    ok(r.status === 502 && oF.status === "paid" && !oF.rfLock && PG[pF].status === "PAID", "포트원 취소 결과가 FAILED 면 주문은 결제 완료 그대로 · 잠금도 풀려 다시 시도할 수 있어요", { st: r.status, o: oF.status, lock: oF.rfLock }); }
+  PG[pF].cancelSt = "REQUESTED";
+  r = await call("vod-pay", { body: { action: "cancel", no: noF } });
+  { const oF = (await store.getDoc("vo:" + noF)).v;
+    ok(r.json.ok && oF.status === "refunded" && oF.pg && oF.pg.cancel && oF.pg.cancel.st === "requested", "포트원 취소가 REQUESTED(처리 중)면 환불로 기록하고 ‘취소 진행 중’으로 남겨요", oF.pg); }
+  delete PG[pF].cancelSt;
+  { const as41 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), vp41 = fs.readFileSync(path.join(ROOT, "api/vod-pay.js"), "utf8");
+    ok(/const vdRfLate = \(snapAt, o\) => snapAt != null && Number\(o\.refundedAt\) > snapAt;/.test(as41) && (as41.match(/vdRfLate\(frozen\.has\(o\.id\) \? frozen\.get\(o\.id\) : null, o\)/g) || []).length === 2 && /frozen\.set\(id, Number\(x\.confirmedAt\) \|\| 0\)/.test(as41) && /frozen\.set\(x, Number\(r\.at\) \|\| 0\)/.test(as41),
+      "정산: 확정한 명세서에 들어간 주문은 확정한 ‘뒤’ 환불만 환불한 달에서 차감해요 (강사 정산 · RS 정산 같은 규칙 — 확정 전 부분 환불이 두 번 빠지지 않게)");
+    ok(/let did = false;/.test(vp41) && /if \(!did\) return next;/.test(vp41) && /async function syncCancelled\(nos, why\)/.test(vp41) && (vp41.match(/await syncCancelled\(/g) || []).length === 2 && /pill\(o\.method === "vbank" \? "가상계좌 환불 진행 중" : "포트원 취소 진행 중", "warn"\)/.test(as41),
+      "환불 뒤처리는 이번 호출이 바꿨을 때만 · 포트원 조회 · 웹훅은 같은 맞추기 함수 · 진행 중인 포트원 취소는 마스터 화면에 ‘진행 중’"); }
 
   console.log("5) 마스터 부분 환불 · 웹훅");
   jar.dc_a = auth.sign({ r: "master" });

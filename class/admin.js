@@ -80,7 +80,7 @@
   const LIVE_ONLY_PAGES = ["students", "cohorts", "billing", "reviews", "curriculum", "replays", "missions", "showcase", "notes", "schedule", "free", "landing"];
   const VOD_ONLY_PAGES = ["vod-students", "vodlink", "vodlessons", "coaching", "teatime"];
   // DOOGO CLASS 판매 메뉴 — 두 영역이 다 열린 강사는 두잉고 탭에서도 주소로 열 수 있고, DOOGO CLASS 가 잠긴 강사는 자물쇠 화면
-  const VOD_SALES_PAGES = ["vod", "vod-live", "vod-settle", "vod-cal"];
+  const VOD_SALES_PAGES = ["vod", "vod-refunds", "vod-live", "vod-settle", "vod-cal"];
   /** 이 메뉴가 어느 영역 것인지 (live · vod · 두 영역 공통이면 "") */
   const pageTrack = (k) => (VOD_ONLY_PAGES.indexOf(k) >= 0 || VOD_SALES_PAGES.indexOf(k) >= 0 ? "vod" : LIVE_ONLY_PAGES.indexOf(k) >= 0 ? "live" : "");
   const VOD_NAV_LABEL = { notices: "업데이트 소식", docs: "실습 체크리스트", faq: "FAQ · 자주 묻는 질문" };
@@ -3227,21 +3227,32 @@
   const vdRfAmt = (o) => vdRefAmt(o);
   /** 환불 구분 이름 · 색 (마스터 환불 · 취소 관리와 같은 RF_KIND) */
   const vdRfKind = (o) => RF_KIND[rfKindOf(o)] || RF_KIND.master;
-  /** 환불이 강사 정산에 어떻게 반영되는지 → { t(설명), ins(정산에서 빠진 내 몫) }
+  /** 확정한 명세서에 들어간 주문이 그 ‘뒤’ 환불됐는지 — 그래야 환불한 달 정산에서 차감해요 (강사 정산 vdStmt · RS 정산 mdStmt · 환불 내역 같은 규칙)
+   *  snapAt = 그 명세서를 확정한 때(없으면 null · 예전 기록처럼 확정 시각이 없으면 0) · 확정 전에 (부분) 환불됐으면 명세서가 이미 남은 금액만 담고 있어서 또 빼면 두 번 빠져요 */
+  const vdRfLate = (snapAt, o) => snapAt != null && Number(o.refundedAt) > snapAt;
+  /** 환불이 강사 정산에 어떻게 반영되는지 → { t(설명), ins(정산에서 빠진 내 몫), late(확정한 뒤 환불 → 환불한 달에서 차감) }
    *  · 그 달 정산을 확정하기 전 환불: 그 달 정산에서 빠짐(부분 환불은 남은 금액만) · 확정한 뒤 환불: 환불한 달 정산에서 차감 (vdStmt 와 같은 규칙) */
   function vdRfSettle(o) {
     const key = vdKey(o), ratio = window.DCS.settle.refundRatio(o), ins = Math.round(VX().insAmt(o) * ratio / 10) * 10;
     const paidYM = o.paidAt ? vdYM(o.paidAt) : "", rfYM = o.refundedAt ? vdYM(o.refundedAt) : paidYM;
-    const frozen = VD().payouts.some((x) => x.key === key && x.snap && (x.snap.ids || []).indexOf(o.id) >= 0);
-    if (frozen) return { t: vdYMtxt(rfYM) + " 정산에서 차감 (" + vdYMtxt(paidYM) + " 정산은 이미 확정)", ins };
-    return { t: paidYM ? vdYMtxt(paidYM) + (ratio < 1 ? " 정산에 남은 금액만 반영" : " 정산에서 빠짐") : "정산 전 취소", ins };
+    const sn = VD().payouts.find((x) => x.key === key && x.snap && (x.snap.ids || []).indexOf(o.id) >= 0);
+    if (vdRfLate(sn ? Number(sn.confirmedAt) || 0 : null, o)) return { t: vdYMtxt(rfYM) + " 정산에서 차감 (" + vdYMtxt(paidYM) + " 정산은 이미 확정)", ins, late: true };
+    return { t: paidYM ? vdYMtxt(paidYM) + (ratio < 1 ? " 정산에 남은 금액만 반영" : " 정산에서 빠짐") : "정산 전 취소", ins, late: false };
   }
-  /** 이번 달(ym) 환불 요약 — iid 를 주면 그 강사 클래스만 → { n, amt(돌려준 금액), ins(빠진 강사 몫), gross(이번 달 결제), inst(회원 바로 취소 수) } */
+  /** 같이 결제해 같이 환불된 부가 상품(코칭권 등 · grp = 본 주문 번호)은 건수에서 빼요 — 회원이 한 번 취소한 건 한 건 (금액은 그대로 더해요) */
+  const vdRfCases = (list) => list.filter((o) => !(o.grp && o.grp !== o.no && list.some((x) => x.no === o.grp)));
+  /** 이번 달(ym) 환불 요약 — iid 를 주면 그 강사 클래스만
+   *  → { n(환불 건수 · 같이 환불된 부가 상품 빼고), amt(이번 달 돌려준 금액), ins(그 환불들의 강사 몫 합계), inst(회원 바로 취소 건수), list,
+   *      gross(이번 달 결제), own(이번 달 결제분 중 환불된 금액 — 순매출 = gross − own),
+   *      cur { n, ins }(이번 달 정산에 반영되는 환불만: 이번 달 결제분 · 확정한 뒤 환불돼 이번 달에서 차감되는 주문 — 지난달 결제분은 지난달 정산에서 빠져요) } */
   function vdRfSum(ym, iid) {
     const ids = iid ? VD().products.filter((p) => p.iid === iid).map((p) => p.id) : null, mine = (o) => !o.demo && o.amount > 0 && (!ids || ids.indexOf(o.pid) >= 0);
     const rf = VD().orders.filter((o) => mine(o) && o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym);
     const paid = VD().orders.filter((o) => mine(o) && o.paidAt && vdYM(o.paidAt) === ym && (o.status === "paid" || o.status === "refunded"));
-    return { n: rf.length, amt: rf.reduce((a, o) => a + vdRfAmt(o), 0), ins: rf.reduce((a, o) => a + vdRfSettle(o).ins, 0), gross: paid.reduce((a, o) => a + o.amount, 0), inst: rf.filter((o) => o.refundKind === "instant").length, list: rf };
+    const st = rf.map((o) => ({ o, s: vdRfSettle(o) })), cur = st.filter((x) => (x.o.paidAt && vdYM(x.o.paidAt) === ym) || x.s.late), cs = vdRfCases(rf);
+    return { n: cs.length, amt: rf.reduce((a, o) => a + vdRfAmt(o), 0), ins: st.reduce((a, x) => a + x.s.ins, 0), inst: cs.filter((o) => o.refundKind === "instant").length, list: rf,
+      gross: paid.reduce((a, o) => a + o.amount, 0), own: paid.filter((o) => o.status === "refunded").reduce((a, o) => a + vdRfAmt(o), 0),
+      cur: { n: vdRfCases(cur.map((x) => x.o)).length, ins: cur.reduce((a, x) => a + x.s.ins, 0) } };
   }
   /* 광고비 · 환불 차감이 그 달 정산액보다 크면 남은 금액은 다음 달 정산에서 이어서 빼요 (이월) */
   function vdCarry(key, ym) {
@@ -3255,12 +3266,13 @@
   function vdStmt(key, ym) {
     const rec = vdPayout(key, ym);
     if (rec && rec.snap) return Object.assign({}, rec.snap, { rec });
-    const X = VX(), frozen = new Set();
-    VD().payouts.forEach((x) => { if (x.key === key && x.snap && x.ym < ym) (x.snap.ids || []).forEach((id) => frozen.add(id)); });
+    // 앞선 달 확정 명세서(snap)에 들어간 주문 → 그 명세서를 확정한 때 (확정한 ‘뒤’ 환불만 환불한 달에서 차감 — vdRfLate)
+    const X = VX(), frozen = new Map();
+    VD().payouts.forEach((x) => { if (x.key === key && x.snap && x.ym < ym) (x.snap.ids || []).forEach((id) => frozen.set(id, Number(x.confirmedAt) || 0)); });
     const keep = window.DCS.settle.keepOf; // 환불된 주문은 남은 비율만큼 (공용 정산 모듈 shared/settle.js)
     // 체험 계정 주문(0원 · demo)은 정산에 넣지 않아요
     const os = VD().orders.filter((o) => !o.demo && vdKey(o) === key && o.paidAt && vdYM(o.paidAt) === ym && (o.status === "paid" || (o.status === "refunded" && keep(o) > 0 && !frozen.has(o.id))));
-    const dl = VD().orders.filter((o) => !o.demo && vdKey(o) === key && o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym && frozen.has(o.id));
+    const dl = VD().orders.filter((o) => !o.demo && vdKey(o) === key && o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym && vdRfLate(frozen.has(o.id) ? frozen.get(o.id) : null, o));
     const ch = {};
     const insK = (o) => Math.floor(X.insAmt(o) * keep(o) / 10) * 10, baseK = (o) => Math.round(X.baseOf(o) * keep(o));
     os.forEach((o) => { const k = X.isAccess(o) ? (o.ch || "web") : "addon", c = (ch[k] = ch[k] || { n: 0, base: 0, ins: 0 }); c.n++; c.base += baseK(o); c.ins += insK(o); });
@@ -4883,7 +4895,7 @@
     return '<section class="a-card vs-strip"><div class="a-card-head"><h2>' + icon("coins", "sm") + (isCoach() ? " 강사님 수익 쉐어" : " 내 수익 쉐어") + '</h2><span class="a-muted">숫자는 강사님 몫이에요 · ' + (r.next ? "지금 비율 · 다음 비율 " + esc(vdRateNextTxt(r)) : r.at ? esc(fmtFull(DB.date.toStr(new Date(r.from || r.at)))) + "부터 마스터 확정" : "기본 계약 (강사 5 : 플랫폼 5)") + "</span>" +
       '<a class="a-link vda-ml" href="#/center/vod-cal">정산 달력 ' + icon("arrowRight", "xs") + '</a><a class="a-link" href="#/center/vod-settle">판매 정산 ' + icon("arrowRight", "xs") + "</a></div>" +
       '<div class="vs-strip-g">' + X.RATE_KEYS.map((x) => '<div class="vs-strip-i"><small>' + esc(x[1]) + "</small><b>" + r[x[0]] + "<em>%</em></b><span>강사 " + r[x[0]] + " : 플랫폼 " + (100 - r[x[0]]) + "</span></div>").join("") +
-        '<div class="vs-strip-i vs-strip-now"><small>이번 달 정산 예정</small><b>' + won(Math.max(0, st.net)) + "</b><span>" + st.n + "건 판매 · " + (rfm.n ? (can("vod-refunds") ? '<a class="vs-strip-rf" href="#/center/vod-refunds">' : '<span class="vs-strip-rf">') + "환불 " + rfm.n + "건 (정산 - " + won(rfm.ins) + ")" + (can("vod-refunds") ? "</a>" : "</span>") + " · " : "") + esc(fmtFull(vdPayDate(ym))) + " 지급</span></div></div>" +
+        '<div class="vs-strip-i vs-strip-now"><small>이번 달 정산 예정</small><b>' + won(Math.max(0, st.net)) + "</b><span>" + st.n + "건 판매 · " + (rfm.cur.n ? (can("vod-refunds") ? '<a class="vs-strip-rf" href="#/center/vod-refunds">' : '<span class="vs-strip-rf">') + "환불 " + rfm.cur.n + "건 (정산 - " + won(rfm.cur.ins) + ")" + (can("vod-refunds") ? "</a>" : "</span>") + " · " : "") + esc(fmtFull(vdPayDate(ym))) + " 지급</span></div></div>" +
       '<p class="a-muted p-small">' + icon("alert", "xs") + " (판매가 − 온드 RS − PG 결제 수수료) × 비율로 정산해요(부가세 포함 금액). 예: RS · PG 수수료 빼고 100만 원 · " + r.vod + "% → " + won(Math.floor(1000000 * r.vod / 100 / 10) * 10) + " · 사업자는 그대로(세금계산서) · 개인은 ÷ 1.1에서 3.3%를 떼고 받아요.</p></section>";
   }
   function pageVodDash() {
@@ -4978,11 +4990,11 @@
     const iid = IID(), v = VD(), X = VX(), mine = v.products.filter((p) => p.iid === iid), ym = todayStr().slice(0, 7), r = X.rfSet(); // VOD · 전자책 · LIVE · 오프라인 · 종이책 · 부가 상품 모두
     const sub = "DOOGO CLASS에서 판매된 내 클래스 중 환불 · 취소된 주문이에요. 환불한 금액은 정산에서 빠져요 — 정산을 확정하기 전에 환불되면 그 달 정산에서 빠지고, 이미 확정한 달의 주문이 환불되면 환불한 달 정산에서 차감해요. " + SALES_SUB;
     if (!mine.length) return head("환불 · 취소 내역", sub, vdStoreBtn()) + '<section class="a-card">' + emptyBox("refresh", "아직 DOOGO CLASS에 올라간 내 클래스가 없어요.") + "</section>";
-    const rf = vdRefundsOf(iid), sm = vdRfSum(ym, iid), all = rf.filter((o) => o.refundKind === "instant").length;
+    const rf = vdRefundsOf(iid), sm = vdRfSum(ym, iid), all = vdRfCases(rf).filter((o) => o.refundKind === "instant").length;
     return head("환불 · 취소 내역", sub, vdStoreBtn()) +
       '<div class="a-kpis">' +
         kpi("이번 달 환불", sm.n + "건", won(sm.amt) + " 돌려줌", "#/center/vod-refunds", sm.n ? "warn" : "") +
-        kpi("이번 달 순매출", won(sm.gross - sm.amt), "결제 " + won(sm.gross) + " − 환불 " + won(sm.amt), "#/center/vod") +
+        kpi("이번 달 순매출", won(sm.gross - sm.own), "결제 " + won(sm.gross) + " − 이번 달 결제분 환불 " + won(sm.own), "#/center/vod") +
         kpi("정산에서 빠진 금액", won(sm.ins), "이번 달 환불의 내 정산 몫", "#/center/vod-settle") +
         kpi("회원 바로 취소", all + "건", "결제 후 " + r.days + "일 이내 · 재생 전 (누적)", "#/center/vod-refunds") +
       "</div>" +
@@ -5006,7 +5018,7 @@
       '<div class="a-kpis a-kpis-5">' +
         kpi("이번 달 판매", mon.length + "건", vdYMtxt(ym), "#/center/vod", "ok") +
         kpi("이번 달 매출", won(vdSum(mon)), "결제 완료 기준 · 환불 빼고", "#/center/vod") +
-        kpi("이번 달 환불", rfm.n + "건", rfm.n ? "- " + won(rfm.amt) + " · 정산 - " + won(rfm.ins) : "환불 없음", "#/center/vod-refunds", rfm.n ? "warn" : "") +
+        kpi("이번 달 환불", rfm.n + "건", rfm.n ? "- " + won(rfm.amt) + " · 내 몫 - " + won(rfm.ins) : "환불 없음", "#/center/vod-refunds", rfm.n ? "warn" : "") +
         kpi("이번 달 정산 예정", won(vdSum(mon, vdInsAmt)), fmtFull(vdPayDate(ym)) + " 지급 예정", "#/center/vod-settle") +
         kpi("평균 별점", avg, "후기 " + rs.length + "개", "#/center/vod") +
       "</div>" +
@@ -6202,7 +6214,7 @@
    * 정식 서버 + 포트원이 연결되면 회원 바로 취소 · 마스터 환불이 카드 결제를 자동으로 취소해요 (지금 시안은 기록만). */
   const RF_KIND = { instant: ["회원 바로 취소", "ok"], partial: ["부분 환불", "warn"], master: ["마스터 환불", "info"] };
   const rfKindOf = (o) => (o.refundKind ? o.refundKind : o.refundAmount != null && o.refundAmount < o.amount ? "partial" : "master");
-  const rfPg = (o) => (o.refundPay ? (o.refundPay.st === "done" ? pill("계좌 송금 완료", "ok") : pill("계좌 송금 대기", "warn")) : o.method === "bank" ? pill("계좌 환불 · 기록만", "mute") : !o.pg ? pill("수동 처리", "mute") : o.pg.st === "done" || (o.pg.cancel && o.pg.cancel.id) ? pill(o.method === "vbank" ? "가상계좌 환불 완료" : "포트원 취소 완료", "ok") : o.pg.st === "fail" ? pill("포트원 취소 실패", "bad") : pill("시안 · 실제 취소 없음", "mute"));
+  const rfPg = (o) => (o.refundPay ? (o.refundPay.st === "done" ? pill("계좌 송금 완료", "ok") : pill("계좌 송금 대기", "warn")) : o.method === "bank" ? pill("계좌 환불 · 기록만", "mute") : !o.pg ? pill("수동 처리", "mute") : o.pg.cancel && o.pg.cancel.st === "requested" ? pill(o.method === "vbank" ? "가상계좌 환불 진행 중" : "포트원 취소 진행 중", "warn") : o.pg.st === "done" || (o.pg.cancel && o.pg.cancel.id) ? pill(o.method === "vbank" ? "가상계좌 환불 완료" : "포트원 취소 완료", "ok") : o.pg.st === "fail" ? pill("포트원 취소 실패", "bad") : pill("시안 · 실제 취소 없음", "mute"));
   /* ---------- 종이책 주문 · 배송 관리 ----------
    * 입금 대기(무통장) → 신규 주문(결제 완료) → 배송 준비(발주 확인) → 배송 중(택배사 + 송장) → 배송 완료(직접 누르거나, 보낸 뒤 정한 날이 지나면 자동)
    * 취소 · 반품 · 교환: 회원 요청 → 승인(수거 중) → 환불(반품 · 취소) 또는 교환 상품 발송 · 반려 (교보문고처럼 책이 돌아와 확인한 뒤 환불)
@@ -7402,10 +7414,11 @@
   function mdStmt(id, ym) {
     const rec = mdPOs()[mdKeyOf(id, ym)] || null;
     if (rec && rec.snap) return Object.assign({}, rec.snap, { rec });
-    const X = VX(), frozen = new Set();
-    Object.keys(mdPOs()).forEach((k) => { const r = mdPOs()[k]; if (k.indexOf(id + ":") === 0 && r && r.snap && k.slice(id.length + 1) < ym) (r.snap.ids || []).forEach((x) => frozen.add(x)); });
+    // 앞선 달 확정 RS 명세서에 들어간 주문 → 확정한 때(at) · 확정한 ‘뒤’ 환불만 차감 (vdRfLate · 강사 정산과 같은 규칙)
+    const X = VX(), frozen = new Map();
+    Object.keys(mdPOs()).forEach((k) => { const r = mdPOs()[k]; if (k.indexOf(id + ":") === 0 && r && r.snap && k.slice(id.length + 1) < ym) (r.snap.ids || []).forEach((x) => frozen.set(x, Number(r.at) || 0)); });
     const os = mdOrders(id).filter((o) => o.paidAt && vdYM(o.paidAt) === ym && vdKeep(o) > 0).sort((a, b) => a.paidAt - b.paidAt);
-    const dl = mdOrders(id).filter((o) => o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym && frozen.has(o.id));
+    const dl = mdOrders(id).filter((o) => o.status === "refunded" && o.refundedAt && vdYM(o.refundedAt) === ym && vdRfLate(frozen.has(o.id) ? frozen.get(o.id) : null, o));
     const ratio = (o) => (o.amount > 0 && o.refundAmount != null ? Math.min(1, o.refundAmount / o.amount) : 1);
     const rs = os.reduce((a, o) => a + mdRs(o), 0), base = os.reduce((a, o) => a + mdBase(o), 0);
     const ded = dl.reduce((a, o) => a + Math.round(X.rsOf(o) * ratio(o) / 10) * 10, 0);
@@ -8580,7 +8593,7 @@
     CUR, usedBy, curBar, mlStrip, ytBadge, kindPill, faqCats, coachStats, TRACK_PILL, coachPermChips, menuNote, missionOpts, themePicker, brandPhotoBox,
     // VOD(DOOGO CLASS): 수강생 · 강의 연결 · 판매 내역
     vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
-    vdKey, vdKeep, vdStmt, vdStState, vdRefundsOf, vdRfAmt, vdRfKind, vdRfSettle, vdRfSum, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
+    vdKey, vdKeep, vdStmt, vdStState, vdRefundsOf, vdRfAmt, vdRfKind, vdRfSettle, vdRfSum, vdRfCases, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
     // 마스터: 대시보드 · 강사 플랫폼 · 전체 수강생 (운영자 계정이면 맡지 않은 버튼 · 링크를 빼요 — staffStrip)
     seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */

@@ -73,7 +73,7 @@ export function InsVod() {
     <div className="a-kpis a-kpis-5">
       <Kpi label="이번 달 판매" value={mon.length + "건"} sub={A.vdYMtxt(ym)} href="#/center/vod" tone="ok" />
       <Kpi label="이번 달 매출" value={won(A.vdSum(mon))} sub="결제 완료 기준 · 환불 빼고" href="#/center/vod" />
-      <Kpi label="이번 달 환불" value={rfm.n + "건"} sub={rfm.n ? "- " + won(rfm.amt) + " · 정산 - " + won(rfm.ins) : "환불 없음"} href="#/center/vod-refunds" tone={rfm.n ? "warn" : ""} />
+      <Kpi label="이번 달 환불" value={rfm.n + "건"} sub={rfm.n ? "- " + won(rfm.amt) + " · 내 몫 - " + won(rfm.ins) : "환불 없음"} href="#/center/vod-refunds" tone={rfm.n ? "warn" : ""} />
       <Kpi label="이번 달 정산 예정" value={won(A.vdSum(mon, A.vdInsAmt))} sub={DB.date.fmtFull(A.vdPayDate(ym)) + " 지급 예정"} href="#/center/vod-settle" />
       <Kpi label="평균 별점" value={avg} sub={"후기 " + rs.length + "개"} href="#/center/vod" />
     </div>
@@ -98,12 +98,12 @@ export function InsVodRefunds() {
   const A = ADM(), DB = DBX(), iid = A.IID(), v = A.VD(), X = A.VX(), won = A.won, mine = v.products.filter((p) => p.iid === iid), ym = DB.date.todayStr().slice(0, 7), r = X.rfSet(); // VOD · 전자책 · LIVE · 오프라인 · 종이책 · 부가 상품 모두
   const sub = "DOOGO CLASS에서 판매된 내 클래스 중 환불 · 취소된 주문이에요. 환불한 금액은 정산에서 빠져요 — 정산을 확정하기 전에 환불되면 그 달 정산에서 빠지고, 이미 확정한 달의 주문이 환불되면 환불한 달 정산에서 차감해요. " + A.SALES_SUB;
   if (!mine.length) return <><Head title="환불 · 취소 내역" sub={sub} right={<Store />} /><section className="a-card"><Empty ic="refresh">아직 DOOGO CLASS에 올라간 내 클래스가 없어요.</Empty></section></>;
-  const rf = A.vdRefundsOf(iid), sm = A.vdRfSum(ym, iid), all = rf.filter((o) => o.refundKind === "instant").length;
+  const rf = A.vdRefundsOf(iid), sm = A.vdRfSum(ym, iid), all = A.vdRfCases(rf).filter((o) => o.refundKind === "instant").length;
   return <>
     <Head title="환불 · 취소 내역" sub={sub} right={<Store />} />
     <div className="a-kpis">
       <Kpi label="이번 달 환불" value={sm.n + "건"} sub={won(sm.amt) + " 돌려줌"} href="#/center/vod-refunds" tone={sm.n ? "warn" : ""} />
-      <Kpi label="이번 달 순매출" value={won(sm.gross - sm.amt)} sub={"결제 " + won(sm.gross) + " − 환불 " + won(sm.amt)} href="#/center/vod" />
+      <Kpi label="이번 달 순매출" value={won(sm.gross - sm.own)} sub={"결제 " + won(sm.gross) + " − 이번 달 결제분 환불 " + won(sm.own)} href="#/center/vod" />
       <Kpi label="정산에서 빠진 금액" value={won(sm.ins)} sub="이번 달 환불의 내 정산 몫" href="#/center/vod-settle" />
       <Kpi label="회원 바로 취소" value={all + "건"} sub={"결제 후 " + r.days + "일 이내 · 재생 전 (누적)"} href="#/center/vod-refunds" />
     </div>
