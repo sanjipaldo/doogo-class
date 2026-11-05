@@ -2169,6 +2169,14 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const fx36 = await st36.fileStats(), bad36 = await st36.pgProbe("postgres://postgres.abc:s3cret-pw@127.0.0.1:1/postgres");
     ok(typeof fx36.n === "number" && fx36.n >= 0 && fx36.total >= fx36.max && bad36.ok === false && bad36.port === 1 && !/s3cret-pw|postgres\.abc/.test(JSON.stringify(bad36)),
       "배포 기록: 사진 · 첨부 개수 · 크기(읽기만) · Supabase 접속 실패도 빌드는 계속 · 기록에 비밀번호 · 주소가 안 나와요", { fx36, bad36 });
+    { // 비밀번호가 틀렸다고 나올 때: 모양만 보고 고칠 곳을 알려요 (비밀번호 · 아이디 글자는 안 나와요)
+      const AF = 'password authentication failed for user "postgres"', h = (s, why, pooler) => st36.pgAuthHint(new URL(s), why === undefined ? AF : why, pooler !== false);
+      const P = "@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres", ref = "postgres.abcdefghijklmnopqrst";
+      const hs = { ph: h("postgresql://" + ref + ":[YOUR-PASSWORD]" + P), br: h("postgresql://" + ref + ":[Zz9secretQ]" + P), user: h("postgresql://postgres:Zz9secretQ" + P),
+        pct: h("postgresql://" + ref + ":Zz9%zzsecretQ" + P), ok: h("postgresql://" + ref + ":Zz9secretQ" + P), other: h("postgresql://" + ref + ":Zz9secretQ" + P, "timeout"), tenant: h("postgresql://postgres:Zz9secretQ" + P, "Tenant or user not found") };
+      ok(/YOUR-PASSWORD/.test(hs.ph) && /대괄호/.test(hs.br) && /postgres\.<프로젝트 아이디>/.test(hs.user) && /postgres\.<프로젝트 아이디>/.test(hs.tenant) && /%/.test(hs.pct) && /Reset database password/.test(hs.ok) && hs.other === ""
+        && !/Zz9|secretQ|abcdefghij/.test(JSON.stringify(hs)), "Supabase 비밀번호 인증 실패: [YOUR-PASSWORD] 그대로 · 대괄호 · 아이디 모양 · % 깨짐 · 그 밖엔 비밀번호 다시 정하기 안내 (비밀번호 · 아이디 글자는 기록에 안 나와요)", hs);
+    }
     if (pgRun) { const pr36 = await st36.pgProbe(process.env.SUPABASE_DB_URL); ok(pr36.ok && pr36.app && pr36.docs > 0 && /^\d+/.test(pr36.version), "Supabase 접속 확인(시험 Postgres): 버전 · 왕복 시간 · app 표 · 문서 수", pr36); }
     // 로그인 서명 키: SESSION_SECRET 을 새로 넣어도 예전 키(Turso 토큰) 쿠키를 받아 줘요 · Vercel 에서 키가 없으면 기본 키로 서명하지 않아요
     const env36 = { s: process.env.SESSION_SECRET, t: process.env.TURSO_AUTH_TOKEN, v: process.env.VERCEL }, setEnv = (o) => { ["SESSION_SECRET", "TURSO_AUTH_TOKEN", "VERCEL"].forEach((k) => delete process.env[k]); Object.assign(process.env, o); };

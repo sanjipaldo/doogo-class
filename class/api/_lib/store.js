@@ -327,12 +327,29 @@ async function pgProbe(url) {
     const docs = has ? Number((await c.sql.unsafe("SELECT COUNT(*) AS n FROM app.docs WHERE v IS NOT NULL"))[0].n) : null;
     return Object.assign(info, { ok: true, version, connectMs, pingMs: Math.min.apply(null, pings), app: !!has, docs });
   } catch (e) {
-    return Object.assign(info, { ok: false, why: scrub((e && e.message) || e).slice(0, 200) });
+    const why = scrub((e && e.message) || e).slice(0, 200), hint = pgAuthHint(u, why, !!m);
+    return Object.assign(info, { ok: false, why }, hint ? { hint } : {});
   } finally { if (c) await c.end().catch(() => {}); }
+}
+/** 비밀번호 · 아이디가 틀렸다고 나올 때 무엇을 고치면 되는지 — 모양만 보고 알려요 (비밀번호 · 아이디 글자는 안 적어요) */
+function pgAuthHint(u, why, pooler) {
+  if (!/password authentication failed|tenant or user not found/i.test(why)) return "";
+  let user = "", pw = null;
+  try { user = decodeURIComponent(u.username || ""); } catch (e) { /* 아래에서 모양으로 알려요 */ }
+  try { pw = decodeURIComponent(u.password || ""); } catch (e) { pw = null; }
+  const out = [];
+  if (pooler && !/^postgres\.[a-z0-9]{10,}$/i.test(user)) out.push("아이디가 postgres.<프로젝트 아이디> 모양이 아니에요 — Connect › Transaction pooler 주소를 그대로 복사해 주세요");
+  if (pw === null) out.push("비밀번호에 % 가 있어 주소가 깨져요 — 비밀번호를 영문 · 숫자로 다시 정해 주세요");
+  else if (!pw) out.push("비밀번호 칸이 비어 있어요");
+  else if (/YOUR[-_ ]?PASSWORD/i.test(pw)) out.push("비밀번호 자리에 [YOUR-PASSWORD] 글자가 그대로 있어요 — DB 비밀번호로 바꿔 주세요");
+  else if (/^\[.*\]$/.test(pw)) out.push("비밀번호 앞뒤의 대괄호 [ ] 까지 들어가 있어요 — 괄호는 지워 주세요");
+  else if (/^\s|\s$/.test(pw)) out.push("비밀번호 앞뒤에 빈칸이 있어요");
+  if (!out.length) out.push("주소 모양은 맞아요 — 비밀번호가 이 프로젝트 것이 아니거나 틀렸어요. Supabase › Project Settings › Database › Reset database password 로 영문 · 숫자 비밀번호를 새로 정해 넣어 주세요 (새 비밀번호는 몇 분 뒤 풀러에 반영돼요)");
+  return out.join(" · ");
 }
 
 module.exports = {
   exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, listBackups, backupRows, restoreRows, opsDone, opMark,
-  insertDocs, putSys, allDocRows, fileStats, pgProbe, pgSetup, close, openClient, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
+  insertDocs, putSys, allDocRows, fileStats, pgProbe, pgAuthHint, pgSetup, close, openClient, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
   kind: () => getClient().kind
 };
