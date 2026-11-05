@@ -1,24 +1,20 @@
 /* DB 옮기기 도구 (DB 전환 1부 A3 · 2026-11) — 문서 · 사진 · 볼 수 있는 범위 · 작업 기록 · 최근 백업을 한 DB 에서 다른 DB 로 복사하고 하나씩 확인해요
  *
- *  어디서 어디로: Turso · SQLite 파일 · Postgres(Supabase) 아무 쪽이나 (같은 표 6개 · store.openClient)
+ *  2026-11-05 운영 · 미리보기를 Turso → Supabase 로 옮길 때 썼어요(배포 때 DB_MOVE — 그 뒤 Turso 를 정리하며 배포용 DB_MOVE 와 Turso 연결은 뺐어요).
+ *  지금 쓰는 곳: 화면 시험이 시험 DB(SQLite)를 Postgres(PGlite)로 옮길 때(scripts/e2e/lib.js) · 로컬에서 Supabase 를 SQLite 파일로 받아 두거나 되돌릴 때(아래 CLI)
+ *
+ *  어디서 어디로: SQLite 파일 · Postgres(Supabase · 로컬 PGlite) 아무 쪽이나 (같은 표 6개 · store.openClient)
  *  모드
- *    copy   받는 쪽이 비어 있을 때만 전부 복사 (+ 최근 백업 5개). 이미 같은 내용이면 확인만 하고 넘어가요 (같은 배포를 다시 돌려도 안전)
+ *    copy   받는 쪽이 비어 있을 때만 전부 복사 (+ 최근 백업 5개). 이미 같은 내용이면 확인만 하고 넘어가요 (같은 일을 다시 돌려도 안전)
  *    sync   받는 쪽을 먼저 그 DB 백업에 남기고, 보내는 쪽과 문서가 똑같게 (없는 문서는 지움) — 되돌리기(전체)
- *    since  그 시각(ms) 뒤에 바뀐 문서 · 새 사진만 — 전환 뒤 되돌리기(바뀐 것만)
+ *    since  그 시각(ms) 뒤에 바뀐 문서 · 새 사진만 — 되돌리기(바뀐 것만)
  *    verify 복사하지 않고 비교만
  *  확인: 문서마다 해시(키 · 글자 · 버전 · 순서 · 바뀐 시각) · 사진마다 해시(종류 · 크기 · 내용) · 범위 · 작업 기록 — 하나라도 다르면 실패(멈춤)
  *  로그인 실패 횟수(rl)는 잠깐 쓰는 값이라 옮기지 않아요.
  *
- *  배포 때 (운영 전환 당일 · 시험용은 미리보기): Vercel 환경 변수 DB_MOVE 를 넣고 배포 → 빌드 단계(db-build.js)가 먼저 옮기고 확인
- *    DB_MOVE=turso-to-supabase              Turso → Supabase (copy) — 운영은 쓰기 멈춤(DC_READONLY=1)이 먼저 올라가 있어야 해요
- *    DB_MOVE=supabase-to-turso              되돌리기: Supabase → Turso (sync)
- *    DB_MOVE=supabase-to-turso-since:<ms>   되돌리기: 그 시각 뒤에 바뀐 것만 (since)
- *    DB_MOVE=verify                         Turso · Supabase 비교만
- *    실패하면 빌드가 멈춰서 그 배포는 올라가지 않아요 (지금 떠 있는 배포가 그대로)
- *
  *  로컬: node scripts/db-move.js <보내는 쪽> <받는 쪽> [copy|sync|since:<ms>|verify]
- *    보내는 쪽 · 받는 쪽: sqlite:<파일> · turso(환경 변수 TURSO_DATABASE_URL · TURSO_AUTH_TOKEN) · supabase(환경 변수 SUPABASE_DB_URL) · pg:<로컬 주소>
- *    (화면 시험이 시험 DB(SQLite)를 Postgres 로 옮길 때도 이 move() 를 써요 — scripts/e2e/lib.js)
+ *    보내는 쪽 · 받는 쪽: sqlite:<파일> · supabase(환경 변수 SUPABASE_DB_URL) · pg:<로컬 주소>
+ *    예) Supabase 를 내 컴퓨터 SQLite 파일로 받아 두기: SUPABASE_DB_URL=… node scripts/db-move.js supabase sqlite:backup.db copy
  */
 "use strict";
 const crypto = require("crypto");
@@ -128,12 +124,8 @@ function line(res, from, to) {
   return from + " → " + to + " (" + res.mode + "): 문서 " + res.docs + "개 · 사진 " + res.files + "개 · 범위 " + res.scopes + "개 · 작업 기록 " + res.ops + "개" + (res.backups ? " · 백업 " + res.backups + "개" : "") + (res.backed ? " · 받는 쪽 문서 " + res.backed + "개 먼저 백업(그 DB 백업 목록 ‘옮기기(sync) 전 자동 백업’)" : "") + (res.removed ? " · 받는 쪽에만 있던 문서 " + res.removed + "개 지움(먼저 백업)" : "") + " · 확인: 문서마다 해시 맞음 · " + (res.ms / 1000).toFixed(1) + "초";
 }
 
-/** 환경 변수로 여는 연결: turso · supabase */
+/** 환경 변수로 여는 연결: supabase */
 function fromEnv(which) {
-  if (which === "turso") {
-    if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) throw new Error("TURSO_DATABASE_URL · TURSO_AUTH_TOKEN 환경 변수가 없어요");
-    return store.openClient({ kind: "turso", url: process.env.TURSO_DATABASE_URL, token: process.env.TURSO_AUTH_TOKEN });
-  }
   if (which === "supabase") {
     if (!process.env.SUPABASE_DB_URL) throw new Error("SUPABASE_DB_URL 환경 변수가 없어요");
     return store.openClient({ kind: "postgres", url: process.env.SUPABASE_DB_URL });
@@ -142,43 +134,22 @@ function fromEnv(which) {
 }
 function parseSpec(s) {
   s = String(s || "");
-  if (s === "turso" || s === "supabase") return { c: fromEnv(s), name: s === "turso" ? "Turso" : "Supabase" };
+  if (s === "supabase") return { c: fromEnv(s), name: "Supabase" };
   if (s.indexOf("sqlite:") === 0) return { c: store.openClient({ kind: "sqlite", file: s.slice(7) }), name: "SQLite" };
   if (s.indexOf("pg:") === 0) {
     const url = s.slice(3);
     if (!/^postgres(ql)?:\/\/[^@]*@?(127\.0\.0\.1|localhost)[:/]/.test(url)) throw new Error("pg:<주소> 는 로컬 시험용 Postgres 만 — Supabase 는 supabase (환경 변수 SUPABASE_DB_URL) 로");
     return { c: store.openClient({ kind: "postgres", url }), name: "Postgres(로컬)" };
   }
-  throw new Error("보내는 쪽 · 받는 쪽: sqlite:<파일> · turso · supabase · pg:<로컬 주소>");
+  throw new Error("보내는 쪽 · 받는 쪽: sqlite:<파일> · supabase · pg:<로컬 주소>");
 }
 
-/** 배포 단계(db-build.js)에서: DB_MOVE 값대로 — 결과 한 줄을 돌려주고, 실패하면 오류(빌드 멈춤) */
-async function runFromEnv(spec, log) {
-  spec = String(spec || "").trim();
-  const prod = process.env.VERCEL_ENV === "production", ro = process.env.DC_READONLY === "1";
-  let from, to, mode = "copy", since = null;
-  if (spec === "turso-to-supabase") { from = "turso"; to = "supabase"; }
-  else if (spec === "supabase-to-turso") { from = "supabase"; to = "turso"; mode = "sync"; }
-  else if (/^supabase-to-turso-since:\d{12,}$/.test(spec)) { from = "supabase"; to = "turso"; mode = "since"; since = Number(spec.split(":")[1]); }
-  else if (spec === "verify") { from = "turso"; to = "supabase"; mode = "verify"; }
-  else throw new Error("DB_MOVE 값을 모르겠어요: " + spec + " (turso-to-supabase · supabase-to-turso · supabase-to-turso-since:<ms> · verify)");
-  // 운영: 복사하는 동안 새 저장이 들어오면 빠지니까 쓰기 멈춤이 먼저 떠 있어야 해요 (같은 배포에서 켜면 지금 떠 있는 배포가 아직 저장을 받아요)
-  if (mode !== "verify" && prod && !ro) throw new Error("운영에서 옮기려면 쓰기 멈춤(DC_READONLY=1)을 넣은 배포가 먼저 올라가 있어야 해요 — 그 배포가 뜬 뒤 1분 기다렸다가 DB_MOVE 를 넣고 다시 배포해 주세요");
-  if (mode !== "verify" && !prod && !ro && log) log("주의: 쓰기 멈춤 없이 옮겨요 (미리보기 · 시험용)");
-  const A = fromEnv(from), B = fromEnv(to), nm = { turso: "Turso", supabase: "Supabase" };
-  try {
-    if (mode === "verify") { const v = await verify(A, B); return { ok: v.ok, text: "비교 " + nm[from] + " ↔ " + nm[to] + ": " + (v.ok ? "같아요 · " : "달라요 · ") + brief(v), verify: v }; }
-    const res = await move(A, B, { mode, since });
-    return { ok: true, text: "옮기기 " + line(res, nm[from], nm[to]), res };
-  } finally { await A.end().catch(() => {}); await B.end().catch(() => {}); }
-}
-
-module.exports = { move, verify, runFromEnv, line, brief, docSig };
+module.exports = { move, verify, line, brief, docSig };
 
 if (require.main === module) {
   (async () => {
     const [fromS, toS, modeS] = process.argv.slice(2);
-    if (!fromS || !toS) { console.log("사용법: node scripts/db-move.js <보내는 쪽> <받는 쪽> [copy|sync|since:<ms>|verify]\n  sqlite:<파일> · turso · supabase · pg:<로컬 주소>"); process.exit(2); }
+    if (!fromS || !toS) { console.log("사용법: node scripts/db-move.js <보내는 쪽> <받는 쪽> [copy|sync|since:<ms>|verify]\n  sqlite:<파일> · supabase · pg:<로컬 주소>"); process.exit(2); }
     const A = parseSpec(fromS), B = parseSpec(toS), m = String(modeS || "copy");
     try {
       if (m === "verify") { const v = await verify(A.c, B.c); console.log((v.ok ? "같아요 · " : "달라요 · ") + brief(v)); process.exitCode = v.ok ? 0 : 1; return; }

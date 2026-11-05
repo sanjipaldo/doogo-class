@@ -10,15 +10,13 @@ const COACH = require("../../coach-perms");
 const COOKIE = { student: "dc_s", admin: "dc_a" };
 const MAX_AGE = 30 * 24 * 3600;
 
-/* 로그인 서명 키 (2026-11 DB 전환 준비)
- *  SESSION_SECRET 이 있으면 그 키로 서명하고, 예전 키(TURSO_AUTH_TOKEN 으로 만든 키 — 지금까지 운영이 쓰던 키)로 서명된 쿠키도 받아 줘요
- *  → SESSION_SECRET 을 새로 넣어도 아무도 로그아웃되지 않고, 나중에 Turso 를 떼어도(A6) 새 키로 그대로 돼요 (예전 쿠키는 30일 안에 끝나요)
- *  운영 · 미리보기(Vercel)에서 둘 다 없으면 누구나 아는 기본 키로 서명하지 않고 막아요 — 그 키로는 로그인 쿠키를 위조할 수 있어서 */
+/* 로그인 서명 키 = SESSION_SECRET (운영 · 미리보기 따로 · Vercel 환경 변수)
+ *  2026-11-05 Turso 정리(A6): 예전 키(TURSO_AUTH_TOKEN 으로 만든 키)는 더 이상 받지 않아요 — 그 키로 로그인했던 쿠키는 한 번 다시 로그인
+ *  운영 · 미리보기(Vercel)에서 SESSION_SECRET 이 없으면 누구나 아는 기본 키로 서명하지 않고 막아요 — 그 키로는 로그인 쿠키를 위조할 수 있어서 */
 const keyOf = (s) => crypto.createHash("sha256").update("doogo-class-session:" + s).digest();
 function keys() {
-  const sec = process.env.SESSION_SECRET, legacy = process.env.TURSO_AUTH_TOKEN;
-  if (sec) return legacy && legacy !== sec ? [keyOf(sec), keyOf(legacy)] : [keyOf(sec)];
-  if (legacy) return [keyOf(legacy)];
+  const sec = process.env.SESSION_SECRET;
+  if (sec) return [keyOf(sec)];
   if (process.env.VERCEL) throw new Error("로그인 서명 키가 없어요 — Vercel 환경 변수 SESSION_SECRET 을 넣어 주세요");
   return [keyOf("local-dev-secret")]; // 로컬 개발 · 시험만
 }

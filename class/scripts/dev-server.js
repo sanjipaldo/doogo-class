@@ -2,7 +2,7 @@
  *
  *   CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400
  *
- * TURSO_DATABASE_URL · TURSO_AUTH_TOKEN 이 있으면 Turso 에, 없으면 CLASS_SQLITE 파일(node:sqlite)에 저장한다. */
+ * CLASS_SQLITE 파일(node:sqlite)에 저장한다 (없으면 임시 폴더의 파일). DB_DRIVER=supabase + SUPABASE_DB_URL 이면 그 Supabase 에. */
 "use strict";
 const http = require("http");
 const fs = require("fs");
@@ -10,7 +10,7 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const PORT = Number(process.argv[2] || process.env.PORT || 4400);
-if (!process.env.TURSO_DATABASE_URL && !process.env.CLASS_SQLITE) process.env.CLASS_SQLITE = path.join(require("os").tmpdir(), "doogo-class-dev.db");
+if (!/^(supabase|postgres)$/i.test(process.env.DB_DRIVER || "") && !process.env.CLASS_SQLITE) process.env.CLASS_SQLITE = path.join(require("os").tmpdir(), "doogo-class-dev.db");
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8" };
 const handlers = {};
@@ -44,4 +44,4 @@ http.createServer(async (req, res) => {
     if (p === "/index.html" && /^\/((vod\/p|p|free)\/|(doinggo|terms|privacy|refund)?\/?$)/.test(u.pathname)) return require("../api/_lib/pagemeta").render(u.pathname, buf.toString("utf8")).then((h) => res.end(h));
     res.end(buf);
   });
-}).listen(PORT, () => console.log("doogo class dev server → http://localhost:" + PORT + " (" + (process.env.TURSO_DATABASE_URL ? "Turso" : "SQLite " + process.env.CLASS_SQLITE) + ")"));
+}).listen(PORT, () => console.log("doogo class dev server → http://localhost:" + PORT + " (" + (process.env.CLASS_SQLITE ? "SQLite " + process.env.CLASS_SQLITE : "Supabase") + ")"));

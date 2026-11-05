@@ -12,10 +12,13 @@ module.exports = {
     const vod = ((((bs.docs || []).find((d) => d[0] === "meta") || [])[1] || {}).vod) || {}, off = vod.insOff || [];
     const shown = (vod.products || []).filter((p) => p && p.status === "on" && (off.indexOf(p.iid) < 0 || p.showOff));
     const freeLive = shown.find((p) => p.type === "live" && !(Number(p.sale != null ? p.sale : p.price) > 0));
-    const paid = shown.find((p) => p.type === "vod" && Number(p.sale != null ? p.sale : p.price) > 0 && p.iid);
+    // 할인가는 마감일(saleEnd · 한국 날짜)까지만 — 데모 상품 할인이 끝나도 시험이 같은 가격을 기대하게 (서버 shared/price.js basePrice 와 같은 규칙)
+    const kstToday = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const nowPrice = (p) => (p.sale != null && p.sale !== "" && (!p.saleEnd || kstToday <= p.saleEnd) ? Number(p.sale) : Number(p.price) || 0);
+    const paid = shown.find((p) => p.type === "vod" && nowPrice(p) > 0 && p.iid);
     await run.check(!!freeLive && !!paid, "스토어에 무료 LIVE · 유료 VOD 클래스가 있어요", { freeLive: freeLive && freeLive.id, paid: paid && paid.id });
     if (!freeLive || !paid) return;
-    const price = Number(paid.sale != null ? paid.sale : paid.price);
+    const price = nowPrice(paid);
     // 1) 회원가입 (이메일)
     const email = "e2e+" + Date.now().toString(36) + "@example.com";
     await L.fresh(mem, base);

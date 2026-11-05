@@ -1,4 +1,4 @@
-/* 저장소 — Turso(운영, HTTP) · node:sqlite(로컬 개발) · Postgres(Supabase) 위에 문서(doc) 테이블을 둔다.
+/* 저장소 — Postgres(Supabase · 운영 · 미리보기) · node:sqlite(로컬 개발 · 시험) 위에 문서(doc) 테이블을 둔다.
  *
  *  docs        k(키) · v(JSON, 지우면 NULL) · ver(버전) · updated(바뀐 시각) · created(순서)
  *  files       사진·첨부 (data: URL 을 떼어 내 보관, 주소는 /api/file?h=해시)
@@ -10,13 +10,13 @@
  * 데이터 보존 원칙: 배포할 때 이미 저장된 내용은 지우거나 바꾸지 않는다 (빠진 칸만 채움).
  * 지우기는 강사센터 · 마스터에서 사람이 직접 할 때만. 요청받은 데이터 수정은 oneoff.js 에 한 번만 도는 작업으로.
  *
- * 어느 DB 에 붙는지 (DB 전환 1부 A1 · 2026-11): DB_DRIVER
- *   (비움 · turso)  TURSO_DATABASE_URL + TURSO_AUTH_TOKEN → Turso, 없으면 CLASS_SQLITE 파일(로컬) — 지금까지 그대로
- *   supabase        SUPABASE_DB_URL(Supabase 연결 풀러 · 트랜잭션 모드)의 Postgres — 같은 표 6개를 app 스키마에
+ * 어느 DB 에 붙는지 (2026-11-05 Turso → Supabase 전환 끝 · Turso 연결 코드는 뺐어요):
+ *   Vercel(운영 · 미리보기)  언제나 SUPABASE_DB_URL(Supabase 연결 풀러 · 트랜잭션 모드)의 Postgres — 표 6개를 app 스키마에
+ *   로컬 개발 · 시험        CLASS_SQLITE 파일(node:sqlite)이 있으면 그 파일, 없으면 SUPABASE_DB_URL (DB_DRIVER=supabase 면 언제나 Postgres)
  *   Postgres 에서는 같은 SQL 을 조금만 바꿔 써요(pgSql): ? → $1 · 표 이름 → app.표 · 같은 created 끼리는 키를 바이트 순(COLLATE "C",
  *   SQLite 와 같은 순서) · 여러 문장(batch)은 한 트랜잭션(중간에 실패하면 전부 취소). 문서(v)는 글자 그대로(text) — 키 순서 · 공백이 한 글자도 안 바뀌게.
  *   다른 점 하나: LIKE 가 영문 대소문자를 가려요(SQLite 는 안 가림) — 키 앞부분은 모두 코드가 만든 같은 글자라 결과는 같아요.
- * 쓰기 멈춤 (DC_READONLY=1 · 운영 전환 당일 복사하는 동안): 문서 · 사진 쓰기는 503 ‘잠시 점검 중’ (화면은 변경을 들고 있다가 다시 보내요).
+ * 쓰기 멈춤 (DC_READONLY=1 · 점검 · DB 옮기는 동안): 문서 · 사진 쓰기는 503 ‘잠시 점검 중’ (화면은 변경을 들고 있다가 다시 보내요).
  *   읽기 · 로그인 실패 횟수(rl) · 배포 전 백업(backups) · 작업 기록(oplog)은 그대로 — 점검 중에도 들어가서 확인할 수 있게
  */
 "use strict";
@@ -30,37 +30,6 @@ const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS backups (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, reason TEXT, docs INTEGER, size INTEGER, data TEXT NOT NULL)",
   "CREATE TABLE IF NOT EXISTS oplog (id TEXT PRIMARY KEY, at INTEGER NOT NULL, note TEXT, result TEXT)"
 ];
-
-/* Turso HTTP API (Hrana v2 pipeline) — 의존성 없이 fetch 로 부른다 */
-function tursoClient(url, token) {
-  const base = url.replace(/^libsql:\/\//, "https://").replace(/\/+$/, "");
-  const toArg = (v) => {
-    if (v === null || v === undefined) return { type: "null" };
-    if (typeof v === "number") return Number.isInteger(v) ? { type: "integer", value: String(v) } : { type: "float", value: v };
-    return { type: "text", value: String(v) };
-  };
-  const fromVal = (x) => {
-    if (!x || x.type === "null") return null;
-    if (x.type === "integer") return Number(x.value);
-    if (x.type === "float") return Number(x.value);
-    if (x.type === "blob") return Buffer.from(x.base64 || "", "base64").toString("utf8");
-    return x.value;
-  };
-  async function batch(stmts) {
-    const body = { requests: stmts.map((s) => ({ type: "execute", stmt: { sql: s.sql, args: (s.args || []).map(toArg) } })).concat([{ type: "close" }]) };
-    const r = await fetch(base + "/v2/pipeline", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error("turso " + r.status + ": " + (await r.text()).slice(0, 300));
-    const j = await r.json();
-    return stmts.map((s, i) => {
-      const res = j.results[i];
-      if (!res || res.type !== "ok") throw new Error("turso: " + ((res && res.error && res.error.message) || "unknown error") + " — " + s.sql.slice(0, 80));
-      const rs = res.response.result;
-      const cols = rs.cols.map((c) => c.name);
-      return { rows: rs.rows.map((row) => { const o = {}; row.forEach((v, k) => { o[cols[k]] = fromVal(v); }); return o; }), affected: rs.affected_row_count || 0 };
-    });
-  }
-  return { kind: "turso", batch };
-}
 
 /* 로컬 개발용: Node 22+ 내장 SQLite (같은 SQL) */
 function sqliteClient(file) {
@@ -139,16 +108,16 @@ const isReadonlyError = (e) => !!(e && e.code === "DC_READONLY");
 
 let client = null, ready = null;
 function driverName() { return String(process.env.DB_DRIVER || "").trim().toLowerCase(); }
+/** 로컬 SQLite 파일을 쓰는지 (Vercel 에서는 언제나 Supabase) */
+function usesSqlite() { const d = driverName(); return !process.env.VERCEL && !!process.env.CLASS_SQLITE && d !== "supabase" && d !== "postgres"; }
 function getClient() {
   if (client) return client;
   const d = driverName();
-  if (d === "supabase" || d === "postgres") {
-    if (!process.env.SUPABASE_DB_URL) throw new Error("DB_DRIVER=" + d + " 인데 SUPABASE_DB_URL 이 없어요 (Vercel 환경 변수)");
-    client = pgClient(process.env.SUPABASE_DB_URL);
-  } else if (d && d !== "turso") throw new Error("DB_DRIVER 값을 모르겠어요: " + d + " (turso · supabase)");
-  else if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) client = tursoClient(process.env.TURSO_DATABASE_URL, process.env.TURSO_AUTH_TOKEN);
-  else if (process.env.CLASS_SQLITE) client = sqliteClient(process.env.CLASS_SQLITE);
-  else throw new Error("데이터베이스 설정이 없어요 (TURSO_DATABASE_URL / TURSO_AUTH_TOKEN)");
+  if (d === "turso") throw new Error("Turso 는 2026-11-05 에 뺐어요 — DB_DRIVER 를 지우거나 supabase 로 두세요");
+  if (d && d !== "supabase" && d !== "postgres" && d !== "sqlite") throw new Error("DB_DRIVER 값을 모르겠어요: " + d + " (supabase · sqlite)");
+  if (usesSqlite()) client = sqliteClient(process.env.CLASS_SQLITE);
+  else if (process.env.SUPABASE_DB_URL) client = pgClient(process.env.SUPABASE_DB_URL);
+  else throw new Error("데이터베이스 설정이 없어요 — Vercel 환경 변수 SUPABASE_DB_URL (로컬 개발은 CLASS_SQLITE 파일)");
   return client;
 }
 async function db() {
@@ -173,11 +142,11 @@ async function pgSetup() {
   return true;
 }
 /** 따로 여는 연결 — 옮기기 도구(scripts/db-move.js)가 두 DB 를 한꺼번에 열 때 (지금 저장소 · 쓰기 멈춤과 상관없이)
- *  o: { kind: "turso", url, token } · { kind: "sqlite", file } · { kind: "postgres", url } → { kind, batch, init, end } (SQL 은 SQLite 문법 그대로) */
+ *  o: { kind: "sqlite", file } · { kind: "postgres", url } → { kind, batch, init, end } (SQL 은 SQLite 문법 그대로) */
 function openClient(o) {
   o = o || {};
-  const c = o.kind === "postgres" ? pgClient(o.url) : o.kind === "turso" ? tursoClient(o.url, o.token) : o.kind === "sqlite" ? sqliteClient(o.file) : null;
-  if (!c) throw new Error("모르는 DB 종류예요: " + o.kind + " (turso · sqlite · postgres)");
+  const c = o.kind === "postgres" ? pgClient(o.url) : o.kind === "sqlite" ? sqliteClient(o.file) : null;
+  if (!c) throw new Error("모르는 DB 종류예요: " + o.kind + " (sqlite · postgres)");
   if (!c.init) c.init = () => c.batch(SCHEMA.map((sql) => ({ sql })));
   if (!c.end) c.end = async () => {};
   return c;

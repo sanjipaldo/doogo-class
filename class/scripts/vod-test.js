@@ -2130,10 +2130,10 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   }
 
   {
-    console.log("36) DB 전환 1부 A1: 저장소 어댑터(Turso · SQLite · Postgres) · 쓰기 멈춤(DC_READONLY) · 배포 기록용 확인");
+    console.log("36) DB 전환 1부 A1 · A6: 저장소(SQLite 로컬 · Postgres/Supabase) · 쓰기 멈춤(DC_READONLY) · 배포 기록용 확인 · Turso 정리");
     const st36 = require(path.join(TMP, "class/api/_lib/store.js")), init36 = require(path.join(TMP, "class/api/_lib/init.js")), pgRun = process.env.TEST_DB === "pg";
     const kind36 = st36.kind();
-    ok(kind36 === (pgRun ? "postgres" : "sqlite"), "지금 저장소: " + (pgRun ? "Postgres (PGlite · 운영 Supabase 와 같은 postgres 드라이버 · 같은 SQL)" : "SQLite (로컬 · Turso 와 같은 SQL)"), kind36);
+    ok(kind36 === (pgRun ? "postgres" : "sqlite"), "지금 저장소: " + (pgRun ? "Postgres (PGlite · 운영 Supabase 와 같은 postgres 드라이버 · 같은 SQL)" : "SQLite (로컬 개발 · 시험 · Postgres 와 같은 SQL)"), kind36);
     const q36 = [st36.pgSql("SELECT k, v, ver, created FROM docs WHERE updated > ? AND (k LIKE ? OR k = ?) ORDER BY created, k"), st36.pgSql("UPDATE docs SET v = ?, updated = ? WHERE k = 'a?b'"), st36.pgSql("DELETE FROM backups WHERE id NOT IN (SELECT id FROM backups ORDER BY id DESC LIMIT 40)")];
     ok(q36[0] === 'SELECT k, v, ver, created FROM app.docs WHERE updated > $1 AND (k LIKE $2 OR k = $3) ORDER BY created, k COLLATE "C"' && q36[1] === "UPDATE app.docs SET v = $1, updated = $2 WHERE k = 'a?b'" && q36[2] === "DELETE FROM app.backups WHERE id NOT IN (SELECT id FROM app.backups ORDER BY id DESC LIMIT 40)",
       "Postgres 로 바꾸기: ? → $1 (따옴표 안은 그대로) · 표 이름 → app.표 · 같은 시각 문서는 키를 바이트 순으로(SQLite 와 같은 순서)", q36);
@@ -2178,18 +2178,17 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
         && !/Zz9|secretQ|abcdefghij/.test(JSON.stringify(hs)), "Supabase 비밀번호 인증 실패: [YOUR-PASSWORD] 그대로 · 대괄호 · 아이디 모양 · % 깨짐 · 그 밖엔 비밀번호 다시 정하기 안내 (비밀번호 · 아이디 글자는 기록에 안 나와요)", hs);
     }
     if (pgRun) { const pr36 = await st36.pgProbe(process.env.SUPABASE_DB_URL); ok(pr36.ok && pr36.app && pr36.docs > 0 && /^\d+/.test(pr36.version), "Supabase 접속 확인(시험 Postgres): 버전 · 왕복 시간 · app 표 · 문서 수", pr36); }
-    // 로그인 서명 키: SESSION_SECRET 을 새로 넣어도 예전 키(Turso 토큰) 쿠키를 받아 줘요 · Vercel 에서 키가 없으면 기본 키로 서명하지 않아요
+    // 로그인 서명 키 = SESSION_SECRET 하나 (Turso 정리 A6 · 예전 Turso 토큰 키 쿠키는 더 이상 받지 않아요) · Vercel 에서 키가 없으면 기본 키로 서명하지 않아요
     const env36 = { s: process.env.SESSION_SECRET, t: process.env.TURSO_AUTH_TOKEN, v: process.env.VERCEL }, setEnv = (o) => { ["SESSION_SECRET", "TURSO_AUTH_TOKEN", "VERCEL"].forEach((k) => delete process.env[k]); Object.assign(process.env, o); };
     let sk36 = {};
     try {
-      setEnv({ TURSO_AUTH_TOKEN: "legacy-36" }); const oldT = auth.sign({ r: "master" });
-      setEnv({ TURSO_AUTH_TOKEN: "legacy-36", SESSION_SECRET: "new-36" }); const newT = auth.sign({ r: "master" });
-      sk36.both = [!!auth.verify(oldT), !!auth.verify(newT)];
-      setEnv({ SESSION_SECRET: "new-36" }); sk36.afterTurso = [!!auth.verify(oldT), !!auth.verify(newT)];
-      setEnv({ VERCEL: "1" }); try { auth.sign({ r: "x" }); sk36.vercel = "signed"; } catch (e) { sk36.vercel = "blocked"; }
+      setEnv({ SESSION_SECRET: "legacy-36" }); const oldT = auth.sign({ r: "master" }); // 예전 키(Turso 토큰으로 만든 키)로 서명된 쿠키와 같은 서명
+      setEnv({ SESSION_SECRET: "new-36", TURSO_AUTH_TOKEN: "legacy-36" }); const newT = auth.sign({ r: "master" });
+      sk36.withToken = [!!auth.verify(oldT), !!auth.verify(newT)];
+      setEnv({ TURSO_AUTH_TOKEN: "legacy-36", VERCEL: "1" }); try { auth.sign({ r: "x" }); sk36.vercel = "signed"; } catch (e) { sk36.vercel = "blocked"; }
     } finally { setEnv({}); if (env36.s != null) process.env.SESSION_SECRET = env36.s; if (env36.t != null) process.env.TURSO_AUTH_TOKEN = env36.t; if (env36.v != null) process.env.VERCEL = env36.v; }
-    ok(sk36.both && sk36.both[0] && sk36.both[1] && !sk36.afterTurso[0] && sk36.afterTurso[1] && sk36.vercel === "blocked",
-      "로그인 서명 키: SESSION_SECRET 을 넣어도 지금 로그인(예전 키 쿠키)이 안 풀리고 · Turso 를 뗀 뒤엔 새 키만 · 운영에서 키가 없으면 누구나 아는 기본 키로 서명하지 않아요", sk36);
+    ok(sk36.withToken && !sk36.withToken[0] && sk36.withToken[1] && sk36.vercel === "blocked",
+      "로그인 서명 키: SESSION_SECRET 하나만 — 예전 Turso 토큰 키 쿠키는 더 이상 안 받고(한 번 다시 로그인) · 운영에서 SESSION_SECRET 이 없으면(Turso 토큰이 남아 있어도) 누구나 아는 기본 키로 서명하지 않아요", sk36);
     const db36 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), mj36 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), hb36 = fs.readFileSync(path.join(ROOT, "api/_lib/http.js"), "utf8"), bd36 = fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8"), pkg36 = JSON.parse(fs.readFileSync(path.join(ROOT, "../package.json"), "utf8"));
     ok(/if \(j\.error === "readonly"\) e\.readonly = true;/.test(db36) && /info && info\.readonly \? "잠시 점검 중이에요/.test(mj36) && /e\.code === "DC_READONLY"\) \{ if \(!res\.headersSent\) send\(res, 503/.test(hb36) && /if \(ro\) return;/.test(bd36) && /\.then\(\(\) => store\.close\(\)\)/.test(bd36),
       "쓰기 멈춤 안내: 서버 503 readonly → 화면 ‘잠시 점검 중’ · 배포 때는 백업만 · 빌드 끝에 DB 연결 닫기");
@@ -2221,12 +2220,12 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     await B.batch([{ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, 1, ?, ?)", args: ["zz37:new", '{"n":1}', Date.now(), Date.now()] }, { sql: "UPDATE docs SET v = ?, ver = ver + 1, updated = ? WHERE k = 'meta'", args: ['{"after":1}', Date.now()] }]);
     const m6 = await MV.move(B, C, { mode: "since", since: t5 }), v6 = await MV.verify(B, C);
     ok(m6.ok && m6.docs === 2 && v6.ok, "되돌리기(since): 전환 뒤 바뀐 문서(2개)만 옮겨도 전체가 같아져요", { docs: m6.docs });
-    // 배포 때 DB_MOVE: 운영은 쓰기 멈춤이 먼저 · 모르는 값은 멈춤 (연결하기 전에)
-    const envM = { e: process.env.VERCEL_ENV, r: process.env.DC_READONLY };
-    let g1 = null, g2 = null;
-    try { process.env.VERCEL_ENV = "production"; delete process.env.DC_READONLY; try { await MV.runFromEnv("turso-to-supabase"); } catch (e) { g1 = e.message; } try { await MV.runFromEnv("drop-everything"); } catch (e) { g2 = e.message; } }
-    finally { if (envM.e == null) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = envM.e; if (envM.r != null) process.env.DC_READONLY = envM.r; }
-    ok(/쓰기 멈춤/.test(g1 || "") && /모르겠어요/.test(g2 || ""), "배포 때 옮기기(DB_MOVE): 운영은 쓰기 멈춤(DC_READONLY=1) 배포가 먼저 떠 있어야 하고 · 모르는 값은 멈춰요", { g1, g2 });
+    // Turso 정리(A6 · 2026-11-05): Turso 연결 · 배포용 DB_MOVE 는 빠졌고, DB_DRIVER=turso 면 분명하게 멈춰요 · Vercel 에서는 SQLite 파일이 있어도 Supabase 만
+    const srcA6 = ["api/_lib/store.js", "api/_lib/auth.js", "scripts/db-build.js", "scripts/db-move.js", "scripts/dev-server.js"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8"));
+    const runA6 = (env) => require("child_process").spawnSync(process.execPath, ["-e", "require(" + JSON.stringify(path.join(ROOT, "api/_lib/store.js")) + ").countDocs().then(() => console.log('ok'), (e) => console.log('ERR ' + e.message))"], { env: Object.assign({ PATH: process.env.PATH }, env), encoding: "utf8" }).stdout.trim();
+    const a6db = path.join(TMP, "a6.db"), a6 = { turso: runA6({ DB_DRIVER: "turso", CLASS_SQLITE: a6db }), vercel: runA6({ VERCEL: "1", CLASS_SQLITE: a6db }), local: runA6({ CLASS_SQLITE: a6db }) };
+    ok(!srcA6.some((t) => /process\.env\.TURSO_|tursoClient|runFromEnv/.test(t)) && typeof MV.runFromEnv === "undefined" && /Turso 는 2026-11-05 에 뺐어요/.test(a6.turso) && /SUPABASE_DB_URL/.test(a6.vercel) && a6.local === "ok",
+      "Turso 정리: 연결 코드 · 배포용 옮기기(DB_MOVE) · 예전 로그인 키가 빠졌어요 · DB_DRIVER=turso 면 분명하게 멈춤 · Vercel 에서는 SQLite 파일이 있어도 Supabase 만(없으면 멈춤) · 로컬은 SQLite 그대로", a6);
     if (pgRun) {
       // 보안: Supabase 처럼 anon · authenticated 역할에 일부러 권한을 줘 둬도 배포 때 보안 SQL 이 다 빼요
       const sq = B.sql;

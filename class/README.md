@@ -17,7 +17,7 @@
 | 온드미디어 센터 | `#/center/media` … | 로그인 화면 ‘마스터 · 파트너’ 탭 · 마스터가 만든 아이디 + 비밀번호 (서버는 해시로만 저장) | 여기어때 YDS (레드) |
 | 마스터 관리자 | `#/center/master` … | 강사센터 로그인 화면의 ‘마스터 관리자’ 탭 · 서버: 아이디 `doogobiz` + `MASTER_PASSWORD` / 로컬 체험: `ADMIN / ADMIN` (대소문자 무관) | 여기어때 YDS (로그인 왼쪽 흰 바탕 + 레드 포인트 · 차콜 ‘마스터’ 표시) |
 
-프레임워크 없는 HTML/CSS/JS 앱입니다. **Vercel에서는 서버(`api/`) + Turso 데이터베이스**에 저장해서 여러 기기·여러 사람이 같은 데이터를 보고, 서버가 없는 곳(로컬 정적 서버, 미리보기)에서는 예전처럼 브라우저 `localStorage`에 저장합니다. 화면은 처음에 `api/bootstrap`이 있는지 보고 스스로 모드를 고릅니다.
+프레임워크 없는 HTML/CSS/JS 앱입니다. **Vercel에서는 서버(`api/`) + Supabase(Postgres · 서울) 데이터베이스**에 저장해서 여러 기기·여러 사람이 같은 데이터를 보고, 서버가 없는 곳(로컬 정적 서버, 미리보기)에서는 예전처럼 브라우저 `localStorage`에 저장합니다. 화면은 처음에 `api/bootstrap`이 있는지 보고 스스로 모드를 고릅니다.
 
 ## 실행
 
@@ -55,7 +55,7 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 | 구성 | 내용 |
 |---|---|
 | 서버 | `api/*.js` — Vercel 함수 (Node). `bootstrap`(데이터 받기·변경 받기) · `sync`(바뀐 부분 저장) · `auth`(로그인) · `public`(수강 신청·무료강의 질문) · `file`(사진·첨부) · `admin`(마스터 초기화 · 복원 · 서버 백업) |
-| 데이터베이스 | Turso (Vercel Marketplace, 리소스 `doogo-class-db`, 미국 동부). 환경변수 `TURSO_DATABASE_URL` · `TURSO_AUTH_TOKEN` 은 연동이 자동으로 넣습니다 |
+| 데이터베이스 | Supabase Postgres (서울 ap-northeast-2) — 운영 `doogo-prod` · 미리보기 `doogo-staging`. 환경변수 `SUPABASE_DB_URL`(Connect › Transaction pooler › **Shared Pooler** · 포트 6543 · 운영 · 미리보기 따로) · `DB_DRIVER=supabase`. 표는 `app` 스키마(아래 ‘DB 전환’). 2026-11-05 까지는 Turso 였어요(정리함) |
 | 저장 단위 | 문서(doc): `meta` · `ins:<강사>` · `content:<강사>` · `cohorts:<강사>` · `stu:<강사>:<학생>` · `prog:<강사>:<학생>` · `inq:<id>`(입점 문의, 마스터만) · `bill:<강사>:<id>`(기수 이용료 신청 · 정산, 마스터 + 그 강사만). 브라우저는 바뀐 부분(경로 + 값)만 보내고 서버가 지금 값 위에 적용해서, 같은 문서의 다른 부분을 동시에 고쳐도 둘 다 남습니다(예: 코치 승인 중 수강생 제출) |
 | 사진 · 첨부 | 저장할 때 서버가 `data:` 주소를 떼어 `files` 표에 보관하고 `/api/file?h=…` 주소로 바꿉니다. 공개 페이지 사진은 누구나, 과제 사진은 본인 · 그 강사 · 코치 · 마스터만 볼 수 있습니다 |
 | 로그인 | 이름 + 전화번호 뒷자리(마스터는 아이디 `doogobiz`(환경변수 `MASTER_ID` 로 바꿀 수 있음) + `MASTER_PASSWORD` 환경변수, 한글 자판 상태로 친 글자도 같은 자리 영문 글자로 바꿔 비교 — 예: `한글2@` = `gksrmf2@`)를 서버에서만 확인하고, 서명한 토큰을 HttpOnly 쿠키(`dc_s` 수강생, `dc_a` 강사센터)에 담습니다. 15분 안에 8번 틀리면 잠시 막힙니다. 중지된 강사 · 코치, 탈퇴한 수강생은 요청마다 다시 확인해 바로 막습니다 |
@@ -72,13 +72,13 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **예시 계정이 정식 서버에 생기지 않게 (2026-11-01)**: 예전 마스터 화면은 운영자 · 파트너 목록이 비어 있으면 예시 운영자(김매니저 manager · 박정산 finance)와 예시 파트너(하지원 partner) — 모두 비밀번호 = 아이디 — 와 예시 이용료 · 입점 문의를 만들어 서버에도 저장했어요. 이제 서버에 연결된 화면에서는 빈 목록으로 시작하고 예시는 시안(서버 없음)에서만 만들어요(`admin.js` `STAFF` · `AFF` · `seedAffInq`). 운영자 계정은 서버에서 마스터와 같은 권한이라 일회성 작업 `2026-11-01-demo-staff-stop` 이 **비밀번호가 아직 예시 그대로인** 예시 운영자 계정만 중지해요(지우지 않음 · 마스터 › 운영자 계정에서 다시 켤 수 있어요). 예시 파트너는 그대로 두었어요 — 쓰지 않으면 마스터 › 파트너에서 중지하거나 비밀번호를 바꿔 주세요.
 - 서버 자동 백업(`backups` 표, 최근 40개): 배포할 때마다 · 초기화나 복원 전에 자동으로 남습니다. 마스터 → 데이터 관리 → ‘서버 자동 백업’에서 목록을 보고 ‘이 시점으로’ 되돌리거나 ‘지금 백업’을 누를 수 있습니다(되돌리기 전 상태도 다시 백업). 사진 · 첨부(`files`)는 초기화해도 지우지 않아 백업으로 되돌릴 때 그대로 보입니다.
 
-환경변수: `MASTER_PASSWORD`(마스터 비밀번호 — Vercel → doogo-class → Settings → Environment Variables 에서 바꾸고 다시 배포), `SESSION_SECRET`(로그인 쿠키 서명 키 — 넣으면 그 키로 서명하고 예전 키(Turso 토큰으로 만든 키) 쿠키도 받아 줘서 아무도 로그아웃되지 않아요. 운영 · 미리보기에서 이것과 Turso 토큰이 둘 다 없으면 로그인을 막아요 — 누구나 아는 기본 키로 서명하지 않게).
+환경변수: `MASTER_PASSWORD`(마스터 비밀번호 — Vercel → doogo-class → Settings → Environment Variables 에서 바꾸고 다시 배포), `SESSION_SECRET`(로그인 쿠키 서명 키 — 운영 · 미리보기 따로, 48자 이상 무작위. 바꾸면 모두 한 번 다시 로그인. 운영 · 미리보기에서 없으면 로그인을 막아요 — 누구나 아는 기본 키로 서명하지 않게 · 2026-11-05 Turso 정리 뒤로 예전 Turso 토큰 키는 안 받아요), `SUPABASE_DB_URL` · `DB_DRIVER=supabase`(데이터베이스).
 
 #### DB 전환 준비 — Turso → Supabase 1부 A1 (2026-11-05)
 
 계획서: ‘DB 전환 계획서 · 설계서 (Turso → Supabase)’ 문서. 1부는 지금 표 6개를 Supabase Postgres 의 `app` 스키마에 같은 모양으로 옮기고, 화면 · API 코드는 그대로 둬요.
 
-- **어느 DB 에 붙는지 — `DB_DRIVER`**: 비우면(또는 `turso`) 지금처럼 Turso(로컬은 `CLASS_SQLITE`). `supabase` 면 `SUPABASE_DB_URL`(Supabase › Connect › **Transaction pooler**, 포트 6543)의 Postgres. 바꾸는 곳은 `api/_lib/store.js` 하나 — 같은 SQL 을 `pgSql` 이 Postgres 에 맞게만 바꿔요(`?` → `$1` · 표 이름 → `app.표` · 같은 시각 문서는 키를 바이트 순(`COLLATE "C"`)으로 SQLite 와 같은 순서). 문서(`v`)는 글자 그대로(`text`) — 키 순서 · 공백이 한 글자도 안 바뀌어요. 여러 문장(`batch`)은 한 트랜잭션(중간에 실패하면 전부 취소). 연결: npm `postgres` 3.4.9 · 미리 준비한 문장 끔(풀러 트랜잭션 모드) · 함수마다 연결 1개 · 숫자(ms 시각 · 개수)는 숫자로. 다른 점 하나: `LIKE` 가 영문 대소문자를 가려요(키 앞부분은 모두 코드가 만든 같은 글자라 결과는 같아요). `init.js` 가 직접 쓰던 SQL 3곳은 저장소 함수(`insertDocs` · `putSys` · `allDocRows`)로 옮겼어요.
+- **어느 DB 에 붙는지** (A6 Turso 정리 뒤 · 2026-11-05): Vercel(운영 · 미리보기)은 언제나 Supabase · 로컬 개발 · 시험은 `CLASS_SQLITE` 파일이 있으면 SQLite(없거나 `DB_DRIVER=supabase` 면 Postgres) · `DB_DRIVER=turso` 는 분명하게 멈춰요. (A1 때 처음 만든 모양: 비우면 Turso, `supabase` 면 `SUPABASE_DB_URL`(Supabase › Connect › **Transaction pooler**, 포트 6543)의 Postgres). 바꾸는 곳은 `api/_lib/store.js` 하나 — 같은 SQL 을 `pgSql` 이 Postgres 에 맞게만 바꿔요(`?` → `$1` · 표 이름 → `app.표` · 같은 시각 문서는 키를 바이트 순(`COLLATE "C"`)으로 SQLite 와 같은 순서). 문서(`v`)는 글자 그대로(`text`) — 키 순서 · 공백이 한 글자도 안 바뀌어요. 여러 문장(`batch`)은 한 트랜잭션(중간에 실패하면 전부 취소). 연결: npm `postgres` 3.4.9 · 미리 준비한 문장 끔(풀러 트랜잭션 모드) · 함수마다 연결 1개 · 숫자(ms 시각 · 개수)는 숫자로. 다른 점 하나: `LIKE` 가 영문 대소문자를 가려요(키 앞부분은 모두 코드가 만든 같은 글자라 결과는 같아요). `init.js` 가 직접 쓰던 SQL 3곳은 저장소 함수(`insertDocs` · `putSys` · `allDocRows`)로 옮겼어요.
 - **로그인 실패 횟수 SQL**: `ON CONFLICT … DO UPDATE` 에서 기존 줄 값을 `rl.n` · `rl.until` 로 (Postgres 는 그냥 `until` 이면 새 줄 값과 헷갈린다고 막아요 · SQLite 도 같은 뜻).
 - **쓰기 멈춤 — `DC_READONLY=1`** (운영 전환 당일 복사하는 동안): 문서 · 사진 쓰기는 `503 { error: "readonly" }` + ‘잠시 점검 중’ 안내(`http.js`). 화면은 바뀐 내용을 들고 있다가 30초 안쪽으로 다시 보내서 점검이 끝나면 저장돼요(`db.js` → `main.js` 안내 ‘이 창을 열어 두시면…’). 읽기 · 로그인(실패 횟수 `rl`) · 배포 전 백업(`backups`) · 작업 기록(`oplog`)은 그대로라 점검 중에도 들어가서 확인할 수 있어요. 배포 단계는 백업만 하고 일회성 작업 · 기본값 채우기는 건너뛰어요. 영상 길이 기억(`vdur`)은 점검 중엔 건너뛰고 길이는 그대로 알려 줘요.
 - **배포 기록 (A0 확인용 · 읽기만)**: `[db] 사진 · 첨부: N개 · 합계 · 가장 큰 것` · Supabase 를 아직 안 쓰는데 `SUPABASE_DB_URL` 이 있으면 `[db] Supabase 연결 확인: 됐어요 · Postgres 버전 · 지역(ap-northeast-2 = 서울) · 포트 6543(트랜잭션 풀러) · 왕복 ms · app 표 있음/빈 DB` (주소 · 비밀번호는 안 적어요 · 실패해도 빌드는 계속 · 포트가 6543 이 아니면 주의 한 줄). 빌드 끝에 DB 연결을 닫아요(`store.close`).
@@ -114,8 +114,15 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
   1. Production `DC_READONLY=1` → 다시 배포(main `2b7e02d`) — 저장만 멈춤(503 ‘잠시 점검 중’) · 읽기 · 로그인은 그대로 · 배포 전 백업(Turso 문서 90개).
   2. Production `DB_MOVE=turso-to-supabase` + `DB_DRIVER=supabase` + main `aab922a`(`vercel.json` `regions: ["icn1"]`) → `[db] 옮기기 Turso → Supabase (copy): 문서 90개 · 작업 기록 31개 · 백업 5개 · 확인: 문서마다 해시 맞음 · 51.1초` → 보안 · 보기 6개 · 배포 전 백업(Supabase) · 쓰기 멈춤 그대로.
   3. Production `DC_READONLY=0` + `DB_MOVE=verify` → 다시 배포 → `[db] 비교 Turso ↔ Supabase: 같아요 · 문서 90→90 · 작업 기록 31→31` → 저장 다시 열림. 끝난 뒤 `DB_MOVE` 는 Development 로만(빌드가 안 읽어요 · 지워도 돼요).
-- **되돌리기 (문제가 생기면)**: ① Production `DC_READONLY=1` 로 다시 배포 ② `DB_MOVE=supabase-to-turso-since:<전환 시각 ms>`(전환 뒤 바뀐 것만) 또는 `supabase-to-turso`(전체 · 받는 쪽 먼저 백업)로 다시 배포 ③ `DB_DRIVER=turso` · `DC_READONLY=0` · `DB_MOVE` 끄고 다시 배포. 서버 함수 지역(`icn1`)은 그대로 둬도 돼요(Turso 가 멀어져 조금 느려질 뿐).
-- **A6 정리 (남은 일)**: Turso 는 2~4주(~2026-12-03) 보관 뒤 마지막 백업을 내려받고 해지 · Turso 토큰(`TURSO_AUTH_TOKEN`)은 **2026-12-05 이후** 지움(로그인 예전 키) · 그 뒤 Turso 연결 코드 · README 정리.
+- **되돌리기**: 전환 직후에는 Turso 로 되돌릴 수 있었는데, 사용자가 없어 바로 A6 에서 Turso 를 정리했어요(아래). 이제 문제가 생기면 Supabase 백업(Database › Backups · 앱 백업 표 `app.backups` — 배포마다 자동)으로 복구해요.
+- **A6 정리**: 원래 Turso 를 2~4주 두려 했지만 정식 오픈 전이라 같은 날(2026-11-05) 바로 정리 — 아래 ‘A6’.
+
+#### DB 전환 1부 A6 — Turso 정리 (2026-11-05)
+
+- **코드**: Turso 연결(`store.js` 의 HTTP 클라이언트) · 배포용 옮기기(`DB_MOVE` · `db-move.js runFromEnv`) · 예전 로그인 키(Turso 토큰으로 만든 키)를 뺐어요. `db-build.js` 는 Supabase 만 — `SUPABASE_DB_URL` 이 없으면 멈추고, 접속 정보(버전 · 지역 · 포트 · 왕복)를 기록하고, 접속이 비밀번호로 실패하면 `[db] 고칠 곳:` 을 알려 줘요. `DB_MOVE` 가 남아 있으면 ‘더 이상 안 써요’ 경고만.
+- **로그인**: `SESSION_SECRET` 하나로만 서명 · 확인 — 이 배포 전에 예전 키로 로그인했던 사람은 한 번 다시 로그인.
+- **남긴 것**: 로컬 개발 · 시험용 SQLite(`CLASS_SQLITE` · `node:sqlite` — 서버 시험 · 화면 시험이 SQLite · Postgres 둘 다로 돌아요) · `db-move.js`(SQLite ↔ Postgres 복사 · 확인 — 화면 시험이 쓰고, `SUPABASE_DB_URL=… node scripts/db-move.js supabase sqlite:backup.db copy` 로 Supabase 를 내 컴퓨터 파일로 받아 둘 수도 있어요) · `DC_READONLY`(점검 때 저장 멈춤).
+- **Vercel · Turso 에서 할 일 (사람이)**: Vercel › doogo-class › Storage(또는 Integrations) › Turso 연결 해제 → `TURSO_DATABASE_URL` · `TURSO_AUTH_TOKEN` 이 빠져요. 남은 `DB_MOVE` · `DC_READONLY` 환경 변수도 지워도 돼요. Supabase › Database › Backups 에 백업이 있는지 본 뒤 Turso 대시보드에서 운영(`doogo-class-db`) · 시험용(`doogo-class-staging`) DB 를 지워요.
 
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
@@ -148,7 +155,7 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 |---|---|
 | `data.js` | 첫 실행 기본값 — 강사 4명(문대표·부알남·갓농부·초이), 문대표 콘텐츠, 기수, 수강생, 예시 제출 기록 |
 | `db.js` | 공용 데이터 계층 — 저장/불러오기(서버 모드: 문서 나누기 · 바뀐 부분 보내기 · 변경 받기), 기수 주차 계산, 일정 생성, 진행률, 세션 |
-| `api/` | 서버 (Vercel 함수) — `_lib/`에 저장소(Turso · SQLite) · 로그인 · 권한 · 처음 데이터 |
+| `api/` | 서버 (Vercel 함수) — `_lib/`에 저장소(Supabase Postgres · 로컬 SQLite) · 로그인 · 권한 · 처음 데이터 |
 | `scripts/` | `db-build.js`(배포 때 데이터베이스 준비) · `site.js`(배포할 화면 파일만 `.site`로 모으기) · `dev-server.js`(로컬 서버 모드) |
 | `icons.js` | 아이콘 (Lucide) — `<svg class="icon lucide lucide-<이름>">` (Lucide 공식 클래스 규칙) |
 | `tags.js` | 분석 · 마케팅 도구 연결 — 마스터 › 첫 화면 · 사업자 정보 › 분석 · 마케팅 도구에 넣은 것만 정식 주소에서 불러와요 · 개인정보처리방침 ‘쿠키’ 항목 문구 |
