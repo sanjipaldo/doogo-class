@@ -96,6 +96,14 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **환경 변수만 바꾼 뒤 다시 배포**: 빌드 건너뛰기(`scripts/ignore-build.sh` — 화면 · 서버 파일이 그대로면 건너뜀)가 같은 커밋의 다시 배포(Vercel ‘Redeploy’)도 건너뛰어 새 값이 안 들어갔어요(2026-11-05). 이제 **같은 커밋을 다시 배포하면 빌드해요** — 환경 변수를 바꾼 뒤 Redeploy 를 누르면 돼요.
 - **Supabase 연결 문자열은 Shared Pooler**: Pro 요금제의 Connect 창은 전용 풀러(Dedicated Pooler · `db.<프로젝트>.supabase.co:6543`)를 먼저 보여 주는데, 이 주소는 IPv6 전용이라 Vercel(IPv4)에서 `ENETUNREACH` 로 안 붙어요. **Transaction pooler › Shared Pooler**(`aws-…-ap-northeast-2.pooler.supabase.com:6543`, 사용자 `postgres.<프로젝트>`) 주소를 넣어요. 배포 기록이 이 경우를 알려 줘요. 비밀번호 인증이 실패하면(`password authentication failed`) 배포 기록 `[db] 고칠 곳:` 줄이 모양만 보고 원인을 알려 줘요 — `[YOUR-PASSWORD]` 글자가 그대로 · 대괄호까지 들어감 · 아이디가 `postgres.<프로젝트>` 가 아님 · `%` 로 주소가 깨짐 · 그 밖엔 비밀번호가 틀림(Project Settings › Database › Reset database password 로 영문 · 숫자 비밀번호를 새로 정해 넣기, 풀러 반영에 몇 분). 비밀번호 · 아이디 글자는 기록에 안 나와요.
 
+#### DB 전환 1부 A4 — 시험용(미리보기)을 Supabase 로 (2026-11-05)
+
+- **연결**: Preview `SUPABASE_DB_URL` = 시험용 Supabase(doogo-staging · 서울 ap-northeast-2) Shared Pooler 6543 — 배포 기록 `Postgres 17.11 · 왕복 178ms`(빌드 서버가 미국 동부라서. 운영 전환 A5 때 서버 함수를 서울 `icn1` 로 옮겨요).
+- **옮기기**: Preview 에 `DB_MOVE=turso-to-supabase` + `DB_DRIVER=supabase` 를 넣고 다시 배포 → `[db] 옮기기 Turso → Supabase (copy): 문서 46개 · 작업 기록 31개 · 백업 5개 · 확인: 문서마다 해시 맞음 · 36.7초` → 보안 · 보기 6개 적용 → 미리보기가 Supabase 로 떠요(문서 37개 · 시험용 표시 그대로).
+- **복사 뒤 `DB_MOVE` 는 바로 껐어요**(Vercel 에서 Development 로만 남김 — 지워도 돼요). 남겨 두면 다음 미리보기 빌드가 ‘받는 DB 에 이미 문서가 있고 달라요’로 멈춰요(복사는 빈 DB 에만).
+- **되돌리기(시험용)**: Preview `DB_DRIVER` 를 지우고 다시 배포 → 미리보기가 시험용 Turso 로(복사는 Turso 를 바꾸지 않아요 · Supabase 에서 고친 내용까지 돌려놓으려면 `DB_MOVE=supabase-to-turso` 로 한 번).
+- **운영은 그대로 Turso** — Production 환경 변수는 안 바꿨어요.
+
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
 ```bash
