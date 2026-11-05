@@ -11,7 +11,7 @@ import Raw from "../lib/Raw.jsx";
 import { VOD, DB, today, hash, storeRoute, toast, go } from "../lib/legacy.js";
 import { Classes, Free, Vods, Badges, Points, Posts, Alarm, Likes } from "./MyTabs.jsx";
 import { Coupons, Ebooks, Live, Devices, Reviews, Help, Account, Addons } from "./MyTabs2.jsx";
-import { ShipStrip, Pending, OrderList, Ship } from "./MyOrders.jsx";
+import { ShipStrip, Pending, OrderList, Ship, RfNowModal } from "./MyOrders.jsx";
 
 /* React 로 옮긴 마이페이지 메뉴 — 마이페이지 메뉴 전부 (class/shared/screens.js 의 vod-my 주소 규칙과 같게) */
 const TABS = { "": null, classes: Classes, free: Free, vod: Vods, addons: Addons, ebooks: Ebooks, live: Live, alarm: Alarm, likes: Likes, pending: Pending, orders: OrderList, ship: Ship, coupons: Coupons, points: Points, reviews: Reviews, posts: Posts, badges: Badges, account: Account, devices: Devices, help: Help };
@@ -88,7 +88,7 @@ function myRestore(k) {
 
 export default function MyPage({ n, moved, keep }) {
   const X = VOD();
-  const [, bump] = useState(0);
+  const [, bump] = useState(0), [rf, setRf] = useState(null);
   const redraw = useCallback(() => { const y = window.scrollY; bump((v) => v + 1); requestAnimationFrame(() => window.scrollTo(0, y)); }, []);
   const m = X.me(), r = storeRoute();
   let sub = r.path[1] || "";
@@ -123,6 +123,8 @@ export default function MyPage({ n, moved, keep }) {
   const act = {
     like: onLike, topic: onTopic, redraw, logout: onLogout,
     dg: (pid) => X.enterDg(pid, ""),
+    // 내 강의실 ‘환불하기’ (결제 후 N일 이내 · 재생 전) → 결제 취소 · 100% 환불 팝업 (예전 rf-now)
+    rfNow: (o) => { const mm = X.me(); if (!mm || o.mid !== mm.id) return; const q = X.instantOf(o); if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } setRf(o); },
     plDel: (id) => { const mm = X.me(), v = X.V(), x = v.pledges.find((y) => y.id === id); if (!x || !mm || x.mid !== mm.id) return; v.pledges.splice(v.pledges.indexOf(x), 1); X.save(); redraw(); toast("다짐을 지웠어요."); }
   };
   if (away) return null;
@@ -132,6 +134,7 @@ export default function MyPage({ n, moved, keep }) {
   return (
     <Shell nav="" tab={sub === "likes" ? "likes" : sub === "classes" ? "cls" : "my"} n={n}>
       <div className="vd-wrap vd-my"><div className="vd-my-grid"><Side m={m} d={d} sub={sub} cnt={cnt} onLogout={onLogout} /><section className="vd-my-main"><h2 className="vd-my-h2">{X.MYT[sub]}</h2>{Tab ? <Tab m={m} d={d} act={act} /> : <Home m={m} d={d} onLike={onLike} onTopic={onTopic} />}</section></div></div>
+      {rf ? <RfNowModal o={rf} onClose={() => setRf(null)} onDone={redraw} /> : null}
     </Shell>
   );
 }

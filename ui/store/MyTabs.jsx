@@ -30,6 +30,8 @@ export function MyCls({ m, list, act }) {
       const cta = live ? (X.dgOpen(p) && !ev ? <button type="button" className="vd-btn vd-btn-p vd-sroom-go" data-v="dg" data-p={p.id} onClick={(e) => { e.preventDefault(); act.dg(p.id); }}><Icon n="play" c="xs" />{go}</button> : <a className="vd-btn vd-btn-p vd-sroom-go" href={"#/vod/learn/" + p.id}><Icon n={ev ? "calendar" : "play"} c="xs" />{go}</a>)
         : rb ? <a className="vd-btn vd-btn-p vd-sroom-go" href={"#/vod/p/" + p.id}><Icon n="refresh" c="xs" />재수강 {rb}% 할인으로 다시 듣기</a> : null;
       const sub = (lim ? (live ? fmtFull(end) + "까지 수강" : fmtFull(end) + "에 수강 기간이 끝났어요") : ev ? "주문 " + o.no : "평생 소장") + (cl ? " · 1:1 코칭 " + cl + "회 남음" : "") + (live && X.dgOpen(p) && !ev ? " · 두잉고 강의실에서 열려요" : "");
+      // 결제 후 N일 이내 · 재생 전이면 환불 안내 + 환불하기 (지나거나 재생하면 없어져요 · 예전 rfCard)
+      const rq = X.rfCard(o);
       return (
         <article key={p.id} className={"vd-sroom-it" + (live ? "" : " exp")}><a className="vd-sroom-th" href={"#/vod/" + (live ? "learn/" : "p/") + p.id}><RawOne html={X.thumbArt(p)} />{live && !ev ? <i className="vd-sroom-play" aria-hidden="true"><Icon n="play" /></i> : null}</a>
           <div className="vd-sroom-b"><div className="vd-sroom-top"><span className={"vd-kchip vd-kchip-" + (X.priceOf(p) === 0 ? "free" : t)}>{chip}</span>{state}</div>
@@ -37,8 +39,8 @@ export function MyCls({ m, list, act }) {
             {ev ? <span className="vd-sroom-info"><Icon n="calendar" c="xs" />{X.fmtEvent(p.eventAt, true) + " · " + (t === "live" ? X.viaOf(p) : X.placeShort(p.place) || "현장")}</span>
               : <><div className="vd-sroom-pg"><div className="vd-sroom-bar"><i style={{ width: pc + "%" }} /></div><span><b>{pc}%</b><small>{dn} / {lz.length}강</small></span></div>
                 <span className="vd-sroom-info">{last ? <><Icon n="clock" c="xs" />최근 학습 · {last.title}</> : <><Icon n="sparkles" c="xs" />아직 시작 전이에요. 1강부터 가볍게 시작해 보세요</>}</span></>}
-            <span className="vd-sroom-sub">{sub}</span></div>
-          <div className="vd-sroom-act">{cta}<a className="vd-btn vd-btn-o vd-sroom-sec" href={"#/vod/p/" + p.id}>강의 상세</a></div></article>
+            <span className="vd-sroom-sub">{sub}</span>{rq ? <span className="vd-sroom-rfn"><Icon n="shieldCheck" c="xs" />{rq.note}</span> : null}</div>
+          <div className="vd-sroom-act">{cta}<a className="vd-btn vd-btn-o vd-sroom-sec" href={"#/vod/p/" + p.id}>강의 상세</a>{rq ? <button type="button" className="vd-btn vd-btn-line vd-sroom-rf" data-v="rf-now" data-no={o.no} onClick={() => act && act.rfNow && act.rfNow(o)}><Icon n="refresh" c="xs" />환불하기</button> : null}</div></article>
       );
     })}</div>
   );

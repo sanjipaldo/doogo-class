@@ -10,21 +10,22 @@ const Store = ({ href, label }) => <Isl html={ADM().vdStoreBtn(href, label)} />;
 
 export function MasterDc() {
   const A = ADM(), DB = DBX(), won = A.won, v = A.VD(), X = A.VX(), t = DB.date.todayStr(), ym = t.slice(0, 7), sum = A.vdSum, P = (id) => A.vdP(id), M = (id) => A.vdMember(id);
-  const todayO = v.orders.filter((o) => o.status === "paid" && o.paidAt && day(o.paidAt) === t), mon = A.vdPaidIn(ym), pend = v.orders.filter((o) => o.status === "pending");
+  const todayO = v.orders.filter((o) => o.status === "paid" && o.paidAt && day(o.paidAt) === t), mon = A.vdPaidIn(ym), pend = v.orders.filter((o) => o.status === "pending"), rfm = A.vdRfSum(ym);
   const byT = (k) => sum(mon.filter((o) => { const ty = X.typeOf(P(o.pid) || {}); return k === "event" ? ty === "live" || ty === "offline" : ty === k; }));
   const iq = (v.inquiries || []).slice().sort((a, b) => b.at - a.at), iqOpen = iq.filter((x) => !x.answer), newM = v.members.filter((m) => A.vdYM(m.createdAt) === ym).length, rec = A.vdRecruitNew();
   const top = v.products.map((p) => ({ p, n: v.orders.filter((o) => o.pid === p.id && o.status === "paid").length, amt: sum(v.orders.filter((o) => o.pid === p.id && o.status === "paid")) })).filter((x) => x.n).sort((a, b) => b.amt - a.amt).slice(0, 5);
   const coOpen = DB.data.instructors.reduce((a, ins) => a + DB.requests(ins.id).filter((x) => DB.isVodStudent(x.s) && !x.q.answer).length, 0), teaReq = X.teasOf(null, null).filter((o) => o.status === "paid" && (o.tea || {}).st === "req").length;
   const mix = [["6개월 수강권", (o) => X.kindOf(o) === "course" && Number(o.days) === 180 && !o.rebuy], ["12개월 수강권", (o) => X.kindOf(o) === "course" && Number(o.days) === 365 && !o.rebuy], ["재수강 (재결제)", (o) => X.kindOf(o) === "course" && !!o.rebuy], ["예전 3년 수강권 · 1년 연장권", (o) => (X.kindOf(o) === "course" && Number(o.days) === 1095) || X.kindOf(o) === "extend"], ["1:1 코칭권", (o) => X.kindOf(o) === "coach"], ["TEA TIME", (o) => X.kindOf(o) === "tea"]].map((x) => { const os = mon.filter(x[1]); return [x[0], os.length, sum(os)]; });
   const alarmN = v.products.filter((p) => p.status === "soon").reduce((s, p) => s + A.vdAlarmOf(p.id).length, 0), ship = A.vdShipAll();
-  const todo = [[pend.length, "입금 확인 대기", "무통장 주문 입금을 확인해 주세요", "#/center/master/vod"], [A.vdRefReqs().length, "환불 요청", "회원 · 강사가 요청한 환불을 처리해 주세요", "#/center/master/vod?of=refreq"], [ship.filter((o) => o.status === "paid" && ["ready", "prep"].indexOf(X.shipStOf(o)) >= 0).length, "보낼 종이책", "신규 주문 · 배송 준비 중인 종이책을 보내 주세요", "#/center/master/vod-ship"], [ship.filter(A.boClaimOn).length, "종이책 취소 · 반품 · 교환", "회원 요청을 승인 · 환불 · 반려해 주세요", "#/center/master/vod-ship"],
+  const todo = [[pend.length, "입금 확인 대기", "무통장 주문 입금을 확인해 주세요", "#/center/master/vod"], [A.vdRefReqs().length, "환불 요청", "회원 · 강사가 요청한 환불을 처리해 주세요", "#/center/master/vod?of=refreq"], [A.vdRefWait().length, "환불 계좌 송금", "바로 취소한 무통장 주문을 회원 계좌로 송금해 주세요", "#/center/master/vod-refund"], [ship.filter((o) => o.status === "paid" && ["ready", "prep"].indexOf(X.shipStOf(o)) >= 0).length, "보낼 종이책", "신규 주문 · 배송 준비 중인 종이책을 보내 주세요", "#/center/master/vod-ship"], [ship.filter(A.boClaimOn).length, "종이책 취소 · 반품 · 교환", "회원 요청을 승인 · 환불 · 반려해 주세요", "#/center/master/vod-ship"],
     [alarmN, "오픈 알림 신청", "오픈 예정 클래스 알림 신청자에게 오픈 소식 · 쿠폰을 보내요", "#/center/master/vod-classes"], [coOpen, "답변 대기 1:1 코칭 질문", "강사별 코칭 질문 답변이 밀리지 않았는지 확인해요", "#/center/master/vod?tab=care"], [teaReq, "TEA TIME 일정 확정 대기", "강사가 희망 날짜를 보고 확정해야 해요", "#/center/master/vod?tab=care"], [iqOpen.length, "답변 대기 1:1 문의", "고객센터 문의에 답해 주세요", "#/center/master/vod-inquiries"], [rec, "새 두고 파트너스 지원", "파트너 강사 지원서를 확인하고 연락해 주세요", "#/center/master/vod-recruit"], [v.products.filter((p) => p.status === "soon").length, "오픈 예정 클래스", "오픈 일정 · 알림 신청 수를 확인해요", "#/center/master/vod-classes"]];
   const Ava = ({ id }) => <span className="a-avatar">{String((M(id) || {}).name || "?").slice(0, 1)}</span>;
   return <>
     <Head title="DOOGO CLASS 대시보드" sub="VOD 스토어의 주문 · 매출 · 회원 · 1:1 문의를 한눈에 봐요. 두잉고(강사 플랫폼) 운영은 왼쪽 위 ‘두잉고’ 탭에서 해요." right={<Store href="#/vod" label="스토어 미리보기" />} />
-    <div className="a-kpis">
+    <div className="a-kpis a-kpis-5">
       <Kpi label="오늘 결제" value={todayO.length + "건"} sub={won(sum(todayO))} href="#/center/master/vod" tone={todayO.length ? "ok" : ""} />
       <Kpi label="이번 달 매출" value={won(sum(mon))} sub={"VOD " + won(byT("vod")) + " (부가 " + won(sum(mon.filter((o) => !X.isAccess(o)))) + ") · 전자책 " + won(byT("ebook")) + (byT("book") ? " · 종이책 " + won(byT("book")) : "") + " · LIVE · 오프 " + won(byT("event"))} href="#/center/master/vod-sales" />
+      <Kpi label="이번 달 환불" value={rfm.n + "건"} sub={rfm.n ? "- " + won(rfm.amt) + " · 회원 바로 취소 " + rfm.inst + "건" : "환불 없음"} href="#/center/master/vod-refund" tone={rfm.n ? "warn" : ""} />
       <Kpi label="입금 대기" value={pend.length + "건"} sub={won(sum(pend))} href="#/center/master/vod" tone={pend.length ? "warn" : ""} />
       <Kpi label="1:1 문의 대기" value={iqOpen.length + "건"} sub={"이번 달 가입 " + newM + "명"} href="#/center/master/vod-inquiries" tone={iqOpen.length ? "warn" : ""} />
     </div>

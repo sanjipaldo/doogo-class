@@ -72,8 +72,9 @@ async function newMember(fields, how) {
 
 /* ---------------- 카탈로그 ---------------- */
 const catalog = () => get(K.cat);
-const RF_DEF = { instant: true, days: 7, maxUsed: 0, matCounts: true, addons: true, restore: true, ebookDays: 7, eventDays: 3 };
-const rfSet = (cat) => Object.assign({}, RF_DEF, ((cat && cat.settings) || {}).refund || {});
+// 환불 규칙은 공용 모듈 하나 (화면과 같은 규칙 · shared/refund.js)
+const RF = require("../../shared/refund");
+const rfSet = (cat) => RF.rfSet(cat && cat.settings);
 
 /* ---------------- 결제 금액 (서버가 정함) ---------------- */
 /** req: { pid, kind, plan, coach, mcid, points, expect } → { ok, items[], total, orderName } | { ok:false, message } */
@@ -159,26 +160,19 @@ async function addOrderNos(mid, nos) {
 }
 const newNo = () => "DC" + kstDay(Date.now()).replace(/-/g, "").slice(2) + String(crypto.randomInt(100000, 999999));
 
-/* ---------------- 바로 취소 (환불 규정) ---------------- */
+/* ---------------- 바로 취소 (환불 규정 · 공용 모듈 shared/refund.js) ---------------- */
+/** 들은 강의 수 — 서버 기록(vp:)과 회원 화면이 저장한 기록(vm: prog)을 합쳐 세요.
+ *  어느 쪽에든 남아 있으면 들은 강의 · 서버 기록은 회원이 지울 수 없어서, 화면 기록을 지워도 수가 줄지 않아요 */
 async function usedOf(mid, pid, rf) {
-  const pr = ((await get(K.prog(mid))) || {})[pid]; if (!pr) return 0;
-  const ids = {}; Object.keys(pr.done || {}).forEach((k) => { ids[k] = 1; }); Object.keys(pr.seen || {}).forEach((k) => { ids[k] = 1; });
-  return Object.keys(ids).length + (rf.matCounts && pr.mat ? 1 : 0);
+  const [sp, m] = await Promise.all([get(K.prog(mid)), get(K.member(mid))]);
+  return RF.usedOf([(sp || {})[pid], ((m && m.prog) || {})[pid]], rf);
 }
-/** 회원이 바로 100% 취소할 수 있는지 (화면과 같은 규칙 · 서버 기록 기준) */
+/** 회원이 바로 100% 취소할 수 있는지 (화면과 같은 규칙 · 서버 기록 기준) → { ok, why, left, used, way(pg · vbank · bank), acct(환불 계좌 필요) } */
 async function instantOf(o) {
-  const cat = await catalog(), rf = rfSet(cat), X = pricer(cat || {}), p = X.product(o.pid);
-  if (!o || o.status !== "paid" || !(o.amount > 0) || (o.kind || "course") !== "course" || !p) return { ok: false, why: "바로 취소할 수 없는 주문이에요." };
-  if (!rf.instant) return { ok: false, why: "바로 취소는 지금 쉬고 있어요. 환불 요청을 남겨 주세요." };
-  if (o.method === "vbank") return { ok: false, why: "가상계좌 결제는 환불 요청으로 처리해요. 환불 받을 계좌로 돌려드려요." };
-  const t = X.typeOf(p), paid = o.paidAt || o.createdAt, lim = (t === "ebook" ? rf.ebookDays : rf.days) * 864e5;
-  if (X.isEvent(p)) { const ev = X.kst(p.eventAt); return ev && ev - Date.now() >= rf.eventDays * 864e5 ? { ok: true } : { ok: false, why: "강의 " + rf.eventDays + "일 전이 지나 환불 요청으로 처리해요." }; }
-  // 종이책: 보내기 전(결제 완료 · 상품 준비 전)이면 기간 없이 바로 취소 · 그 뒤는 취소 · 반품 요청
-  if (t === "book") { const st = (o.ship && o.ship.st) || "ready"; return st === "ready" ? { ok: true } : { ok: false, why: st === "prep" ? "상품을 준비하고 있어 취소 요청으로 처리해요." : "이미 보낸 책이라 반품 요청으로 처리해요." }; }
-  if (Date.now() - paid > lim) return { ok: false, why: "결제 후 " + (t === "ebook" ? rf.ebookDays : rf.days) + "일이 지나 환불 요청으로 처리해요." };
-  if (t === "ebook") return o.dlAt ? { ok: false, why: "전자책을 내려받아 바로 취소할 수 없어요." } : { ok: true };
-  const used = await usedOf(o.mid, o.pid, rf);
-  return used > rf.maxUsed ? { ok: false, why: "강의를 " + used + "개 들어 환불 요청으로 처리해요." } : { ok: true, used };
+  const cat = await catalog(), rf = rfSet(cat), X = pricer(cat || {}), p = o && X.product(o.pid);
+  if (!o || !p) return { ok: false, why: "바로 취소할 수 없는 주문이에요.", way: "none", acct: false };
+  const ev = X.isEvent(p);
+  return RF.instant({ o, type: X.typeOf(p), event: ev, eventAt: ev ? X.kst(p.eventAt) : 0, shipSt: o.ship ? (o.ship.st || "ready") : "", used: await usedOf(o.mid, o.pid, rf), now: Date.now(), srv: true }, rf);
 }
 
 module.exports = { K, get, update, create, uid, clone, current, login, logout, setCookie, cookies, hashPw, checkPw, pub, newMember, consentOf, catalog, rfSet, quote, shipAddr, soldQty, ordersOf, addOrderNos, newNo, instantOf, usedOf };

@@ -39,20 +39,25 @@ function ReceiptModal({ o, onClose }) {
 }
 const RefundRules = ({ onClose }) => <Modal title="환불 규정" onClose={onClose}><Raw as="div" className="vd-modal-b" html={VOD().refundHtml()} /></Modal>;
 
-function RfNowModal({ o, onClose, onDone }) {
-  const X = VOD(), nw = X.rfNowInfo(o), q = nw.q, [busy, setBusy] = useState(false);
-  const ok = () => {
+/** 결제 취소 · 100% 환불 (예전 rf-now 팝업) — 가상계좌 · 무통장 입금은 환불 받을 계좌를 함께 받아요 · 내 강의실 · 강의 시작 안내도 같이 써요 */
+export function RfNowModal({ o, onClose, onDone }) {
+  const X = VOD(), nw = X.rfNowInfo(o), q = nw.q, [busy, setBusy] = useState(false), [err, setErr] = useState("");
+  const ok = (e) => {
     const mm = X.me();
     if (!mm || o.mid !== mm.id || !X.instantOf(o).ok) { onClose(); return; }
+    let acct = null;
+    if (q.acct) { const f = e.currentTarget.closest("form"), a = f ? X.acctRead(f) : { err: "환불 받을 계좌를 적어 주세요." }; if (a.err) { setErr(a.err); return; } acct = a.acct; }
     setBusy(true);
-    X.rfCancel(o).then((amt) => { onClose(); onDone(); toast(won(amt) + "을 환불했어요. 카드사에 따라 3~5영업일 안에 돌아와요." + (o.pg && o.pg.st === "mock" ? " (시안 · 실제 카드 취소 없음)" : "")); },
+    X.rfCancel(o, acct).then((amt) => { onClose(); onDone(); toast(X.rfDoneMsg(o, amt)); },
       (er) => { setBusy(false); toast(String((er && er.message) || "취소하지 못했어요. 고객센터로 문의해 주세요."), "warn"); });
   };
+  const Tag = q.acct ? "form" : "div", fx = q.acct ? { "data-vd-rfnow": "", "data-no": o.no, onSubmit: (e) => e.preventDefault() } : {};
   return (
     <Modal title="결제 취소 · 100% 환불" onClose={onClose}>
-      <div className="vd-modal-b vd-rfnow"><p className="vd-rfq-t"><b>{o.title}</b>{X.optTxt(o) ? <small>{X.optTxt(o)}</small> : null}<span>결제 {won(o.amount)} · {fmtFull(o.paidAt || o.at)}</span></p>
-        <div className="vd-rfnow-box"><b>{won(nw.tot)}</b><span>전액 돌려드려요</span></div><ul className="vd-rfnow-l"><li><Icon n="check" c="xs" />{q.why}</li>{nw.adds.length ? <li><Icon n="check" c="xs" />함께 결제한 {nw.adds.map((x) => X.optTxt(x) || x.title).join(", ")}도 같이 취소돼요.</li> : null}{nw.r.restore && (o.mcid || o.pointOff) ? <li><Icon n="check" c="xs" />결제에 쓴 쿠폰 · 포인트도 돌려드려요.</li> : null}<li><Icon n="check" c="xs" />취소하면 수강 권한이 바로 사라져요.</li><li><Icon n="clock" c="xs" />카드 승인 취소는 카드사에 따라 3~5영업일 걸려요.</li></ul>
-        <div className="vd-rfnow-a"><button type="button" className="vd-btn vd-btn-o" data-v="close">그만두기</button><button type="button" className="vd-btn vd-btn-p" data-v="rf-now-ok" data-no={o.no} disabled={busy} onClick={ok}>{busy ? "취소하는 중…" : "결제 취소하고 환불받기"}</button></div></div>
+      <Tag className="vd-modal-b vd-rfnow" {...fx}><p className="vd-rfq-t"><b>{o.title}</b>{X.optTxt(o) ? <small>{X.optTxt(o)}</small> : null}<span>결제 {won(o.amount)} · {fmtFull(o.paidAt || o.at)}</span></p>
+        <div className="vd-rfnow-box"><b>{won(nw.tot)}</b><span>전액 돌려드려요</span></div><ul className="vd-rfnow-l"><li><Icon n="check" c="xs" />{q.why}</li>{nw.adds.length ? <li><Icon n="check" c="xs" />함께 결제한 {nw.adds.map((x) => X.optTxt(x) || x.title).join(", ")}도 같이 취소돼요.</li> : null}{nw.r.restore && (o.mcid || o.pointOff) ? <li><Icon n="check" c="xs" />결제에 쓴 쿠폰 · 포인트도 돌려드려요.</li> : null}<li><Icon n="check" c="xs" />취소하면 수강 권한이 바로 사라져요.</li><li><Icon n="clock" c="xs" />{X.rfNowNote(o, q)}</li></ul>
+        {q.acct ? <><div className="vd-rfq-acct"><b>환불 받을 계좌</b><small>{(q.way === "vbank" ? "가상계좌" : "무통장 입금") + " 결제는 이 계좌로 돌려드려요. 본인 명의 계좌를 적어 주세요."}</small><RawOne html={X.acctFields(null)} /></div><p className="vd-err" data-rfnow-err="">{err}</p></> : null}
+        <div className="vd-rfnow-a"><button type="button" className="vd-btn vd-btn-o" data-v="close">그만두기</button><button type="button" className="vd-btn vd-btn-p" data-v="rf-now-ok" data-no={o.no} disabled={busy} onClick={ok}>{busy ? "취소하는 중…" : "결제 취소하고 환불받기"}</button></div></Tag>
     </Modal>
   );
 }

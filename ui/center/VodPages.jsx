@@ -64,15 +64,16 @@ export function InsVod() {
   const A = ADM(), DB = DBX(), iid = A.IID(), v = A.VD(), X = A.VX(), won = A.won, mine = v.products.filter((p) => p.iid === iid && A.vdOnline(p)), ids = mine.map((p) => p.id);
   const sub = "DOOGO CLASS에서 판매 중인 내 VOD · 전자책의 판매 내역이에요. " + A.SALES_SUB;
   if (!mine.length) return <><Head title="VOD 판매 내역" sub={sub} right={<Store />} /><section className="a-card"><Empty ic="monitorPlay" extra={<Store href="#/vod" label="DOOGO CLASS 둘러보기" />}>아직 DOOGO CLASS에 올라간 내 VOD가 없어요.<br />기수 강의를 VOD로 만들어 팔고 싶다면 마스터에게 문의해 주세요.</Empty></section></>;
-  const os = v.orders.filter((o) => ids.indexOf(o.pid) >= 0).sort((a, b) => (b.paidAt || b.at) - (a.paidAt || a.at)), paid = os.filter(A.vdLive), ym = DB.date.todayStr().slice(0, 7), mon = paid.filter((o) => A.vdYM(o.paidAt) === ym);
+  const os = v.orders.filter((o) => ids.indexOf(o.pid) >= 0).sort((a, b) => (b.paidAt || b.at) - (a.paidAt || a.at)), paid = os.filter(A.vdLive), ym = DB.date.todayStr().slice(0, 7), mon = paid.filter((o) => A.vdYM(o.paidAt) === ym), rfm = A.vdRfSum(ym, iid);
   const rs = v.reviews.filter((r) => ids.indexOf(r.pid) >= 0 && !r.hidden).sort((a, b) => b.at - a.at), avg = rs.length ? (rs.reduce((a, r) => a + r.rating, 0) / rs.length).toFixed(1) : "-";
   const sts = DB.vodStudentsOf(iid), tf = A.ui.vsT || "all", P = (id) => A.vdP(id);
   const list = os.filter((o) => tf === "all" || (tf === "addon" ? !X.isAccess(o) : tf === "vod" ? X.typeOf(P(o.pid)) === "vod" && X.isAccess(o) : X.typeOf(P(o.pid)) === "ebook"));
   return <>
     <Head title="VOD 판매 내역" sub={sub} right={<Store />} />
-    <div className="a-kpis">
+    <div className="a-kpis a-kpis-5">
       <Kpi label="이번 달 판매" value={mon.length + "건"} sub={A.vdYMtxt(ym)} href="#/center/vod" tone="ok" />
-      <Kpi label="이번 달 매출" value={won(A.vdSum(mon))} sub="결제 완료 기준" href="#/center/vod" />
+      <Kpi label="이번 달 매출" value={won(A.vdSum(mon))} sub="결제 완료 기준 · 환불 빼고" href="#/center/vod" />
+      <Kpi label="이번 달 환불" value={rfm.n + "건"} sub={rfm.n ? "- " + won(rfm.amt) + " · 정산 - " + won(rfm.ins) : "환불 없음"} href="#/center/vod-refunds" tone={rfm.n ? "warn" : ""} />
       <Kpi label="이번 달 정산 예정" value={won(A.vdSum(mon, A.vdInsAmt))} sub={DB.date.fmtFull(A.vdPayDate(ym)) + " 지급 예정"} href="#/center/vod-settle" />
       <Kpi label="평균 별점" value={avg} sub={"후기 " + rs.length + "개"} href="#/center/vod" />
     </div>
@@ -89,6 +90,30 @@ export function InsVod() {
     <section className="a-card"><div className="a-card-head"><h2>수강생 후기</h2><span className="a-muted">{rs.length}개</span></div>{rs.length ? <ul className="vda-reviews">{rs.slice(0, 10).map((r, i) => (
       <li key={i}><div><b>{r.name}</b><span className="vda-stars">{"★".repeat(r.rating)}<i>{"★".repeat(5 - r.rating)}</i></span><small>{((P(r.pid) || {}).title || "") + " · " + DB.date.toStr(new Date(r.at))}</small></div><p>{r.text}</p></li>
     ))}</ul> : <Empty ic="star">아직 후기가 없어요.</Empty>}</section>
+  </>;
+}
+
+/** 환불 · 취소 내역 #/center/vod-refunds (예전 pageInsVodRefunds) — 내 클래스의 환불된 주문 · 정산에서 빠진 금액 */
+export function InsVodRefunds() {
+  const A = ADM(), DB = DBX(), iid = A.IID(), v = A.VD(), X = A.VX(), won = A.won, mine = v.products.filter((p) => p.iid === iid), ym = DB.date.todayStr().slice(0, 7), r = X.rfSet(); // VOD · 전자책 · LIVE · 오프라인 · 종이책 · 부가 상품 모두
+  const sub = "DOOGO CLASS에서 판매된 내 클래스 중 환불 · 취소된 주문이에요. 환불한 금액은 정산에서 빠져요 — 정산을 확정하기 전에 환불되면 그 달 정산에서 빠지고, 이미 확정한 달의 주문이 환불되면 환불한 달 정산에서 차감해요. " + A.SALES_SUB;
+  if (!mine.length) return <><Head title="환불 · 취소 내역" sub={sub} right={<Store />} /><section className="a-card"><Empty ic="refresh">아직 DOOGO CLASS에 올라간 내 클래스가 없어요.</Empty></section></>;
+  const rf = A.vdRefundsOf(iid), sm = A.vdRfSum(ym, iid), all = rf.filter((o) => o.refundKind === "instant").length;
+  return <>
+    <Head title="환불 · 취소 내역" sub={sub} right={<Store />} />
+    <div className="a-kpis">
+      <Kpi label="이번 달 환불" value={sm.n + "건"} sub={won(sm.amt) + " 돌려줌"} href="#/center/vod-refunds" tone={sm.n ? "warn" : ""} />
+      <Kpi label="이번 달 순매출" value={won(sm.gross - sm.amt)} sub={"결제 " + won(sm.gross) + " − 환불 " + won(sm.amt)} href="#/center/vod" />
+      <Kpi label="정산에서 빠진 금액" value={won(sm.ins)} sub="이번 달 환불의 내 정산 몫" href="#/center/vod-settle" />
+      <Kpi label="회원 바로 취소" value={all + "건"} sub={"결제 후 " + r.days + "일 이내 · 재생 전 (누적)"} href="#/center/vod-refunds" />
+    </div>
+    <section className="a-card"><div className="a-card-head"><h2>환불 · 취소된 주문</h2><span className="a-muted">{rf.length + "건 · 최근 60건"}</span></div>
+      {rf.length ? <div className="a-table-wrap"><table className="a-table vd-rf-tbl"><thead><tr><th>환불일</th><th>주문 번호</th><th>구매자</th><th>클래스</th><th className="right">결제 금액</th><th className="right">환불 금액</th><th>구분</th><th>정산 반영</th></tr></thead><tbody>
+        {rf.slice(0, 60).map((o) => { const s0 = A.vdRfSettle(o), k = A.vdRfKind(o), opt = X.optTxt(o); return (
+          <tr key={o.no}><td className="num">{DB.date.toStr(new Date(o.refundedAt || o.at))}</td><td className="num"><small>{o.no}</small></td><td><b>{A.vdMask((A.vdMember(o.mid) || {}).name)}</b></td><td>{o.title}{opt ? <small className="a-memo">{opt}</small> : null}</td>
+            <td className="right num">{won(o.amount)}</td><td className="right num"><b>{"- " + won(A.vdRfAmt(o))}</b></td><td><Pill cls={k[1]}>{k[0]}</Pill></td><td><small>{s0.t}</small><small className="a-memo">{"내 정산 - " + won(s0.ins)}</small></td></tr>); })}
+      </tbody></table></div> : <Empty ic="refresh">환불 · 취소된 주문이 없어요.</Empty>}</section>
+    <p className="a-hint"><Icon n="shieldCheck" c="xs" />{" 환불 규정: 결제 후 " + r.days + "일 이내 · 강의를 한 번도 재생하지 않았으면 회원이 내 강의실에서 직접 100% 취소해요. 그 밖의 환불은 마스터가 들은 강의 수 · 기간에 맞춰 처리해요."}</p>
   </>;
 }
 

@@ -62,7 +62,9 @@ function VodPlay({ pid, lid, tq, n }) {
   const nx = x ? X.vodNext(x) : null, lz = nx ? nx.lz : [], cur = nx ? lz.find((l) => l.id === lid) || lz.find((l) => l.id === nx.pr.last) || nx.cur || lz[0] : null;
   const [tab, setTab] = useState(() => (["toc", "note", "files"].indexOf(X.vtTab()) >= 0 ? X.vtTab() : "toc")), [gen, setGen] = useState(0), ui = useNoteUi(n);
   // 영상 칸은 이 회차에서 한 번만 만들어요 (워터마크 시각은 예전 코드가 30초마다 글자만 바꿔요)
-  const stage = useMemo(() => (cur ? '<div class="vt-stage" id="vt-stage">' + X.vtVideo(cur, tq) + X.vtWatermark() + FS + "</div>" : ""), [pid, cur && cur.id, tq]); // eslint-disable-line react-hooks/exhaustive-deps
+  // DOOGO CLASS 결제 후 N일 이내 · 재생 전이면 영상 대신 ‘시작하면 100% 환불이 끝나요’ 안내 (예전 pageVodPlay 와 같은 gateHtml)
+  const mid0 = x && x.o && S.me && S.me.vodMid ? S.me.vodMid : "", gate = mid0 && cur && V().startGate ? V().startGate(mid0, pid, cur.id) : null;
+  const stage = useMemo(() => (cur ? '<div class="vt-stage" id="vt-stage">' + (gate ? V().gateHtml(gate, pid, cur.id, true) : X.vtVideo(cur, tq) + X.vtWatermark() + FS) + "</div>" : ""), [pid, cur && cur.id, tq, !!gate]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { X.vtReset(); X.vtAfter(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!x) {
     const me = S.me, ext = me && me.vodMid && V().canRebuy && V().canRebuy(me.vodMid, pid), rp = ext ? V().rebuySet().pct : 0;
@@ -70,7 +72,7 @@ function VodPlay({ pid, lid, tq, n }) {
   }
   if (!cur) return <div className="page"><PageHead title={x.p.title} /><section className="card"><Empty ic="circlePlay">아직 올라온 강의가 없어요.</Empty></section></div>;
   const mid = x.o && S.me.vodMid ? S.me.vodMid : "";
-  if (mid) V().markLast(mid, pid, cur.id);
+  if (mid && !gate) V().markLast(mid, pid, cur.id);
   const i = lz.indexOf(cur), prev = lz[i - 1], next = lz[i + 1], done = !!nx.pr.done[cur.id], pc = X.vodPctOf(x), ch = V().chapOf(x.p, cur).ch || {}, fl = cur.files || [], ns = X.notesOf(pid, cur.id);
   const withFiles = lz.filter((l) => (l.files || []).length), nFiles = withFiles.reduce((a, l) => a + l.files.length, 0), f = X.vtFilter(), shown = ns.filter((t) => f === "all" || t.tag === f);
   const leftMin = Math.round(lz.filter((l) => !nx.pr.done[l.id]).reduce((a, l) => a + V().lSec(l), 0) / 60), allDone = lz.length > 0 && nx.doneN >= lz.length;
@@ -84,7 +86,7 @@ function VodPlay({ pid, lid, tq, n }) {
   return (
     <div className={"vt" + (allDone ? " is-fin" : "")} data-p={pid} data-l={cur.id}>
       <div className="vt-bar"><a className="vt-back" href="#/vodclass"><Icon n="arrowLeft" c="sm" /><span>{X.ML("vodclass")}</span></a><div className="vt-tt"><small>{x.p.creator} · {i + 1} / {lz.length}강</small><b>{x.p.title}</b></div><div className="vt-pc" title="전체 진도"><span className="vt-pcbar"><i style={{ width: pc + "%" }} /></span><b>{pc}%</b></div><RawOne html={X.opsKkBtn("vt-kk")} /></div>
-      <div className="vt-grid"><div className="vt-main"><RawOne html={stage} onClick={(e) => { if (e.target.closest && e.target.closest("[data-action='vt-fs']")) X.vtFs(); }} />
+      <div className="vt-grid"><div className="vt-main"><RawOne html={stage} onClick={(e) => { if (!e.target.closest) return; if (e.target.closest("[data-action='vt-fs']")) X.vtFs(); else if (e.target.closest("[data-action='vt-start']") && mid) { V().markLast(mid, pid, cur.id); setGen((g) => g + 1); } }} />
         <section className="vt-info"><div className="vt-info-h"><div className="vt-info-t"><small className="vt-ch">{ch.title || ""}</small><h1>{cur.title}</h1><RawOne html={'<span class="vt-meta">' + V().lLen(cur) + " · " + (i + 1) + " / " + lz.length + "강" + (fl.length ? " · 수업 자료 " + fl.length + "개" : "") + "</span>"} /></div>
           <button type="button" className="vt-memo" data-action="vt-tab" data-k="note" onClick={() => pick("note")}><Icon n="pen" c="sm" />메모하기<b data-ncount="">{ncount}</b></button></div>
           {done ? <div className="vt-donebar"><Icon n="check" c="sm" /><b>이 강의를 다 들었어요</b><span>{DB.date.fmtStamp(Date.now()).split(" ")[0]} 기준 · 진도에 반영됐어요</span></div> : null}

@@ -21,7 +21,7 @@
   ];
   const VOD = [
     ["운영", [["vod-students", "VOD 수강생", "VOD 구매자 진도 · 두잉고 입장"], ["coaching", "1:1 코칭 답변", "코칭권을 산 VOD 수강생의 1:1 문의 답변"], ["teatime", "TEA TIME 신청", "희망 날짜를 보고 일정 확정 · 진행 완료"]]],
-    ["매출 (보기만)", [["vod", "VOD 판매 내역", "판매 · 주문 · 후기 (구매자 이름은 가려요)"], ["vod-live", "무료 LIVE · 온/오프라인 판매", "신청자 · 좌석 · 매출"], ["vod-settle", "판매 정산", "월별 정산 명세서 (정산 계좌 · 세금계산서는 강사님만)"], ["vod-cal", "정산 달력", "날짜별 판매 · 정산 금액"]]],
+    ["매출 (보기만)", [["vod", "VOD 판매 내역", "판매 · 주문 · 후기 (구매자 이름은 가려요)"], ["vod-refunds", "환불 · 취소 내역", "환불된 주문 · 정산에서 빠진 금액 (구매자 이름은 가려요)"], ["vod-live", "무료 LIVE · 온/오프라인 판매", "신청자 · 좌석 · 매출"], ["vod-settle", "판매 정산", "월별 정산 명세서 (정산 계좌 · 세금계산서는 강사님만)"], ["vod-cal", "정산 달력", "날짜별 판매 · 정산 금액"]]],
     ["VOD 강의실 꾸미기", [["vodlessons", "VOD 강의 · 수업 자료", "비메오 링크 · 강의 노트 · PDF"], ["v-brand", "기본 정보 · 색상 · AI 조교", "LIVE 두잉고와 함께 써요"], ["v-menus", "메뉴 구성"], ["v-guide", "시작 가이드 · 빠른 이동"], ["v-notices", "업데이트 소식"], ["v-faq", "FAQ · 자주 묻는 질문"], ["v-docs", "실습 체크리스트"], ["v-glossary", "용어 사전"], ["v-library", "강의 자료함"], ["v-motivation", "응원 영상"], ["v-channels", "1:1 상담 채널"], ["v-partners", "제휴 혜택"], ["v-pages", "추가 메뉴"]]]
   ];
   const TRACKS = [["live", "LIVE 두잉고", "기수 · 주차 · 과제"], ["vod", "VOD 두잉고", "DOOGO CLASS VOD 수강생"], ["both", "둘 다", "LIVE + VOD"]];
@@ -31,7 +31,7 @@
   const LIVE_CONTENT = LIVE[1][1].map((x) => x[0]).filter((k) => k !== "menus").concat(["free", "landing"]);
   const VOD_CONTENT = VOD[2][1].map((x) => x[0]).filter((k) => /^v-/.test(k) && k !== "v-menus");
   // VOD 매출 · 운영 메뉴: 그 강사 클래스의 주문(이름 가림)을 읽어요
-  const VOD_ORDERS = ["vod-students", "coaching", "teatime", "vod", "vod-live", "vod-settle", "vod-cal"];
+  const VOD_ORDERS = ["vod-students", "coaching", "teatime", "vod", "vod-refunds", "vod-live", "vod-settle", "vod-cal"];
   const DEFAULT = { live: ["reviews", "questions"], vod: ["coaching", "teatime"], both: ["reviews", "questions", "coaching", "teatime"] };
   const OLD_VOD = ["vod-students", "coaching", "teatime", "vodlessons"];
   const isTrack = (t) => t === "live" || t === "vod" || t === "both";

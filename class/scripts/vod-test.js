@@ -30,7 +30,7 @@ global.fetch = async (url, opt) => {
     if (!/^PortOne ps-test$/.test((opt.headers || {}).Authorization || "")) return J(401, { type: "UNAUTHORIZED" });
     const m = u.pathname.match(/^\/payments\/([^/]+)(\/cancel|\/virtual-account\/close)?$/); const id = decodeURIComponent(m[1]);
     if (m[2] === "/virtual-account/close") { if (PG[id] && PG[id].status === "PAID") return J(409, { type: "PAYMENT_ALREADY_PAID", message: "이미 입금된 결제예요" }); if (PG[id]) PG[id].closed = true; return J(200, { closedAt: new Date().toISOString() }); }
-    if (m[2]) { const b = JSON.parse(opt.body); const p = PG[id]; const amt = b.amount != null ? b.amount : p.amount.total - (p.amount.cancelled || 0); p.amount.cancelled = (p.amount.cancelled || 0) + amt; p.status = p.amount.cancelled >= p.amount.total ? "CANCELLED" : "PARTIAL_CANCELLED"; p.lastCancel = b; return J(200, { cancellation: { id: "cx_" + calls.length, status: "SUCCEEDED", totalAmount: amt } }); }
+    if (m[2]) { const b = JSON.parse(opt.body); const p = PG[id]; if (p && p.failCancel) return J(400, { type: "CANCEL_FAILED", message: "취소 실패 (시험)" }); const amt = b.amount != null ? b.amount : p.amount.total - (p.amount.cancelled || 0); p.amount.cancelled = (p.amount.cancelled || 0) + amt; p.status = p.amount.cancelled >= p.amount.total ? "CANCELLED" : "PARTIAL_CANCELLED"; p.lastCancel = b; return J(200, { cancellation: { id: "cx_" + calls.length, status: "SUCCEEDED", totalAmount: amt } }); }
     return PG[id] ? J(200, PG[id]) : J(404, { type: "PAYMENT_NOT_FOUND" });
   }
   if (u.host === "kauth.kakao.com") return J(200, { access_token: "at-" + opt.body.match(/code=([^&]+)/)[1] });
@@ -154,6 +154,38 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(!r.json.member.coupons.find((x) => x.cid === "cp-eb").usedAt, "바로 취소하면 쓴 쿠폰을 돌려받음", r.json.member.coupons);
   r = await call("vod-pay", { body: { action: "orders" } });
   ok(r.json.orders.find((o) => o.no === no2).status === "refunded" && r.json.orders.find((o) => o.no === no2).refundKind === "instant", "주문 refunded · 회원 바로 취소로 기록");
+
+  console.log("4-1) 환불 규칙 (화면 · 서버 같은 공용 모듈) · 두 번 눌러도 한 번만 · 포트원 취소가 실패하면 그대로");
+  { const RFS = require(path.join(ROOT, "shared/refund.js")), T0 = Date.parse("2026-11-05T00:00:00Z"), D = 864e5;
+    const rq = (o, x) => RFS.instant(Object.assign({ o: Object.assign({ status: "paid", amount: 10000, kind: "course", paidAt: T0, method: "card", pg: { st: "paid" } }, o), type: "vod", used: 0, now: T0 + D, srv: true }, x || {}), RFS.RF_DEF);
+    ok(rq({}).ok && rq({}).left === 6 && rq({}).way === "pg" && !rq({}).acct, "공용 규칙: 카드 결제 · 1일째 · 재생 전 → 바로 100% 취소 (6일 남음)", rq({}));
+    ok(!rq({}, { used: 1 }).ok && /1개/.test(rq({}, { used: 1 }).why), "공용 규칙: 강의를 하나라도 재생했으면 바로 취소 안 돼요", rq({}, { used: 1 }));
+    ok(rq({}, { now: T0 + 7 * D - 1 }).ok && !rq({}, { now: T0 + 7 * D }).ok && /7일/.test(rq({}, { now: T0 + 7 * D }).why), "공용 규칙: 결제 후 7일이 지나면 바로 취소(버튼)가 없어져요");
+    ok(rq({ method: "bank", pg: { st: "bank" } }).ok && rq({ method: "bank", pg: { st: "bank" } }).way === "bank" && rq({ method: "bank" }).acct && rq({ method: "vbank" }).way === "vbank" && rq({ method: "vbank" }).acct, "공용 규칙: 무통장 · 가상계좌도 바로 취소 (환불 받을 계좌 필요)");
+    ok(!rq({ pg: { st: "mock" } }).ok && rq({ pg: { st: "mock" } }, { srv: false }).ok && rq({ pg: { st: "mock" } }, { srv: false }).way === "mock", "공용 규칙: 정식 서버에서 포트원 결제가 아닌 카드 주문은 환불 요청 · 서버 없는 시안은 바로");
+    ok(!rq({ refundReq: { at: 1 } }).ok && !rq({ status: "refunded" }).ok && !rq({ amount: 0 }).ok && !rq({ kind: "coach" }).ok && !rq({}, { type: "" }).ok, "공용 규칙: 환불 요청 중 · 이미 환불 · 0원 · 코칭권 · 상품 없음은 바로 취소 대상 아님");
+    ok(RFS.startEnds(rq({}), RFS.RF_DEF, false) && !RFS.startEnds(rq({}), RFS.RF_DEF, true) && !RFS.startEnds(rq({}, { used: 1 }), RFS.RF_DEF, false) && !RFS.startEnds(rq({}, { used: 1 }), Object.assign({}, RFS.RF_DEF, { maxUsed: 2 }), false) && !RFS.startEnds(rq({}, { type: "book" }), RFS.RF_DEF, false), "공용 규칙: 처음 여는 강의면 ‘시작하면 100% 환불이 끝나요’ 안내 (이미 연 강의 · 이미 재생 · N개까지 허용 · 종이책은 안내 없음)");
+    const vsrc = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), ssrc = fs.readFileSync(path.join(ROOT, "api/_lib/vod.js"), "utf8");
+    ok(/RFX\.instant\(/.test(vsrc) && /require\("\.\.\/\.\.\/shared\/refund"\)/.test(ssrc) && /RF\.instant\(/.test(ssrc) && /<script src="shared\/refund\.js"><\/script>/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")), "화면 · 서버가 같은 환불 규칙 모듈(shared/refund.js)을 써요");
+    ok(/startGate\(m\.id, pid, cur\.id\)/.test(vsrc) && /markDone\(m\.id, t\.dataset\.p, t\.dataset\.l\)/.test(vsrc) && /if \(!gate\) \{ markLast\(m\.id, pid, cur\.id\)/.test(vsrc), "VOD 강의실: 강의를 열면(시작하면) · 완료하면 서버 기록(vp:)에도 남겨요 — 바로 취소 판단이 화면과 같게");
+    ok(RFS.usedOf(null) === 0 && RFS.usedOf({ last: "a" }) === 1 && RFS.usedOf([{ seen: { a: 1 } }, { done: { b: true }, last: "a", mat: 1 }], RFS.RF_DEF) === 3 && RFS.usedOf([{ mat: 2 }], Object.assign({}, RFS.RF_DEF, { matCounts: false })) === 0, "공용 규칙: 들은 강의 = 연 강의 · 완료한 강의 · 마지막으로 연 강의 (+ 자료 내려받기) — 서버 기록과 화면 기록을 합쳐 세요");
+    ok(/function srvTrack\(pid, lid, ev\) \{ if \(!pid \|\| !remoteOn\(\)\) return; loadCfg\(\)\.then\(/.test(vsrc) && /RF\.usedOf\(\[\(sp \|\| \{\}\)\[pid\], \(\(m && m\.prog\) \|\| \{\}\)\[pid\]\], rf\)/.test(ssrc), "재생 기록: 두잉고 강의실로 바로 들어와도 서버 설정을 먼저 받고 보내요 · 서버는 화면 기록(vm: prog)도 함께 봐요");
+  }
+  r = await call("vod-pay", { body: { action: "prepare", pid: "v10", kind: "course", method: "card", expect: 29000 } });
+  const pL = r.json.paymentId, noL = r.json.no; paidLike(pL, 29000);
+  r = await call("vod-pay", { body: { action: "complete", paymentId: pL } });
+  PG[pL].failCancel = true;
+  r = await call("vod-pay", { body: { action: "cancel", no: noL } });
+  let oL = (await store.getDoc("vo:" + noL)).v;
+  ok(r.status === 502 && oL.status === "paid" && !oL.rfLock && PG[pL].status === "PAID", "포트원 취소가 실패하면 주문은 결제 완료 그대로 · 잠금도 풀려 다시 시도할 수 있어요", { st: r.status, o: oL.status, lock: oL.rfLock });
+  delete PG[pL].failCancel;
+  { const d0 = await store.getDoc("vo:" + noL); await store.writeDoc("vo:" + noL, Object.assign({}, d0.v, { rfLock: Date.now() }), d0.ver); }
+  r = await call("vod-pay", { body: { action: "cancel", no: noL } });
+  ok(r.status === 409 && /처리하고/.test(r.json.message) && PG[pL].status === "PAID", "같은 주문을 처리하는 중이면(두 번 누름) 두 번째는 막아요 — 포트원 취소는 한 번만", r.json);
+  { const d0 = await store.getDoc("vo:" + noL); await store.writeDoc("vo:" + noL, Object.assign({}, d0.v, { rfLock: Date.now() - 200e3 }), d0.ver); }
+  r = await call("vod-pay", { body: { action: "cancel", no: noL } });
+  oL = (await store.getDoc("vo:" + noL)).v;
+  ok(r.json.ok && oL.status === "refunded" && !oL.rfLock && PG[pL].status === "CANCELLED", "오래된 잠금(2분 지남)은 풀고 취소 · 끝나면 잠금 없음", { json: r.json, lock: oL.rfLock });
 
   console.log("5) 마스터 부분 환불 · 웹훅");
   jar.dc_a = auth.sign({ r: "master" });
@@ -473,6 +505,27 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   ok(r.json.ok && r.json.orders.length === 1 && r2.json.ok && r2.json.already, "마스터 ‘입금 확인’ → 결제 완료 (두 번 눌러도 한 번만)", [r.json, r2.json]);
   j = await boot();
   ok(docOf(j, "vo:" + b15).status === "paid" && docOf(j, "vo:" + b15).pg.okHow === "manual", "입금 확인한 사람 · 방법이 주문에 남음", docOf(j, "vo:" + b15).pg);
+  // 무통장 주문도 결제 후 7일 · 재생 전이면 회원이 바로 취소 — 환불 받을 계좌가 있어야 하고 · 주문은 바로 환불 · 돈은 마스터가 송금 (계좌 송금 대기)
+  useJar(jarB);
+  r = await call("vod-pay", { body: { action: "cancel", no: b15 } });
+  ok(r.status === 400 && /계좌/.test(r.json.message) && (await store.getDoc("vo:" + b15)).v.status === "paid", "무통장 바로 취소: 환불 받을 계좌가 없으면 막아요 (주문은 그대로)", r.json);
+  { const cx0 = calls.filter((c) => /\/cancel$/.test(c)).length;
+    r = await call("vod-pay", { body: { action: "cancel", no: b15, refundAccount: { bank: "KAKAO", number: "3333-01-1234567", holder: "나OO" } } });
+    const o15 = (await store.getDoc("vo:" + b15)).v;
+    ok(r.json.ok && r.json.way === "bank" && o15.status === "refunded" && o15.refundKind === "instant" && o15.refundBy === "회원" && o15.refundPay && o15.refundPay.st === "wait" && o15.refundPay.bank === "KAKAO" && o15.refundPay.number === "3333011234567" && o15.refundPay.holder === "나OO" && o15.refundPay.amount === o15.amount && !o15.rfLock && calls.filter((c) => /\/cancel$/.test(c)).length === cx0,
+      "무통장 바로 취소: 주문 환불 + 계좌 송금 대기(은행 · 숫자만 계좌 · 예금주 · 금액) · 포트원은 부르지 않아요", { json: r.json, rp: o15.refundPay }); }
+  r = await call("vod-pay", { body: { action: "cancel", no: b15, refundAccount: { bank: "KAKAO", number: "3333011234567", holder: "나OO" } } });
+  ok(r.status === 409, "이미 환불한 주문은 다시 취소 안 돼요", r.json);
+  // 회원 화면이 저장한 재생 기록(vm: prog)만 있어도 — 서버 기록(vp:)이 빠진 예전 두잉고 강의실 — 바로 취소 안 돼요
+  { const d0 = await store.getDoc("vm:" + mB), keep = d0.v.prog;
+    await store.writeDoc("vm:" + mB, Object.assign({}, d0.v, { prog: Object.assign({}, keep || {}, { v6: { seen: { "v6-l9": Date.now() }, done: {}, last: "v6-l9" } }) }), d0.ver);
+    r = await call("vod-pay", { body: { action: "cancel", no: b13, refundAccount: { bank: "KAKAO", number: "3333011234567", holder: "나OO" } } });
+    ok(r.status === 409 && /1개/.test(r.json.message) && (await store.getDoc("vo:" + b13)).v.status === "paid", "화면에 남은 재생 기록만 있어도(서버 기록이 빠진 예전 두잉고 강의실) 바로 취소 안 돼요", r.json);
+    const d1 = await store.getDoc("vm:" + mB); await store.writeDoc("vm:" + mB, Object.assign({}, d1.v, { prog: keep || {} }), d1.ver); }
+  r = await call("vod-pay", { body: { action: "track", pid: "v6", lid: "v6-l1", ev: "seen" } });
+  r = await call("vod-pay", { body: { action: "cancel", no: b13, refundAccount: { bank: "KAKAO", number: "3333011234567", holder: "나OO" } } });
+  ok(r.status === 409 && /1개/.test(r.json.message) && (await store.getDoc("vo:" + b13)).v.status === "paid", "무통장도 강의를 재생했으면 바로 취소 안 돼요 (환불 요청으로)", r.json);
+  useJar({ dc_a: auth.sign({ r: "master" }) });
   // 계좌가 하나도 없으면 무통장도 막아요
   const mt2 = docOf(j, "meta"); mt2.billing = Object.assign({}, mt2.billing, { bank: "", account: "" });
   await sync([{ k: "meta", base: verOf(j, "meta"), put: mt2 }]);
@@ -821,7 +874,14 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   r = await call("vod-auth", { body: { action: "me" } });
   ok(r.json.member.points === 2000, "입금돼도 포인트는 한 번만 빠져요", r.json.member.points);
   r = await call("vod-pay", { body: { action: "cancel", no: vaN } });
-  ok(r.status === 409 && /가상계좌/.test(r.json.message), "가상계좌 결제는 바로 취소 대신 환불 요청 (환불 계좌 필요)", r.json);
+  ok(r.status === 400 && /계좌/.test(r.json.message) && (await store.getDoc("vo:" + vaN)).v.status === "paid", "가상계좌 바로 취소: 환불 받을 계좌가 없으면 막아요 (주문은 그대로)", r.json);
+  { r = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "vbank" } });
+    const vq = r.json.paymentId, vqN = r.json.no, vqA = r.json.amount;
+    PG[vq] = { id: vq, status: "PAID", storeId: "store-test", transactionId: "tx_" + vq, currency: "KRW", amount: { total: vqA, paid: vqA, cancelled: 0 }, method: { type: "PaymentMethodVirtualAccount", bank: "KAKAO", accountNumber: "7979000000009", remitteeName: "두고" }, receiptUrl: "https://r/" + vq };
+    r = await call("vod-pay", { body: { action: "complete", paymentId: vq } });
+    r = await call("vod-pay", { body: { action: "cancel", no: vqN, refundAccount: { bank: "TOSS", number: "1000-1234-5678", holder: "가상OO" } } });
+    const ra = (PG[vq].lastCancel || {}).refundAccount || {};
+    ok(r.json.ok && r.json.way === "vbank" && PG[vq].status === "CANCELLED" && ra.bank === "TOSS" && ra.number === "100012345678" && ra.holderName === "가상OO" && (await store.getDoc("vo:" + vqN)).v.status === "refunded", "가상계좌 바로 취소: 적은 환불 계좌로 포트원이 돌려줘요 (은행 · 숫자만 계좌 · 예금주)", { json: r.json, ra }); }
   let vaJ = await boot();
   r = await sync([{ k: "vo:" + vaN, base: verOf(vaJ, "vo:" + vaN), ops: [{ p: ["refundReq"], v: { why: "단순 변심", text: "", acct: { bank: "KOOKMIN", number: "123-456-78901", holder: "가상OO", evil: "x" } } }] }]);
   vaJ = await boot();

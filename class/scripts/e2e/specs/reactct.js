@@ -11,7 +11,7 @@ const CTM = ["/center/master", "/center/master/instructors", "/center/master/stu
 const CT = ["/center", "/center/students", "/center/students?status=approved", "/center/students?status=all", "/center/cohorts", "/center/reviews", "/center/questions", "/center/billing",
   "/center/curriculum", "/center/missions", "/center/schedule", "/center/notices", "/center/faq", "/center/guide", "/center/docs", "/center/channels",
   "/center/coaches", "/center/partners", "/center/library", "/center/motivation", "/center/replays", "/center/showcase", "/center/glossary", "/center/notes", "/center/brand", "/center/menus",
-  "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching", "/center/teatime", "/center/ops-notices",
+  "/center/vod-students", "/center/vodlink", "/center/vod", "/center/vod-refunds", "/center/vod-live", "/center/vod-cal", "/center/vod-settle", "/center/coaching", "/center/teatime", "/center/ops-notices",
   // 무료강의 · 강사 소개 페이지 · 추가 메뉴 · VOD 강의 · 계약
   "/center/free", "/center/landing", "/center/pages", "/center/vodlessons", "/center/contract"];
 async function shapes(page, base, L, list) {

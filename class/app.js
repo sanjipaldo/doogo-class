@@ -1052,7 +1052,9 @@
     const n = vodNext(x), lz = n.lz, mid = x.o && me.vodMid ? me.vodMid : "";
     const cur = lz.find((l) => l.id === lid) || lz.find((l) => l.id === n.pr.last) || n.cur || lz[0];
     if (!cur) return '<div class="page">' + pageHead(x.p.title, "") + '<section class="card">' + empty("circlePlay", "아직 올라온 강의가 없어요.") + "</section></div>";
-    if (mid) X.markLast(mid, pid, cur.id);
+    // DOOGO CLASS 결제 후 N일 이내 · 재생 전이면 ‘시작하면 100% 환불이 끝나요’ 안내 (공용 규칙 · vod.js startGate) — 시작하면 연 기록(서버에도)
+    const gate = mid && X.startGate ? X.startGate(mid, pid, cur.id) : null;
+    if (mid && !gate) X.markLast(mid, pid, cur.id);
     const i = lz.indexOf(cur), prev = lz[i - 1], next = lz[i + 1], done = !!n.pr.done[cur.id], pc = vodPctOf(x), ch = X.chapOf(x.p, cur).ch || {}, fl = cur.files || [], ns = notesOf(pid, cur.id);
     const withFiles = lz.filter((l) => (l.files || []).length), nFiles = withFiles.reduce((a, l) => a + l.files.length, 0), tab = ["toc", "note", "files"].indexOf(vtTab) >= 0 ? vtTab : "toc";
     vtLast = { t: 0, at: 0 };
@@ -1074,7 +1076,7 @@
           (next ? '<a class="vt-prog-next" href="' + learnHref(pid, next.id) + '"><small>다음 강의</small><b>' + esc(next.title) + "</b>" + icon("chevRight", "xs") + "</a>" : "") + "</div>";
     return '<div class="vt' + (allDone ? " is-fin" : "") + '" data-p="' + esc(pid) + '" data-l="' + esc(cur.id) + '">' +
       '<div class="vt-bar"><a class="vt-back" href="#/vodclass">' + icon("arrowLeft", "sm") + "<span>" + esc(ML("vodclass")) + '</span></a><div class="vt-tt"><small>' + esc(x.p.creator) + " · " + (i + 1) + " / " + lz.length + "강</small><b>" + esc(x.p.title) + '</b></div><div class="vt-pc" title="전체 진도"><span class="vt-pcbar"><i style="width:' + pc + '%"></i></span><b>' + pc + "%</b></div>" + opsKkBtn("vt-kk") + "</div>" +
-      '<div class="vt-grid"><div class="vt-main"><div class="vt-stage" id="vt-stage">' + vtVideo(cur, tq) + vtWatermark() + '<button type="button" class="vt-fs" data-action="vt-fs" aria-label="전체 화면">' + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>' + "</button></div>" +
+      '<div class="vt-grid"><div class="vt-main"><div class="vt-stage" id="vt-stage">' + (gate ? X.gateHtml(gate, pid, cur.id, true) : vtVideo(cur, tq) + vtWatermark() + '<button type="button" class="vt-fs" data-action="vt-fs" aria-label="전체 화면">' + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>' + "</button>") + "</div>" +
         '<section class="vt-info"><div class="vt-info-h"><div class="vt-info-t"><small class="vt-ch">' + esc(ch.title || "") + "</small><h1>" + esc(cur.title) + '</h1><span class="vt-meta">' + X.lLen(cur) + " · " + (i + 1) + " / " + lz.length + "강" + (fl.length ? " · 수업 자료 " + fl.length + "개" : "") + "</span></div>" +
           '<button type="button" class="vt-memo" data-action="vt-tab" data-k="note">' + icon("pen", "sm") + "메모하기<b data-ncount>" + (ns.length || "") + "</b></button></div>" +
           (done ? '<div class="vt-donebar">' + icon("check", "sm") + "<b>이 강의를 다 들었어요</b><span>" + esc(fmtStamp(Date.now())).split(" ")[0] + " 기준 · 진도에 반영됐어요</span></div>" : "") +
@@ -2739,6 +2741,7 @@
       case "req-cancel": { const i = (P.questions || []).findIndex((x) => x.id === a.dataset.id && !x.answer); if (i < 0) break; if (a.dataset.arm !== "1") { a.dataset.arm = "1"; a.textContent = "한 번 더 누르면 취소돼요"; setTimeout(() => { if (a.isConnected) { a.dataset.arm = ""; a.textContent = "취소하기"; } }, 3000); break; } reqCancel(a.dataset.id); break; }
       case "vt-mat": case "vt-dl": matClick(a); break;
       case "vt-fs": vtFs(); break;
+      case "vt-start": { const X = VX(); if (me && me.vodMid && X.markLast) X.markLast(me.vodMid, a.dataset.p, a.dataset.l); render(); break; }
       case "vod-done": vodDone(a.dataset.p, a.dataset.l); break;
       case "calc-new": calcEdit = ""; render(); { const n = document.getElementById("c-name"); if (n) n.focus(); } break;
       case "calc-del": if (calcDel(a.dataset.id)) { render(); toast("지웠어요."); } break;

@@ -3,7 +3,8 @@
  *  · 두잉고 강의실이 열린 VOD 는 두잉고 강의실로 보내요 (예전과 같음)
  *  · 전자책: 표지 · 목차 · PDF 내려받기 / LIVE · 오프라인: 입장 안내(시작까지 남은 시간이 1초마다 줄어요) / VOD: 영상 · 강의 노트 · 첨부 · 커리큘럼 · 완료하기
  *  · 영상 칸 · 첨부 목록 · 새 강의 표시 · 강의 길이(lLen) · 두잉고 카드는 아직 예전 HTML (Raw) */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { RfNowModal } from "./MyOrders.jsx";
 import Shell, { KakaoBtn } from "./Shell.jsx";
 import Icon from "../lib/Icon.jsx";
 import Raw, { RawOne } from "../lib/Raw.jsx";
@@ -66,21 +67,29 @@ function Ticket({ p, m }) {
 /* ---------- VOD 플레이어 ---------- */
 function Player({ p, m, cur, redraw }) {
   const X = VOD(), pid = p.id, lz = X.lessons(p), pr = X.prog(m.id, pid), idx = lz.indexOf(cur), next = lz[idx + 1], pc = X.pctDone(m.id, pid);
-  // 이 강의를 연 기록 (예전에는 그릴 때마다) — 마지막으로 본 강의 · 처음 본 때 · 오늘 공부한 날
-  useEffect(() => { const q = X.prog(m.id, pid); if (q.last !== cur.id) q.last = cur.id; q.seen = q.seen || {}; if (!q.seen[cur.id]) q.seen[cur.id] = Date.now(); X.logStudy(m.id); X.save(); }, [X, m.id, pid, cur.id]);
+  // 결제 후 N일 이내 · 재생 전이면 강의를 열기 전에 ‘시작하면 100% 환불이 끝나요’ 안내 (예전 gateHtml 그대로 · 공용 규칙 shared/refund.js)
+  const gate = X.startGate(m.id, pid, cur.id), [rf, setRf] = useState(null);
+  // 이 강의를 연 기록 — 마지막으로 본 강의 · 처음 본 때(처음이면 서버에도 · 바로 취소 판단) · 오늘 공부한 날 (안내 중에는 남기지 않아요)
+  useEffect(() => { if (gate) return; X.markLast(m.id, pid, cur.id); X.logStudy(m.id); X.save(); }, [X, m.id, pid, cur.id, !!gate]); // eslint-disable-line react-hooks/exhaustive-deps
+  const gateClick = (e) => {
+    const t = e.target.closest && e.target.closest("[data-v]"); if (!t) return;
+    if (t.dataset.v === "pl-start") { X.markLast(m.id, pid, cur.id); X.logStudy(m.id); X.save(); redraw(); }
+    else if (t.dataset.v === "rf-now" && gate) setRf(gate.o);
+  };
   const done = () => {
-    const q = X.prog(m.id, pid); q.done[cur.id] = true; X.logStudy(m.id); X.save();
+    X.markDone(m.id, pid, cur.id);
     if (next) go("#/vod/learn/" + pid + "/" + next.id); else { redraw(); toast(X.pctDone(m.id, pid) === 100 ? "모든 강의를 완료했어요! 후기도 남겨 주세요." : "완료했어요."); }
   };
   const chap = ((p.curriculum || []).find((c) => (c.lessons || []).indexOf(cur) >= 0) || {}).title || "";
   return (
     <div className="vd-player"><header className="vd-pl-top"><a href="#/vod/my/classes" className="vd-pl-back" aria-label="내 강의실로"><Icon n="arrowLeft" c="sm" /></a><div><small>{p.creator}</small><b>{p.title}</b></div><span className="vd-pl-prog"><i style={{ "--p": pc + "%" }} />{pc}%</span><KakaoBtn cls="vd-pl-kk" label="문의하기" /></header>
-      <div className="vd-pl-grid"><div className="vd-pl-main"><Raw as="div" className="vd-pl-video" html={X.videoHtml(cur)} />
+      <div className="vd-pl-grid"><div className="vd-pl-main">{gate ? <Raw as="div" className="vd-pl-video" html={X.gateHtml(gate, pid, cur.id)} onClick={gateClick} /> : <Raw as="div" className="vd-pl-video" html={X.videoHtml(cur)} />}
         <div className="vd-pl-info"><small>{chap}</small><h1>{cur.title}</h1><Raw as="span" html={X.lLen(cur) + (X.vimeoSrc(cur.video) ? " · Vimeo" : "")} />
-          <div className="vd-pl-btns">{pr.done[cur.id] ? <span className="vd-pl-done"><Icon n="check" c="sm" />완료한 강의</span> : <button type="button" className="vd-btn vd-btn-p" data-v="done" data-p={pid} data-l={cur.id} onClick={done}><Icon n="check" c="sm" />{next ? "완료하고 다음 강의" : "완료하기"}</button>}{next ? <a className="vd-btn vd-btn-o" href={"#/vod/learn/" + pid + "/" + next.id}>다음 강의<Icon n="chevRight" c="xs" /></a> : null}</div>
+          <div className="vd-pl-btns">{gate ? null : pr.done[cur.id] ? <span className="vd-pl-done"><Icon n="check" c="sm" />완료한 강의</span> : <button type="button" className="vd-btn vd-btn-p" data-v="done" data-p={pid} data-l={cur.id} onClick={done}><Icon n="check" c="sm" />{next ? "완료하고 다음 강의" : "완료하기"}</button>}{next ? <a className="vd-btn vd-btn-o" href={"#/vod/learn/" + pid + "/" + next.id}>다음 강의<Icon n="chevRight" c="xs" /></a> : null}</div>
           {cur.desc || (cur.files || []).length ? <div className="vd-pl-note">{cur.desc ? <><b>강의 노트</b><p>{String(cur.desc).split("\n").map((x, i, a) => (i < a.length - 1 ? [x, <br key={i} />] : x))}</p></> : null}{(cur.files || []).length ? <><b>첨부 자료</b><RawOne html={X.fileList(cur.files)} onClick={(e) => rawClick(e, pid, m)} /></> : null}</div> : null}</div></div>
         <aside className="vd-pl-side">{X.dgOpen(p) ? <RawOne html={X.dgCard(p, "vd-dg-pl")} onClick={(e) => rawClick(e, pid, m)} /> : null}<b className="vd-pl-side-h">커리큘럼 <small>{lz.filter((l) => pr.done[l.id]).length} / {lz.length}</small></b>
-          {(p.curriculum || []).map((c, i) => <div key={i} className="vd-pl-ch"><small>{c.title}</small>{(c.lessons || []).map((l) => <a key={l.id} href={"#/vod/learn/" + pid + "/" + l.id} className={(l.id === cur.id ? "on" : "") + (pr.done[l.id] ? " done" : "")}><i>{pr.done[l.id] ? <Icon n="check" c="xs" /> : null}</i><Raw as="span" html={DB().esc(l.title) + X.freshTag(l) + ((l.files || []).length ? " " + window.icon("paperclip", "xs") : "")} /><Raw as="small" html={X.lLen(l)} /></a>)}</div>)}</aside></div></div>
+          {(p.curriculum || []).map((c, i) => <div key={i} className="vd-pl-ch"><small>{c.title}</small>{(c.lessons || []).map((l) => <a key={l.id} href={"#/vod/learn/" + pid + "/" + l.id} className={(l.id === cur.id ? "on" : "") + (pr.done[l.id] ? " done" : "")}><i>{pr.done[l.id] ? <Icon n="check" c="xs" /> : null}</i><Raw as="span" html={DB().esc(l.title) + X.freshTag(l) + ((l.files || []).length ? " " + window.icon("paperclip", "xs") : "")} /><Raw as="small" html={X.lLen(l)} /></a>)}</div>)}</aside></div>
+      {rf ? <RfNowModal o={rf} onClose={() => setRf(null)} onDone={() => go("#/vod/my/classes")} /> : null}</div>
   );
 }
 

@@ -154,9 +154,43 @@ module.exports = {
     const rules = await page.evaluate(() => !!document.querySelector("#modal-root .vd-modal .vd-rf-all"));
     await page.click("#modal-root .vd-modal-h button"); await page.waitForTimeout(200);
     await run.check(!!rc && rcOk && rules && !(await page.$("#modal-root .vd-modal-bg")), "주문 · 결제 내역: 영수증 · 환불 규정 팝업이 열리고 X 로 닫혀요", { rc: !!rc, rcOk, rules }, page);
-    const rq = await page.$("[data-v='rf-req'][data-no='" + o2.no + "']");
+    // 내 강의실(React): 결제 후 7일 · 재생 전이면 ‘환불하기’ — 무통장은 환불 받을 계좌를 적어야 하고 · 바로 취소(서버 환불 + 계좌 송금 대기) · 버튼이 사라져요
+    await L.open(page, base, "/vod/my/classes");
+    const rfBtn = await page.$(".vd-sroom-rf[data-no='" + o2.no + "']");
+    const rf0 = { btn: !!rfBtn, note: await L.text(page, ".vd-sroom-rfn"), react: await isReact(page) };
+    let rf1 = {};
+    if (rfBtn) {
+      await rfBtn.click(); await page.waitForSelector("#modal-root form[data-vd-rfnow]", { timeout: 3000 }).catch(() => {});
+      await page.click("#modal-root [data-v='rf-now-ok']"); await page.waitForTimeout(300);
+      const errNoAcct = await L.text(page, "#modal-root [data-rfnow-err]");
+      await page.selectOption("#modal-root form[data-vd-rfnow] select[name=raBank]", { index: 1 });
+      await page.fill("#modal-root form[data-vd-rfnow] input[name=raNo]", "12345678901");
+      await page.fill("#modal-root form[data-vd-rfnow] input[name=raHolder]", "체험회원");
+      await page.click("#modal-root [data-v='rf-now-ok']"); await page.waitForTimeout(1800);
+      const srv = await page.evaluate((no) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "orders" }) }).then((r) => r.json()).then((j) => { const o = (j.orders || []).find((x) => x.no === no) || {}; return { st: o.status, kind: o.refundKind }; }), o2.no);
+      rf1 = { errNoAcct, toast: await L.toasts(page), modal: !!(await page.$("#modal-root .vd-modal-bg")), srv, still: !!(await page.$(".vd-sroom-rf[data-no='" + o2.no + "']")) };
+    }
+    await run.check(rf0.btn && /100% 환불/.test(rf0.note || "") && rf0.react && /은행|계좌/.test(rf1.errNoAcct || "") && !rf1.modal && /환불을 접수했어요/.test(rf1.toast || "") && rf1.srv && rf1.srv.st === "refunded" && rf1.srv.kind === "instant" && !rf1.still,
+      "내 강의실(React): 결제 후 7일 · 재생 전이면 ‘환불하기’ → 무통장은 환불 계좌를 적어야 하고 · 바로 취소(서버 환불 · 계좌 송금 대기) · 버튼이 사라져요", Object.assign({ rf0 }, rf1), page);
+    // 다시 주문 → 입금 확인 → 강의를 재생(시작)하면 ‘환불하기’가 사라지고 주문 · 결제 내역은 ‘환불 요청’으로
+    const o3 = await mkOrder(0);
+    const adm3 = await L.newPage(browser);
+    await F.master(adm3, base, info);
+    const ok3 = await adm3.evaluate((no) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "bankOk", no }) }).then((r) => r.json()).then((j) => !!j.ok), o3.no);
+    await adm3.context().close();
+    await L.open(page, base, "/vod/my/classes");
+    const btn3 = !!(await page.$(".vd-sroom-rf[data-no='" + o3.no + "']"));
+    const played = await page.evaluate((no) => { const X = window.VOD, mm = X.me(), o = X.V().orders.find((x) => x.no === no); if (!o || !mm) return null; const lz = X.lessons(X.product(o.pid)); X.markLast(mm.id, o.pid, (lz[0] || {}).id || "l1"); return !X.instantOf(o).ok; }, o3.no);
+    await L.flushed(page);
+    await L.open(page, base, "/vod/my/classes");
+    const gone3 = !(await page.$(".vd-sroom-rf[data-no='" + o3.no + "']"));
+    // 서버도 같은 판단: 재생 기록이 서버에 남아 바로 취소를 거절해요 (화면 버튼을 우회해 API 로 보내도)
+    const srv3 = await page.evaluate((no) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "cancel", no, refundAccount: { bank: "KAKAO", number: "12345678901", holder: "체험회원" } }) }).then((r) => r.json().then((j) => ({ st: r.status, msg: j.message || "" }))), o3.no);
+    await run.check(o3.ok && ok3 && btn3 && played && gone3 && srv3.st === 409 && /1개/.test(srv3.msg), "다시 산 강의도 처음엔 ‘환불하기’ · 강의를 재생하면 버튼이 사라지고 서버도 바로 취소를 거절해요", { o3, ok3, btn3, played, gone3, srv3 }, page);
+    await page.click(".vd-my-nav a[href='#/vod/my/orders']"); await page.waitForTimeout(300);
+    const rq = await page.$("[data-v='rf-req'][data-no='" + o3.no + "']");
     if (rq) {
-      const no = o2.no;
+      const no = o3.no;
       await rq.click(); await page.waitForSelector("#modal-root form[data-vd-rfreq]", { timeout: 3000 }).catch(() => {});
       await page.fill("#modal-root form[data-vd-rfreq] textarea[name=text]", "React 화면 시험 환불 요청");
       // 무통장 결제는 돌려받을 계좌가 있어야 해요 (빠뜨리면 팝업 안에 안내가 떠요)
@@ -169,18 +203,18 @@ module.exports = {
       await page.click("[data-v='rf-undo'][data-no='" + no + "']").catch(() => {}); await page.waitForTimeout(400); await L.flushed(page);
       const back = !!(await page.$("[data-v='rf-req'][data-no='" + no + "']"));
       await run.check(!!errNoAcct && !sent.modal && /환불 요청을 보냈어요/.test(sent.toast) && sent.undo && back, "환불 요청(무통장): 계좌를 안 적으면 안내 · 적어 보내면 팝업이 닫히고 ‘요청 취소’ 가 생겨요 · 요청 취소하면 다시 ‘환불 요청’", Object.assign(sent, { back, errNoAcct }), page);
-    } else await run.check(false, "입금 확인한 주문에 ‘환불 요청’ 버튼이 있어요", { no: o2.no }, page);
+    } else await run.check(false, "재생한 무통장 주문에 ‘환불 요청’ 버튼이 있어요", { no: o3.no }, page);
     // 주문 확인 화면(#/vod/order/<번호>): 예전 화면 = React 화면 (입금 확인한 주문 · 취소한 주문 · 없는 주문)
     {
       const bad = [];
-      for (const u of ["/vod/order/" + o2.no, "/vod/order/" + o1.no, "/vod/order/DC000000000000"]) {
+      for (const u of ["/vod/order/" + o3.no, "/vod/order/" + o2.no, "/vod/order/" + o1.no, "/vod/order/DC000000000000"]) {
         const sh = {};
         for (const mode of ["off", "all"]) { await L.reactCookie(page, base, mode); await L.open(page, base, u); sh[mode] = { shape: await L.domShape(page), react: await isReact(page) }; }
         const d = L.shapeDiff(sh.off.shape, sh.all.shape);
         if (sh.off.react || !sh.all.react || d) bad.push({ u, off: sh.off.react, all: sh.all.react, d });
       }
       await L.reactCookie(page, base, "all");
-      await run.check(!bad.length, "주문 확인 화면 3가지(결제 완료 · 취소 · 없는 주문): 예전 화면 = React 화면", bad.slice(0, 2), page);
+      await run.check(!bad.length, "주문 확인 화면 4가지(결제 완료 · 바로 취소한 무통장 · 취소 · 없는 주문): 예전 화면 = React 화면", bad.slice(0, 2), page);
       await L.open(page, base, "/vod/my");
     }
     // React 화면 → 예전 화면 (두잉고 소개는 아직 예전 화면 — 옮기면 아직 안 옮긴 다른 화면으로 바꿔요): 새로 불러 예전 화면으로

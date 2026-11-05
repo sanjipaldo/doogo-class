@@ -1866,47 +1866,49 @@
    * instant: 회원이 마이페이지에서 바로 100% 취소 · days: 결제 후 며칠 이내 · maxUsed: 들은 강의 몇 개까지 (0 = 하나도 안 들었을 때)
    * matCounts: 자료 내려받기도 1강으로 · addons: 함께 결제한 안 쓴 코칭권도 같이 · restore: 쓴 쿠폰 · 포인트 돌려주기
    * ebookDays: 전자책 내려받기 전 · eventDays: LIVE · 오프라인 강의 며칠 전까지 */
-  const RF_DEF = { instant: true, days: 7, maxUsed: 0, matCounts: true, addons: true, restore: true, ebookDays: 7, eventDays: 3 };
-  const rfSet = () => Object.assign({}, RF_DEF, (V().settings || {}).refund || {});
+  // 규칙은 서버와 같은 공용 모듈 하나 (shared/refund.js)
+  const RFX = window.DCS.refund, RF_DEF = RFX.RF_DEF;
+  const rfSet = () => RFX.rfSet(V().settings);
   /** 이 강의를 얼마나 썼는지: 연 강의 · 완료한 강의 (+ 자료를 내려받았으면 1강) */
-  function usedOf(mid, pid) {
-    const pr = ((V().progress || {})[mid] || {})[pid]; if (!pr) return 0;
-    const ids = {}; Object.keys(pr.done || {}).forEach((k) => { ids[k] = 1; }); Object.keys(pr.seen || {}).forEach((k) => { ids[k] = 1; }); if (pr.last) ids[pr.last] = 1;
-    return Object.keys(ids).length + (rfSet().matCounts && pr.mat ? 1 : 0);
-  }
+  const usedOf = (mid, pid) => RFX.usedOf(((V().progress || {})[mid] || {})[pid], rfSet());
   function markMat(mid, pid) { if (!mid || !pid) return; const pr = prog(mid, pid); pr.mat = (Number(pr.mat) || 0) + 1; pr.matAt = now(); save(); srvTrack(pid, "", "mat"); }
-  /** 회원이 마이페이지에서 바로 100% 취소할 수 있는 주문인지 → { ok, why, left(남은 날), used } */
+  /** 회원이 내 강의실 · 마이페이지에서 바로 100% 취소할 수 있는 주문인지 → { ok, why, left(남은 날), used, way, acct(환불 계좌 필요) } (서버와 같은 공용 규칙) */
+  const payOn = () => SRV() || !!(window.VOD.payServer && window.VOD.payServer());
   function instantOf(o) {
-    const r = rfSet(), p = o && product(o.pid);
-    if (!o || o.status !== "paid" || !(o.amount > 0) || kindOf(o) !== "course" || !p) return { ok: false, why: "" };
-    if (SRV() && !(o.pg && o.pg.st === "paid")) return { ok: false, why: "무통장 입금 주문은 환불 요청으로 처리해요. 계좌로 돌려드려요." };
-    if (o.method === "vbank") return { ok: false, why: "가상계좌 결제는 환불 요청으로 처리해요. 환불 받을 계좌로 돌려드려요." };
-    if (!r.instant) return { ok: false, why: "바로 취소는 지금 쉬고 있어요. 환불 요청을 남겨 주세요." };
-    if (o.refundReq) return { ok: false, why: "환불 요청을 처리하고 있어요." };
-    const t = typeOf(p), paid = o.paidAt || o.at, left = Math.ceil((paid + (t === "ebook" ? r.ebookDays : r.days) * 864e5 - now()) / 864e5);
-    if (t === "book") { const st = shipStOf(o); return st === "ready" ? { ok: true, why: "책을 보내기 전이라 바로 전액 취소돼요.", left: null, used: 0 } : { ok: false, why: st === "prep" ? "상품을 준비하고 있어 취소 요청으로 처리해요." : "이미 보낸 책이라 반품 요청으로 처리해요." }; }
-    if (isEvent(p)) { const ev = p.eventAt ? Date.parse(p.eventAt) : 0, dl = Math.floor((ev - now()) / 864e5); return ev && dl >= r.eventDays ? { ok: true, why: "강의 " + r.eventDays + "일 전까지는 바로 전액 취소돼요.", left: dl - r.eventDays + 1, used: 0 } : { ok: false, why: "강의 " + r.eventDays + "일 전이 지나 환불 요청으로 처리해요." }; }
-    if (left <= 0) return { ok: false, why: "결제 후 " + (t === "ebook" ? r.ebookDays : r.days) + "일이 지나 환불 요청으로 처리해요." };
-    if (t === "ebook") return o.dlAt ? { ok: false, why: "전자책을 내려받아 바로 취소할 수 없어요." } : { ok: true, why: "내려받기 전이라 바로 전액 취소돼요.", left, used: 0 };
-    const used = usedOf(o.mid, o.pid);
-    if (used > r.maxUsed) return { ok: false, why: "강의를 " + used + "개 들어 환불 요청으로 처리해요.", used };
-    return { ok: true, why: r.maxUsed ? "강의를 " + r.maxUsed + "개 이하로 들어 바로 전액 취소돼요." : "아직 강의를 듣지 않아 바로 전액 취소돼요.", left, used };
+    const p = o && product(o.pid);
+    if (!p) return { ok: false, why: "", way: "none", acct: false };
+    const ev = isEvent(p);
+    return RFX.instant({ o, type: typeOf(p), event: ev, eventAt: ev && p.eventAt ? Date.parse(p.eventAt) : 0, shipSt: o.ship ? shipStOf(o) : "", used: usedOf(o.mid, o.pid), now: now(), srv: payOn() }, rfSet());
+  }
+  /** 이 강의를 처음 열면 바로 취소(100% 환불)가 끝나는지 → 강의 시작 안내 { o, q, end } | null */
+  function startGate(mid, pid, lid) {
+    const o = mid && V().orders.filter((x) => x.mid === mid && x.pid === pid && x.status === "paid" && kindOf(x) === "course").sort((a, b) => (b.paidAt || 0) - (a.paidAt || 0))[0];
+    if (!o) return null;
+    const q = instantOf(o), pr = ((V().progress || {})[mid] || {})[pid] || {}, seen = !!((pr.seen || {})[lid] || (pr.done || {})[lid]);
+    return RFX.startEnds(q, rfSet(), seen) ? { o, q, end: RFX.endAt(o, rfSet(), typeOf(product(pid))) } : null;
   }
   /** 즉시 취소: 주문(+ 함께 결제한 안 쓴 코칭권) 전액 환불 · 쿠폰 · 포인트 돌려주기 · PG 취소 결과(pg) 기록 */
-  function rfApply(o, pg) {
+  function rfApply(o, pg, acct) {
     const r = rfSet(), at = now(), list = [o].concat(r.addons ? V().orders.filter((x) => x.grp === o.no && x.status === "paid" && (!x.coach || !(Number(x.coach.used) > 0))) : []);
+    // 무통장 입금: 주문은 바로 취소 · 환불 계좌로 마스터가 송금 (환불 · 취소 관리 ‘계좌 송금 대기’)
+    if (acct && o.method === "bank") o.refundPay = Object.assign({}, acct, { amount: list.reduce((a, x) => a + x.amount, 0), st: "wait", at });
     list.forEach((x) => { if (x.tea) x.tea.st = "cancel"; Object.assign(x, { status: "refunded", refundedAt: at, refundAmount: x.amount, refundKind: "instant", refundWhy: x === o ? "회원 바로 취소 (" + (x.paidAt ? Math.max(1, Math.ceil((at - x.paidAt) / 864e5)) : 1) + "일째 · 들은 강의 " + usedOf(x.mid, x.pid) + "개)" : "함께 결제한 상품 같이 취소", refundBy: "회원", pg: pg || { st: "mock", at } }); if (r.restore) restoreOrder(x); delete x.refundReq; });
     save(); return list.reduce((a, x) => a + x.amount, 0);
   }
-  /** 정식 서버 + 포트원이 연결돼 있으면 서버가 카드 결제를 취소하고, 시안에서는 이 브라우저에만 기록해요 */
-  function rfCancel(o) {
-    if (SRV()) return window.VOD.payApi("cancel", { no: o.no }).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "취소하지 못했어요."); return DB.remote.refresh().then(() => r.amount); });
-    if (window.VOD.payServer && window.VOD.payServer()) return window.VOD.payApi("cancel", { no: o.no }).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "취소하지 못했어요."); return rfApply(o, { st: "done", at: now(), id: r.cancelId || "" }); });
-    return Promise.resolve(rfApply(o, { st: "mock", at: now() }));
+  /** 정식 서버 + 포트원이 연결돼 있으면 서버가 결제를 취소하고(가상계좌 · 무통장은 acct 환불 계좌로), 시안에서는 이 브라우저에만 기록해요 */
+  function rfCancel(o, acct) {
+    const body = Object.assign({ no: o.no }, acct ? { refundAccount: acct } : {});
+    if (SRV()) return window.VOD.payApi("cancel", body).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "취소하지 못했어요."); return DB.remote.refresh().then(() => r.amount); });
+    if (window.VOD.payServer && window.VOD.payServer()) return window.VOD.payApi("cancel", body).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "취소하지 못했어요."); return rfApply(o, { st: "done", at: now(), id: r.cancelId || "" }, acct); });
+    return Promise.resolve(rfApply(o, { st: "mock", at: now() }, acct));
   }
+  /** 바로 취소 팝업의 돌려받는 길 안내 (카드 · 가상계좌 · 무통장) */
+  const rfNowNote = (o, q) => ((q || instantOf(o)).way === "bank" ? "적어 주신 계좌로 영업일 3일 안에 보내 드려요." : (q || instantOf(o)).way === "vbank" ? "적어 주신 계좌로 포트원이 돌려드려요 (영업일 1~2일)." : "카드 승인 취소는 카드사에 따라 3~5영업일 걸려요.");
+  /** 바로 취소한 뒤 알림 문구 (결제 방법마다 돌려받는 길이 달라요) */
+  const rfDoneMsg = (o, amt) => won(amt) + (o.method === "bank" ? " 환불을 접수했어요. 적어 주신 계좌로 영업일 3일 안에 보내 드려요." : o.method === "vbank" ? "을 환불했어요. 적어 주신 계좌로 돌아가요." : "을 환불했어요. 카드사에 따라 3~5영업일 안에 돌아와요.") + (o.pg && o.pg.st === "mock" ? " (시안 · 실제 취소 없음)" : "");
   function refundTbl() {
     const r = rfSet(), t = Object.assign({}, REFUND);
-    t.vod = [["결제 후 " + r.days + "일 이내 · " + (r.maxUsed ? "강의를 " + r.maxUsed + "개 이하로 들었을 때" : "강의를 하나도 듣지 않았을 때"), "100% 전액 환불" + (r.instant ? " · 마이페이지에서 바로 취소" : "")], ["결제 후 " + r.days + "일 이내 · 그보다 많이 들었을 때", REFUND.vod[1][1]]].concat(REFUND.vod.slice(2));
+    t.vod = [["결제 후 " + r.days + "일 이내 · " + (r.maxUsed ? "강의를 " + r.maxUsed + "개 이하로 들었을 때" : "강의를 한 번도 재생하지 않았을 때"), "100% 전액 환불" + (r.instant ? " · 내 강의실에서 바로 취소" : "")], ["결제 후 " + r.days + "일 이내 · 그보다 많이 들었을 때", REFUND.vod[1][1]]].concat(REFUND.vod.slice(2));
     t.ebook = [["결제 후 " + r.ebookDays + "일 이내 · 내려받기 전", "전액 환불" + (r.instant ? " · 마이페이지에서 바로 취소" : "")]].concat(REFUND.ebook.slice(1));
     t.event = [["강의 " + r.eventDays + "일 전까지 취소", "전액 환불" + (r.instant ? " · 마이페이지에서 바로 취소" : "")]].concat(REFUND.event.slice(1));
     const sh = shipSet(); t.book = REFUND.book.map((x, i) => (i === 2 ? [x[0], "반품 후 환불 (왕복 배송비 " + won(Number(sh.returnFee) || 0) + " 구매자 부담)"] : x));
@@ -2438,7 +2440,8 @@
   const kakaoServer = () => !!(remoteOn() && CFG && CFG.kakao);
   const tsKey = () => (remoteOn() && CFG && CFG.turnstile) || "";
   const srvOn = () => !!(remoteOn() && CFG && CFG.auth);
-  function srvTrack(pid, lid, ev) { if (srvOn() && pid) payApi("track", { pid, lid: lid || "", ev }).catch(() => {}); }
+  // 두잉고 강의실로 바로 들어오면 서버 설정(vod-config)을 아직 안 받았을 수 있어서 먼저 받고 보내요 (재생 기록이 빠지면 바로 취소 판단이 틀려요)
+  function srvTrack(pid, lid, ev) { if (!pid || !remoteOn()) return; loadCfg().then(() => { if (srvOn()) payApi("track", { pid, lid: lid || "", ev }).catch(() => {}); }); }
   /* 마스터가 가격 · 쿠폰 · 환불 규정을 바꾸면 결제 서버에도 같은 가격표를 올려요 (서버가 이 가격표로 금액을 다시 계산해요) */
   const CAT_P = ["id", "title", "type", "status", "price", "sale", "saleEnd", "plans", "accessDays", "eventAt", "eventMin", "seats", "next", "ebPrice", "ebDays", "coach", "tea", "iid", "share", "shipFee", "stock"];
   const CAT_C = ["id", "code", "name", "kind", "value", "max", "min", "days", "endAt", "types", "auto", "dl", "on"];
@@ -2854,12 +2857,20 @@
     return '<div class="vd-cal"><div class="vd-cal-h"><b>' + y + "년 " + (mo + 1) + "월</b><small>이번 달 " + cnt + "일 공부했어요</small></div><div class=\"vd-cal-g\">" + DOWK.map((w) => "<i>" + w + "</i>").join("") + Array.from({ length: first }, () => "<span></span>").join("") +
       Array.from({ length: days }, (_, i) => { const k = ymd(i + 1); return '<span class="' + (s[k] ? "on" : "") + (k === t ? " today" : "") + (k > t ? " fut" : "") + '"' + (s[k] ? ' title="' + s[k] + '번 공부"' : "") + ">" + (i + 1) + "</span>"; }).join("") + "</div></div>";
   }
+  /** 내 강의실 카드의 환불 안내 — 결제 후 N일 이내 · 재생 전(바로 100% 취소 가능)일 때만 → { note } | null (지나면 버튼이 없어져요) */
+  function rfCard(o) {
+    if (!o || o.status !== "paid" || kindOf(o) !== "course" || !(o.amount > 0)) return null;
+    const q = instantOf(o); if (!q.ok) return null;
+    const ev = isEvent(product(o.pid) || {});
+    return { q, note: q.left == null ? "지금 취소하면 100% 환불돼요" : ev ? "강의 " + rfSet().eventDays + "일 전까지 100% 환불 · " + q.left + "일 남음" : "아직 재생 전이라 100% 환불할 수 있어요 · " + q.left + "일 남음" };
+  }
   const myCls = (m, list) => '<div class="vd-sroom">' + list.map(({ o, p }) => {
     const ev = isEvent(p), lz = lessons(p), dn = lz.filter((l) => prog(m.id, p.id).done[l.id]).length, pc = pctDone(m.id, p.id), end = accessEnd(m.id, p.id), live = ev ? !eventPast(p) || owns(m.id, p.id) : end > now(), lim = typeOf(p) === "vod" && end && end !== Infinity;
     const dl = lim && live ? Math.max(0, daysLeft(m.id, p.id)) : null, rb = !live && typeOf(p) === "vod" && canRebuy(m.id, p.id) ? rebuyOf(m.id, p) : 0, soon = false, cl = live && coachOf(p) ? coachLeft(m.id, p.iid) : 0;
     const last = lz.find((l) => l.id === prog(m.id, p.id).last), go = ev ? (typeOf(p) === "live" ? "입장 안내 보기" : "참석 안내 보기") : pc >= 100 ? "다시 보기" : pc ? "이어서 학습하기" : "학습 시작하기";
     const chip = priceOf(p) === 0 ? (typeOf(p) === "live" ? "무료 LIVE" : "무료 특강") : CHIP[typeOf(p)] || "클래스";
     const state = ev ? (eventPast(p) ? '<span class="vd-sroom-st end">종료</span>' : '<span class="vd-sroom-st">' + esc(fmtLive(p.eventAt)) + "</span>") : !live ? '<span class="vd-sroom-st end">수강 기간 끝</span>' : pc >= 100 ? '<span class="vd-sroom-st ok">수강 완료</span>' : dl != null ? '<span class="vd-sroom-st' + (dl <= 30 ? " warn" : "") + '">D-' + dl + "</span>" : '<span class="vd-sroom-st">평생 소장</span>';
+    const rq = rfCard(o), rfn = rq ? '<span class="vd-sroom-rfn">' + icon("shieldCheck", "xs") + esc(rq.note) + "</span>" : "";
     const cta = live ? (dgOpen(p) && !ev ? '<button type="button" class="vd-btn vd-btn-p vd-sroom-go" data-v="dg" data-p="' + esc(p.id) + '">' + icon("play", "xs") + go + "</button>" : '<a class="vd-btn vd-btn-p vd-sroom-go" href="#/vod/learn/' + esc(p.id) + '">' + icon(ev ? "calendar" : "play", "xs") + go + "</a>")
       : rb ? '<a class="vd-btn vd-btn-p vd-sroom-go" href="#/vod/p/' + esc(p.id) + '">' + icon("refresh", "xs") + "재수강 " + rb + "% 할인으로 다시 듣기</a>" : "";
     return '<article class="vd-sroom-it' + (live ? "" : " exp") + '"><a class="vd-sroom-th" href="#/vod/' + (live ? "learn/" : "p/") + esc(p.id) + '">' + thumbArt(p) + (live && !ev ? '<i class="vd-sroom-play" aria-hidden="true">' + icon("play") + "</i>" : "") + "</a>" +
@@ -2868,8 +2879,8 @@
         (ev ? '<span class="vd-sroom-info">' + icon("calendar", "xs") + esc(fmtEvent(p.eventAt, true)) + " · " + (typeOf(p) === "live" ? viaOf(p) : esc(placeShort(p.place) || "현장")) + "</span>"
           : '<div class="vd-sroom-pg"><div class="vd-sroom-bar"><i style="width:' + pc + '%"></i></div><span><b>' + pc + "%</b><small>" + dn + " / " + lz.length + "강</small></span></div>" +
             '<span class="vd-sroom-info">' + (last ? icon("clock", "xs") + "최근 학습 · " + esc(last.title) : icon("sparkles", "xs") + "아직 시작 전이에요. 1강부터 가볍게 시작해 보세요") + "</span>") +
-        '<span class="vd-sroom-sub">' + (lim ? (live ? DB.date.fmtFull(DB.date.toStr(new Date(end))) + "까지 수강" : DB.date.fmtFull(DB.date.toStr(new Date(end))) + "에 수강 기간이 끝났어요") : ev ? "주문 " + esc(o.no) : "평생 소장") + (cl ? " · 1:1 코칭 " + cl + "회 남음" : "") + (live && dgOpen(p) && !ev ? " · 두잉고 강의실에서 열려요" : "") + "</span></div>" +
-      '<div class="vd-sroom-act">' + cta + '<a class="vd-btn vd-btn-o vd-sroom-sec" href="#/vod/p/' + esc(p.id) + '">강의 상세</a>' + (soon ? '<a class="vd-sroom-more" href="#/vod/checkout/' + esc(p.id) + '?item=extend">' + icon("refresh", "xs") + "미리 1년 연장하기</a>" : "") + "</div></article>";
+        '<span class="vd-sroom-sub">' + (lim ? (live ? DB.date.fmtFull(DB.date.toStr(new Date(end))) + "까지 수강" : DB.date.fmtFull(DB.date.toStr(new Date(end))) + "에 수강 기간이 끝났어요") : ev ? "주문 " + esc(o.no) : "평생 소장") + (cl ? " · 1:1 코칭 " + cl + "회 남음" : "") + (live && dgOpen(p) && !ev ? " · 두잉고 강의실에서 열려요" : "") + "</span>" + rfn + "</div>" +
+      '<div class="vd-sroom-act">' + cta + '<a class="vd-btn vd-btn-o vd-sroom-sec" href="#/vod/p/' + esc(p.id) + '">강의 상세</a>' + (rq ? '<button type="button" class="vd-btn vd-btn-line vd-sroom-rf" data-v="rf-now" data-no="' + esc(o.no) + '">' + icon("refresh", "xs") + "환불하기</button>" : "") + (soon ? '<a class="vd-sroom-more" href="#/vod/checkout/' + esc(p.id) + '?item=extend">' + icon("refresh", "xs") + "미리 1년 연장하기</a>" : "") + "</div></article>";
   }).join("") + "</div>";
   const myClsOld = (m, list) => '<div class="vd-mycls">' + list.map(({ o, p }) => {
     const pc = pctDone(m.id, p.id), end = accessEnd(m.id, p.id), live = end > now(), lim = typeOf(p) === "vod" && end && end !== Infinity, ext = !live && typeOf(p) === "vod" ? extendOf(p) : null, soon = live && lim && canExtend(m.id, p.id), cl = live && coachOf(p) ? coachLeft(m.id, p.iid) : 0, go = pc >= 100 ? "다시 보기" : pc ? "이어 보기" : "강의 시작";
@@ -3112,7 +3123,7 @@
       '<section class="vd-pd-sec"><h2>목차</h2>' + (p.curriculum || []).map((ch) => '<div class="vd-toc"><b>' + esc(ch.title) + "</b><ul>" + (ch.lessons || []).map((l) => "<li><span>" + esc(l.title) + "</span><small>" + (Number(l.min) || 0) + "쪽</small></li>").join("") + "</ul></div>").join("") + "</section></div>", "my");
   }
   /* 고객센터 자주 묻는 질문: 마스터 › 전시 · 쿠폰 · 설정 › 고객센터 FAQ · 공지에서 고쳐요 (비어 있으면 기본값) */
-  const HELP_FAQ_DEF = [["수강", "강의는 언제까지 볼 수 있나요?", "결제할 때 고른 수강권 기간(6개월 · 12개월) 동안 볼 수 있어요. 마이페이지 › 내 강의실에서 남은 기간을 보고, 기간이 끝나면 재수강 할인가로 진도 그대로 다시 들을 수 있어요."], ["수강", "강사에게 직접 질문할 수 있나요?", "1:1 코칭권을 사면 두잉고 강의실 ‘1:1 코칭 질문’에서 강사에게 직접 질문하고 답을 받아요. 강사님과 만나는 TEA TIME도 수강 중인 강의 상세 페이지에서 신청할 수 있어요."], ["LIVE", "LIVE 강의는 어디서 보나요?", "신청하면 마이페이지 › LIVE · 오프라인에 카카오톡 오픈채팅방 입장 버튼이 열려요. 강의 날 오픈채팅방에 유튜브 라이브 링크를 올려 드려요."], ["환불", "환불은 어떻게 하나요?", "VOD는 결제 후 7일 이내 · 강의를 하나도 듣지 않았다면 마이페이지 › 주문 · 결제 내역에서 ‘결제 취소 · 100% 환불’로 바로 취소돼요. 전자책은 내려받기 전 7일 이내, LIVE · 오프라인은 3일 전까지 전액 환불이에요. 그 밖에는 ‘환불 요청’을 남겨 주시면 규정에 따라 처리해 드려요."], ["쿠폰", "쿠폰은 어디서 쓰나요?", "결제 화면 ‘할인 · 쿠폰’에서 골라 쓸 수 있어요. 강의 상세 페이지 ‘사용 가능한 쿠폰이 있어요!’에서 쿠폰을 받고, 쿠폰 코드는 마이페이지 › 쿠폰에서 등록해요."], ["영수증", "영수증 · 세금계산서가 필요해요.", "주문 · 결제 내역에서 영수증을 PDF로 내려받을 수 있어요. 세금계산서는 1:1 문의(결제 · 환불)로 사업자 정보를 남겨 주세요."]];
+  const HELP_FAQ_DEF = [["수강", "강의는 언제까지 볼 수 있나요?", "결제할 때 고른 수강권 기간(6개월 · 12개월) 동안 볼 수 있어요. 마이페이지 › 내 강의실에서 남은 기간을 보고, 기간이 끝나면 재수강 할인가로 진도 그대로 다시 들을 수 있어요."], ["수강", "강사에게 직접 질문할 수 있나요?", "1:1 코칭권을 사면 두잉고 강의실 ‘1:1 코칭 질문’에서 강사에게 직접 질문하고 답을 받아요. 강사님과 만나는 TEA TIME도 수강 중인 강의 상세 페이지에서 신청할 수 있어요."], ["LIVE", "LIVE 강의는 어디서 보나요?", "신청하면 마이페이지 › LIVE · 오프라인에 카카오톡 오픈채팅방 입장 버튼이 열려요. 강의 날 오픈채팅방에 유튜브 라이브 링크를 올려 드려요."], ["환불", "환불은 어떻게 하나요?", "VOD는 결제 후 7일 이내 · 강의를 한 번도 재생하지 않았다면 마이페이지 › 내 강의실의 ‘환불하기’(또는 주문 · 결제 내역의 ‘결제 취소 · 100% 환불’)로 바로 취소돼요. 무통장 입금 · 가상계좌는 환불 받을 계좌를 적어 주시면 돌려드려요. 전자책은 내려받기 전 7일 이내, LIVE · 오프라인은 3일 전까지 전액 환불이에요. 그 밖에는 ‘환불 요청’을 남겨 주시면 규정에 따라 처리해 드려요."], ["쿠폰", "쿠폰은 어디서 쓰나요?", "결제 화면 ‘할인 · 쿠폰’에서 골라 쓸 수 있어요. 강의 상세 페이지 ‘사용 가능한 쿠폰이 있어요!’에서 쿠폰을 받고, 쿠폰 코드는 마이페이지 › 쿠폰에서 등록해요."], ["영수증", "영수증 · 세금계산서가 필요해요.", "주문 · 결제 내역에서 영수증을 PDF로 내려받을 수 있어요. 세금계산서는 1:1 문의(결제 · 환불)로 사업자 정보를 남겨 주세요."]];
   const helpFaq = () => (Array.isArray(V().helpFaq) && V().helpFaq.length ? V().helpFaq : HELP_FAQ_DEF);
   // Zoom LIVE 다시보기: 끝난 뒤 replayDays 동안 (비우면 계속)
   const replayOk = (p) => !!(p && p.replayUrl && eventPast(p) && (!Number(p.replayDays) || now() < evEnd(p) + Number(p.replayDays) * 864e5));
@@ -3128,6 +3139,14 @@
         (t === "live" && p.via !== "zoom" ? "" : '<div class="vd-ticket-f">' + (past ? (replayOk(p) ? '<a class="vd-btn vd-btn-yt vd-btn-xl" href="' + esc(p.replayUrl) + '" target="_blank" rel="noopener">' + icon("play", "sm") + "다시보기 영상 보기</a>" + (Number(p.replayDays) ? '<p class="vd-muted">' + esc(DB.date.fmtFull(DB.date.toStr(new Date(evEnd(p) + Number(p.replayDays) * 864e5)))) + "까지 볼 수 있어요.</p>" : "") : '<p class="vd-muted">끝난 강의예요.' + (p.replayDays ? " 다시보기 영상은 준비되면 끝난 뒤 " + p.replayDays + "일 동안 이 화면에 올라와요." : "") + "</p>") : t === "live" ? (open && p.link ? '<a class="vd-btn vd-btn-p vd-btn-xl" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + icon("video", "sm") + "Zoom 입장하기</a>" : '<button type="button" class="vd-btn vd-btn-off vd-btn-xl" disabled>' + icon("clock", "sm") + "입장 링크는 시작 10분 전에 열려요</button>") + '<p class="vd-muted">시작까지 <b data-cd="' + esc(p.eventAt) + '">' + cdTxt(p.eventAt) + "</b></p>" : '<p class="vd-muted">강의 하루 전에 자세한 주소 · 주차 안내를 문자로 보내 드려요. 시작까지 <b data-cd="' + esc(p.eventAt) + '">' + cdTxt(p.eventAt) + "</b></p>") + "</div>") + "</div>" +
       '<section class="vd-pd-sec"><h2>진행 순서</h2>' + (p.curriculum || []).map((ch) => '<div class="vd-toc"><b>' + esc(ch.title) + "</b><ul>" + (ch.lessons || []).map((l) => "<li><span>" + esc(l.title) + "</span><small>" + (Number(l.min) || 0) + "분</small></li>").join("") + "</ul></div>").join("") + "</section></div>", "my");
   }
+  /** 강의 시작 안내 (결제 후 N일 이내 · 재생 전) — 시작하기 · 환불하기 */
+  function gateHtml(g, pid, lid, dg) {
+    const d = new Date(g.end), md = (d.getMonth() + 1) + "월 " + d.getDate() + "일";
+    return '<div class="vd-pl-gate"><span class="vd-pl-gate-ic">' + icon("shieldCheck") + "</span><b>아직 강의를 재생하지 않았어요</b>" +
+      "<p>지금은 결제 후 " + rfSet().days + "일 이내 · 재생 전이라 <strong>100% 환불</strong>할 수 있어요 (" + md + "까지 · " + g.q.left + "일 남음).<br>강의를 시작하거나 수업 자료를 내려받으면 100% 환불 대상에서 빠져요.</p>" +
+      '<div class="vd-pl-gate-a"><button type="button" class="vd-btn vd-btn-p" ' + (dg ? "data-action=\"vt-start\"" : "data-v=\"pl-start\"") + ' data-p="' + esc(pid) + '" data-l="' + esc(lid) + '">' + icon("play", "xs") + "강의 시작하기</button>" +
+      (dg ? '<a class="vd-btn vd-btn-o" href="/vod/my/classes">DOOGO CLASS에서 환불하기</a>' : '<button type="button" class="vd-btn vd-btn-o" data-v="rf-now" data-no="' + esc(g.o.no) + '">환불하기</button>') + "</div></div>";
+  }
   function pageLearn(pid, lid) {
     const p = product(pid), m = me();
     if (!p) return pageProduct(pid);
@@ -3139,14 +3158,14 @@
     if (isEvent(p)) return pageTicket(p, m);
     const lz = lessons(p), pr = prog(m.id, pid), cur = lz.find((l) => l.id === lid) || lz.find((l) => l.id === pr.last) || lz.find((l) => !pr.done[l.id]) || lz[0];
     if (!cur) return shell("", '<div class="vd-wrap">' + emptyBox("monitorPlay", "아직 올라온 강의가 없어요") + "</div>");
-    if (pr.last !== cur.id) pr.last = cur.id;
-    pr.seen = pr.seen || {}; if (!pr.seen[cur.id]) pr.seen[cur.id] = now();
-    logStudy(m.id); save();
+    // 결제 후 N일 이내 · 재생 전이면 강의를 열기 전에 ‘시작하면 100% 환불이 끝나요’ 안내 — 시작하면 서버에도 연 기록(seen)을 남겨요
+    const gate = startGate(m.id, pid, cur.id);
+    if (!gate) { markLast(m.id, pid, cur.id); logStudy(m.id); save(); }
     const idx = lz.indexOf(cur), next = lz[idx + 1], pc = pctDone(m.id, pid);
     return '<div class="vd-player"><header class="vd-pl-top"><a href="#/vod/my/classes" class="vd-pl-back" aria-label="내 강의실로">' + icon("arrowLeft", "sm") + '</a><div><small>' + esc(p.creator) + "</small><b>" + esc(p.title) + '</b></div><span class="vd-pl-prog"><i style="--p:' + pc + '%"></i>' + pc + "%</span>" + kkBtn("vd-pl-kk", "문의하기") + "</header>" +
-      '<div class="vd-pl-grid"><div class="vd-pl-main"><div class="vd-pl-video">' + videoHtml(cur) + "</div>" +
+      '<div class="vd-pl-grid"><div class="vd-pl-main"><div class="vd-pl-video">' + (gate ? gateHtml(gate, pid, cur.id) : videoHtml(cur)) + "</div>" +
         '<div class="vd-pl-info"><small>' + esc(((p.curriculum || []).find((c) => (c.lessons || []).indexOf(cur) >= 0) || {}).title || "") + "</small><h1>" + esc(cur.title) + "</h1><span>" + lLen(cur) + (vimeoSrc(cur.video) ? " · Vimeo" : "") + "</span>" +
-          '<div class="vd-pl-btns">' + (pr.done[cur.id] ? '<span class="vd-pl-done">' + icon("check", "sm") + "완료한 강의</span>" : '<button type="button" class="vd-btn vd-btn-p" data-v="done" data-p="' + esc(pid) + '" data-l="' + esc(cur.id) + '">' + icon("check", "sm") + (next ? "완료하고 다음 강의" : "완료하기") + "</button>") + (next ? '<a class="vd-btn vd-btn-o" href="#/vod/learn/' + esc(pid) + "/" + esc(next.id) + '">다음 강의' + icon("chevRight", "xs") + "</a>" : "") + "</div>" +
+          '<div class="vd-pl-btns">' + (gate ? "" : pr.done[cur.id] ? '<span class="vd-pl-done">' + icon("check", "sm") + "완료한 강의</span>" : '<button type="button" class="vd-btn vd-btn-p" data-v="done" data-p="' + esc(pid) + '" data-l="' + esc(cur.id) + '">' + icon("check", "sm") + (next ? "완료하고 다음 강의" : "완료하기") + "</button>") + (next ? '<a class="vd-btn vd-btn-o" href="#/vod/learn/' + esc(pid) + "/" + esc(next.id) + '">다음 강의' + icon("chevRight", "xs") + "</a>" : "") + "</div>" +
           (cur.desc || (cur.files || []).length ? '<div class="vd-pl-note">' + (cur.desc ? "<b>강의 노트</b><p>" + esc(cur.desc).replace(/\n/g, "<br>") + "</p>" : "") + ((cur.files || []).length ? "<b>첨부 자료</b>" + fileList(cur.files) : "") + "</div>" : "") + "</div></div>" +
         '<aside class="vd-pl-side">' + dgCard(p, "vd-dg-pl") + '<b class="vd-pl-side-h">커리큘럼 <small>' + lz.filter((l) => pr.done[l.id]).length + " / " + lz.length + "</small></b>" + (p.curriculum || []).map((c) => '<div class="vd-pl-ch"><small>' + esc(c.title) + "</small>" + (c.lessons || []).map((l) => '<a href="#/vod/learn/' + esc(pid) + "/" + esc(l.id) + '" class="' + (l.id === cur.id ? "on" : "") + (pr.done[l.id] ? " done" : "") + '"><i>' + (pr.done[l.id] ? icon("check", "xs") : "") + "</i><span>" + esc(l.title) + freshTag(l) + ((l.files || []).length ? " " + icon("paperclip", "xs") : "") + "</span><small>" + lLen(l) + "</small></a>").join("") + "</div>").join("") + "</aside></div></div>";
   }
@@ -3841,11 +3860,15 @@
     // 0원 신청(무료 LIVE · 0원 결제) 취소: 강의 전까지 · 자리를 돌려줘요
     if (v === "ord-cancel0") { const o = V().orders.find((x) => x.no === t.dataset.no), p = o && product(o.pid); if (!o || !m || o.mid !== m.id || o.status !== "paid" || o.amount > 0 || (p && eventPast(p))) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 취소"; return; } const msg0 = ordCancel0Do(o); keepScroll(); toast(msg0); return; }
     // 환불 요청: 사유를 남기면 마스터 ‘환불 요청’ 목록에 올라가요
-    if (v === "rf-now") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id) return; const nw = rfNowInfo(o), q = nw.q; if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } const r = nw.r, adds = nw.adds, tot = nw.tot;
-      modal("결제 취소 · 100% 환불", '<div class="vd-modal-b vd-rfnow"><p class="vd-rfq-t"><b>' + esc(o.title) + "</b>" + (optTxt(o) ? "<small>" + esc(optTxt(o)) + "</small>" : "") + "<span>결제 " + won(o.amount) + " · " + esc(DB.date.fmtFull(DB.date.toStr(new Date(o.paidAt || o.at)))) + "</span></p>" +
-        '<div class="vd-rfnow-box"><b>' + won(tot) + "</b><span>전액 돌려드려요</span></div><ul class=\"vd-rfnow-l\">" + "<li>" + icon("check", "xs") + esc(q.why) + "</li>" + (adds.length ? "<li>" + icon("check", "xs") + "함께 결제한 " + adds.map((x) => esc(optTxt(x) || x.title)).join(", ") + "도 같이 취소돼요.</li>" : "") + (r.restore && (o.mcid || o.pointOff) ? "<li>" + icon("check", "xs") + "결제에 쓴 쿠폰 · 포인트도 돌려드려요.</li>" : "") + "<li>" + icon("check", "xs") + "취소하면 수강 권한이 바로 사라져요.</li><li>" + icon("clock", "xs") + "카드 승인 취소는 카드사에 따라 3~5영업일 걸려요.</li></ul>" +
-        '<div class="vd-rfnow-a"><button type="button" class="vd-btn vd-btn-o" data-v="close">그만두기</button><button type="button" class="vd-btn vd-btn-p" data-v="rf-now-ok" data-no="' + esc(o.no) + '">결제 취소하고 환불받기</button></div></div>'); return; }
-    if (v === "rf-now-ok") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || !instantOf(o).ok) { closeModal(); return; } t.disabled = true; t.textContent = "취소하는 중…"; rfCancel(o).then((amt) => { closeModal(); render(); toast(won(amt) + "을 환불했어요. 카드사에 따라 3~5영업일 안에 돌아와요." + (o.pg && o.pg.st === "mock" ? " (시안 · 실제 카드 취소 없음)" : "")); }, (er) => { t.disabled = false; t.textContent = "결제 취소하고 환불받기"; toast(String((er && er.message) || "취소하지 못했어요. 고객센터로 문의해 주세요."), "warn"); }); return; }
+    if (v === "rf-now") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id) return; const nw = rfNowInfo(o), q = nw.q; if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } const r = nw.r, adds = nw.adds, tot = nw.tot, tag = q.acct ? "form" : "div";
+      modal("결제 취소 · 100% 환불", "<" + tag + ' class="vd-modal-b vd-rfnow"' + (q.acct ? ' data-vd-rfnow="" data-no="' + esc(o.no) + '"' : "") + '><p class="vd-rfq-t"><b>' + esc(o.title) + "</b>" + (optTxt(o) ? "<small>" + esc(optTxt(o)) + "</small>" : "") + "<span>결제 " + won(o.amount) + " · " + esc(DB.date.fmtFull(DB.date.toStr(new Date(o.paidAt || o.at)))) + "</span></p>" +
+        '<div class="vd-rfnow-box"><b>' + won(tot) + "</b><span>전액 돌려드려요</span></div><ul class=\"vd-rfnow-l\">" + "<li>" + icon("check", "xs") + esc(q.why) + "</li>" + (adds.length ? "<li>" + icon("check", "xs") + "함께 결제한 " + adds.map((x) => esc(optTxt(x) || x.title)).join(", ") + "도 같이 취소돼요.</li>" : "") + (r.restore && (o.mcid || o.pointOff) ? "<li>" + icon("check", "xs") + "결제에 쓴 쿠폰 · 포인트도 돌려드려요.</li>" : "") + "<li>" + icon("check", "xs") + "취소하면 수강 권한이 바로 사라져요.</li><li>" + icon("clock", "xs") + esc(rfNowNote(o, q)) + "</li></ul>" +
+        (q.acct ? '<div class="vd-rfq-acct"><b>환불 받을 계좌</b><small>' + (q.way === "vbank" ? "가상계좌" : "무통장 입금") + " 결제는 이 계좌로 돌려드려요. 본인 명의 계좌를 적어 주세요.</small>" + acctFields(null) + '</div><p class="vd-err" data-rfnow-err=""></p>' : "") +
+        '<div class="vd-rfnow-a"><button type="button" class="vd-btn vd-btn-o" data-v="close">그만두기</button><button type="button" class="vd-btn vd-btn-p" data-v="rf-now-ok" data-no="' + esc(o.no) + '">결제 취소하고 환불받기</button></div></' + tag + ">"); return; }
+    if (v === "rf-now-ok") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || !instantOf(o).ok) { closeModal(); return; }
+      const q = instantOf(o), f = t.closest("form"), er0 = f && f.querySelector("[data-rfnow-err]"); let acct = null;
+      if (q.acct) { const a = f ? acctRead(f) : { err: "환불 받을 계좌를 적어 주세요." }; if (a.err) { if (er0) er0.textContent = a.err; return; } acct = a.acct; }
+      t.disabled = true; t.textContent = "취소하는 중…"; rfCancel(o, acct).then((amt) => { closeModal(); render(); toast(rfDoneMsg(o, amt)); }, (er) => { t.disabled = false; t.textContent = "결제 취소하고 환불받기"; toast(String((er && er.message) || "취소하지 못했어요. 고객센터로 문의해 주세요."), "warn"); }); return; }
     if (v === "rf-req") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || o.status !== "paid") return; const bk = !!o.ship, sst = bk ? shipStOf(o) : "", pre = sst === "prep" || sst === "ready", fee = Number(shipSet().returnFee) || 0;
       modal(bk ? (pre ? "주문 취소 요청" : "반품 · 교환 신청") : "환불 요청", '<form class="vd-modal-b vd-rfq" data-vd-rfreq data-no="' + esc(o.no) + '"><p class="vd-rfq-t"><b>' + esc(o.title) + "</b>" + (optTxt(o) ? "<small>" + esc(optTxt(o)) + "</small>" : "") + "<span>결제 " + won(o.amount) + " · " + esc(DB.date.fmtFull(DB.date.toStr(new Date(o.paidAt || o.at)))) + "</span></p>" +
       (bk ? '<p class="vd-rfq-bk">' + icon("truck", "xs") + "<span>" + (pre ? "책을 준비하고 있어요. 보내기 전이면 전액 환불해 드려요." : "단순 변심은 받은 날부터 7일 안에 반품할 수 있고 왕복 배송비(" + won(fee) + ")를 빼고 환불해요. 파손 · 파본 · 잘못 보낸 책은 30일 안에 전액 환불하거나 같은 책으로 바꿔 드려요. 책이 돌아와 확인되면 환불해 드려요.") + "</span></p>" : "") +
@@ -3867,9 +3890,10 @@
       modal((typeOf(p) === "ebook" ? "미리보기 · " : "맛보기 · ") + (l ? l.title : ""), '<div class="vd-modal-video">' + (typeOf(p) === "ebook" ? '<div class="vd-pl-ph">' + icon("book") + "<b>" + esc(l ? l.title : "") + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : l ? videoHtml(l, true) : "") + '</div><div class="vd-modal-f">' + (p.status === "on" ? '<a class="vd-btn vd-btn-p" href="#/vod/checkout/' + esc(p.id) + '" data-v="close">' + (priceOf(p) === 0 ? "무료로 수강신청" : typeOf(p) === "ebook" ? "구매하기" : "수강신청 하기") + "</a>" : '<button type="button" class="vd-btn vd-btn-o" data-v="close">닫기</button>') + "</div>");
       return;
     }
+    if (v === "pl-start") { if (!m) return; markLast(m.id, t.dataset.p, t.dataset.l); logStudy(m.id); save(); render(); return; }
     if (v === "done") {
       if (!m) return;
-      const p = product(t.dataset.p), pr = prog(m.id, t.dataset.p); pr.done[t.dataset.l] = true; logStudy(m.id); save();
+      const p = product(t.dataset.p); markDone(m.id, t.dataset.p, t.dataset.l);
       const lz = lessons(p), i = lz.findIndex((x) => x.id === t.dataset.l), next = lz[i + 1];
       if (next) ROUTE.hash = "#/vod/learn/" + p.id + "/" + next.id; else { render(); toast(pctDone(m.id, p.id) === 100 ? "모든 강의를 완료했어요! 후기도 남겨 주세요." : "완료했어요."); }
     }
@@ -4113,7 +4137,7 @@
   /** 두잉고 강의실(VOD 버전)에서 쓰는 강의장 기능: 같은 진도 기록을 쓰므로 DOOGO CLASS 마이페이지 · 환불 계산과 진도가 맞아요 */
   function markDone(mid, pid, lid) { if (!mid || !owns(mid, pid)) return false; const pr = prog(mid, pid); pr.done[lid] = true; pr.last = lid; pr.seen = pr.seen || {}; if (!pr.seen[lid]) pr.seen[lid] = now(); logStudy(mid); save(); srvTrack(pid, lid, "done"); return true; }
   function markLast(mid, pid, lid) { if (!mid || !owns(mid, pid)) return; const pr = prog(mid, pid); pr.seen = pr.seen || {}; const fresh = !pr.seen[lid]; if (fresh) { pr.seen[lid] = now(); srvTrack(pid, lid, "seen"); } if (pr.last !== lid || fresh) { pr.last = lid; logStudy(mid); save(); } }
-  Object.assign(window.VOD, { isBook, BOOK_MAX, shipFeeOf, shipSet, SHIP_DEF, CARRIERS, trackUrl, SHIP_ST, shipStOf, shipDoneAt, stockLeft, CLAIM_K, claimOf, claimTxt, claimFee, MOON_BOOK, RF_DEF, rfSet, usedOf, markMat, instantOf, rfApply, rfCancel, refundTbl, consentOf, CH3, chOn, HELP_FAQ_DEF, helpFaq, issueCoupon, addPoint, replayOk, isFreeEv, funnelOf, funnelTo, ebOf, gatedBy, basePrice, evEnd, eventPast, ebDayTxt, detailImgsOf, detailModeOf, insRate, rateOf, adSplitOf, adOf, shareOf, bizOn, bizShow, BIZ_DEF, teacherList, teachHome, catTabs, railShowable, RAIL_DEF, homeRails, railAuto, railItems, viaOf, shareFor, chOf, CH_TXT, insAmt, supplyOf, baseOf, lSec, lLen, shSet, SH_DEF, launchOn, seedTiles, tileImg, imgAttr, hydrate, liveBanners, banLive, cmtOf, matPut, matOpen, markDone, markLast, videoHtml, fileList, chapOf, plansOf, defPlan, coachOf, teaOf, extendOf, extendPct, addonShare, accessEnd, daysLeft, canExtend, canRebuy, rebuyOf, rebuySet, rbPrice, plansFor, planFor, planLabel, freshOf, freshTag, freshCnt, updsOf, lastUpd, ymTxt, FRESH_DAYS, hadCourse, coachPasses, coachLeft, useCoach, giveBackCoach, teasOf, teaWhen, teaStTxt, TEA_MODE, TEA_ST, KIND, kindOf, isAccess, optTxt, icx, PLAN_DAYS, r1k });
+  Object.assign(window.VOD, { isBook, BOOK_MAX, shipFeeOf, shipSet, SHIP_DEF, CARRIERS, trackUrl, SHIP_ST, shipStOf, shipDoneAt, stockLeft, CLAIM_K, claimOf, claimTxt, claimFee, MOON_BOOK, RF_DEF, rfSet, usedOf, markMat, instantOf, startGate, rfCard, rfNowNote, rfDoneMsg, gateHtml, rfApply, rfCancel, refundTbl, consentOf, CH3, chOn, HELP_FAQ_DEF, helpFaq, issueCoupon, addPoint, replayOk, isFreeEv, funnelOf, funnelTo, ebOf, gatedBy, basePrice, evEnd, eventPast, ebDayTxt, detailImgsOf, detailModeOf, insRate, rateOf, adSplitOf, adOf, shareOf, bizOn, bizShow, BIZ_DEF, teacherList, teachHome, catTabs, railShowable, RAIL_DEF, homeRails, railAuto, railItems, viaOf, shareFor, chOf, CH_TXT, insAmt, supplyOf, baseOf, lSec, lLen, shSet, SH_DEF, launchOn, seedTiles, tileImg, imgAttr, hydrate, liveBanners, banLive, cmtOf, matPut, matOpen, markDone, markLast, videoHtml, fileList, chapOf, plansOf, defPlan, coachOf, teaOf, extendOf, extendPct, addonShare, accessEnd, daysLeft, canExtend, canRebuy, rebuyOf, rebuySet, rbPrice, plansFor, planFor, planLabel, freshOf, freshTag, freshCnt, updsOf, lastUpd, ymTxt, FRESH_DAYS, hadCourse, coachPasses, coachLeft, useCoach, giveBackCoach, teasOf, teaWhen, teaStTxt, TEA_MODE, TEA_ST, KIND, kindOf, isAccess, optTxt, icx, PLAN_DAYS, r1k });
   // 파일 크기 한도: 정식 서버는 3MB (Vercel 요청 한도), 시안은 20MB
   Object.defineProperty(window.VOD, "MAT_MAX", { get: () => (SRV() ? SRV_MAT_MAX : MAT_MAX), configurable: true });
   // 주소(경로)가 바뀌면 언제나 맨 위에서 시작 — 같은 화면 안에서 ?정렬 · 탭만 바뀔 때는 보던 자리 그대로

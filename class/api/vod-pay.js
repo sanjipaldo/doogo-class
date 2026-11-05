@@ -9,7 +9,8 @@
  *   { action: "abort", paymentId }      결제창을 닫았거나 실패 → 결제 대기 주문을 실패로
  *        method: card · kakao · toss · naver · transfer(실시간 계좌이체) · vbank(가상계좌) (포트원) | bank (무통장 입금 · depositor 입금자명 → 자동 입금 확인 또는 마스터 확인) — 0원은 바로 완료
  *        가상계좌: 발급되면 ‘입금 대기’(계좌 · 기한) → 회원이 입금하면 포트원 웹훅(Transaction.Paid)으로 결제 완료. 쿠폰 · 포인트는 발급 때 써 두고 취소하면 돌려줘요
- *   { action: "cancel", no }            환불 규정에 맞으면 바로 100% 취소 (포트원 결제 취소까지)
+ *   { action: "cancel", no, refundAccount }  환불 규정(결제 후 7일 · 재생 전)에 맞으면 바로 100% 취소 — 카드 · 간편결제 · 계좌이체는 포트원 결제 취소,
+ *        가상계좌는 refundAccount { bank, number, holder } 로 포트원이 계좌 환불, 무통장은 바로 취소 + refundPay(계좌 송금 대기 · 마스터가 송금)
  *   { action: "cancelPending", no }     입금 전 무통장 주문 취소 (쓴 쿠폰 · 포인트 돌려받기)
  *   { action: "dg", iid }               산 VOD 의 두잉고 강의실 들어가기 — 서버가 두잉고 수강생 계정을 만들고 로그인시켜요
  *   { action: "claim", code | cid }       쿠폰 코드 등록 · 쿠폰 받기 (회원 쿠폰은 서버에 저장)
@@ -87,7 +88,7 @@ async function vbankIssued(paymentId, idx, orders, pay, total) {
 /** 환불 반영: 주문 refunded + 쿠폰 · 포인트 돌려주기(전액 환불이고 규정이 켜져 있을 때) */
 async function markRefunded(o, amount, info, restore) {
   const at = Date.now();
-  const next = await V.update(V.K.order(o.no), (x) => x && x.status === "paid" ? Object.assign(x, { status: "refunded", refundedAt: at, refundAmount: amount, refundKind: info.kind, refundWhy: info.why, refundBy: info.by, pg: Object.assign({}, x.pg || {}, { cancel: info.cancel || null }) }) : undefined);
+  const next = await V.update(V.K.order(o.no), (x) => { if (!x || x.status !== "paid") return undefined; delete x.rfLock; if (x.tea) x.tea.st = "cancel"; return Object.assign(x, { status: "refunded", refundedAt: at, refundAmount: amount, refundKind: info.kind, refundWhy: info.why, refundBy: info.by, pg: Object.assign({}, x.pg || {}, { cancel: info.cancel || null }) }, info.pay ? { refundPay: info.pay } : {}); });
   if (next && next.status === "refunded") await VA.afterOrder(o, next);
   if (restore && amount === o.amount && (o.pointOff || o.mcid)) await V.update(V.K.member(o.mid), (m) => { if (!m) return undefined; if (o.pointOff) { m.points = (Number(m.points) || 0) + o.pointOff; (m.pointLog = m.pointLog || []).push({ at, amt: o.pointOff, why: "환불 · 포인트 돌려받음 (" + o.no + ")" }); } if (o.mcid) { const c = (m.coupons || []).find((x) => x.id === o.mcid); if (c) { c.usedAt = null; c.orderNo = ""; } } return m; });
   return next;
@@ -154,16 +155,35 @@ async function prepare(res, m, b) {
 async function cancel(res, m, b) {
   const o = await V.get(V.K.order(String(b.no || "")));
   if (!o || o.mid !== m.id) return fail(res, 404, "주문을 찾지 못했어요.");
-  if (!(o.pg && o.pg.st === "paid")) return fail(res, 409, "무통장 입금 주문은 환불 요청으로 처리해요. 계좌로 돌려드려요.");
-  const ok = await V.instantOf(o);
-  if (!ok.ok) return fail(res, 409, ok.why);
+  // 규칙(결제 후 N일 · 재생 전)은 화면과 같은 공용 모듈 · ‘재생’은 서버 기록(vp:)으로 다시 확인해요
+  const q = await V.instantOf(o);
+  if (!q.ok) return fail(res, 409, q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.");
+  // 가상계좌 · 무통장 입금은 환불 받을 계좌가 있어야 돌려드릴 수 있어요
+  const acct = q.acct ? refundAcct(b.refundAccount) : null;
+  if (q.acct && !acct) return fail(res, 400, "환불 받을 계좌(은행 · 계좌번호 · 예금주)를 정확히 적어 주세요.");
+  // 같은 주문을 두 번 취소하지 않게 잠가요 (끝나면 환불 완료로 바뀌고 · 실패하면 풀어요 · 2분 지나면 저절로 풀려요)
+  const t = Date.now();
+  let got = false;
+  await V.update(V.K.order(o.no), (x) => { got = false; if (!x || x.status !== "paid" || (x.rfLock && t - x.rfLock < 120e3)) return undefined; got = true; x.rfLock = t; return x; }); // 다시 쓰기(버전 충돌)마다 새로 판단
+  if (!got) return fail(res, 409, "환불을 처리하고 있어요. 잠시 뒤 주문 · 결제 내역을 확인해 주세요.");
   const rf = V.rfSet(await V.catalog()), orders = await V.ordersOf(m.id);
   const adds = rf.addons ? orders.filter((x) => x.grp === o.no && x.status === "paid" && !(x.coach && Number(x.coach.used) > 0)) : [];
-  const amount = o.amount + adds.reduce((a, x) => a + x.amount, 0);
+  const amount = o.amount + adds.reduce((a, x) => a + x.amount, 0), why = "회원 바로 취소 (결제 후 " + rf.days + "일 이내 · 재생 전)";
   let cancelId = "";
-  if (o.pg && o.pg.st === "paid" && amount > 0) { const r = await portone.cancelPayment(o.paymentId, amount, "회원 바로 취소 (결제 후 " + rf.days + "일 이내 · 미수강)"); cancelId = (r && r.cancellation && r.cancellation.id) || ""; }
-  for (const x of [o].concat(adds)) await markRefunded(x, x.amount, { kind: "instant", why: x === o ? "회원 바로 취소" : "함께 결제한 상품 같이 취소", by: "회원", cancel: { id: cancelId, at: Date.now() } }, rf.restore);
-  send(res, 200, { ok: true, cancelId, amount });
+  if ((q.way === "pg" || q.way === "vbank") && amount > 0) {
+    try {
+      const r = await portone.cancelPayment(o.paymentId, amount, why, q.way === "vbank" ? { bank: acct.bank, number: acct.number, holderName: acct.holder } : null);
+      cancelId = (r && r.cancellation && r.cancellation.id) || "";
+    } catch (e) {
+      console.error("[vod-pay] member cancel", o.no, e.message);
+      await V.update(V.K.order(o.no), (x) => { if (!x || x.rfLock !== t) return undefined; delete x.rfLock; return x; });
+      return fail(res, 502, "결제 취소에 실패했어요. 잠시 뒤 다시 시도하거나 고객센터로 알려 주세요.");
+    }
+  }
+  // 무통장: 주문은 바로 취소 · 돈은 마스터가 환불 계좌로 송금 (환불 · 취소 관리 ‘계좌 송금 대기’)
+  const pay = q.way === "bank" && amount > 0 ? Object.assign({}, acct, { amount, st: "wait", at: Date.now() }) : null;
+  for (const x of [o].concat(adds)) await markRefunded(x, x.amount, { kind: "instant", why: x === o ? "회원 바로 취소" : "함께 결제한 상품 같이 취소", by: "회원", cancel: { id: cancelId, at: Date.now() }, pay: x === o ? pay : null }, rf.restore);
+  send(res, 200, { ok: true, cancelId, amount, way: q.way });
 }
 async function cancelPending(res, m, b) {
   const o = await V.get(V.K.order(String(b.no || "")));

@@ -2576,6 +2576,8 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 .vs-strip-i span { font-size: 12px; color: var(--m-steel); }
 .vs-strip-now { background: var(--m-primary-200); }
 .vs-strip-now b { color: var(--m-primary-deep); font-size: 20px; }
+.vs-strip-i .vs-strip-rf { color: #b45309; font-weight: 700; }
+.vs-strip-i a.vs-strip-rf { text-decoration: underline; text-underline-offset: 2px; }
 /* 정산 달력 (강사) */
 .vc-card .a-cal-head { flex-wrap: wrap; gap: 8px; }
 .vc-sum { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
