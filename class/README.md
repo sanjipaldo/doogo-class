@@ -107,6 +107,16 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **서버 함수 지역 = 서울 `icn1`** (`vercel.json` `regions`, 2026-11-05 · A5): DB(Supabase 서울 ap-northeast-2)와 같은 곳에서 돌아 DB 왕복이 짧아요. Hobby 요금제는 지역 하나만 고를 수 있어요. 빌드는 그대로 미국 동부(iad1)라 배포 기록의 ‘왕복 ms’는 빌드 서버 기준이에요.
 - **A5 전 준비 운영 배포 (main `2b7e02d`, 2026-11-05)**: A1~A3 코드를 운영에 먼저 — 운영 Turso 문서 57개 · 배포 전 백업 90개 · 일회성 작업 없음 · **운영 Supabase 연결 확인**(Postgres 17.11 · 서울 · 6543 · 빈 DB) · 서버 오류 0. 이어서 Production `SESSION_SECRET` 을 새로 넣고 같은 커밋을 다시 배포 → 새 로그인은 `SESSION_SECRET` 으로 서명, 그 전 로그인(Turso 토큰 서명)도 그대로 유지. **Turso 토큰(`TURSO_AUTH_TOKEN`)은 2026-12-05 이후에 지워요**(A6 · 그 전에 지우면 그 전에 로그인한 사람이 로그아웃돼요).
 
+#### DB 전환 1부 A5 — 운영을 Supabase 로 (2026-11-05 · 끝)
+
+- **지금 운영 DB = Supabase**(doogo-prod · 서울 ap-northeast-2 · Shared Pooler 6543) · 서버 함수 = 서울 `icn1`. 미리보기 = Supabase(doogo-staging). Turso 는 되돌리기용으로만 남아 있어요(아래 A6).
+- **배포 세 번** (정식 오픈 전이라 사용자 없음 · 시간대 상관없이 바로):
+  1. Production `DC_READONLY=1` → 다시 배포(main `2b7e02d`) — 저장만 멈춤(503 ‘잠시 점검 중’) · 읽기 · 로그인은 그대로 · 배포 전 백업(Turso 문서 90개).
+  2. Production `DB_MOVE=turso-to-supabase` + `DB_DRIVER=supabase` + main `aab922a`(`vercel.json` `regions: ["icn1"]`) → `[db] 옮기기 Turso → Supabase (copy): 문서 90개 · 작업 기록 31개 · 백업 5개 · 확인: 문서마다 해시 맞음 · 51.1초` → 보안 · 보기 6개 · 배포 전 백업(Supabase) · 쓰기 멈춤 그대로.
+  3. Production `DC_READONLY=0` + `DB_MOVE=verify` → 다시 배포 → `[db] 비교 Turso ↔ Supabase: 같아요 · 문서 90→90 · 작업 기록 31→31` → 저장 다시 열림. 끝난 뒤 `DB_MOVE` 는 Development 로만(빌드가 안 읽어요 · 지워도 돼요).
+- **되돌리기 (문제가 생기면)**: ① Production `DC_READONLY=1` 로 다시 배포 ② `DB_MOVE=supabase-to-turso-since:<전환 시각 ms>`(전환 뒤 바뀐 것만) 또는 `supabase-to-turso`(전체 · 받는 쪽 먼저 백업)로 다시 배포 ③ `DB_DRIVER=turso` · `DC_READONLY=0` · `DB_MOVE` 끄고 다시 배포. 서버 함수 지역(`icn1`)은 그대로 둬도 돼요(Turso 가 멀어져 조금 느려질 뿐).
+- **A6 정리 (남은 일)**: Turso 는 2~4주(~2026-12-03) 보관 뒤 마지막 백업을 내려받고 해지 · Turso 토큰(`TURSO_AUTH_TOKEN`)은 **2026-12-05 이후** 지움(로그인 예전 키) · 그 뒤 Turso 연결 코드 · README 정리.
+
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
 ```bash
