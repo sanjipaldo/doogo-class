@@ -165,6 +165,7 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **시험**: 서버 시험 전체(578개)를 `DB_AREAS=all:off · dual · table · only` × SQLite · Postgres 로 · 39번은 실제 시험 데이터를 off → dual → table → only → off 로 옮기며 칸마다 내용 비교 · 칸 건너뛰기 · 내용 다름 멈춤 · 열 · 한 건씩 표 · only 에서 쓰기 · 버전 충돌 · 백업 · 되돌리기 · 배포 빌드. 화면 시험 `E2E_AREAS=all:only node scripts/e2e/run.js`.
 - **순서**: 미리보기(시험용 DB) `DB_AREAS=all:dual` → `all:table` → `all:only` (배포마다 기록 확인) → 운영도 같은 순서 (운영 배포는 따로 여쭤봐요).
 - **미리보기 기록 (2026-11-05 · next `996ea98` · 시험용 DB doogo-staging)**: Preview 환경 변수 `DB_AREAS` 를 `all:dual` → `all:table` → `all:only` 로 한 칸씩 바꿔 세 번 배포 — 칸마다 `[db] 2부 B2 … 맞음` (orders 9 · payments 3 · members 2 · member_logins 2 · vod_progress 1 · instructors 4 · cohort_lists 4(기수 3줄) · students 8 · progress 4 · contents 4 · settings 4(상품 · 쿠폰 · 운영자 50줄)) · only 에서 docs 의 그 문서 45개 정리 · 배포 전 백업은 칸마다 문서 46개 그대로 · 공개 데이터(`/api/bootstrap` 14개 문서)가 dual · table · only 에서 글자 하나 안 다름 · 서버 오류 0. 미국 빌드 서버 ↔ 서울 DB 왕복(약 180ms) 때문에 표 채우기가 배포마다 30~60초 더 걸려요.
+- **운영 1단계 (2026-11-06 · main `4bd0697`)**: 코드만 운영에 (영역 스위치 꺼짐 · 예전과 같게) — `[db] 저장된 문서 57개` · 표 35개 RLS · 배포 전 백업 문서 90개 · 사진 · 첨부 0개 · 공개 데이터(`/api/bootstrap`) 16개 문서. 운영 환경 변수 `DB_AREAS=all:dual` 은 넣어 두었고, 다음 운영 배포 때 dual(같이 쓰기 · 표 채움)로 맞춰요 → table → only.
 
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
