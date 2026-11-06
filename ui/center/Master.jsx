@@ -17,11 +17,11 @@ function InsTable() {
             <tr key={x.id}><td><b>{x.displayName}</b><small className="a-memo">{fmtMD(x.createdAt || today)} 개설</small></td>
               <td><Isl html={A.seedLoginWarn(x)} />{x.name} <span className="a-muted num">/ {canIns ? <button type="button" className="a-pw-peek" data-action="pw-peek" data-pw={x.phone4} title="눌러서 보기">••••</button> : "••••"}</span></td>
               <td>{c ? c.brand.courseTitle : "-"}</td>
-              <td><span className="a-ins-trk">{o.live ? <Pill cls="ok">두잉고 LIVE</Pill> : <span className="a-pill mute"><Icon n="lock" c="xs" />두잉고{rq.live ? " · 신청 중" : ""}</span>}{o.vod ? <Pill cls="dark">DOOGO CLASS</Pill> : <span className="a-pill mute"><Icon n="lock" c="xs" />DOOGO CLASS{rq.vod ? " · 신청 중" : ""}</span>}</span></td>
+              <td><span className="a-ins-trk">{o.live ? <Pill cls="trk-dg">두잉고 LIVE</Pill> : <span className="a-pill mute"><Icon n="lock" c="xs" />두잉고{rq.live ? " · 신청 중" : ""}</span>}{o.vod ? <Pill cls="trk-dc">DOOGO CLASS</Pill> : <span className="a-pill mute"><Icon n="lock" c="xs" />DOOGO CLASS{rq.vod ? " · 신청 중" : ""}</span>}</span></td>
               <td>{cos.length}개{cur ? <> <small className="a-memo">{cur.name + " " + DB.STATUS_LABEL[DB.cohortStatus(cur)]}</small></> : null}</td>
               <td className="num">{ss.filter((s) => s.status === "approved").length}명{pend ? <> <small className="a-memo">대기 {pend}</small></> : null}</td>
               <td className="num">{!canBill ? <span className="a-muted">-</span> : paid.length ? <>{won(A.sumMoney(paid, "supply"))} <small className="a-memo">{paid.length}개 기수</small></> : <span className="a-muted">-</span>}</td>
-              <td>{x.status === "active" ? <Pill cls="ok">운영 중</Pill> : <Pill cls="mute">중지</Pill>}</td>
+              <td>{x.status === "active" ? <Pill cls="ok">운영 중</Pill> : x.status === "removed" ? <Pill cls="mute">삭제됨</Pill> : <Pill cls="mute">중지</Pill>}</td>
               <td className="right"><div className="a-row-actions"><Btn action="ins-enter" cls="a-btn-primary a-btn-sm" data-id={x.id}>강사센터 접속</Btn>
                 <a className="a-btn a-btn-ghost a-btn-sm" href={"#/center/master/plan?ins=" + x.id}><Icon n="layers" c="sm" />기수 · 일정</a><a className="a-btn a-btn-ghost a-btn-sm" href={"#/center/master/menus?ins=" + x.id}><Icon n="sliders" c="sm" />메뉴·색상</a>
                 <a className="a-btn a-btn-ghost a-btn-sm" href={"#/free/" + x.id}><Icon n="video" c="sm" />무료강의</a><a className="a-btn a-btn-ghost a-btn-sm" href={"#/p/" + x.id}><Icon n="store" c="sm" />소개</a>

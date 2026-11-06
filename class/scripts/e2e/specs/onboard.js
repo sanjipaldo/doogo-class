@@ -55,7 +55,7 @@ module.exports = {
     await page.click('#modal-root button[type="submit"][form="vins-form"]');
     await page.waitForSelector("#ins-guide-ta", { timeout: 8000 }).catch(() => {});
     const done = await page.evaluate(() => ({ title: (document.querySelector("#modal-root .a-modal-title, #modal-root h2, #modal-root h3") || {}).textContent || "", body: (document.getElementById("modal-root") || {}).innerText || "", guide: (document.getElementById("ins-guide-ta") || {}).value || "" }));
-    await run.check(/VOD 강사 계정을 만들었어요/.test(done.title + done.body) && done.body.indexOf(vod.name) >= 0 && done.body.indexOf(vod.pin) >= 0 && /연결한 스토어 클래스\s*1개/.test(done.body) && /\/center\/login/.test(done.guide) && done.guide.indexOf("아이디 " + vod.name) >= 0 && done.guide.indexOf(vod.pin) < 0,
+    await run.check(/VOD 강사 계정을 만들었어요/.test(done.title + done.body) && done.body.indexOf(vod.name) >= 0 && done.body.indexOf(vod.pin) >= 0 && /연결한 두고클래스 강의\s*1개/.test(done.body) && /\/center\/login/.test(done.guide) && done.guide.indexOf("아이디 " + vod.name) >= 0 && done.guide.indexOf(vod.pin) < 0,
       "등록 결과 창: 아이디 · 비밀번호 · 연결한 클래스 1개 + 강사님께 보낼 안내(강사센터 주소 · 아이디, 비밀번호 숫자는 안 넣음)", { title: done.title, guide: done.guide }, page);
     await page.click('#modal-root [data-action="modal-close"]').catch(() => {});
     await page.waitForTimeout(400);
@@ -88,8 +88,8 @@ module.exports = {
     await page.click('#modal-root button[type="submit"][form="ext-link-form"]');
     await page.waitForTimeout(500);
     const lk = await page.evaluate(([pid2, vid]) => { const q = DB.inquiries().find((x) => x.id === vid) || {}; return { ok: (window.ADM.VD().products.find((p) => p.id === pid2) || {}).iid === q.iid }; }, [pid2, vid]);
-    await run.check(new RegExp("‘" + vod.nick + "’ 이름으로 올린 클래스 1개가 아직 이 계정과 연결돼 있지 않아요").test(hint) && pre3 && lk.ok && /스토어 클래스 1개를 연결했어요/.test(await L.toasts(page)),
-      "계정이 있는데 같은 이름 외부 클래스가 남아 있으면: 계정 칸 안내 → ‘스토어 클래스 연결’(미리 체크) → 그 계정 클래스로", { hint: hint.slice(0, 120), pre3, lk }, page);
+    await run.check(new RegExp("‘" + vod.nick + "’ 이름으로 올린 클래스 1개가 아직 이 계정과 연결돼 있지 않아요").test(hint) && pre3 && lk.ok && /두고클래스 강의 1개를 연결했어요/.test(await L.toasts(page)),
+      "계정이 있는데 같은 이름 외부 클래스가 남아 있으면: 계정 칸 안내 → ‘두고클래스 연결’(미리 체크) → 그 계정 클래스로", { hint: hint.slice(0, 120), pre3, lk }, page);
     await L.flushed(page);
 
     // 같은 이름(띄어쓰기 다르게) + 뒷자리로 또 만들면 막아요 — 강사 플랫폼 관리 › VOD 강사 등록
@@ -141,6 +141,41 @@ module.exports = {
     await page.click('article.a-inq[data-inq="' + lid + '"] .a-inq-row'); await page.waitForTimeout(400);
     const gone = (await L.text(page, 'article.a-inq[data-inq="' + lid + '"] .a-inq-reg')) || "";
     await run.check(/연결된 강사 계정을 찾지 못했어요/.test(gone) && !!(await page.$('article.a-inq[data-inq="' + lid + '"] [data-action="inq-make"]')), "연결된 강사 계정이 없어지면 카드에 ‘계정을 찾지 못했어요’ + 다시 등록 버튼 (예전엔 버튼이 사라졌어요)", gone.slice(0, 120), page);
+
+    // 5) DOOGO CLASS › 강사 관리 (2026-11-06): 메뉴 · 로고 → 카드(옮긴 클래스 · 정산 비율) → 계정 · 정보 수정(뒷자리 · 정산 유형) → 새 뒷자리로 로그인
+    //    → 강사 삭제(로그인 막힘 · 스토어 숨김 · ‘삭제한 강사’) → 되살리기(다시 로그인)
+    await FL.master(page, base, info);
+    await L.open(page, base, "/center/master/vod-ins");
+    const viId = await page.evaluate((nm) => (DB.data.instructors.find((x) => x.name === nm) || {}).id || "", vod.name);
+    const vi = await page.evaluate(([iid, ptitle]) => { const c = document.querySelector('.vi-card[data-vi="' + iid + '"]');
+      return { nav: !!document.querySelector('.a-nav[href="#/center/master/vod-ins"].on'), logo: !!document.querySelector(".a-top .a-logo-home.a-logo-dc img.a-dc-word"), card: !!c, cls: !!c && c.innerText.indexOf(ptitle) >= 0, rate: !!c && /VOD 강의 60%/.test(c.innerText.replace(/\s+/g, " ")) }; }, [viId, ptitle]);
+    await run.check(viId && vi.nav && vi.logo && vi.card && vi.cls && vi.rate, "DOOGO CLASS › 강사 관리: 왼쪽 메뉴 · DOOGO CLASS 로고 · 강사 카드에 옮긴 클래스 · 정산 비율(VOD 60%)", vi, page);
+    await page.click('.vi-card[data-vi="' + viId + '"] [data-action="vins-edit"]');
+    await page.waitForSelector("#vins-edit-form #ve-pw");
+    await page.fill("#ve-pw", "9753"); await page.selectOption("#ve-type", "biz");
+    await page.click('#modal-root button[type="submit"][form="vins-edit-form"]');
+    await page.waitForTimeout(400); await L.flushed(page);
+    const ed = await page.evaluate((iid) => { const x = DB.instructor(iid) || {}; return { pw: x.phone4, t: (x.vodSettle || {}).type, by: (x.vodSettle || {}).typeBy }; }, viId);
+    await FL.adminLogin(page, base, "instructor", vod.name, "9753");
+    const r9 = await page.evaluate(() => (DB.session.admin() || {}).role || "");
+    await run.check(ed.pw === "9753" && ed.t === "biz" && ed.by === "master" && r9 === "instructor", "계정 · 정보 수정: 뒷자리(비밀번호) · 정산 유형(사업자 · 마스터가 정함) 저장 → 새 뒷자리로 강사센터 로그인", { ed, r9 }, page);
+    await FL.master(page, base, info);
+    await L.open(page, base, "/center/master/vod-ins");
+    await page.click('.vi-card[data-vi="' + viId + '"] [data-action="vins-del"]');
+    await page.waitForSelector('#modal-root [data-action="confirm-ok"]');
+    await page.click('#modal-root [data-action="confirm-ok"]');
+    await page.waitForTimeout(400); await L.flushed(page);
+    const del = await page.evaluate(([iid, pid]) => ({ st: (DB.instructor(iid) || {}).status, off: window.VOD.insOff().indexOf(iid) >= 0, card: !!document.querySelector('.vi-card[data-vi="' + iid + '"]'), gone: !!document.querySelector('.vi-gone [data-action="vins-restore"][data-id="' + iid + '"]'), prod: !!window.VOD.product(pid) }), [viId, pid]);
+    await FL.adminLogin(page, base, "instructor", vod.name, "9753");
+    const rDel = await page.evaluate(() => (DB.session.admin() || {}).role || "");
+    await run.check(del.st === "removed" && del.off && !del.card && del.gone && del.prod && !rDel, "강사 삭제: 계정 ‘삭제됨’ · 스토어 숨김 · 목록에서 빠지고 ‘삭제한 강사’로 · 클래스 · 기록은 남음 · 강사센터 로그인 막힘", { del, rDel }, page);
+    await FL.master(page, base, info);
+    await L.open(page, base, "/center/master/vod-ins");
+    await page.click('.vi-gone [data-action="vins-restore"][data-id="' + viId + '"]');
+    await page.waitForTimeout(400); await L.flushed(page);
+    await FL.adminLogin(page, base, "instructor", vod.name, "9753");
+    const rBack = await page.evaluate(() => (DB.session.admin() || {}).role || "");
+    await run.check(rBack === "instructor", "되살리기 → 다시 강사센터 로그인 · 스토어 노출", rBack, page);
     await page.context().close();
   }
 };

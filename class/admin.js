@@ -433,7 +433,7 @@
     ["시스템", [["master/staff", "운영자 · 활동 기록", "shieldCheck"], ["master/data", "데이터 관리", "database"]]]
   ];
   /* 마스터 관리 영역: 두잉고(강사 플랫폼 · 기수 운영) / DOOGO CLASS(VOD 스토어 · 회원 · 주문) — 왼쪽 위 탭으로 오가요 */
-  const DC_ROUTES = ["dc", "vod", "vod-classes", "vod-members", "vod-display", "vod-inquiries", "vod-recruit", "vod-crm", "vod-seg", "vod-msg", "vod-crm-rp", "vod-refund", "vod-ship", "vod-sales", "vod-rank", "vod-ads", "vod-settle", "vod-rates", "vod-home", "vod-media", "vod-media-rs", "vod-media-pay"];
+  const DC_ROUTES = ["dc", "vod", "vod-ins", "vod-classes", "vod-members", "vod-display", "vod-inquiries", "vod-recruit", "vod-crm", "vod-seg", "vod-msg", "vod-crm-rp", "vod-refund", "vod-ship", "vod-sales", "vod-rank", "vod-ads", "vod-settle", "vod-rates", "vod-home", "vod-media", "vod-media-rs", "vod-media-pay"];
   const MT = () => (ui.mtab === "dc" ? "dc" : "dg");
   const vdIqOpen = () => (VD().inquiries || []).filter((x) => !x.answer).length;
   const vdRecruitNew = () => DB.inquiries().filter((x) => inqIsVod(x) && (x.status || "new") === "new").length;
@@ -443,7 +443,7 @@
     ["회원 · CRM", [["master/vod-crm", "회원 DB", "users"], ["master/vod-seg", "세그먼트", "target"], ["master/vod-msg", "메시지 · 자동화", "send"], ["master/vod-crm-rp", "회원 분석", "activity"]]],
     ["클래스 · 전시", [["master/vod-classes", "VOD 클래스 관리", "monitorPlay"], ["master/vod-home", "홈 꾸미기", "home"], ["master/vod-display", "전시 · 쿠폰 · 설정", "layers"]]],
     ["온드미디어 RS", [["master/vod-media", "온드미디어 계정", "monitorPlay"], ["master/vod-media-rs", "채널 성과 · 홍보 링크", "link"], ["master/vod-media-pay", "RS 정산", "calculator", mdTodo() || ""]]],
-    ["크리에이터", [["master/vod-recruit", "두고 파트너스 지원", "handshake", vdRecruitNew() || ""]]]
+    ["강사 · 크리에이터", [["master/vod-ins", "강사 관리", "users"], ["master/vod-recruit", "두고 파트너스 지원", "handshake", vdRecruitNew() || ""]]]
   ];
   const masterNav = () => { const g = staffNav(MT() === "dc" ? masterDcNavRaw() : masterNavRaw()); return staffMe() ? g.map((x) => [x[0], x[1].filter((it) => it[0] !== "master/staff")]).filter((x) => x[1].length) : g; };
   function masterSwitch() {
@@ -480,7 +480,8 @@
         '<header class="a-top' + (ins && isCoach() && myCoachCourses().length > 1 ? " has-csw" : "") + '">' +
           '<button class="a-icon-btn a-menu" type="button" data-action="toggle-nav" aria-label="메뉴">' + icon("menu") + "</button>" +
           // 로고는 두잉고 첫 화면(/doinggo)으로, 옆의 ‘강사센터’ 글자는 이 센터 첫 화면으로
-          '<span class="a-logo"><a class="a-logo-home" href="#/doinggo" title="두잉고 홈으로" aria-label="두잉고 홈으로">' + window.doogoClassLock("hm-lock-xs") + '</a><a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "파트너센터" : media ? "온드미디어 센터" : master ? (MT() === "dc" ? "DOOGO CLASS 관리" : "마스터 관리자") : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + "</span>" +
+          // 관리 영역 탭이 DOOGO CLASS 면 로고도 DOOGO CLASS (마스터 · 강사 · 코치 — 탭이 있는 센터 모두 · 2026-11-06)
+          (() => { const dcL = master ? MT() === "dc" : !!ins && TRK() === "vod"; return '<span class="a-logo"><a class="a-logo-home' + (dcL ? " a-logo-dc" : "") + '" href="' + (dcL ? "#/vod" : "#/doinggo") + '" title="' + (dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로") + '" aria-label="' + (dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로") + '">' + (dcL ? '<img class="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">' : window.doogoClassLock("hm-lock-xs")) + '</a>'; })() + '<a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "파트너센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + "</span>" +
           '<div class="a-top-right">' +
             (ins ? '<span class="a-chip a-hide-sm' + (TRK() === "vod" ? " a-chip-vod" : "") + '">' + (TRK() === "vod" ? "DOOGO CLASS · VOD 수강생 " + VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? esc(co.name) + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음") + "</span>" +
               // 수강생 화면 미리보기 — 휴대폰에서도 ‘수강생 화면 미리보기’ (그냥 ‘미리보기’면 뭘 보는지 몰라서 · 2026-11-06)
@@ -2216,7 +2217,7 @@
   }
   // 이 이름들(지원서 이름 · 활동명 · 계정 이름)과 같은 외부 강사면 미리 체크
   const extNames = (list) => list.map(loginNorm).filter(Boolean);
-  const extChecks = (gs, names) => '<fieldset class="a-perm-group a-ext-pick"><legend>스토어에 두잉고 계정 없이 올린 클래스</legend>' + gs.map((g) => '<label class="a-check"><input type="checkbox" name="ext" value="' + esc(g.name) + '"' + (names.indexOf(loginNorm(g.name)) >= 0 ? " checked" : "") + "><span><b>" + esc(g.name) + "</b> · 클래스 " + g.ps.length + "개" + (g.orders ? " · 팔린 주문 " + g.orders + "건" : "") + '<small class="a-muted">' + esc(g.ps.map((p) => p.title).join(" · ").slice(0, 140)) + "</small></span></label>").join("") + "</fieldset>";
+  const extChecks = (gs, names) => '<fieldset class="a-perm-group a-ext-pick"><legend>두고클래스에 두잉고 계정 없이 올린 클래스</legend>' + gs.map((g) => '<label class="a-check"><input type="checkbox" name="ext" value="' + esc(g.name) + '"' + (names.indexOf(loginNorm(g.name)) >= 0 ? " checked" : "") + "><span><b>" + esc(g.name) + "</b> · 클래스 " + g.ps.length + "개" + (g.orders ? " · 팔린 주문 " + g.orders + "건" : "") + '<small class="a-muted">' + esc(g.ps.map((p) => p.title).join(" · ").slice(0, 140)) + "</small></span></label>").join("") + "</fieldset>";
   /** 강사님께 보낼 로그인 안내 (비밀번호 숫자는 안 넣어요 — 본인 전화번호 뒷자리) */
   function insGuideText(acc) {
     const o = DB.tracksOf(acc), vodOnly = o.vod && !o.live, liveOnly = o.live && !o.vod;
@@ -2233,7 +2234,7 @@
       '<div class="a-trk-lead ok">' + icon("check", "sm") + "<div><b>" + esc(acc.displayName) + " 강사님이 지금 바로 로그인할 수 있어요</b><p>강사센터 로그인 → ‘강사’ 탭에서 아래 아이디 · 비밀번호를 넣으면 " +
         (vodOnly ? "<b>DOOGO CLASS(VOD) 탭</b>이 열리고 두잉고(LIVE) 탭은 자물쇠예요." : o.live && !o.vod ? "<b>두잉고(LIVE) 탭</b>이 열리고 DOOGO CLASS(VOD) 탭은 자물쇠예요." : "두잉고(LIVE) · DOOGO CLASS(VOD) 탭이 모두 열려요.") + (acc.status === "active" ? "" : " 지금은 ‘멈춤’이라 로그인이 막혀 있어요.") + "</p></div></div>" +
       '<dl class="a-inq-info a-inq-acc-dl"><div><dt>아이디 (강사 이름)</dt><dd><b>' + esc(acc.name) + "</b></dd></div><div><dt>비밀번호</dt><dd>전화번호 뒷자리 <b>" + esc(acc.phone4) + "</b></dd></div>" +
-        (linked ? "<div><dt>연결한 스토어 클래스</dt><dd>" + linked + "개 — 강사센터 DOOGO CLASS 탭에 보여요</dd></div>" : "") + "</dl>" +
+        (linked ? "<div><dt>연결한 두고클래스 강의</dt><dd>" + linked + "개 — 강사센터 DOOGO CLASS 탭에 보여요</dd></div>" : "") + "</dl>" +
       '<div class="a-field"><label for="ins-guide-ta">강사님께 보낼 안내 <small>(카카오톡 · 문자로 보내 주세요)</small></label><textarea class="a-input" id="ins-guide-ta" rows="6" readonly>' + esc(insGuideText(acc)) + "</textarea></div>",
       '<span class="a-spacer"></span>' + btn("닫기", "modal-close") + btn(icon("clipboard", "sm") + "안내 복사", "ins-guide-copy", "a-btn-primary"), "md");
   }
@@ -2256,16 +2257,16 @@
         '<span class="a-inq-acc-pills">' + (acc.status === "active" ? pill("사용 중", "ok") : pill("멈춤 · 로그인 안 됨", "warn")) + tp("vod", "DOOGO CLASS") + tp("live", "두잉고") + "</span></div>" +
       '<dl class="a-inq-info"><div><dt>아이디 (강사 이름)</dt><dd><b>' + esc(acc.name) + "</b></dd></div><div><dt>비밀번호</dt><dd>전화번호 뒷자리 <b>" + esc(acc.phone4) + "</b></dd></div>" +
         "<div><dt>보이는 이름</dt><dd>" + esc(acc.displayName) + "</dd></div><div><dt>" + (o.vod ? "DOOGO CLASS 클래스" : "LIVE 기수") + "</dt><dd>" + (o.vod ? (mine.length ? mine.length + "개 연결됨" : "아직 없어요") : (cos.length ? cos.length + "개" : "아직 없어요")) + "</dd></div></dl>" +
-      (ext.length ? '<p class="a-inq-acc-ext' + (hit.length ? " hit" : "") + '">' + icon("link", "xs") + "<span>" + (hit.length ? "스토어에 ‘" + esc(hit.map((g) => g.name).join(", ")) + "’ 이름으로 올린 클래스 " + hit.reduce((a, g) => a + g.ps.length, 0) + "개가 아직 이 계정과 연결돼 있지 않아요. 연결하면 강사님 강사센터 DOOGO CLASS 탭에서 판매 · 정산 · 수강생 강의실을 볼 수 있어요." : "스토어에 두잉고 계정 없이 올린 클래스가 있어요. 이 강사님 것이면 연결해 주세요.") + "</span></p>" : "") +
-      '<div class="a-row-actions">' + (ext.length ? btn(icon("link", "sm") + "스토어 클래스 연결", "inq-link", hit.length ? "a-btn-primary a-btn-sm" : "a-btn-outline a-btn-sm", id) : "") +
+      (ext.length ? '<p class="a-inq-acc-ext' + (hit.length ? " hit" : "") + '">' + icon("link", "xs") + "<span>" + (hit.length ? "두고클래스에 ‘" + esc(hit.map((g) => g.name).join(", ")) + "’ 이름으로 올린 클래스 " + hit.reduce((a, g) => a + g.ps.length, 0) + "개가 아직 이 계정과 연결돼 있지 않아요. 연결하면 강사님 강사센터 DOOGO CLASS 탭에서 판매 · 정산 · 수강생 강의실을 볼 수 있어요." : "두고클래스에 두잉고 계정 없이 올린 클래스가 있어요. 이 강사님 것이면 연결해 주세요.") + "</span></p>" : "") +
+      '<div class="a-row-actions">' + (ext.length ? btn(icon("link", "sm") + "두고클래스 연결", "inq-link", hit.length ? "a-btn-primary a-btn-sm" : "a-btn-outline a-btn-sm", id) : "") +
         btn(icon("clipboard", "sm") + "로그인 안내", "inq-guide", "a-btn-outline a-btn-sm", id) + btn(icon("pen", "sm") + "강사 계정 수정", "ins-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(acc.id) + '"') + "</div></div>";
   }
-  /** ‘스토어 클래스 연결’ 창 — 지원서 · 계정 이름과 같은 외부 강사는 미리 체크 */
+  /** ‘두고클래스 연결’ 창 — 지원서 · 계정 이름과 같은 외부 강사는 미리 체크 */
   function linkExtForm(inqId) {
     const x = findInq(inqId), acc = inqAcc(x); if (!acc) { toast("강사 계정을 찾지 못했어요.", "warn"); return; }
-    const gs = extGroups(); if (!gs.length) { toast("연결할 스토어 클래스가 없어요."); return; }
-    openModal("스토어 클래스를 " + acc.displayName + " 계정으로",
-      '<form id="ext-link-form" class="a-form" data-iid="' + esc(acc.id) + '" novalidate><p class="a-hint">' + icon("link", "xs") + "<span>고른 크리에이터의 클래스 강사가 <b>" + esc(acc.displayName) + "</b> 계정으로 바뀌어요. 강사님 강사센터 DOOGO CLASS 탭에서 판매 · 정산 · VOD 수강생 강의실을 보고, 스토어 노출 · 정산 비율 · 강사진 순서는 그대로 옮겨요. 이미 팔린 주문도 이 강사 정산에 들어가요.</span></p>" +
+    const gs = extGroups(); if (!gs.length) { toast("연결할 두고클래스 강의가 없어요."); return; }
+    openModal("두고클래스 강의를 " + acc.displayName + " 계정으로",
+      '<form id="ext-link-form" class="a-form" data-iid="' + esc(acc.id) + '" novalidate><p class="a-hint">' + icon("link", "xs") + "<span>고른 크리에이터의 클래스 강사가 <b>" + esc(acc.displayName) + "</b> 계정으로 바뀌어요. 강사님 강사센터 DOOGO CLASS 탭에서 판매 · 정산 · VOD 수강생 강의실을 보고, 두고클래스 노출 · 정산 비율 · 강사진 순서는 그대로 옮겨요. 이미 팔린 주문도 이 강사 정산에 들어가요.</span></p>" +
         extChecks(gs, extNames([acc.displayName, (x.form || {}).nick, x.name, acc.name])) + '<p class="a-error" id="xl-error"></p></form>',
       '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="ext-link-form">' + icon("link", "sm") + "연결하기</button>", "md");
   }
@@ -2276,7 +2277,7 @@
     const names = Array.from(f.querySelectorAll("input[name=ext]:checked")).map((i) => i.value);
     if (!names.length) { err.textContent = "연결할 크리에이터를 골라 주세요."; return; }
     const n = names.reduce((a, nm) => a + linkExt(nm, acc.id), 0);
-    commit(acc.displayName + " 계정에 스토어 클래스 " + n + "개를 연결했어요. 강사님 강사센터 DOOGO CLASS 탭에 보여요.");
+    commit(acc.displayName + " 계정에 두고클래스 강의 " + n + "개를 연결했어요. 강사님 강사센터 DOOGO CLASS 탭에 보여요.");
   }
   /** 복사 (안 되면 글 상자를 골라 두고 안내) */
   function copyOut(text, msg, ta) {
@@ -3071,10 +3072,10 @@
           const c = DB.content(x.id), cos = DB.cohortsOf(x.id), cur = DB.currentCohort(x.id);
           const ss = DB.studentsOf(x.id), paid = DB.bills(x.id).filter((b) => !b.canceledAt && b.paidAt);
           return "<tr><td><b>" + esc(x.displayName) + '</b><small class="a-memo">' + fmtMD(x.createdAt || todayStr()) + " 개설</small></td><td>" + seedLoginWarn(x) + esc(x.name) + ' <span class="a-muted num">/ ' + (staffCan("master/instructors") ? '<button type="button" class="a-pw-peek" data-action="pw-peek" data-pw="' + esc(x.phone4) + '" title="눌러서 보기">••••</button>' : "••••") + "</span></td><td>" + esc(c ? c.brand.courseTitle : "-") + "</td>" +
-            "<td>" + (() => { const o = DB.tracksOf(x), rq = x.trackReq || {}; return '<span class="a-ins-trk">' + (o.live ? pill("두잉고 LIVE", "ok") : '<span class="a-pill mute">' + icon("lock", "xs") + "두잉고" + (rq.live ? " · 신청 중" : "") + "</span>") + (o.vod ? pill("DOOGO CLASS", "dark") : '<span class="a-pill mute">' + icon("lock", "xs") + "DOOGO CLASS" + (rq.vod ? " · 신청 중" : "") + "</span>") + "</span>"; })() + "</td>" +
+            "<td>" + (() => { const o = DB.tracksOf(x), rq = x.trackReq || {}; return '<span class="a-ins-trk">' + (o.live ? pill("두잉고 LIVE", "trk-dg") : '<span class="a-pill mute">' + icon("lock", "xs") + "두잉고" + (rq.live ? " · 신청 중" : "") + "</span>") + (o.vod ? pill("DOOGO CLASS", "trk-dc") : '<span class="a-pill mute">' + icon("lock", "xs") + "DOOGO CLASS" + (rq.vod ? " · 신청 중" : "") + "</span>") + "</span>"; })() + "</td>" +
             "<td>" + cos.length + "개" + (cur ? ' <small class="a-memo">' + esc(cur.name) + " " + DB.STATUS_LABEL[DB.cohortStatus(cur)] + "</small>" : "") + '</td><td class="num">' + ss.filter((s) => s.status === "approved").length + "명" + (ss.filter((s) => s.status === "pending").length ? ' <small class="a-memo">대기 ' + ss.filter((s) => s.status === "pending").length + "</small>" : "") + "</td>" +
             '<td class="num">' + (!staffCan("master/billing") ? '<span class="a-muted">-</span>' : paid.length ? won(sumMoney(paid, "supply")) + ' <small class="a-memo">' + paid.length + "개 기수</small>" : '<span class="a-muted">-</span>') + "</td>" +
-            "<td>" + (x.status === "active" ? pill("운영 중", "ok") : pill("중지", "mute")) + '</td><td class="right"><div class="a-row-actions">' +
+            "<td>" + (x.status === "active" ? pill("운영 중", "ok") : x.status === "removed" ? pill("삭제됨", "mute") : pill("중지", "mute")) + '</td><td class="right"><div class="a-row-actions">' +
             btn("강사센터 접속", "ins-enter", "a-btn-primary a-btn-sm", ' data-id="' + x.id + '"') + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/center/master/plan?ins=' + x.id + '">' + icon("layers", "sm") + "기수 · 일정</a>" + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/center/master/menus?ins=' + x.id + '">' + icon("sliders", "sm") + "메뉴·색상</a>" + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/free/' + x.id + '">' + icon("video", "sm") + "무료강의</a>" + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/p/' + x.id + '">' + icon("store", "sm") + "소개</a>" + btn("수정", "ins-edit", "a-btn-ghost a-btn-sm", ' data-id="' + x.id + '"') + "</div></td></tr>";
         }).join("") + "</tbody></table></div>" : emptyBox("store", "강사 플랫폼이 없어요.")) + "</section>";
   }
@@ -3119,7 +3120,7 @@
             '<div class="a-form-row"><label class="a-check"><input type="checkbox" name="paid"><span>입금 확인됨 (오늘)</span></label><label class="a-check"><input type="checkbox" name="invoiced"><span>세금계산서 발행됨 (오늘)</span></label></div>' +
             '<small class="a-muted">1인 수강료를 적으면 ‘기수 신청 · 매출’에 1기 이용료가 기록돼요. 비워 두면 기록 없이 만들어요.</small></fieldset>' +
           '<div class="a-field"><span class="a-label">수강생 화면 색상</span>' + themePicker("orange", "itheme") + "</div>"
-          : '<div class="a-field"><label for="if-status">상태</label><select class="a-input" id="if-status" name="status"><option value="active"' + (x.status === "active" ? " selected" : "") + '>운영 중</option><option value="paused"' + (x.status !== "active" ? " selected" : "") + ">운영 중지 (강사·수강생 로그인 막기)</option></select></div>" +
+          : '<div class="a-field"><label for="if-status">상태</label><select class="a-input" id="if-status" name="status"><option value="active"' + (x.status === "active" ? " selected" : "") + '>운영 중</option><option value="paused"' + (x.status === "paused" ? " selected" : "") + ">운영 중지 (강사·수강생 로그인 막기)</option>" + (x.status === "removed" ? '<option value="removed" selected>삭제됨 (DOOGO CLASS › 강사 관리에서 되살려요)</option>' : "") + "</select></div>" +
             '<div class="a-field"><span class="a-label">열린 영역 <small>(체크를 빼면 강사센터에서 그 탭이 자물쇠로 잠겨요)</small></span><div class="a-ins-tracks">' +
               '<label class="a-check"><input type="checkbox" name="trkLive"' + (op.live ? " checked" : "") + "><span><b>두잉고 (LIVE 두잉고)</b><small class=\"a-muted\">기수 · 주차 · 과제 · 수강생 로그인 강사 목록" + (rq.live ? " · 강사님이 입점 신청 중" : "") + "</small></span></label>" +
               '<label class="a-check"><input type="checkbox" name="trkVod"' + (op.vod ? " checked" : "") + "><span><b>DOOGO CLASS (VOD)</b><small class=\"a-muted\">VOD 판매 · 정산 · VOD 수강생 강의실" + (rq.vod ? " · 강사님이 입점 신청 중" : "") + "</small></span></label></div></div>" +
@@ -3137,7 +3138,7 @@
         '<p class="a-hint">' + icon("monitorPlay", "xs") + "<span>DOOGO CLASS에 VOD를 올릴 강사님의 강사센터 계정을 만들어요. 강사님은 강사센터에 <b>이름 + 전화번호 뒷자리</b>로 로그인해서 <b>DOOGO CLASS 탭</b>(VOD 판매 · 정산 · VOD 수강생 강의실 · 1:1 코칭 · TEA TIME)을 써요. 기수 · 1인 수강료는 없고 VOD 판매 정산으로 정산해요. 두잉고(LIVE) 탭은 잠겨 있고, 강사님이 자물쇠를 눌러 신청하면 ‘강사 입점 문의’로 들어와요.</span></p>" +
         '<div class="a-form-row"><div class="a-field"><label for="vf-name">강사 이름 <small>(강사센터 로그인)</small></label><input class="a-input" id="vf-name" name="name" maxlength="20" value="' + esc(pre.name || "") + '"></div>' +
         '<div class="a-field"><label for="vf-phone4">전화번호 뒷자리 <small>(비밀번호)</small></label><input class="a-input" id="vf-phone4" name="phone4" inputmode="numeric" maxlength="4" value="' + esc(ph4) + '"></div></div>' +
-        '<div class="a-field"><label for="vf-display">DOOGO CLASS에 보이는 이름 <small>(활동명)</small></label><input class="a-input" id="vf-display" name="displayName" maxlength="20" value="' + esc(F.nick || pre.name || "") + '" placeholder="예: 셀러훈"><small class="a-muted">강사센터 · VOD 수강생 강의실에 보여요. 스토어 클래스의 강사 이름은 VOD 클래스 관리에서 따로 정할 수 있어요.</small></div>' +
+        '<div class="a-field"><label for="vf-display">DOOGO CLASS에 보이는 이름 <small>(활동명)</small></label><input class="a-input" id="vf-display" name="displayName" maxlength="20" value="' + esc(F.nick || pre.name || "") + '" placeholder="예: 셀러훈"><small class="a-muted">강사센터 · VOD 수강생 강의실에 보여요. 두고클래스 강의의 강사 이름은 VOD 클래스 관리에서 따로 정할 수 있어요.</small></div>' +
         '<div class="a-field"><label for="vf-course">대표 클래스 이름 <small>(선택)</small></label><input class="a-input" id="vf-course" name="courseTitle" maxlength="60" value="' + esc(String(F.topic || "").slice(0, 60)) + '" placeholder="예: 광고 없이 월 100 버는 중국 구매대행"></div>' +
         '<div class="a-form-row"><div class="a-field"><label for="vf-cphone">연락처</label><input class="a-input" id="vf-cphone" name="cphone" type="tel" maxlength="20" value="' + esc(pre.phone || "") + '" placeholder="010-0000-0000"></div>' +
         '<div class="a-field"><label for="vf-email">이메일 <small>(정산 · 안내 받을 곳)</small></label><input class="a-input" id="vf-email" name="email" type="email" maxlength="100" value="' + esc(pre.email || "") + '"></div></div>' +
@@ -3170,7 +3171,7 @@
     }
     // 스토어에 먼저 올린 이 강사님 클래스(외부 크리에이터)를 이 계정으로
     const linked = Array.from(f.querySelectorAll("input[name=ext]:checked")).reduce((a, i) => a + linkExt(i.value, nid), 0);
-    commit(displayName + " VOD 강사 계정을 만들었어요. 강사센터 로그인: " + name + " / 전화번호 뒷자리" + (linked ? " · 스토어 클래스 " + linked + "개 연결" : " · DOOGO CLASS › VOD 클래스 관리에서 이 강사님 클래스를 만들어 주세요."));
+    commit(displayName + " VOD 강사 계정을 만들었어요. 강사센터 로그인: " + name + " / 전화번호 뒷자리" + (linked ? " · 두고클래스 강의 " + linked + "개 연결" : " · DOOGO CLASS › VOD 클래스 관리에서 이 강사님 클래스를 만들어 주세요."));
     insDoneModal(DB.instructor(nid), linked);
   }
   function saveIns(f) {
@@ -3287,7 +3288,7 @@
   }
   const vdRqTxt = (o) => (o.refundReq && typeof o.refundReq === "object" ? "회원 환불 요청 · " + o.refundReq.why + (o.refundReq.text ? " · " + o.refundReq.text : "") : "강사 취소 · 환불 필요");
   const vdThumb = (p, cls) => '<span class="vda-th ' + (cls || "") + '">' + VX().thumbArt(p) + "</span>";
-  const vdInsOpts = (sel) => '<option value="">외부 크리에이터 (강사 플랫폼 없음)</option>' + DB.data.instructors.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === sel ? " selected" : "") + ">" + esc(vdName(x.id) !== x.displayName ? vdName(x.id) + " · 두잉고 " + x.displayName : x.displayName) + " (" + esc(x.name) + ")" + (DB.tracksOf(x).vod ? "" : " · DOOGO CLASS 잠김") + "</option>").join(""); // DOOGO CLASS 이름이 따로 있으면 함께 (유나 · 두잉고 초이) · 잠긴 강사는 강사센터에서 판매가 안 보여요
+  const vdInsOpts = (sel) => '<option value="">외부 크리에이터 (강사 플랫폼 없음)</option>' + DB.data.instructors.filter((x) => x.status !== "removed" || x.id === sel).map((x) => '<option value="' + esc(x.id) + '"' + (x.id === sel ? " selected" : "") + ">" + esc(vdName(x.id) !== x.displayName ? vdName(x.id) + " · 두잉고 " + x.displayName : x.displayName) + " (" + esc(x.name) + ")" + (DB.tracksOf(x).vod ? "" : " · DOOGO CLASS 잠김") + "</option>").join(""); // DOOGO CLASS 이름이 따로 있으면 함께 (유나 · 두잉고 초이) · 잠긴 강사는 강사센터에서 판매가 안 보여요
   const vdStoreBtn = (href, label) => '<button type="button" class="a-btn a-btn-ghost" data-action="store-split" data-href="' + esc(href || "#/vod") + '">' + icon("layers", "sm") + (label || "스토어 미리보기") + "</button>";
 
   /* ---------- 1) VOD 매출 · 주문 · 강사 정산 ---------- */
@@ -3985,6 +3986,124 @@
     if (!list.length) return "";
     return '<section class="a-card vda-ins"><div class="a-card-head"><h2>강사 스토어 노출</h2><span class="a-muted">끄면 그 강사의 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 새로 살 수 없어요. 클래스는 지우지 않아서 다시 켜면 그대로 돌아와요. 이미 산 회원은 내 강의실에서 계속 들어요.</span></div><div class="vda-ins-g">' +
       list.map((t) => { const on = off.indexOf(t.k) < 0; return '<div class="vda-ins-i' + (on ? "" : " off") + '"><span class="vda-ins-ph">' + (t.ph ? '<img src="' + esc(t.ph) + '" alt="">' : "<em>" + esc((t.name || "?").slice(0, 1)) + "</em>") + "</span><div><b>" + esc(t.name) + "</b><small>" + (/^ext:/.test(t.k) ? "두잉고 계정 없는 강사(강사 입점 문의 › VOD 강사 등록에서 계정 연결) · " : "") + "클래스 " + t.n + "개" + (t.live ? " · 판매 · 오픈 예정 " + t.live + "개" : "") + "</small></div>" + (on ? pill("노출", "ok") : pill("미노출", "mute")) + '<button type="button" class="a-switch' + (on ? " on" : "") + '" data-action="vda-insoff" data-k="' + esc(t.k) + '" data-n="' + esc(t.name) + '" role="switch" aria-checked="' + on + '" aria-label="' + esc(t.name) + ' 스토어 노출"><i></i></button></div>'; }).join("") + "</div></section>";
+  }
+  /* ---------- DOOGO CLASS 강사 관리 (마스터 › 강사 · 크리에이터 · 2026-11-06) ----------
+   * DOOGO CLASS에서 파는 강사(두잉고 계정 — DOOGO CLASS 탭이 열렸거나 클래스가 있는 강사)와 계정 없는 크리에이터(ext:이름)를 한곳에서:
+   * 무엇을 파는지(종류 · 판매 상태 · 가격 · 판매 수) · 판매 실적 · 정산 비율 · 정산 유형 · 계좌 · 로그인 · 계정 정보 수정 · 스토어 노출 · 강사 삭제 · 되살리기.
+   * 강사 삭제(클래스 · 주문이 있으면): 계정을 ‘삭제됨’(status removed)으로 — 강사센터 로그인 막힘 · 스토어 노출 끔(insOff · 새로 못 삼) ·
+   * 이미 산 회원은 내 강의실에서 계속 수강 · 주문 · 정산 기록은 그대로(이번 달 판매분 정산도 그대로 진행) · ‘삭제한 강사’에서 되살릴 수 있어요.
+   * 클래스 · 주문이 하나도 없으면 계정을 바로 지워요. 두잉고(LIVE)도 쓰는 강사는 계정은 두고 DOOGO CLASS 탭만 닫아요 */
+  const vdOrdersOf = (ids) => (VD().orders || []).filter((o) => o && !o.demo && ids.indexOf(o.pid) >= 0 && o.status === "paid");
+  const vdInsLive = (x) => !!(DB.tracksOf(x).live || DB.cohortsOf(x.id).length || DB.studentsOf(x.id).some((s) => !DB.isVodStudent(s)));
+  function vdInsRows() {
+    const X = VX(), v = VD(), off = X.insOff(), map = {}, ym = todayStr().slice(0, 7);
+    const add = (k, ins, name) => (map[k] = map[k] || { k, ins, name, ps: [] });
+    DB.data.instructors.forEach((x) => { if (x.status !== "removed" && DB.tracksOf(x).vod) add(x.id, x, x.displayName); });
+    (v.products || []).forEach((p) => { const k = X.tkey(p); if (!k) return; const ins = /^ext:/.test(k) ? null : DB.instructor(k); if (ins && ins.status === "removed") return; add(k, ins, ins ? ins.displayName : vdKeyName(k)).ps.push(p); });
+    return Object.keys(map).map((k) => { const r = map[k], os = vdOrdersOf(r.ps.map((p) => p.id));
+      r.n = os.length; r.sum = os.reduce((a, o) => a + (Number(o.amount) || 0), 0); r.nM = os.filter((o) => vdYM(o.paidAt || o.at || 0) === ym).length; r.off = off.indexOf(k) >= 0; return r; })
+      .sort((a, b) => (!!b.ins - !!a.ins) || b.sum - a.sum || String(a.name).localeCompare(String(b.name)));
+  }
+  function vdInsCardHtml(r) {
+    const X = VX(), x = r.ins, key = r.k, rt = X.rateOf(key), at = ' data-id="' + esc(key) + '"';
+    const rks = []; r.ps.forEach((p) => { const k = X.rateKeyOfP(p); if (rks.indexOf(k) < 0) rks.push(k); }); if (!rks.length) rks.push("vod");
+    const kinds = {}; r.ps.forEach((p) => { const t = X.typeOf(p); kinds[t] = (kinds[t] || 0) + 1; });
+    const ps = r.ps.slice().sort((a, b) => (a.status !== "on") - (b.status !== "on") || (b.createdAt || 0) - (a.createdAt || 0));
+    const pLine = (p) => { const st = VD_ST[p.status] || VD_ST.hidden, pr = X.priceOf(p); return '<li><span class="a-pill ' + st[1] + '">' + st[0] + "</span><b>" + esc(p.title) + '</b><small class="a-memo">' + esc((X.TYPE[X.typeOf(p)] || ["VOD 강의"])[0]) + (pr > 0 ? " · " + won(pr) : " · 무료") + " · 판매 " + vdOrdersOf([p.id]).length + "건</small></li>"; };
+    const pf = vdProf(key), typeTxt = pf.type === "biz" ? "사업자 · 세금계산서" : "개인 · 3.3% 원천징수";
+    return '<article class="a-card vi-card' + (r.off ? " is-off" : "") + '" data-vi="' + esc(key) + '">' +
+      '<div class="vi-top"><span class="vi-av">' + esc(String(r.name || "?").slice(0, 1)) + '</span><div class="vi-who"><b>' + esc(r.name) + "</b>" +
+        '<small class="a-memo">' + (x ? "강사센터 로그인 " + esc(x.name) + ' / <button type="button" class="a-pw-peek" data-action="pw-peek" data-pw="' + esc(x.phone4) + '" title="눌러서 보기">••••</button>' + (x.createdAt ? " · " + fmtMD(x.createdAt) + " 등록" : "") : "두잉고 계정 없는 크리에이터 (ext)") + "</small></div>" +
+        '<div class="vi-st">' + (x ? (x.status === "active" ? pill("운영 중", "ok") : pill("로그인 중지", "mute")) : pill("계정 없음", "warn")) + (r.off ? pill("스토어 숨김", "mute") : pill("스토어 노출", "trk-dc")) + "</div></div>" +
+      '<div class="vi-nums"><div><span>클래스</span><b>' + r.ps.length + "개</b><small>" + (Object.keys(kinds).map((t) => esc((X.TYPE[t] || [t])[0]) + " " + kinds[t]).join(" · ") || "아직 없어요") + "</small></div>" +
+        "<div><span>누적 판매</span><b>" + r.n + "건</b><small>" + won(r.sum) + "</small></div>" +
+        "<div><span>이번 달 판매</span><b>" + r.nM + "건</b><small>지급일 " + fmtFull(vdPayDate(todayStr().slice(0, 7))) + "</small></div></div>" +
+      (ps.length ? '<ul class="vi-ps">' + ps.slice(0, 4).map(pLine).join("") + (ps.length > 4 ? '<li class="vi-more"><a href="#/center/master/vod-classes">+ ' + (ps.length - 4) + "개 더 — VOD 클래스 관리</a></li>" : "") + "</ul>" : '<p class="a-muted vi-none">' + icon("monitorPlay", "xs") + " 아직 올린 클래스가 없어요. VOD 클래스 관리 › 새 클래스 만들기에서 강사를 이 분으로 고르면 여기 보여요.</p>") +
+      '<dl class="vi-set"><div><dt>정산 비율 <small>(강사 몫)</small></dt><dd>' + rks.map((k) => esc((X.RATE_KEYS.find((y) => y[0] === k) || [k, k])[1]) + " <b>" + rt[k] + "%</b>").join(" · ") + " · 광고비 분담 <b>" + rt.ad + "%</b>" + (rt.memo ? '<small class="a-memo">' + esc(rt.memo) + "</small>" : "") + "</dd></div>" +
+        (x ? "<div><dt>정산 유형 · 계좌</dt><dd>" + vdProfPill(key) + '<small class="a-memo">' + typeTxt + (pf.typeBy === "master" ? " · 마스터가 정함" : pf.type ? " · 강사가 고름" : " · 기본값") + "</small></dd></div>" +
+          "<div><dt>연락처</dt><dd>" + esc(((x.contact || {}).phone) || "-") + (((x.contact || {}).email) ? " · " + esc(x.contact.email) : "") + "</dd></div>" : "") + "</dl>" +
+      '<div class="a-row-actions vi-act">' +
+        (x ? btn("강사센터 접속", "ins-enter", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '" data-to="#/center"') + btn(icon("pen", "sm") + "계정 · 정보 수정", "vins-edit", "a-btn-outline a-btn-sm", at) : btn(icon("plus", "sm") + "VOD 강사 등록 (계정 만들기)", "vins-add", "a-btn-outline a-btn-sm")) +
+        btn(icon("sliders", "sm") + "정산 비율", "vda-rate-edit", "a-btn-ghost a-btn-sm", ' data-k="' + esc(key) + '"') +
+        '<a class="a-btn a-btn-ghost a-btn-sm" href="#/center/master/vod-settle">' + icon("calculator", "sm") + "정산 명세</a>" +
+        btn(icon(r.off ? "eye" : "eyeOff", "sm") + (r.off ? "스토어에 다시 보이기" : "스토어에서 숨기기"), "vda-insoff", "a-btn-ghost a-btn-sm", ' data-k="' + esc(key) + '" data-n="' + esc(r.name) + '"') +
+        (x ? btn(icon("trash", "sm") + "강사 삭제", "vins-del", "a-btn-ghost a-btn-sm danger", at) : "") + "</div></article>";
+  }
+  function pageMasterVodIns() {
+    const rows = vdInsRows(), gone = DB.data.instructors.filter((x) => x.status === "removed"), pg = pageSlice("vdIns", rows, 8);
+    const acc = rows.filter((r) => r.ins), sumM = rows.reduce((a, r) => a + r.nM, 0);
+    return head("강사 관리", "DOOGO CLASS에서 판매하는 강사 · 크리에이터예요. 누가 무엇을 팔고 있는지, 판매 실적 · 정산 비율 · 정산 유형을 보고, 로그인 · 계정 정보를 고치고, 떠난 강사는 삭제해요.", btn(icon("monitorPlay", "sm") + "VOD 강사 등록", "vins-add", "a-btn-primary") + '<a class="a-btn a-btn-outline" href="#/center/master/vod-recruit">' + icon("handshake", "sm") + "두고 파트너스 지원</a>") +
+      '<div class="a-kpis">' + kpi("강사 계정", acc.length + "명", "로그인 중지 " + acc.filter((r) => r.ins.status !== "active").length + "명", "#/center/master/vod-ins") +
+        kpi("계정 없는 크리에이터", rows.length - acc.length + "명", "VOD 강사 등록으로 연결해요", "#/center/master/vod-ins") +
+        kpi("판매 중 클래스", rows.reduce((a, r) => a + r.ps.filter((p) => p.status === "on").length, 0) + "개", "오픈 예정 " + rows.reduce((a, r) => a + r.ps.filter((p) => p.status === "soon").length, 0) + "개", "#/center/master/vod-classes", "ok") +
+        kpi("이번 달 판매", sumM + "건", "정산은 다음 달 " + fmtMD(vdPayDate(todayStr().slice(0, 7))), "#/center/master/vod-settle") + "</div>" +
+      (rows.length ? '<div class="vi-list" data-pg-card="vdIns">' + pg.items.map(vdInsCardHtml).join("") + "</div>" + numPager("vdIns", pg) : '<section class="a-card">' + emptyBox("users", "아직 DOOGO CLASS 강사가 없어요. ‘VOD 강사 등록’으로 만들어요.") + "</section>") +
+      (gone.length ? '<section class="a-card vi-gone"><div class="a-card-head"><h2>삭제한 강사</h2><span class="a-muted">' + gone.length + "명 · 로그인이 막히고 스토어에서 숨겨져 있어요. 주문 · 정산 기록은 남아 있어서 되살리면 그대로 돌아와요.</span></div><ul>" +
+        gone.map((x) => "<li><b>" + esc(x.displayName) + '</b><small class="a-memo">' + esc(x.name) + (x.removedAt ? " · " + fmtFull(DB.date.toStr(new Date(x.removedAt))) + " 삭제" : "") + " · 클래스 " + VD().products.filter((p) => p.iid === x.id).length + "개</small>" + btn(icon("refresh", "sm") + "되살리기", "vins-restore", "a-btn-ghost a-btn-sm", ' data-id="' + esc(x.id) + '"') + "</li>").join("") + "</ul></section>" : "") +
+      '<p class="a-muted p-small">' + icon("alert", "xs") + " 정산 비율은 ‘정산 비율 · 가격’, 클래스는 ‘VOD 클래스 관리’, 지급은 ‘강사 정산’에서도 같은 내용을 고쳐요. 두잉고(LIVE) 기수 · 수강생은 두잉고 탭 › 강사 플랫폼 관리에서 관리해요.</p>";
+  }
+  /** DOOGO CLASS 강사 계정 · 정보 수정 — 로그인(이름 · 전화번호 뒷자리) · 보이는 이름 · 연락처 · 상태 · 정산 유형 */
+  function vinsEditForm(id) {
+    const x = DB.instructor(id); if (!x) return;
+    const c = x.contact || {}, pf = x.vodSettle || {};
+    openModal(x.displayName + " 강사 계정 · 정보",
+      '<form id="vins-edit-form" class="a-form" data-id="' + esc(x.id) + '" novalidate>' +
+        '<div class="a-form-row"><div class="a-field"><label for="ve-name">강사 이름 <small>(강사센터 아이디)</small></label><input class="a-input" id="ve-name" name="name" maxlength="20" value="' + esc(x.name) + '"></div>' +
+        '<div class="a-field"><label for="ve-pw">전화번호 뒷자리 <small>(비밀번호 · 숫자 4자리)</small></label><input class="a-input" id="ve-pw" name="phone4" inputmode="numeric" maxlength="4" value="' + esc(x.phone4) + '"></div></div>' +
+        '<div class="a-field"><label for="ve-display">DOOGO CLASS에 보이는 이름 <small>(활동명)</small></label><input class="a-input" id="ve-display" name="displayName" maxlength="20" value="' + esc(x.displayName) + '"></div>' +
+        '<div class="a-form-row"><div class="a-field"><label for="ve-phone">연락처</label><input class="a-input" id="ve-phone" name="phone" type="tel" maxlength="20" value="' + esc(c.phone || "") + '" placeholder="010-0000-0000"></div>' +
+        '<div class="a-field"><label for="ve-email">이메일 <small>(정산 · 세금계산서 안내)</small></label><input class="a-input" id="ve-email" name="email" type="email" maxlength="100" value="' + esc(c.email || "") + '"></div></div>' +
+        '<div class="a-form-row"><div class="a-field"><label for="ve-status">상태</label><select class="a-input" id="ve-status" name="status"><option value="active"' + (x.status === "active" ? " selected" : "") + '>운영 중</option><option value="paused"' + (x.status !== "active" ? " selected" : "") + ">로그인 중지 (잠깐 멈춤)</option></select></div>" +
+        '<div class="a-field"><label for="ve-type">정산 유형</label><select class="a-input" id="ve-type" name="stype"><option value="person"' + (pf.type !== "biz" ? " selected" : "") + '>개인 · 사업소득 3.3% 원천징수</option><option value="biz"' + (pf.type === "biz" ? " selected" : "") + ">사업자 · 세금계산서</option></select></div></div>" +
+        '<p class="a-hint">' + icon("alert", "xs") + "<span>이름 · 뒷자리를 바꾸면 강사님은 바뀐 값으로 로그인해요. 정산 유형을 여기서 정하면 ‘마스터가 정함’으로 남아 강사센터에서는 못 바꿔요(이미 확정한 명세서는 그때 유형 그대로). 계좌는 강사님이 강사센터 › 판매 정산에서 등록해요" + (pf.account ? " — 지금 계좌 등록됨" : " — 아직 계좌 없음") + ".</span></p>" +
+        '<p class="a-error" id="ve-error"></p></form>',
+      '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="vins-edit-form">저장</button>', "md");
+  }
+  function saveVinsEdit(f) {
+    const err = document.getElementById("ve-error"), x = DB.instructor(f.dataset.id); if (!x) return;
+    const name = f.name.value.trim(), phone4 = f.phone4.value.trim(), displayName = f.displayName.value.trim(), phone = f.phone.value.trim(), email = f.email.value.trim();
+    if (!name || !displayName) { err.textContent = "강사 이름과 보이는 이름을 입력해 주세요."; return; }
+    if (!/^\d{4}$/.test(phone4)) { err.textContent = "전화번호 뒷자리는 숫자 4자리예요."; return; }
+    if (email && !EMAIL_RE.test(email)) { err.textContent = "이메일을 확인해 주세요."; return; }
+    { const t = loginTaken(name, phone4, x.id); if (t) { err.textContent = "같은 이름 · 뒷자리로 로그인하는 계정이 이미 있어요 (" + t + "). 이름을 조금 다르게(예: 이름 뒤 숫자) 해 주세요."; return; } }
+    const st = f.status.value === "active" ? "active" : "paused", t = f.stype.value === "biz" ? "biz" : "person", pf = x.vodSettle || {};
+    Object.assign(x, { name, phone4, displayName, status: st, contact: Object.assign({}, x.contact || {}, { phone, email }) });
+    if (pf.type !== t || (pf.type && pf.typeBy !== "master") || (!pf.type && t === "biz")) x.vodSettle = Object.assign({}, pf, { type: t, typeBy: "master", typeAt: Date.now() });
+    closeModal();
+    commit(displayName + " 강사 정보를 저장했어요." + (st === "active" ? "" : " 강사센터 로그인을 멈췄어요."));
+  }
+  /** 스토어 노출 끄기 (insOff 에 넣기 · 이미 있으면 그대로) */
+  const vdInsOffAdd = (key) => { const v = VD(); v.insOff = Array.isArray(v.insOff) ? v.insOff : []; if (v.insOff.indexOf(key) < 0) v.insOff.push(key); };
+  function vinsDelete(id) {
+    const x = DB.instructor(id); if (!x) return;
+    const v = VD(), ps = (v.products || []).filter((p) => p.iid === x.id), os = (v.orders || []).filter((o) => o && ps.some((p) => p.id === o.pid) && (o.status === "paid" || o.status === "refunded")).length;
+    const nm = esc(x.displayName);
+    if (vdInsLive(x)) {
+      confirmModal("DOOGO CLASS에서 빼기", "<b>" + nm + "</b> 강사님은 두잉고(LIVE) 플랫폼도 쓰고 있어서 계정은 그대로 두고 <b>DOOGO CLASS 탭만 닫고</b> 클래스 " + ps.length + "개를 스토어에서 내려요(새로 못 삼 · 이미 산 회원은 계속 수강 · 주문 · 정산 기록은 그대로).<br>플랫폼째 지우려면 두잉고 탭 › 강사 플랫폼 관리 › 수정 › 플랫폼 삭제를 써 주세요.", "DOOGO CLASS에서 빼기", true, () => {
+        setTrack(x, "vod", false); vdInsOffAdd(x.id);
+        commit(x.displayName + " 강사님을 DOOGO CLASS에서 뺐어요. 두잉고(LIVE)는 그대로예요.");
+      });
+      return;
+    }
+    if (!ps.length && !os) {
+      confirmModal("강사 삭제", "<b>" + nm + "</b> 강사 계정을 지울까요?<br>올린 클래스 · 주문이 없어서 계정을 바로 지워요. 되돌릴 수 없어요.", "삭제", true, () => {
+        DB.data.students = DB.data.students.filter((s) => s.instructorId !== x.id);
+        DB.data.instructors = DB.data.instructors.filter((i) => i.id !== x.id);
+        delete DB.data.content[x.id];
+        commit(x.displayName + " 강사 계정을 지웠어요.");
+      });
+      return;
+    }
+    confirmModal("강사 삭제", "<b>" + nm + "</b> 강사를 삭제할까요?<span class=\"vi-del-ul\"><span>· 강사센터 로그인이 막혀요.</span><span>· 클래스 " + ps.length + "개 · 강사진 카드를 스토어에서 내려요 — 새로 살 수 없어요.</span><span>· 이미 산 회원은 내 강의실에서 계속 들어요. 강사님 VOD 두잉고 강의실(자료 · 코칭)은 닫혀요.</span><span>· 주문 " + os + "건 · 정산 기록은 그대로 남고, 이번 달 판매분 정산도 그대로 진행해요.</span><span>· 아래 ‘삭제한 강사’에서 되살릴 수 있어요.</span></span>", "삭제", true, () => {
+      x.status = "removed"; x.removedAt = Date.now(); vdInsOffAdd(x.id);
+      commit(x.displayName + " 강사를 삭제했어요. 로그인이 막히고 스토어에서 내렸어요.");
+    });
+  }
+  function vinsRestore(id) {
+    const x = DB.instructor(id); if (!x || x.status !== "removed") return;
+    const v = VD(); x.status = "active"; delete x.removedAt;
+    if (Array.isArray(v.insOff)) v.insOff = v.insOff.filter((k) => k !== x.id);
+    commit(x.displayName + " 강사를 되살렸어요. 다시 로그인하고 스토어에 보여요.");
   }
   function pageMasterVodClasses(r) {
     const id = r && r.parts[2];
@@ -6682,7 +6801,7 @@
   });
   Object.assign(MPAGES, { "vod-home": pageVodHome, "vod-ship": pageVodShip, "vod-refund": pageVodRefund, "vod-sales": pageVodSales, "vod-rank": pageVodRank, "vod-ads": pageVodAds, "vod-settle": pageVodSettle, "vod-rates": pageVodRates });
   Object.assign(MPAGES, { "vod-crm": pageCrm, "vod-seg": pageCrmSeg, "vod-msg": pageCrmMsg, "vod-crm-rp": pageCrmReport });
-  Object.assign(MPAGES, { vod: pageMasterVod, "vod-classes": pageMasterVodClasses, "vod-members": pageMasterVodMembers, "vod-display": pageMasterVodDisplay, dc: pageMasterDc, "vod-inquiries": pageMasterVodInquiries, "vod-recruit": (r) => pageMasterPartners(r, "vod") });
+  Object.assign(MPAGES, { "vod-ins": pageMasterVodIns, vod: pageMasterVod, "vod-classes": pageMasterVodClasses, "vod-members": pageMasterVodMembers, "vod-display": pageMasterVodDisplay, dc: pageMasterDc, "vod-inquiries": pageMasterVodInquiries, "vod-recruit": (r) => pageMasterPartners(r, "vod") });
   Object.assign(PAGES, { "ops-notices": pageOpsNotices, contract: pageInsContract });
   Object.assign(PAGES, { vod: pageInsVod, "vod-refunds": pageInsVodRefunds, "vod-live": pageInsVodLive, "vod-settle": pageInsVodSettle, "vod-cal": pageInsVodCal, "vod-students": pageVodStudents, vodlink: pageVodLink, vodlessons: pageVodLessons, coaching: pageCoaching, teatime: pageTeaTime });
   /* ================= 마스터: 학사 · 운영 메뉴 =================
@@ -6742,7 +6861,7 @@
   const staffMe = () => (S && S.role === "master" && S.staffId ? staffOf(S.staffId) : null);
   const staffRoleName = (st) => (STAFF_ROLES[st.role] || STAFF_ROLES.custom).label;
   // 새로 생긴 DOOGO CLASS 메뉴는 원래 맡던 메뉴 권한을 따라가요 (대시보드 ← 주문 · 매출, 1:1 문의 ← 회원 · 후기, 두고 파트너스 지원 ← 입점 문의)
-  const STAFF_ALIAS = { "master/vod-home": "master/vod-display", "master/vod-sales": "master/vod", "master/vod-rank": "master/vod", "master/vod-ads": "master/vod", "master/vod-settle": "master/vod", "master/vod-rates": "master/vod", "master/plan": "master/calendar", "master/dc": "master/vod", "master/vod-inquiries": "master/vod-members", "master/vod-recruit": "master/partners", "master/vod-crm": "master/vod-members", "master/vod-seg": "master/vod-members", "master/vod-msg": "master/vod-members", "master/vod-crm-rp": "master/vod-members", "master/vod-refund": "master/vod", "master/vod-ship": "master/vod", "master/vod-media": "master/vod", "master/vod-media-rs": "master/vod", "master/vod-media-pay": "master/vod" };
+  const STAFF_ALIAS = { "master/vod-home": "master/vod-display", "master/vod-sales": "master/vod", "master/vod-rank": "master/vod", "master/vod-ads": "master/vod", "master/vod-settle": "master/vod", "master/vod-rates": "master/vod", "master/plan": "master/calendar", "master/dc": "master/vod", "master/vod-inquiries": "master/vod-members", "master/vod-recruit": "master/partners", "master/vod-ins": "master/instructors", "master/vod-crm": "master/vod-members", "master/vod-seg": "master/vod-members", "master/vod-msg": "master/vod-members", "master/vod-crm-rp": "master/vod-members", "master/vod-refund": "master/vod", "master/vod-ship": "master/vod", "master/vod-media": "master/vod", "master/vod-media-rs": "master/vod", "master/vod-media-pay": "master/vod" };
   const staffCan = (key) => { const st = staffMe(); if (!st || key === "master") return true; if (key === "master/data") return false; const pm = st.perms || []; return pm.indexOf(key) >= 0 || (!!STAFF_ALIAS[key] && pm.indexOf(STAFF_ALIAS[key]) >= 0); };
   function staffStrip(root) {
     if (!staffMe() || !root) return;
@@ -8506,7 +8625,11 @@
         break;
       }
       case "vins-add": if (staffDeny("master/instructors")) break; vodInsForm(null); break;
-      // 입점 카드의 강사센터 계정 칸: 스토어 클래스 연결 · 로그인 안내(아이디 · 비밀번호 · 강사님께 보낼 글)
+      // DOOGO CLASS › 강사 관리: 계정 · 정보 수정 · 강사 삭제 · 되살리기 (2026-11-06)
+      case "vins-edit": if (staffDeny("master/instructors")) break; vinsEditForm(d.id); break;
+      case "vins-del": if (staffDeny("master/instructors")) break; vinsDelete(d.id); break;
+      case "vins-restore": if (staffDeny("master/instructors")) break; vinsRestore(d.id); break;
+      // 입점 카드의 강사센터 계정 칸: 두고클래스 연결 · 로그인 안내(아이디 · 비밀번호 · 강사님께 보낼 글)
       case "inq-link": if (staffDeny("master/instructors")) break; linkExtForm(d.id); break;
       case "inq-guide": { const acc = inqAcc(findInq(d.id)); if (acc) insDoneModal(acc, 0, true); else toast("강사 계정을 찾지 못했어요.", "warn"); break; }
       case "ins-guide-copy": { const ta = document.getElementById("ins-guide-ta"); if (ta) copyOut(ta.value, "안내를 복사했어요. 카카오톡 · 문자로 보내 주세요.", ta); break; }
@@ -8635,7 +8758,7 @@
       render(); toast("입금 계좌 · 부가세 설정을 저장했어요.");
       return;
     }
-    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "coach-form": saveCoach };
+    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "vins-edit-form": saveVinsEdit, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "coach-form": saveCoach };
     if (forms[f.id]) { e.preventDefault(); forms[f.id](f); return; }
     if (f.classList.contains("vda-price")) { e.preventDefault(); saveVodPrice(f); return; }
     if (f.classList.contains("a-q-form")) {

@@ -2,7 +2,7 @@
 /* 마스터 두잉고 — 강사 입점 문의 #/center/master/partners · 두고 파트너스 지원 #/center/master/vod-recruit
  * 예전 admin.js pageMasterPartners(r, only) 를 React 로 (Next.js 전환 6단계)
  *  · 펼치기 · 처리 상태 · 소개 파트너 · 메모 · 플랫폼 만들기 · 엑셀 · 1:1 대화 보내기는 예전 admin.js 이벤트가 그대로 받아요
- *  · 강사센터 계정 칸(inqRegHtml: VOD 강사 등록 · 만든 계정 · 스토어 클래스 연결 · 로그인 안내)도 예전 조각을 같이 써요
+ *  · 강사센터 계정 칸(inqRegHtml: VOD 강사 등록 · 만든 계정 · 두고클래스 연결 · 로그인 안내)도 예전 조각을 같이 써요
  *  · 진행 칸(inqTrack) · 1:1 대화(inqThread) · 처리 기록(inqLogHtml)은 파트너센터와 같이 쓰는 예전 조각
  *  · 펼친 카드가 1.5초 넘게 보이면 예전처럼 파트너 메시지를 읽음으로(markInqSeen) — 메뉴 · 종 숫자는 React 가 다시 그려서 바꿔요 */
 import { useEffect } from "react";

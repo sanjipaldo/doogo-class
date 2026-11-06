@@ -20,7 +20,7 @@ export default function Shell({ r, children, pageHtml }) {
   const partner = S.role === "partner", PM = partner ? A.affOf(S.partnerId) : null, media = S.role === "media", MDM = media ? A.mdMe() : null, master = S.role === "master" && !S.actingAs;
   const groups = partner ? A.partnerNav() : media ? A.mediaNav() : master ? A.masterNav() : A.instructorNav();
   const cur = (master ? r.parts.slice(0, 2) : r.parts).join("/"), curKey = master || partner || media ? cur || (partner ? "partner" : media ? "media" : "master") : r.parts[0] || "";
-  const ins = master || partner || media ? null : A.INS(), coach = A.isCoach(), vod = A.TRK() === "vod";
+  const ins = master || partner || media ? null : A.INS(), coach = A.isCoach(), vod = A.TRK() === "vod", dcL = master ? A.MT() === "dc" : !!ins && vod; // 관리 영역 탭이 DOOGO CLASS 면 로고도 DOOGO CLASS (2026-11-06)
   if (ins && vod && A.VPID()) DB.vodEnsure(ins.id, A.VPID());
   const co = ins ? DB.currentCohort(ins.id) : null, many = ins && coach && A.myCoachCourses().length > 1;
   const st = A.staffMe();
@@ -31,7 +31,7 @@ export default function Shell({ r, children, pageHtml }) {
       {S.role === "master" && S.actingAs ? <div className="a-acting"><Icon n="shieldCheck" c="sm" /><span>마스터 권한으로 <b>{ins.name}</b> 강사센터를 보고 있어요.</span><Btn action="stop-acting" cls="a-btn-light a-btn-sm">마스터로 돌아가기</Btn></div> : null}
       <header className={"a-top" + (many ? " has-csw" : "")}>
         <button className="a-icon-btn a-menu" type="button" data-action="toggle-nav" aria-label="메뉴"><Icon n="menu" /></button>
-        <span className="a-logo"><a className="a-logo-home" href="#/doinggo" title="두잉고 홈으로" aria-label="두잉고 홈으로"><RawOne html={window.doogoClassLock("hm-lock-xs")} /></a><a className="a-logo-role" href={"#/center" + (partner ? "/partner" : media ? "/media" : master ? "/master" : "")}>{partner ? "파트너센터" : media ? "온드미디어 센터" : master ? (A.MT() === "dc" ? "DOOGO CLASS 관리" : "마스터 관리자") : coach ? "코치센터" : "강사센터"}</a>
+        <span className="a-logo"><a className={"a-logo-home" + (dcL ? " a-logo-dc" : "")} href={dcL ? "#/vod" : "#/doinggo"} title={dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로"} aria-label={dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로"}>{dcL ? <img className="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" /> : <RawOne html={window.doogoClassLock("hm-lock-xs")} />}</a><a className="a-logo-role" href={"#/center" + (partner ? "/partner" : media ? "/media" : master ? "/master" : "")}>{partner ? "파트너센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : coach ? "코치센터" : "강사센터"}</a>
           {ins ? (many ? <button type="button" className="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기"><Icon n="swap" c="xs" /><span>{ins.displayName}</span><Icon n="chevDown" c="xs" /></button> : <em className="a-hide-sm">{ins.displayName}</em>) : null}</span>
         <div className="a-top-right">
           {ins ? <><span className={"a-chip a-hide-sm" + (vod ? " a-chip-vod" : "")}>{vod ? "DOOGO CLASS · VOD 수강생 " + A.VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? co.name + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음"}</span>

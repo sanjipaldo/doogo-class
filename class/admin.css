@@ -415,8 +415,10 @@ textarea.a-input { min-height: 0; resize: vertical; line-height: 1.6; }
   .a-head { align-items: stretch; flex-direction: column; gap: 12px; }
   .a-head h1 { font-size: 22px; }
   .a-head p { font-size: 14px; }
-  .a-head-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
-  .a-head-actions .a-btn { width: 100%; }
+  /* 버튼이 많으면 글자 길이대로 줄을 바꿔 채워요 (한 줄에 억지로 나눠 담으면 ‘새 강사 플랫폼 (LIVE)’처럼 긴 글자가 옆 버튼과 겹쳐요 · 2026-11-06) */
+  .a-head-actions { display: flex; flex-wrap: wrap; }
+  .a-head-actions > * { flex: 1 1 auto; }
+  .a-head-actions .a-btn { width: auto; min-width: 0; justify-content: center; white-space: normal; text-align: center; }
   .a-card { padding: 16px 14px; border-radius: 14px; }
   .a-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .a-kpi { padding: 14px; }
@@ -443,6 +445,8 @@ textarea.a-input { min-height: 0; resize: vertical; line-height: 1.6; }
   .a-table td { display: block; min-width: 0; padding: 0; border: 0; font-size: 14px; overflow-wrap: anywhere; }
   .a-table td::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: 11px; font-weight: 700; color: var(--m-stone); }
   .a-table td[data-label=""]::before { display: none; }
+  .a-table td .a-pill { max-width: 100%; white-space: normal; }
+  .a-table td .a-pill.bad { align-items: flex-start; gap: 4px; padding: 6px 10px; border-radius: 12px; line-height: 1.45; } .a-table td .a-pill.bad .icon { flex: none; margin-top: 2px; } /* 긴 알약(예: ‘처음 데이터 숫자 그대로 · 강사 로그인’)이 옆 칸으로 넘쳐 겹치지 않게 줄 바꿈 (2026-11-06) */
   .a-table td.cell-main { grid-column: 1 / -1; padding-right: 36px; font-size: 16px; }
   .a-table td.cell-main::before { display: none; }
   .a-table td.cell-main .a-name, .a-table td.cell-main b { font-size: 16px; }
@@ -952,6 +956,10 @@ a.a-logo-doogo { color: inherit; text-decoration: none; }
 a.a-logo-role:hover { color: var(--m-primary); }
 .a-logo-role { flex: none; padding-left: 12px; border-left: 1px solid var(--m-hairline); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; color: var(--m-ink); }
 .a-logo-doogo .hm-lock { --lh: 34px; }
+/* 관리 영역 탭이 DOOGO CLASS 일 때 머리띠 로고 — 스토어와 같은 빨간 DOOGO CLASS 글자 그림 (2026-11-06) */
+.a-logo .a-dc-word { display: block; height: 22px; width: auto; }
+@media (max-width: 720px) { .a-logo .a-dc-word { height: 15px; } }
+@media (max-width: 380px) { .a-logo .a-dc-word { height: 11px; } .a-logo-dc + .a-logo-role { padding-left: 6px; font-size: 13px; } } /* 좁은 폰: 미리보기 버튼이 세 줄로 눌리지 않게 */
 .a-login-label { align-items: center; color: var(--m-primary); }
 .a-login-label .hm-lock { --lh: 28px; }
 .a-login-role { padding: 3px 8px; border-radius: 6px; background: var(--m-primary-soft); font-size: 11px; font-weight: 700; font-style: normal; letter-spacing: .06em; }
@@ -3492,6 +3500,9 @@ td .md-yt { display: flex; width: fit-content; }
 .a-ins-tracks small { display: block; font-weight: 500; }
 .a-ins-trk { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .a-ins-trk .a-pill.mute { display: inline-flex; align-items: center; gap: 3px; }
+/* 열린 영역 표시 — 두잉고 = 파랑 · DOOGO CLASS = 빨강 (첫 화면 · 관리 영역 탭과 같은 색 · 2026-11-06) */
+.a-pill.trk-dg { background: linear-gradient(135deg, #4a8dff, #2563eb 55%, #1849c6); color: #fff; }
+.a-pill.trk-dc { background: linear-gradient(135deg, #ff4468, #fc1c49 55%, #e30f3c); color: #fff; }
 .a-pill.inq-add { display: inline-flex; align-items: center; gap: 4px; background: #f4f4f5; color: #27272a; border: 1px solid #e4e4e7; }
 .a-ctrack-o.is-lock { cursor: not-allowed; }
 .a-ctrack-o.is-lock span { background: #fafafa; border-style: dashed; }
@@ -3569,3 +3580,44 @@ body[data-ath="nz"] .a-vpbar-t small { color: #9cc3ee; }
 .vs-rule-steps span { font-size: 13px; color: var(--m-slate); line-height: 1.5; }
 .vs-rule-ex { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--m-success-soft); color: #0f3d33; font-size: 13px; line-height: 1.55; }
 .vs-rule-ex .icon { flex: none; margin-top: 3px; }
+
+/* ---------- DOOGO CLASS › 강사 관리 (마스터 · 2026-11-06) — 강사 한 명 = 카드 한 장 ---------- */
+.vi-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 14px; }
+.vi-card { display: grid; gap: 14px; align-content: start; }
+.vi-card.is-off { background: #fafafa; }
+.vi-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.vi-av { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #ff4468, #fc1c49 55%, #e30f3c); color: #fff; font-size: 18px; font-weight: 800; }
+.vi-card.is-off .vi-av { filter: grayscale(1); opacity: .6; }
+.vi-who { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.vi-who b { font-size: 17px; font-weight: 800; color: var(--m-ink-deep); overflow-wrap: anywhere; }
+.vi-who .a-pw-peek { font-size: 12px; }
+.vi-st { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.vi-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.vi-nums > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--m-surface); min-width: 0; }
+.vi-nums span { font-size: 11.5px; font-weight: 700; color: var(--m-stone); }
+.vi-nums b { font-size: 18px; font-weight: 800; color: var(--m-ink-deep); }
+.vi-nums small { font-size: 11.5px; color: var(--m-slate); overflow-wrap: anywhere; }
+.vi-ps { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.vi-ps li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 1px; }
+.vi-ps li b { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vi-ps li small { grid-column: 2; }
+.vi-ps li.vi-more { display: block; font-size: 13px; }
+.vi-none { display: flex; gap: 6px; margin: 0; font-size: 13px; }
+.vi-set { display: grid; gap: 8px; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--m-hairline-soft); }
+.vi-set > div { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.vi-set dt { font-size: 12.5px; font-weight: 700; color: var(--m-stone); }
+.vi-set dt small { font-weight: 600; }
+.vi-set dd { margin: 0; font-size: 13.5px; color: var(--m-ink); overflow-wrap: anywhere; }
+.vi-set dd .a-memo { display: block; margin-top: 2px; }
+.vi-act { flex-wrap: wrap; justify-content: flex-start; }
+.vi-gone ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.vi-gone li { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 10px 12px; border-radius: 10px; background: var(--m-surface); }
+.vi-gone li .a-btn { margin-left: auto; }
+.vi-del-ul { display: grid; gap: 4px; margin-top: 8px; text-align: left; }
+@media (max-width: 720px) {
+  .vi-top { flex-wrap: wrap; }
+  .vi-st { width: 100%; justify-content: flex-start; }
+  .vi-nums b { font-size: 16px; }
+  .vi-set > div { grid-template-columns: 1fr; gap: 2px; }
+  .vi-act > .a-btn { flex: 1 1 auto; justify-content: center; }
+}
