@@ -2478,6 +2478,54 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     } finally { if (env0 == null) delete process.env.DB_AREAS; else process.env.DB_AREAS = env0; }
   }
 
+  {
+    console.log("40) 2부 표 모양 (2026-11-06): 꺼낸 값 먼저 · 시각은 한국 시간 · 문서 JSON(v)은 맨 오른쪽 — 예전 모양 표는 내용 그대로 다시 만들어요");
+    const st40 = require(path.join(TMP, "class/api/_lib/store.js")), AR = require(path.join(TMP, "class/api/_lib/areas.js")), AS = require(path.join(TMP, "class/api/_lib/areasync.js"));
+    const kind = (await st40.db()).kind, pg = kind === "postgres", S = pg ? "app." : "";
+    const fresh = await AS.oldTables(kind);
+    const cols0 = pg ? (await st40.exec("SELECT column_name AS c FROM information_schema.columns WHERE table_schema = 'app' AND table_name = 'orders' ORDER BY ordinal_position")).rows.map((r) => r.c) : (await st40.exec("SELECT name AS c FROM pragma_table_info('orders')")).rows.map((r) => r.c);
+    ok(!fresh.length && cols0[0] === "k" && cols0[1] === "no" && cols0.slice(-4).join(",") === "v,ver,updated,created",
+      "새 표 모양: k → 꺼낸 값(주문번호 · 회원 · 금액 · 상태 …) → 맨 오른쪽에 v(문서 JSON) · ver · updated · created — Table Editor 에서 보통 표처럼", cols0.slice(0, 3).concat(["…"], cols0.slice(-4)));
+    // 예전 모양(v 가 둘째 칸 · 시각은 ms 숫자)으로 되돌린 표 3개 — 주문(시각 칸) · 1:1 문의(보기 v_inquiries 가 씀) · 설정(한 건씩 표 4개)
+    const picks = ["orders", "member_inquiries", "settings"].map((n) => AR.TABLES.find((t) => t.table === n));
+    const oldT = (ty) => (ty === "time" || ty === "big" ? (pg ? "bigint" : "INTEGER") : ty === "text" ? (pg ? "text" : "TEXT") : ty === "bool" ? (pg ? "boolean" : "INTEGER") : pg ? "integer" : "INTEGER");
+    const phys = async (t) => (await st40.exec("SELECT k, v, ver, updated, created FROM " + t.table + " ORDER BY k")).rows.map((r) => [r.k, r.v, Number(r.ver), Number(r.updated), Number(r.created)].join("|")).join("\n");
+    const before = {}, logical0 = (await st40.allDocRows()).map((r) => r.k + "|" + r.v + "|" + r.ver).sort().join("\n");
+    for (const t of picks) {
+      before[t.table] = await phys(t);
+      const rows = (await st40.exec("SELECT k, v, ver, updated, created FROM " + t.table)).rows;
+      for (const c of t.children || []) await st40.exec("DROP TABLE " + S + c.table + (pg ? " CASCADE" : ""));
+      await st40.exec("DROP TABLE " + S + t.table + (pg ? " CASCADE" : ""));
+      await st40.exec("CREATE TABLE " + S + t.table + " (k " + oldT("text") + " PRIMARY KEY, v " + oldT("text") + ", ver " + oldT("int") + " NOT NULL DEFAULT 1, updated " + oldT("big") + " NOT NULL, created " + oldT("big") + " NOT NULL, " + t.cols.map((c) => AR.q(c[0]) + " " + oldT(c[1])).join(", ") + ")");
+      for (const c of t.children || []) await st40.exec("CREATE TABLE " + S + c.table + " (k " + oldT("text") + " NOT NULL, i " + oldT("int") + " NOT NULL, " + c.cols.map((x) => AR.q(x[0]) + " " + oldT(x[1])).join(", ") + ", PRIMARY KEY (k, i))");
+      for (const r of rows) await st40.exec("INSERT INTO " + t.table + " (k, v, ver, updated, created) VALUES (?, ?, ?, ?, ?)", [r.k, r.v, r.ver, r.updated, r.created]);
+    }
+    const found = (await AS.oldTables(kind)).map((o) => o.table).sort();
+    const look = await AS.rebuild({ write: false });
+    const rb = await AS.rebuild({ write: true });
+    if (pg) await st40.pgSetup();
+    const after = {}; for (const t of picks) after[t.table] = await phys(t);
+    const logical1 = (await st40.allDocRows()).map((r) => r.k + "|" + r.v + "|" + r.ver).sort().join("\n");
+    let colBad = 0, kidBad = 0;
+    for (const t of picks) for (const r of (await st40.exec("SELECT * FROM " + t.table)).rows) {
+      colBad += AR.colDiff(t, r, kind).length;
+      for (const c of t.children || []) { const n = Number((await st40.exec("SELECT COUNT(*) AS n FROM " + c.table + " WHERE k = ?", [r.k])).rows[0].n); if (n !== AR.childRows(c, r.v == null ? null : JSON.parse(r.v), r.k).length) kidBad++; }
+    }
+    ok(found.join(",") === "member_inquiries,orders,settings" && look.rebuilt.length === 0 && /운영 · 시험용 배포 때/.test(look.lines.join(" ")) && rb.rebuilt.length === 3 && !rb.still.length && !(await AS.oldTables(kind)).length
+      && picks.every((t) => before[t.table] === after[t.table]) && logical0 === logical1 && colBad === 0 && kidBad === 0,
+      "예전 모양 표 3개를 찾아(찾기만 하는 배포는 그대로) → 내용 그대로 새 모양으로: 문서 글자 · 버전 · 시각 한 글자도 안 바뀜 · 꺼낸 값 · 한 건씩 표(설정 → 상품 · 쿠폰 · 운영자 · 파트너 지급)도 다시", { found, rebuilt: rb.rebuilt, colBad, kidBad });
+    // 시각 칸은 한국 시간 글자 · 문서의 ms 와 같은 순간
+    const anyOrd = (await st40.exec("SELECT k, v, ordered_at, paid_at FROM orders WHERE v IS NOT NULL AND paid_at IS NOT NULL")).rows[0];
+    const od = anyOrd ? JSON.parse(anyOrd.v) : {}, kst = (ms) => new Date(Math.floor(ms / 1000) * 1000 + 9 * 3600e3).toISOString().slice(0, 19).replace("T", " ");
+    ok(!anyOrd || (/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(String(anyOrd.paid_at)) && String(anyOrd.paid_at) === kst(od.paidAt) && String(anyOrd.ordered_at) === kst(od.at != null ? od.at : od.createdAt)),
+      "시각 칸은 한국 시간 글자(예: " + (anyOrd ? anyOrd.paid_at : "—") + ") — 문서의 ms 시각과 같은 순간 (ms 숫자가 아니라 사람이 바로 읽게)", anyOrd && { paid_at: anyOrd.paid_at, paidAt: od.paidAt });
+    if (pg) {
+      const vi = Number((await st40.exec("SELECT count(*) AS n FROM app.v_inquiries")).rows[0].n), vo = Number((await st40.exec("SELECT count(*) AS n FROM app.v_orders")).rows[0].n);
+      const rls = Number((await st40.exec("SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'app'::regnamespace AND relkind = 'r' AND relrowsecurity")).rows[0].n);
+      ok(vi >= 0 && vo > 0 && rls === 35, "Postgres: 다시 만든 표를 쓰는 보기(v_orders · v_inquiries)도 다시 · 표 35개 모두 RLS 그대로", { vi, vo, rls });
+    }
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

@@ -93,7 +93,8 @@ function pgClient(url) {
     idle_timeout: 20, connect_timeout: 15,
     ssl: local ? false : "require",
     onnotice: () => {},
-    types: { bigint: { to: 20, from: [20], serialize: (x) => String(x), parse: (x) => Number(x) } } // ms 시각 · 개수는 숫자로 (SQLite 와 같게)
+    // ms 시각 · 개수는 숫자로 (SQLite 와 같게) · 2부 영역 표의 한국 시간 칸(timestamp)은 글자 그대로 "2026-11-06 14:30:00" (서버 시간대로 바뀌지 않게)
+    types: { bigint: { to: 20, from: [20], serialize: (x) => String(x), parse: (x) => Number(x) }, kst: { to: 1114, from: [1114], serialize: (x) => String(x), parse: (x) => x } }
   });
   const shape = (r) => ({ rows: Array.from(r, (x) => Object.assign({}, x)), affected: r.command === "SELECT" ? 0 : r.count || 0 });
   const run = async (q, s) => shape(await q.unsafe(pgSql(s.sql), (s.args || []).map((a) => (a === undefined ? null : a))));

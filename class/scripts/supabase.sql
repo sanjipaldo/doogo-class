@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS app.oplog (id text PRIMARY KEY, at bigint NOT NULL, n
 
 CREATE TABLE IF NOT EXISTS app.area_state (id text PRIMARY KEY, mode text NOT NULL, at bigint NOT NULL, note text);
 
-CREATE TABLE IF NOT EXISTS app.orders (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, no text, mid text, pid text, iid text, kind text, title text, list_price integer, sale_price integer, coupon_off integer, point_off integer, amount integer, method text, status text, payment_id text, grp text, ordered_at bigint, paid_at bigint, refunded_at bigint, refund_amount integer, refund_kind text, demo boolean);
+CREATE TABLE IF NOT EXISTS app.orders (k text PRIMARY KEY, no text, mid text, pid text, iid text, kind text, title text, list_price integer, sale_price integer, coupon_off integer, point_off integer, amount integer, method text, status text, payment_id text, grp text, ordered_at timestamp, paid_at timestamp, refunded_at timestamp, refund_amount integer, refund_kind text, demo boolean, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS orders_updated ON app.orders (updated);
 
@@ -39,17 +39,27 @@ CREATE INDEX IF NOT EXISTS orders_payment_id ON app.orders (payment_id);
 
 CREATE INDEX IF NOT EXISTS orders_pid ON app.orders (pid);
 
-CREATE TABLE IF NOT EXISTS app.payments (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, payment_id text, mid text, total integer, at bigint, orders integer, bank boolean);
+CREATE TABLE IF NOT EXISTS app.payments (k text PRIMARY KEY, payment_id text, mid text, total integer, at timestamp, orders integer, bank boolean, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS payments_updated ON app.payments (updated);
 
 CREATE INDEX IF NOT EXISTS payments_mid ON app.payments (mid);
 
-CREATE TABLE IF NOT EXISTS app.bank_log (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, n integer);
+CREATE TABLE IF NOT EXISTS app.payment_orders (k text NOT NULL, i integer NOT NULL, order_no text, PRIMARY KEY (k, i));
+
+CREATE INDEX IF NOT EXISTS payment_orders_order_no ON app.payment_orders (order_no);
+
+CREATE TABLE IF NOT EXISTS app.bank_log (k text PRIMARY KEY, n integer, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS bank_log_updated ON app.bank_log (updated);
 
-CREATE TABLE IF NOT EXISTS app.members (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, id text, via text, email text, name text, phone text, points integer, marketing boolean, kakao_id text, created_at bigint, last_login_at bigint, login_n integer, orders integer, demo boolean);
+CREATE TABLE IF NOT EXISTS app.bank_deposits (k text NOT NULL, i integer NOT NULL, id text, at timestamp, got_at timestamp, name text, amount integer, bank text, st text, order_no text, PRIMARY KEY (k, i));
+
+CREATE INDEX IF NOT EXISTS bank_deposits_order_no ON app.bank_deposits (order_no);
+
+CREATE INDEX IF NOT EXISTS bank_deposits_at ON app.bank_deposits (at);
+
+CREATE TABLE IF NOT EXISTS app.members (k text PRIMARY KEY, id text, via text, email text, name text, phone text, points integer, marketing boolean, kakao_id text, created_at timestamp, last_login_at timestamp, login_n integer, orders integer, demo boolean, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS members_updated ON app.members (updated);
 
@@ -57,25 +67,37 @@ CREATE INDEX IF NOT EXISTS members_email ON app.members (email);
 
 CREATE INDEX IF NOT EXISTS members_created_at ON app.members (created_at);
 
-CREATE TABLE IF NOT EXISTS app.member_logins (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, method text, value text, mid text);
+CREATE TABLE IF NOT EXISTS app.member_logins (k text PRIMARY KEY, method text, value text, mid text, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS member_logins_updated ON app.member_logins (updated);
 
 CREATE INDEX IF NOT EXISTS member_logins_mid ON app.member_logins (mid);
 
-CREATE TABLE IF NOT EXISTS app.vod_progress (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, mid text, products integer);
+CREATE TABLE IF NOT EXISTS app.vod_progress (k text PRIMARY KEY, mid text, products integer, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS vod_progress_updated ON app.vod_progress (updated);
 
-CREATE TABLE IF NOT EXISTS app.instructors (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, id text, name text, display_name text, status text, created_at text, tracks text, coaches integer);
+CREATE TABLE IF NOT EXISTS app.vod_progress_items (k text NOT NULL, i integer NOT NULL, pid text, seen integer, done integer, mat integer, last_seen_at timestamp, PRIMARY KEY (k, i));
+
+CREATE INDEX IF NOT EXISTS vod_progress_items_pid ON app.vod_progress_items (pid);
+
+CREATE TABLE IF NOT EXISTS app.instructors (k text PRIMARY KEY, id text, name text, display_name text, status text, created_at text, tracks text, coaches integer, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS instructors_updated ON app.instructors (updated);
 
-CREATE TABLE IF NOT EXISTS app.cohort_lists (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, iid text, n integer);
+CREATE TABLE IF NOT EXISTS app.coaches (k text NOT NULL, i integer NOT NULL, id text, name text, status text, track text, created_at text, last_login_at timestamp, PRIMARY KEY (k, i));
+
+CREATE INDEX IF NOT EXISTS coaches_id ON app.coaches (id);
+
+CREATE TABLE IF NOT EXISTS app.cohort_lists (k text PRIMARY KEY, iid text, n integer, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS cohort_lists_updated ON app.cohort_lists (updated);
 
-CREATE TABLE IF NOT EXISTS app.students (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, iid text, id text, cohort_id text, track text, name text, status text, applied_at text, vod_mid text, source text, joined_at bigint, demo boolean);
+CREATE TABLE IF NOT EXISTS app.cohorts (k text NOT NULL, i integer NOT NULL, id text, iid text, name text, start_date text, class_dow integer, class_time text, class_end text, place text, weeks integer, curriculum_id text, recruiting boolean, PRIMARY KEY (k, i));
+
+CREATE INDEX IF NOT EXISTS cohorts_id ON app.cohorts (id);
+
+CREATE TABLE IF NOT EXISTS app.students (k text PRIMARY KEY, iid text, id text, cohort_id text, track text, name text, status text, applied_at text, vod_mid text, source text, joined_at timestamp, demo boolean, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS students_updated ON app.students (updated);
 
@@ -85,17 +107,17 @@ CREATE INDEX IF NOT EXISTS students_cohort_id ON app.students (cohort_id);
 
 CREATE INDEX IF NOT EXISTS students_vod_mid ON app.students (vod_mid);
 
-CREATE TABLE IF NOT EXISTS app.progress (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, iid text, sid text, watched integer, missions integer, submissions integer, waiting integer, questions integer, last_watched_at bigint);
+CREATE TABLE IF NOT EXISTS app.progress (k text PRIMARY KEY, iid text, sid text, watched integer, missions integer, submissions integer, waiting integer, questions integer, last_watched_at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS progress_updated ON app.progress (updated);
 
 CREATE INDEX IF NOT EXISTS progress_iid ON app.progress (iid);
 
-CREATE TABLE IF NOT EXISTS app.contents (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, iid text, course text, weeks integer, notices integer, faqs integer, landing_on boolean, free_on boolean);
+CREATE TABLE IF NOT EXISTS app.contents (k text PRIMARY KEY, iid text, course text, weeks integer, notices integer, faqs integer, landing_on boolean, free_on boolean, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS contents_updated ON app.contents (updated);
 
-CREATE TABLE IF NOT EXISTS app.bills (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, iid text, id text, cohort_id text, cohort_name text, kind text, fee integer, vat text, status text, requested_at bigint, paid_at text, invoice_at text, canceled_at text, demo boolean);
+CREATE TABLE IF NOT EXISTS app.bills (k text PRIMARY KEY, iid text, id text, cohort_id text, cohort_name text, kind text, fee integer, vat text, status text, requested_at timestamp, paid_at text, invoice_at text, canceled_at text, demo boolean, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS bills_updated ON app.bills (updated);
 
@@ -103,7 +125,7 @@ CREATE INDEX IF NOT EXISTS bills_iid ON app.bills (iid);
 
 CREATE INDEX IF NOT EXISTS bills_cohort_id ON app.bills (cohort_id);
 
-CREATE TABLE IF NOT EXISTS app.partner_inquiries (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, id text, name text, email text, phone text, course text, source text, ref text, aff_id text, status text, at bigint);
+CREATE TABLE IF NOT EXISTS app.partner_inquiries (k text PRIMARY KEY, id text, name text, email text, phone text, course text, source text, ref text, aff_id text, status text, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS partner_inquiries_updated ON app.partner_inquiries (updated);
 
@@ -111,7 +133,7 @@ CREATE INDEX IF NOT EXISTS partner_inquiries_status ON app.partner_inquiries (st
 
 CREATE INDEX IF NOT EXISTS partner_inquiries_at ON app.partner_inquiries (at);
 
-CREATE TABLE IF NOT EXISTS app.member_inquiries (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, mid text, id text, cat text, order_no text, title text, answered boolean, at bigint);
+CREATE TABLE IF NOT EXISTS app.member_inquiries (k text PRIMARY KEY, mid text, id text, cat text, order_no text, title text, answered boolean, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS member_inquiries_updated ON app.member_inquiries (updated);
 
@@ -119,7 +141,7 @@ CREATE INDEX IF NOT EXISTS member_inquiries_mid ON app.member_inquiries (mid);
 
 CREATE INDEX IF NOT EXISTS member_inquiries_at ON app.member_inquiries (at);
 
-CREATE TABLE IF NOT EXISTS app.reviews (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, id text, pid text, mid text, name text, rating integer, hidden boolean, at bigint);
+CREATE TABLE IF NOT EXISTS app.reviews (k text PRIMARY KEY, id text, pid text, mid text, name text, rating integer, hidden boolean, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS reviews_updated ON app.reviews (updated);
 
@@ -127,45 +149,23 @@ CREATE INDEX IF NOT EXISTS reviews_pid ON app.reviews (pid);
 
 CREATE INDEX IF NOT EXISTS reviews_mid ON app.reviews (mid);
 
-CREATE TABLE IF NOT EXISTS app.pledges (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, id text, pid text, mid text, nick text, up integer, at bigint);
+CREATE TABLE IF NOT EXISTS app.pledges (k text PRIMARY KEY, id text, pid text, mid text, nick text, up integer, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS pledges_updated ON app.pledges (updated);
 
 CREATE INDEX IF NOT EXISTS pledges_pid ON app.pledges (pid);
 
-CREATE TABLE IF NOT EXISTS app.payout_lists (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, who text, n integer);
+CREATE TABLE IF NOT EXISTS app.payout_lists (k text PRIMARY KEY, who text, n integer, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS payout_lists_updated ON app.payout_lists (updated);
-
-CREATE TABLE IF NOT EXISTS app.settings (k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL, name text, items integer);
-
-CREATE INDEX IF NOT EXISTS settings_updated ON app.settings (updated);
-
-CREATE TABLE IF NOT EXISTS app.payment_orders (k text NOT NULL, i integer NOT NULL, order_no text, PRIMARY KEY (k, i));
-
-CREATE INDEX IF NOT EXISTS payment_orders_order_no ON app.payment_orders (order_no);
-
-CREATE TABLE IF NOT EXISTS app.bank_deposits (k text NOT NULL, i integer NOT NULL, id text, at bigint, got_at bigint, name text, amount integer, bank text, st text, order_no text, PRIMARY KEY (k, i));
-
-CREATE INDEX IF NOT EXISTS bank_deposits_order_no ON app.bank_deposits (order_no);
-
-CREATE INDEX IF NOT EXISTS bank_deposits_at ON app.bank_deposits (at);
-
-CREATE TABLE IF NOT EXISTS app.vod_progress_items (k text NOT NULL, i integer NOT NULL, pid text, seen integer, done integer, mat integer, last_seen_at bigint, PRIMARY KEY (k, i));
-
-CREATE INDEX IF NOT EXISTS vod_progress_items_pid ON app.vod_progress_items (pid);
-
-CREATE TABLE IF NOT EXISTS app.coaches (k text NOT NULL, i integer NOT NULL, id text, name text, status text, track text, created_at text, last_login_at bigint, PRIMARY KEY (k, i));
-
-CREATE INDEX IF NOT EXISTS coaches_id ON app.coaches (id);
-
-CREATE TABLE IF NOT EXISTS app.cohorts (k text NOT NULL, i integer NOT NULL, id text, iid text, name text, start_date text, class_dow integer, class_time text, class_end text, place text, weeks integer, curriculum_id text, recruiting boolean, PRIMARY KEY (k, i));
-
-CREATE INDEX IF NOT EXISTS cohorts_id ON app.cohorts (id);
 
 CREATE TABLE IF NOT EXISTS app.payouts (k text NOT NULL, i integer NOT NULL, id text, who text, ym text, st text, amount integer, PRIMARY KEY (k, i));
 
 CREATE INDEX IF NOT EXISTS payouts_ym ON app.payouts (ym);
+
+CREATE TABLE IF NOT EXISTS app.settings (k text PRIMARY KEY, name text, items integer, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
+
+CREATE INDEX IF NOT EXISTS settings_updated ON app.settings (updated);
 
 CREATE TABLE IF NOT EXISTS app.products (k text NOT NULL, i integer NOT NULL, id text, type text, iid text, title text, status text, price integer, sale integer, cat text, PRIMARY KEY (k, i));
 
@@ -291,11 +291,11 @@ COMMENT ON COLUMN app.orders.payment_id IS '포트원 결제 id';
 
 COMMENT ON COLUMN app.orders.grp IS '묶음 주문의 대표 주문번호';
 
-COMMENT ON COLUMN app.orders.ordered_at IS '주문 시각(ms)';
+COMMENT ON COLUMN app.orders.ordered_at IS '주문 시각(한국 시간)';
 
-COMMENT ON COLUMN app.orders.paid_at IS '결제 시각(ms)';
+COMMENT ON COLUMN app.orders.paid_at IS '결제 시각(한국 시간)';
 
-COMMENT ON COLUMN app.orders.refunded_at IS '환불 시각(ms)';
+COMMENT ON COLUMN app.orders.refunded_at IS '환불 시각(한국 시간)';
 
 COMMENT ON COLUMN app.orders.refund_amount IS '환불 금액';
 
@@ -315,7 +315,7 @@ COMMENT ON COLUMN app.payments.mid IS '회원 id';
 
 COMMENT ON COLUMN app.payments.total IS '합계(원)';
 
-COMMENT ON COLUMN app.payments.at IS '시각(ms)';
+COMMENT ON COLUMN app.payments.at IS '시각(한국 시간)';
 
 COMMENT ON COLUMN app.payments.orders IS '주문 수';
 
@@ -351,9 +351,9 @@ COMMENT ON COLUMN app.members.marketing IS '마케팅 동의';
 
 COMMENT ON COLUMN app.members.kakao_id IS '카카오 회원번호';
 
-COMMENT ON COLUMN app.members.created_at IS '가입 시각(ms)';
+COMMENT ON COLUMN app.members.created_at IS '가입 시각(한국 시간)';
 
-COMMENT ON COLUMN app.members.last_login_at IS '마지막 로그인(ms)';
+COMMENT ON COLUMN app.members.last_login_at IS '마지막 로그인(한국 시간)';
 
 COMMENT ON COLUMN app.members.login_n IS '로그인 수';
 
@@ -437,7 +437,7 @@ COMMENT ON COLUMN app.students.vod_mid IS 'DOOGO CLASS 회원 id';
 
 COMMENT ON COLUMN app.students.source IS '들어온 길';
 
-COMMENT ON COLUMN app.students.joined_at IS '입장 시각(ms)';
+COMMENT ON COLUMN app.students.joined_at IS '입장 시각(한국 시간)';
 
 COMMENT ON COLUMN app.students.demo IS '체험 계정';
 
@@ -461,7 +461,7 @@ COMMENT ON COLUMN app.progress.waiting IS '검수 기다리는 과제';
 
 COMMENT ON COLUMN app.progress.questions IS '질문 수';
 
-COMMENT ON COLUMN app.progress.last_watched_at IS '마지막으로 본 시각(ms)';
+COMMENT ON COLUMN app.progress.last_watched_at IS '마지막으로 본 시각(한국 시간)';
 
 COMMENT ON TABLE app.contents IS '2부 B4 · 강사 콘텐츠(강의실) — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)';
 
@@ -505,7 +505,7 @@ COMMENT ON COLUMN app.bills.vat IS '부가세 방식';
 
 COMMENT ON COLUMN app.bills.status IS '상태 (requested · paid · canceled)';
 
-COMMENT ON COLUMN app.bills.requested_at IS '신청 시각(ms)';
+COMMENT ON COLUMN app.bills.requested_at IS '신청 시각(한국 시간)';
 
 COMMENT ON COLUMN app.bills.paid_at IS '입금일';
 
@@ -539,7 +539,7 @@ COMMENT ON COLUMN app.partner_inquiries.aff_id IS '파트너 id';
 
 COMMENT ON COLUMN app.partner_inquiries.status IS '상태';
 
-COMMENT ON COLUMN app.partner_inquiries.at IS '시각(ms)';
+COMMENT ON COLUMN app.partner_inquiries.at IS '시각(한국 시간)';
 
 COMMENT ON TABLE app.member_inquiries IS '2부 B5 · 회원 1:1 문의 — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)';
 
@@ -559,7 +559,7 @@ COMMENT ON COLUMN app.member_inquiries.title IS '제목';
 
 COMMENT ON COLUMN app.member_inquiries.answered IS '답변함';
 
-COMMENT ON COLUMN app.member_inquiries.at IS '시각(ms)';
+COMMENT ON COLUMN app.member_inquiries.at IS '시각(한국 시간)';
 
 COMMENT ON TABLE app.reviews IS '2부 B5 · 후기 — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)';
 
@@ -579,7 +579,7 @@ COMMENT ON COLUMN app.reviews.rating IS '별점';
 
 COMMENT ON COLUMN app.reviews.hidden IS '숨김';
 
-COMMENT ON COLUMN app.reviews.at IS '시각(ms)';
+COMMENT ON COLUMN app.reviews.at IS '시각(한국 시간)';
 
 COMMENT ON TABLE app.pledges IS '2부 B5 · 수강 다짐 — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)';
 
@@ -597,7 +597,7 @@ COMMENT ON COLUMN app.pledges.nick IS '닉네임';
 
 COMMENT ON COLUMN app.pledges.up IS '응원 수';
 
-COMMENT ON COLUMN app.pledges.at IS '시각(ms)';
+COMMENT ON COLUMN app.pledges.at IS '시각(한국 시간)';
 
 COMMENT ON TABLE app.payout_lists IS '2부 B5 · 강사 정산 지급 목록 — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)';
 
@@ -627,9 +627,9 @@ COMMENT ON TABLE app.bank_deposits IS '2부 · 입금 알림 — 한 줄 = 한 �
 
 COMMENT ON COLUMN app.bank_deposits.id IS '은행 거래 id';
 
-COMMENT ON COLUMN app.bank_deposits.at IS '입금 시각(ms)';
+COMMENT ON COLUMN app.bank_deposits.at IS '입금 시각(한국 시간)';
 
-COMMENT ON COLUMN app.bank_deposits.got_at IS '알림 받은 시각(ms)';
+COMMENT ON COLUMN app.bank_deposits.got_at IS '알림 받은 시각(한국 시간)';
 
 COMMENT ON COLUMN app.bank_deposits.name IS '입금자';
 
@@ -651,7 +651,7 @@ COMMENT ON COLUMN app.vod_progress_items.done IS '끝낸 강의 수';
 
 COMMENT ON COLUMN app.vod_progress_items.mat IS '자료 내려받은 횟수';
 
-COMMENT ON COLUMN app.vod_progress_items.last_seen_at IS '마지막으로 본 시각(ms)';
+COMMENT ON COLUMN app.vod_progress_items.last_seen_at IS '마지막으로 본 시각(한국 시간)';
 
 COMMENT ON TABLE app.coaches IS '2부 · 코치 — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)';
 
@@ -665,7 +665,7 @@ COMMENT ON COLUMN app.coaches.track IS '맡은 두잉고 (live · vod)';
 
 COMMENT ON COLUMN app.coaches.created_at IS '등록일';
 
-COMMENT ON COLUMN app.coaches.last_login_at IS '마지막 로그인(ms)';
+COMMENT ON COLUMN app.coaches.last_login_at IS '마지막 로그인(한국 시간)';
 
 COMMENT ON TABLE app.cohorts IS '2부 · 기수 — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)';
 

@@ -1,8 +1,10 @@
 /* DB 전환 2부 B2~B6 — 문서 종류마다 제 표 (2026-11-05)
  *
  *  지금까지는 거의 모든 데이터가 docs 표 한 곳에 JSON 문서로 있었어요. 2부에서는 문서 종류마다 제 표를 만들어요.
- *    · 표 한 줄 = 문서 하나: k(문서 키) · v(문서 JSON 글자 그대로 — 화면 · API 가 받는 모양이 한 글자도 안 바뀌어요) · ver · updated · created
- *      + 사람이 읽고 찾고 더하는 값은 열로 꺼내요 (금액 · 상태 · 회원 · 시각 …). 열은 저장할 때마다 v 에서 다시 만들어서 v 와 어긋나지 않아요.
+ *    · 표 한 줄 = 문서 하나: k(문서 키) → 사람이 읽고 찾고 더하는 값(금액 · 상태 · 회원 · 시각 …)을 열로 먼저 → 맨 오른쪽에
+ *      v(문서 JSON 글자 그대로 — 화면 · API 가 받는 모양이 한 글자도 안 바뀌어요) · ver · updated · created (2026-11-06: v 를 맨 뒤로 · 시각은 한국 시간으로 —
+ *      Supabase Table Editor 에서 표를 열면 JSON 이 아니라 보통 표처럼 보이게. 예전 모양 표는 배포 때 내용 그대로 다시 만들어요 · areasync.rebuild)
+ *      열은 저장할 때마다 v 에서 다시 만들어서 v 와 어긋나지 않아요.
  *    · 문서 하나에 여러 건이 든 것(입금 알림 · 기수 · 상품 · 쿠폰 · 운영자 · 지급 · 코치 · 진도)은 ‘한 건 = 한 줄’ 표도 같이 (자식 표 · 문서와 같은 트랜잭션에서 다시 만들어요)
  *    · 비밀번호 해시 · 로그인 숫자(전화 뒷자리)는 열로 꺼내지 않아요 (v 안에만)
  *    · 쓰기를 막을 수 있는 제약(다른 표를 가리키는 외래 키 · 허용 값 목록)은 걸지 않아요 — 영역마다 따로 켜고 끄기 때문이에요. 대신 찾는 열마다 색인 · 배포 때 비교
@@ -36,7 +38,7 @@ const part = (k, i) => String(k).split(":")[i] || null;
 const after = (k, pre) => String(k).slice(pre.length) || null;
 
 /* ---------- 표 ----------
- *  cols: [열 이름, 종류(text · int · big · bool), (v, k) → 값, 한국어 설명]
+ *  cols: [열 이름, 종류(text · int · time · bool), (v, k) → 값, 한국어 설명] — time: ms 시각을 한국 시간 "2026-11-06 14:30:00" 으로 (Postgres timestamp · SQLite 글자)
  *  children: [{ table, cols, rows: (v, k) → [한 건 …] }] — 자식 표는 (k, i) 가 키 (i = 문서 안 순서)
  *  prefix 로 시작하는 키 · 또는 keys 에 든 키가 이 표로 가요 */
 const TABLES = [
@@ -57,9 +59,9 @@ const TABLES = [
     ["status", "text", (v) => txt(v.status), "상태 (ready · paid · refunded · failed …)"],
     ["payment_id", "text", (v) => txt(v.paymentId), "포트원 결제 id"],
     ["grp", "text", (v) => txt(v.grp), "묶음 주문의 대표 주문번호"],
-    ["ordered_at", "big", (v) => num(v.at != null ? v.at : v.createdAt), "주문 시각(ms)"],
-    ["paid_at", "big", (v) => num(v.paidAt), "결제 시각(ms)"],
-    ["refunded_at", "big", (v) => num(v.refundedAt), "환불 시각(ms)"],
+    ["ordered_at", "time", (v) => num(v.at != null ? v.at : v.createdAt), "주문 시각(한국 시간)"],
+    ["paid_at", "time", (v) => num(v.paidAt), "결제 시각(한국 시간)"],
+    ["refunded_at", "time", (v) => num(v.refundedAt), "환불 시각(한국 시간)"],
     ["refund_amount", "int", (v) => num(v.refundAmount), "환불 금액"],
     ["refund_kind", "text", (v) => txt(v.refundKind), "환불 종류"],
     ["demo", "bool", (v) => !!v.demo, "체험 주문"]
@@ -68,7 +70,7 @@ const TABLES = [
     ["payment_id", "text", (v, k) => after(k, "vpay:"), "포트원 결제 id"],
     ["mid", "text", (v) => txt(v.mid), "회원 id"],
     ["total", "int", (v) => num(v.total), "합계(원)"],
-    ["at", "big", (v) => num(v.at), "시각(ms)"],
+    ["at", "time", (v) => num(v.at), "시각(한국 시간)"],
     ["orders", "int", (v) => cnt(v.nos), "주문 수"],
     ["bank", "bool", (v) => !!v.bank, "무통장 · 가상계좌"]
   ], children: [
@@ -81,8 +83,8 @@ const TABLES = [
   ], children: [
     { table: "bank_deposits", label: "입금 알림", index: ["order_no", "at"], rows: (v) => arr(v.recent), cols: [
       ["id", "text", (x) => txt(x.id, 80), "은행 거래 id"],
-      ["at", "big", (x) => num(x.at), "입금 시각(ms)"],
-      ["got_at", "big", (x) => num(x.got), "알림 받은 시각(ms)"],
+      ["at", "time", (x) => num(x.at), "입금 시각(한국 시간)"],
+      ["got_at", "time", (x) => num(x.got), "알림 받은 시각(한국 시간)"],
       ["name", "text", (x) => txt(x.name, 30), "입금자"],
       ["amount", "int", (x) => num(x.amount), "금액"],
       ["bank", "text", (x) => txt(x.bank, 20), "은행"],
@@ -100,8 +102,8 @@ const TABLES = [
     ["points", "int", (v) => num(v.points), "포인트"],
     ["marketing", "bool", (v) => !!v.marketing, "마케팅 동의"],
     ["kakao_id", "text", (v) => txt(v.kakaoId, 40), "카카오 회원번호"],
-    ["created_at", "big", (v) => num(v.createdAt), "가입 시각(ms)"],
-    ["last_login_at", "big", (v) => num(v.lastLoginAt), "마지막 로그인(ms)"],
+    ["created_at", "time", (v) => num(v.createdAt), "가입 시각(한국 시간)"],
+    ["last_login_at", "time", (v) => num(v.lastLoginAt), "마지막 로그인(한국 시간)"],
     ["login_n", "int", (v) => num(v.loginN), "로그인 수"],
     ["orders", "int", (v) => cnt(v.orderNos), "주문 수"],
     ["demo", "bool", (v) => !!v.demo, "체험 계정"]
@@ -120,7 +122,7 @@ const TABLES = [
       ["seen", "int", (x) => cnt(x.seen), "본 강의 수"],
       ["done", "int", (x) => cnt(x.done), "끝낸 강의 수"],
       ["mat", "int", (x) => num(x.mat), "자료 내려받은 횟수"],
-      ["last_seen_at", "big", (x) => { const t = isObj(x.seen) ? Object.values(x.seen).map(num).filter((n) => n != null) : []; return t.length ? Math.max.apply(null, t) : null; }, "마지막으로 본 시각(ms)"]
+      ["last_seen_at", "time", (x) => { const t = isObj(x.seen) ? Object.values(x.seen).map(num).filter((n) => n != null) : []; return t.length ? Math.max.apply(null, t) : null; }, "마지막으로 본 시각(한국 시간)"]
     ] }
   ] },
   // ---------------- B4 두잉고 강의실 ----------------
@@ -139,7 +141,7 @@ const TABLES = [
       ["status", "text", (x) => txt(x.status), "상태"],
       ["track", "text", (x) => txt(x.track), "맡은 두잉고 (live · vod)"],
       ["created_at", "text", (x) => txt(x.createdAt), "등록일"],
-      ["last_login_at", "big", (x) => num(x.lastLoginAt), "마지막 로그인(ms)"]
+      ["last_login_at", "time", (x) => num(x.lastLoginAt), "마지막 로그인(한국 시간)"]
     ] }
   ] },
   { area: "B4", table: "cohort_lists", label: "강사별 기수 목록", prefix: "cohorts:", cols: [
@@ -170,7 +172,7 @@ const TABLES = [
     ["applied_at", "text", (v) => txt(v.appliedAt), "신청일"],
     ["vod_mid", "text", (v) => txt(v.vodMid), "DOOGO CLASS 회원 id"],
     ["source", "text", (v) => txt(v.source), "들어온 길"],
-    ["joined_at", "big", (v) => num(v.joinedAt), "입장 시각(ms)"],
+    ["joined_at", "time", (v) => num(v.joinedAt), "입장 시각(한국 시간)"],
     ["demo", "bool", (v) => !!v.demo, "체험 계정"]
   ] },
   { area: "B4", table: "progress", label: "수강생 진도 · 과제", prefix: "prog:", index: ["iid"], cols: [
@@ -181,7 +183,7 @@ const TABLES = [
     ["submissions", "int", (v) => (isObj(v.submissions) ? Object.values(v.submissions).reduce((a, l) => a + cnt(l), 0) : 0), "제출 횟수"],
     ["waiting", "int", (v) => (isObj(v.submissions) ? Object.values(v.submissions).filter((l) => Array.isArray(l) && l.length && isObj(l[l.length - 1]) && l[l.length - 1].status === "pending").length : 0), "검수 기다리는 과제"],
     ["questions", "int", (v) => cnt(v.questions), "질문 수"],
-    ["last_watched_at", "big", (v) => { const t = isObj(v.watched) ? Object.values(v.watched).map(num).filter((n) => n != null) : []; return t.length ? Math.max.apply(null, t) : null; }, "마지막으로 본 시각(ms)"]
+    ["last_watched_at", "time", (v) => { const t = isObj(v.watched) ? Object.values(v.watched).map(num).filter((n) => n != null) : []; return t.length ? Math.max.apply(null, t) : null; }, "마지막으로 본 시각(한국 시간)"]
   ] },
   { area: "B4", table: "contents", label: "강사 콘텐츠(강의실)", prefix: "content:", cols: [
     ["iid", "text", (v, k) => after(k, "content:"), "강사 id"],
@@ -202,7 +204,7 @@ const TABLES = [
     ["fee", "int", (v) => num(v.fee), "이용료(원)"],
     ["vat", "text", (v) => txt(v.vat), "부가세 방식"],
     ["status", "text", (v) => (v.canceledAt ? "canceled" : v.paidAt ? "paid" : "requested"), "상태 (requested · paid · canceled)"],
-    ["requested_at", "big", (v) => num(v.requestedAt), "신청 시각(ms)"],
+    ["requested_at", "time", (v) => num(v.requestedAt), "신청 시각(한국 시간)"],
     ["paid_at", "text", (v) => txt(v.paidAt, 30), "입금일"],
     ["invoice_at", "text", (v) => txt(v.invoiceAt, 30), "세금계산서"],
     ["canceled_at", "text", (v) => txt(v.canceledAt, 30), "취소일"],
@@ -218,7 +220,7 @@ const TABLES = [
     ["ref", "text", (v) => txt(v.ref), "추천 코드"],
     ["aff_id", "text", (v) => txt(v.affId), "파트너 id"],
     ["status", "text", (v) => txt(v.status), "상태"],
-    ["at", "big", (v) => num(v.at), "시각(ms)"]
+    ["at", "time", (v) => num(v.at), "시각(한국 시간)"]
   ] },
   { area: "B5", table: "member_inquiries", label: "회원 1:1 문의", prefix: "vq:", index: ["mid", "at"], cols: [
     ["mid", "text", (v, k) => txt(v.mid) || part(k, 1), "회원 id"],
@@ -227,7 +229,7 @@ const TABLES = [
     ["order_no", "text", (v) => txt(v.order), "주문번호"],
     ["title", "text", (v) => txt(v.title), "제목"],
     ["answered", "bool", (v) => !!(v.answer && String(v.answer).trim()), "답변함"],
-    ["at", "big", (v) => num(v.at), "시각(ms)"]
+    ["at", "time", (v) => num(v.at), "시각(한국 시간)"]
   ] },
   { area: "B5", table: "reviews", label: "후기", prefix: "vr:", index: ["pid", "mid"], cols: [
     ["id", "text", (v, k) => txt(v.id) || after(k, "vr:"), "id"],
@@ -236,7 +238,7 @@ const TABLES = [
     ["name", "text", (v) => txt(v.name), "이름"],
     ["rating", "int", (v) => num(v.rating), "별점"],
     ["hidden", "bool", (v) => !!(v.hidden || v.hide), "숨김"],
-    ["at", "big", (v) => num(v.at), "시각(ms)"]
+    ["at", "time", (v) => num(v.at), "시각(한국 시간)"]
   ] },
   { area: "B5", table: "pledges", label: "수강 다짐", prefix: "vpl:", index: ["pid"], cols: [
     ["id", "text", (v, k) => txt(v.id) || after(k, "vpl:"), "id"],
@@ -244,7 +246,7 @@ const TABLES = [
     ["mid", "text", (v) => txt(v.mid), "회원 id"],
     ["nick", "text", (v) => txt(v.nick), "닉네임"],
     ["up", "int", (v) => num(v.up), "응원 수"],
-    ["at", "big", (v) => num(v.at), "시각(ms)"]
+    ["at", "time", (v) => num(v.at), "시각(한국 시간)"]
   ] },
   { area: "B5", table: "payout_lists", label: "강사 정산 지급 목록", prefix: "vpo:", cols: [
     ["who", "text", (v, k) => after(k, "vpo:"), "강사 id"],
@@ -349,21 +351,42 @@ const writesDocs = (t) => modeOf(t) !== "only";
 const anyOn = () => Object.values(modes()).some((m) => m !== "off");
 
 /* ---------- SQL ---------- */
-const SQL_T = { text: "TEXT", int: "INTEGER", big: "INTEGER", bool: "INTEGER" };
-const PG_T = { text: "text", int: "integer", big: "bigint", bool: "boolean" };
-const BASE = { sqlite: "k TEXT PRIMARY KEY, v TEXT, ver INTEGER NOT NULL DEFAULT 1, updated INTEGER NOT NULL, created INTEGER NOT NULL", pg: "k text PRIMARY KEY, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL" };
-function schema(kind) {
-  const pg = kind === "pg", T = pg ? PG_T : SQL_T, S = pg ? "app." : "", out = [];
-  out.push(pg ? "CREATE TABLE IF NOT EXISTS app.area_state (id text PRIMARY KEY, mode text NOT NULL, at bigint NOT NULL, note text)" : "CREATE TABLE IF NOT EXISTS area_state (id TEXT PRIMARY KEY, mode TEXT NOT NULL, at INTEGER NOT NULL, note TEXT)");
-  TABLES.forEach((t) => {
-    out.push("CREATE TABLE IF NOT EXISTS " + S + t.table + " (" + BASE[pg ? "pg" : "sqlite"] + ", " + t.cols.map((c) => q(c[0]) + " " + T[c[1]]).join(", ") + ")");
-    out.push("CREATE INDEX IF NOT EXISTS " + t.table + "_updated ON " + S + t.table + " (updated)");
-    (t.index || []).forEach((c) => out.push("CREATE INDEX IF NOT EXISTS " + t.table + "_" + c + " ON " + S + t.table + " (" + q(c) + ")"));
-  });
-  CHILDREN.forEach((c) => {
-    out.push("CREATE TABLE IF NOT EXISTS " + S + c.table + " (k " + T.text + " NOT NULL, i " + T.int + " NOT NULL, " + c.cols.map((x) => q(x[0]) + " " + T[x[1]]).join(", ") + ", PRIMARY KEY (k, i))");
+const SQL_T = { text: "TEXT", int: "INTEGER", big: "INTEGER", bool: "INTEGER", time: "TEXT" };
+const PG_T = { text: "text", int: "integer", big: "bigint", bool: "boolean", time: "timestamp" };
+/* Postgres information_schema 의 이름 (표 모양 확인용) */
+const PG_INFO = { text: "text", integer: "integer", bigint: "bigint", boolean: "boolean", timestamp: "timestamp without time zone" };
+/** 표의 열 순서 · 종류 → [[이름, 종류 낱말(SQLite/Postgres)]] — k → 꺼낸 값들 → v · ver · updated · created (v 는 맨 뒤) */
+function layout(t, kind) {
+  const pg = kind === "pg" || kind === "postgres", T = pg ? PG_T : SQL_T;
+  const head = [["k", T.text]], tail = [["v", T.text], ["ver", T.int], ["updated", pg ? "bigint" : "INTEGER"], ["created", pg ? "bigint" : "INTEGER"]];
+  return head.concat(t.cols.map((c) => [c[0], T[c[1]]]), tail);
+}
+function childLayout(c, kind) {
+  const pg = kind === "pg" || kind === "postgres", T = pg ? PG_T : SQL_T;
+  return [["k", T.text], ["i", T.int]].concat(c.cols.map((x) => [x[0], T[x[1]]]));
+}
+/** 표 하나(+ 자식 표) 만들기 문장 — kind: "pg" | "sqlite" */
+function tableDDL(t, kind) {
+  const pg = kind === "pg" || kind === "postgres", S = pg ? "app." : "", out = [];
+  const cols = layout(t, kind).map(([n, ty]) => q(n) + " " + ty + (n === "k" ? " PRIMARY KEY" : n === "ver" ? " NOT NULL DEFAULT 1" : n === "updated" || n === "created" ? " NOT NULL" : ""));
+  out.push("CREATE TABLE IF NOT EXISTS " + S + t.table + " (" + cols.join(", ") + ")");
+  out.push("CREATE INDEX IF NOT EXISTS " + t.table + "_updated ON " + S + t.table + " (updated)");
+  (t.index || []).forEach((c) => out.push("CREATE INDEX IF NOT EXISTS " + t.table + "_" + c + " ON " + S + t.table + " (" + q(c) + ")"));
+  (t.children || []).forEach((c) => {
+    out.push("CREATE TABLE IF NOT EXISTS " + S + c.table + " (" + childLayout(c, kind).map(([n, ty]) => q(n) + " " + ty + (n === "k" || n === "i" ? " NOT NULL" : "")).join(", ") + ", PRIMARY KEY (k, i))");
     (c.index || []).forEach((x) => out.push("CREATE INDEX IF NOT EXISTS " + c.table + "_" + x + " ON " + S + c.table + " (" + q(x) + ")"));
   });
+  return out;
+}
+/** 표 하나(+ 자식 표) 지우기 문장 — Postgres 는 그 표를 쓰는 보기(v_orders …)도 같이 (배포가 바로 다시 만들어요 · pgSetup) */
+function tableDrop(t, kind) {
+  const pg = kind === "pg" || kind === "postgres", S = pg ? "app." : "", C = pg ? " CASCADE" : "";
+  return (t.children || []).map((c) => "DROP TABLE IF EXISTS " + S + c.table + C).concat(["DROP TABLE IF EXISTS " + S + t.table + C]);
+}
+function schema(kind) {
+  const pg = kind === "pg", out = [];
+  out.push(pg ? "CREATE TABLE IF NOT EXISTS app.area_state (id text PRIMARY KEY, mode text NOT NULL, at bigint NOT NULL, note text)" : "CREATE TABLE IF NOT EXISTS area_state (id TEXT PRIMARY KEY, mode TEXT NOT NULL, at INTEGER NOT NULL, note TEXT)");
+  TABLES.forEach((t) => out.push.apply(out, tableDDL(t, kind)));
   return out;
 }
 /** 열 이름이 SQL 예약어와 겹치면 따옴표 ("on" — SQLite · Postgres 둘 다 큰따옴표) */
@@ -371,7 +394,14 @@ const RESERVED = new Set(["on", "order", "group", "user", "from", "to", "default
 const q = (c) => (RESERVED.has(c) ? '"' + c + '"' : c);
 const tableNames = () => ["area_state"].concat(TABLES.map((t) => t.table), CHILDREN.map((c) => c.table));
 
-const val = (type, x, kind) => (x == null ? null : type === "bool" ? (kind === "postgres" ? !!x : x ? 1 : 0) : x);
+/** ms 시각 → 한국 시간 글자 "2026-11-06 14:30:00" (초까지 · 표에서 사람이 읽게) — 이상한 값은 비워요 */
+const KST_MS = 9 * 3600e3;
+function kstStr(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n < 946684800000 || n > 4102444800000) return null; // 2000 ~ 2100 년 밖이면 시각이 아닌 값
+  return new Date(Math.floor(n / 1000) * 1000 + KST_MS).toISOString().slice(0, 19).replace("T", " ");
+}
+const val = (type, x, kind) => (x == null ? null : type === "bool" ? (kind === "postgres" ? !!x : x ? 1 : 0) : type === "time" ? kstStr(x) : x);
 function colVals(t, v, k, kind) {
   const ok = isObj(v) || Array.isArray(v);
   return t.cols.map((c) => { let x = null; if (ok) { try { x = c[2](v, k); } catch (e) { x = null; } } return val(c[1], x, kind); });
@@ -401,12 +431,18 @@ function tableStmts(t, row, kind) {
 const docsUpsert = (row) => ({ sql: "INSERT INTO docs (k, v, ver, updated, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, ver = excluded.ver, updated = excluded.updated, created = excluded.created", args: [row.k, row.v == null ? null : String(row.v), Number(row.ver), Number(row.updated), Number(row.created)] });
 /** 표 한 줄(과 자식 표)을 지우는 문장 */
 const tableDelete = (t, k) => [{ sql: "DELETE FROM " + t.table + " WHERE k = ?", args: [k] }].concat((t.children || []).map((c) => ({ sql: "DELETE FROM " + c.table + " WHERE k = ?", args: [k] })));
+/** DB 에서 읽은 시각 칸 → "2026-11-06 14:30:00" (Postgres 는 글자 그대로 받도록 store.js 에서 맞춰요 · 혹시 Date 면 그 글자로) */
+function timeStr(x) {
+  if (x == null) return null;
+  if (x instanceof Date) return isNaN(x) ? null : new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 19).replace("T", " ");
+  return String(x).replace("T", " ").slice(0, 19);
+}
 /** 열 · 자식 표가 v 와 맞는지 (배포 때 비교) — 어긋난 열 이름들 */
 function colDiff(t, row, kind) {
   let v = null; if (row.v != null) { try { v = JSON.parse(row.v); } catch (e) { v = null; } }
   const want = colVals(t, v, row.k, kind), bad = [];
-  t.cols.forEach((c, i) => { const a = row[c[0]], b = want[i]; const eq = a == null || b == null ? a == null && b == null : c[1] === "bool" ? !!a === !!b : String(a) === String(b); if (!eq) bad.push(c[0]); });
+  t.cols.forEach((c, i) => { const a = c[1] === "time" ? timeStr(row[c[0]]) : row[c[0]], b = want[i]; const eq = a == null || b == null ? a == null && b == null : c[1] === "bool" ? !!a === !!b : String(a) === String(b); if (!eq) bad.push(c[0]); });
   return bad;
 }
 
-module.exports = { ORDER, AREAS, AREA_IDS, TABLES, CHILDREN, route, overlaps, keyCond, parseModes, modes, modeOf, readsTable, writesTable, writesDocs, anyOn, schema, tableNames, tableStmts, docsUpsert, tableDelete, colDiff, childRows, q };
+module.exports = { ORDER, AREAS, AREA_IDS, TABLES, CHILDREN, route, overlaps, keyCond, parseModes, modes, modeOf, readsTable, writesTable, writesDocs, anyOn, schema, tableNames, tableStmts, docsUpsert, tableDelete, colDiff, childRows, q, layout, childLayout, tableDDL, tableDrop, PG_INFO, kstStr, timeStr };

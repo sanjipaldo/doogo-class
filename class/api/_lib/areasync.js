@@ -115,4 +115,50 @@ async function status() {
   return out;
 }
 
-module.exports = { check, sync, status, syncTable };
+/* ---------- 표 모양 (2026-11-06) ----------
+ *  예전 모양(k · v(JSON) · ver · updated · created · 꺼낸 값 · 시각은 ms 숫자)의 표를 지금 모양(k · 꺼낸 값 · 시각은 한국 시간 · 맨 뒤에 v …)으로 다시 만들어요.
+ *  표마다 한 트랜잭션: 잠그고 → 줄(k · v · ver · updated · created)을 읽고 → 지우고 → 새로 만들고 → 같은 줄을 다시 (꺼낸 값 · 한 건씩 표는 v 에서 다시)
+ *  중간에 실패하면 그 표는 예전 그대로예요 (Postgres 는 표 만들기 · 지우기도 트랜잭션 안). 문서 글자 · 버전 · 시각은 한 글자도 안 바뀌어요 */
+async function columnsOf(kind) {
+  const out = {};
+  if (kind === "postgres") {
+    (await store.exec("SELECT table_name AS t, column_name AS c, data_type AS ty FROM information_schema.columns WHERE table_schema = 'app' ORDER BY table_name, ordinal_position")).rows
+      .forEach((r) => { (out[r.t] = out[r.t] || []).push([r.c, r.ty]); });
+    return out;
+  }
+  for (const n of AR.TABLES.map((t) => t.table).concat(AR.CHILDREN.map((c) => c.table))) out[n] = (await store.exec("SELECT name AS c, type AS ty FROM pragma_table_info(?)", [n])).rows.map((r) => [r.c, String(r.ty).toUpperCase()]);
+  return out;
+}
+const want = (cols, kind) => cols.map(([n, ty]) => [n, kind === "postgres" ? AR.PG_INFO[ty] || ty : ty]);
+const sameCols = (a, b) => !!a && a.length === b.length && a.every((x, i) => x[0] === b[i][0] && x[1] === b[i][1]);
+/** 모양이 예전인 표(자식 표 포함) → [{ table, why }] */
+async function oldTables(kind) {
+  const cols = await columnsOf(kind), out = [];
+  AR.TABLES.forEach((t) => {
+    const bad = [[t.table, AR.layout(t, kind)]].concat((t.children || []).map((c) => [c.table, AR.childLayout(c, kind)])).filter(([n, l]) => !sameCols(cols[n], want(l, kind)));
+    if (bad.length) out.push({ table: t.table, t, why: bad.map(([n]) => n).join(" · ") });
+  });
+  return out;
+}
+/** 예전 모양 표 다시 만들기 → { rebuilt: [{ table, rows }], lines } (write: false 면 찾기만) */
+async function rebuild(opts) {
+  opts = opts || {};
+  const c = await store.db(), kind = c.kind, ddlKind = kind === "postgres" ? "pg" : "sqlite";
+  const old = await oldTables(kind), rebuilt = [];
+  if (!opts.write) return { rebuilt, old: old.map((o) => o.table), lines: old.length ? ["2부 표 모양: 예전 모양 " + old.length + "개 (" + old.map((o) => o.table).join(" · ") + ") — 운영 · 시험용 배포 때 내용 그대로 다시 만들어요"] : [] };
+  for (const o of old) {
+    const n = await c.tx(async (run) => {
+      if (kind === "postgres") await run({ sql: "LOCK TABLE app." + o.table + " IN ACCESS EXCLUSIVE MODE" });
+      const rows = (await run({ sql: "SELECT k, v, ver, updated, created FROM " + o.table })).rows;
+      for (const s of AR.tableDrop(o.t, ddlKind)) await run({ sql: s });
+      for (const s of AR.tableDDL(o.t, ddlKind)) await run({ sql: s });
+      for (const r of rows) for (const s of AR.tableStmts(o.t, r, kind)) await run(s);
+      return rows.length;
+    });
+    rebuilt.push({ table: o.table, rows: n });
+  }
+  const still = await oldTables(kind);
+  return { rebuilt, still: still.map((x) => x.table), lines: rebuilt.length ? ["2부 표 모양 바꿈 (꺼낸 값 먼저 · 시각은 한국 시간 · 문서 JSON(v)은 맨 오른쪽): " + rebuilt.map((x) => x.table + " " + x.rows + "줄").join(" · ") + (still.length ? " · 아직 예전 모양: " + still.map((x) => x.table).join(", ") : " · 모두 새 모양")] : [] };
+}
+
+module.exports = { check, sync, status, syncTable, rebuild, oldTables };

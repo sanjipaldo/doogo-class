@@ -65,6 +65,7 @@ const init = require("../api/_lib/init");
   const areaCheck = await AS.check();
   if (!areaCheck.ok) { areaCheck.bad.forEach((b) => console.error("[db] 2부 영역: " + b)); console.error("[db] 영역 스위치(DB_AREAS)를 한 칸씩만 바꿔 다시 배포해 주세요 — 빌드를 멈춰요"); process.exit(1); }
   const areasUsed = AR.anyOn() || Object.keys(areaCheck.state).length > 0;
+  if (ro || (!prod && !staging)) (await AS.rebuild({ write: false })).lines.forEach((l) => console.log("[db] " + l + " (찾기만)"));
   if (areasUsed && (ro || (!prod && !staging))) {
     const ar = await AS.sync({ write: false });
     ar.lines.forEach((l) => console.log("[db] " + l + " (비교만)"));
@@ -94,6 +95,13 @@ const init = require("../api/_lib/init");
   const b = await store.backup("배포 전 자동 백업" + (process.env.VERCEL_GIT_COMMIT_SHA ? " (" + process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) + ")" : ""));
   console.log("[db] 배포 전 백업: " + (b ? "문서 " + b.docs + "개 · " + Math.round(b.size / 1024) + "KB" : "비어 있어 건너뜀"));
   if (ro) return;
+  // 2부 표 모양 (2026-11-06): 예전 모양 표(문서 JSON 이 둘째 칸 · 시각이 ms 숫자)를 내용 그대로 새 모양으로 — 보기(v_orders …) · RLS · 설명은 바로 다시
+  let rb;
+  try { rb = await AS.rebuild({ write: true }); }
+  catch (e) { if (pgOn) await store.pgSetup().catch(() => {}); throw e; } // 중간에 실패해도 이미 다시 만든 표의 보기 · RLS 는 되살려 두고 멈춰요 (실패한 표는 트랜잭션이라 예전 그대로)
+  rb.lines.forEach((l) => console.log("[db] " + l));
+  if (rb.still && rb.still.length) { console.error("[db] 2부 표 모양을 다 바꾸지 못했어요 — 빌드를 멈춰요 (지금 배포는 그대로)"); process.exit(1); }
+  if (rb.rebuilt.length && pgOn) { await store.pgSetup(); console.log("[db] Supabase 보안 · 보기 · 표 설명 다시 (표를 새로 만든 뒤)"); }
   if (areasUsed) {
     const ar = await AS.sync({ write: true });
     ar.lines.forEach((l) => console.log("[db] " + l));
