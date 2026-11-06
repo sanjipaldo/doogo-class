@@ -191,7 +191,7 @@ function Footer({ open }) {
         <nav className="vd-gf-grid" aria-label="바로가기">
           {col("클래스", [["#/vod", "돈되는 클래스"], ["#/vod/c/all?tab=vod", "VOD 강의"], X.bizOn("ebook") && ["#/vod/c/all?tab=ebook", "전자책"], X.bizOn("flive") && ["#/vod/c/all?tab=flive", "무료 LIVE"], X.bizOn("live") && ["#/vod/c/all?tab=premium", "LIVE · 오프라인 강의"], X.bizOn("free") && ["#/vod/c/all?tab=free", "무료강의"], ["#/vod/teachers", "강사진"], ["#/vod/c/soon", "오픈 예정"]].filter(Boolean))}
           {col("마이페이지", [["#/vod/my/classes", "내 강의실"], ["#/vod/my/coupons", "쿠폰"], ["#/vod/my/orders", "주문 · 결제 내역"], ["#/vod/my/account", "회원 정보 수정"]])}
-          {col("DOOGO CLASS", [["#/vod/about", "DOOGO CLASS 소개"], ["#/vod/partners", "두고 파트너스 (강사 지원)"], ["#/center", "강사센터"], ["#/doinggo", "두잉고 (강의 운영 시스템)"]])}
+          {col("DOOGO CLASS", [["#/vod/about", "DOOGO CLASS 소개"], ["#/vod/partners", "두고 파트너스 (강사 지원)"], ["#/doinggo", "두잉고 (강의 운영 시스템)"], ["#/center", "강사센터"]])}
         </nav>
         <div className="vd-gf-help"><b>도움이 필요하신가요?</b><p>수강 · 결제 · 환불 문의를 남겨 주시면<br />영업일 기준 하루 안에 답해 드려요.</p><div className="vd-gf-hbtn"><a className="vd-btn vd-btn-p" href="#/vod/my/help">1:1 문의하기 <Icon n="arrowRight" c="xs" /></a><KakaoBtn cls="vd-btn vd-btn-kakao" label="카카오톡 상담" /></div>
           {S.phone || S.hours ? <p className="vd-gf-cs">{S.phone ? <b>{tel(S.phone)}</b> : null}{S.hours ? <small>{S.hours}</small> : null}</p> : null}</div></div>

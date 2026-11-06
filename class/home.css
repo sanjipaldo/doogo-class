@@ -1642,6 +1642,13 @@ textarea.hm-in { height: auto; min-height: 76px; padding: 13px 16px; line-height
   .adm .bw-tab .icon { width: 22px; height: 22px; }
   .adm .bw-tab.on { color: #ff0037; }
   .adm .bw-tab.on .icon { stroke-width: 2.4; }
+  /* 가운데 동그란 홈 (= 대시보드) · 전체(메뉴)는 맨 왼쪽 — 두잉고(LIVE) 파랑 · 두고클래스(VOD) 빨강 (2026-11-06) */
+  .adm .bw-tabbar-a { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .adm .bw-tab-home .bw-tab-hc { display: grid; place-items: center; width: 44px; height: 44px; margin-top: -22px; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #4a8dff, #2563eb 55%, #1849c6); box-shadow: 0 6px 16px rgba(37, 99, 235, .35), 0 0 0 4px #fff; }
+  .adm .bw-tr-vod .bw-tab-home .bw-tab-hc { background: linear-gradient(135deg, #ff4468, #fc1c49 55%, #e30f3c); box-shadow: 0 6px 16px rgba(252, 28, 73, .32), 0 0 0 4px #fff; }
+  .adm .bw-tab-home .bw-tab-hc .icon { width: 21px; height: 21px; }
+  .adm .bw-tab-home, .adm .bw-tab-home.on { color: #2563eb; }
+  .adm .bw-tr-vod .bw-tab-home, .adm .bw-tr-vod .bw-tab-home.on { color: #fc1c49; }
   .adm.a-app .a-main, .adm.a-app main { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 }
 

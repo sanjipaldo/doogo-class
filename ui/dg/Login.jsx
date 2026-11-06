@@ -70,7 +70,7 @@ function Picker({ list, vod, pickSvc, cardRef, setModal }) {
         <div className="dc-foot"><span>© 2026 DOOGO HOLDINGS</span><a href="#/doinggo">두잉고 소개 <Icon n="arrowRight" c="xs" /></a></div>
       </section>
       <section className="login-panel dc-panel">
-        <div className="login-topright"><a className="login-home-big" href="#/doinggo"><Icon n="arrowLeft" c="sm" /><span>두잉고 홈페이지 이동하기</span></a><span>강사님이신가요?</span><a className="dc-center" href="#/center">강사센터</a></div>
+        <div className="login-topright"><a className="login-home-big" href={vod ? "#/vod" : "#/doinggo"}><Icon n="arrowLeft" c="sm" /><span>{(vod ? "두고클래스" : "두잉고") + " 홈페이지 이동하기"}</span></a><span>강사님이신가요?</span><a className="dc-center" href="#/center">강사센터</a></div>
         <div className={"login-stack" + (vod ? " svc-vod" : "")}>
           <div className="login-card dc-card" ref={cardRef}><SvcTabs vod={vod} pick={pickSvc} /><div className="lg-pane" data-pane="dg" hidden={vod || undefined}>
             <div className="dc-card-logo"><Lock /></div><h1>두잉고 시작하기</h1><p className="lead">수강 신청할 때 등록한 정보로 로그인하세요.</p>
@@ -124,7 +124,7 @@ export default function LoginPage() {
         <div className="login-foot"><span className="login-copy">© 2026 {B.name}</span><RawOne html={window.poweredBy("white", "login-powered")} /></div>
       </section>
       <section className="login-panel">
-        <div className="login-topright"><a className="login-home-big" href="#/doinggo"><Icon n="arrowLeft" c="sm" /><span>두잉고 홈페이지 이동하기</span></a><span>강사님이신가요?</span><a className="btn btn-dark btn-sm" href="#/center">강사센터</a></div>
+        <div className="login-topright"><a className="login-home-big" href={vod ? "#/vod" : "#/doinggo"}><Icon n="arrowLeft" c="sm" /><span>{(vod ? "두고클래스" : "두잉고") + " 홈페이지 이동하기"}</span></a><span>강사님이신가요?</span><a className="btn btn-dark btn-sm" href="#/center">강사센터</a></div>
         <div className={"login-stack" + (vod ? " svc-vod" : "")}>
           <div className="login-card" ref={cardRef}><SvcTabs vod={vod} pick={pickSvc} /><div className="lg-pane" data-pane="dg" hidden={vod || undefined}>
             <p className="login-label"><a href="#/doinggo" title="두잉고 홈으로" aria-label="두잉고 홈으로"><Lock /></a></p>

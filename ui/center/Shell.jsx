@@ -25,7 +25,7 @@ export default function Shell({ r, children, pageHtml }) {
   const co = ins ? DB.currentCohort(ins.id) : null, many = ins && coach && A.myCoachCourses().length > 1;
   const st = A.staffMe();
   const u = partner ? [PM.name, "파트너", "handshake", "pt"] : media ? [A.mdName(MDM), "온드미디어 · RS " + A.mdRate(MDM) + "%", "monitorPlay", "pt"] : S.role === "master" ? (st ? [st.name, A.staffRoleName(st) + " · 운영자", "shieldCheck", "ms st"] : ["ADMIN", master ? "마스터 관리자" : "마스터 · 대신 보기", "shieldCheck", "ms"]) : coach ? [(A.ME_COACH() || {}).name || "코치", "코치", "checks", "co"] : [ins.name, "강사", "user", "in"];
-  const tabs = (vod ? [["#/center", "grid", "대시보드"], ["#/center/vod-students", "users", "VOD 수강생"], ["#/center/vod", "monitorPlay", "판매"], ["#/center/coaching", "message", "코칭"]] : [["#/center", "grid", "대시보드"], ["#/center/students", "users", "수강생"], ["#/center/reviews", "checks", "과제 검수"], ["#/center/questions", "message", "1:1"]]).filter((x) => { const k = x[0].replace(/^#\/center\/?/, ""); return !k || A.can(k); });
+  const tOth = (vod ? [["#/center", "grid", "대시보드"], ["#/center/vod-students", "users", "VOD 수강생"], ["#/center/vod", "monitorPlay", "판매"], ["#/center/coaching", "message", "코칭"]] : [["#/center", "grid", "대시보드"], ["#/center/students", "users", "수강생"], ["#/center/reviews", "checks", "과제 검수"], ["#/center/questions", "message", "1:1"]]).filter((x) => { const k = x[0].replace(/^#\/center\/?/, ""); return !k || A.can(k); }).filter((x) => x[0] !== "#/center"), tHalf = Math.floor(tOth.length / 2), tabA = (x) => <a key={x[0]} className="bw-tab" href={x[0]}><Icon n={x[1]} /><span>{x[2]}</span></a>; // 휴대폰 아래 탭: 전체(메뉴) 왼쪽 · 가운데 동그란 홈(대시보드)
   return (
     <div className="adm a-app" id="a-app">
       {S.role === "master" && S.actingAs ? <div className="a-acting"><Icon n="shieldCheck" c="sm" /><span>마스터 권한으로 <b>{ins.name}</b> 강사센터를 보고 있어요.</span><Btn action="stop-acting" cls="a-btn-light a-btn-sm">마스터로 돌아가기</Btn></div> : null}
@@ -35,7 +35,7 @@ export default function Shell({ r, children, pageHtml }) {
           {ins ? (many ? <button type="button" className="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기"><Icon n="swap" c="xs" /><span>{ins.displayName}</span><Icon n="chevDown" c="xs" /></button> : <em className="a-hide-sm">{ins.displayName}</em>) : null}</span>
         <div className="a-top-right">
           {ins ? <><span className={"a-chip a-hide-sm" + (vod ? " a-chip-vod" : "")}>{vod ? "DOOGO CLASS · VOD 수강생 " + A.VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? co.name + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음"}</span>
-            <Btn action="preview" cls="a-btn-outline a-btn-sm a-pv-btn" title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면 미리보기"><Icon n="eye" c="sm" /><span className="a-hide-sm">{vod ? "VOD 수강생 화면 보기" : "수강생 화면 보기"}</span><span className="a-only-sm">미리보기</span></Btn></> : null}
+            <Btn action="preview" cls="a-btn-outline a-btn-sm a-pv-btn" title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면 미리보기"><Icon n="eye" c="sm" /><span className="a-hide-sm">{vod ? "VOD 수강생 화면 미리보기" : "수강생 화면 미리보기"}</span><span className="a-only-sm">수강생 화면 미리보기</span></Btn></> : null}
           <Bell partner={partner} master={master} PM={PM} />
           <span className={"a-user a-user-" + u[3] + " a-hide-sm"}><span className="a-user-av"><Icon n={u[2]} c="sm" /></span><span className="a-user-t"><b>{u[0] + (u[3] === "ms" ? "" : " 님")}</b><small>{u[1]}</small></span><i className="a-user-dot" aria-hidden="true" /></span>
           <Btn action="logout" cls="a-btn-outline a-btn-sm a-logout"><Icon n="logout" c="sm" /><span className="a-hide-sm">로그아웃</span></Btn>
@@ -54,7 +54,7 @@ export default function Shell({ r, children, pageHtml }) {
           <div className="a-side-foot">{S.role !== "master" ? <a className="a-side-kk" href={DB.opsKakao().chat} target="_blank" rel="noopener" data-kk-ops=""><Icon n="headset" c="xs" />운영팀 상담 (카카오톡)</a> : null}<a href="#/login" data-action="to-student"><Icon n="arrowLeft" c="xs" />수강생 로그인 화면</a><RawOne html={window.poweredBy("color")} /></div>
         </aside>
         <div className="a-scrim" data-action="toggle-nav" />
-        {master || partner || media ? null : <nav className="bw-tabbar bw-tabbar-a" aria-label="빠른 메뉴">{tabs.map((x) => <a key={x[0]} className="bw-tab" href={x[0]}><Icon n={x[1]} /><span>{x[2]}</span></a>)}<button type="button" className="bw-tab" data-action="toggle-nav"><Icon n="menu" /><span>전체</span></button></nav>}
+        {master || partner || media ? null : <nav className={"bw-tabbar bw-tabbar-a " + (vod ? "bw-tr-vod" : "bw-tr-live")} aria-label="빠른 메뉴"><button type="button" className="bw-tab" data-action="toggle-nav"><Icon n="menu" /><span>전체</span></button>{tOth.slice(0, tHalf).map(tabA)}<a className="bw-tab bw-tab-home" href="#/center"><i className="bw-tab-hc"><Icon n="home" /></i><span>홈</span></a>{tOth.slice(tHalf).map(tabA)}{tOth.length % 2 ? null : <span className="bw-tab-sp" aria-hidden="true" />}</nav>}
         <main className="a-main" id="a-main">{pageHtml != null ? <RawOne html={'<div class="a-page">' + pageHtml + "</div>"} /> : <div className="a-page">{children}</div>}</main>
       </div>
     </div>

@@ -265,7 +265,7 @@
           '<div class="dc-foot"><span>© 2026 DOOGO HOLDINGS</span><a href="#/doinggo">두잉고 소개 ' + icon("arrowRight", "xs") + "</a></div>" +
         "</section>" +
         '<section class="login-panel dc-panel">' +
-          '<div class="login-topright"><a class="login-home-big" href="#/doinggo">' + icon("arrowLeft", "sm") + "<span>두잉고 홈페이지 이동하기</span></a><span>강사님이신가요?</span><a class=\"dc-center\" href=\"#/center\">강사센터</a></div>" +
+          '<div class="login-topright">' + homeBig() + "<span>강사님이신가요?</span><a class=\"dc-center\" href=\"#/center\">강사센터</a></div>" +
           '<div class="login-stack' + (svcIsVod() ? " svc-vod" : "") + '">' +
             '<div class="login-card dc-card">' + svcTabs() + dgPaneOpen() +
               '<div class="dc-card-logo">' + lock() + "</div>" +
@@ -320,6 +320,9 @@
   // 탭은 그 자리에서 바뀌어요: ‘두잉고’ = 기수 수강생 로그인 · ‘두고클래스’ = VOD 구매 회원 이메일 로그인 (주소 ?tab=vod 로 기억)
   const svcIsVod = () => /[?&]tab=vod(&|$)/.test(ROUTE.hash);
   const svcTabs = () => { const v = svcIsVod(); return '<div class="lg-svc" role="tablist" aria-label="로그인할 곳 고르기"><a role="tab" class="lg-svc-dg' + (v ? "" : " on") + '" href="#/login" data-action="svc-tab" data-k="dg" aria-selected="' + !v + '"><b>두잉고</b><small>기수 수강생 · 강사 강의실</small></a><a role="tab" class="lg-svc-vod' + (v ? " on" : "") + '" href="#/login?tab=vod" data-action="svc-tab" data-k="vod" aria-selected="' + v + '"><b>두고클래스</b><small>VOD 구매 회원 · 이메일 로그인</small></a></div>'; };
+  // 로그인 맨 위 ‘← … 홈페이지 이동하기’: 두잉고 탭이면 두잉고 홈페이지, 두고클래스 탭이면 두고클래스(스토어) 홈페이지 (2026-11-06)
+  const homeBigTo = (vod) => [vod ? "#/vod" : "#/doinggo", (vod ? "두고클래스" : "두잉고") + " 홈페이지 이동하기"];
+  const homeBig = () => { const t = homeBigTo(svcIsVod()); return '<a class="login-home-big" href="' + t[0] + '">' + icon("arrowLeft", "sm") + "<span>" + t[1] + "</span></a>"; };
   const dgPaneOpen = () => '<div class="lg-pane" data-pane="dg"' + (svcIsVod() ? " hidden" : "") + ">";
   /** ‘두고클래스’ 탭 내용: DOOGO CLASS VOD 회원 이메일 · 카카오 로그인 → 두잉고 VOD 강의실로 (로그인은 vod.js 의 VOD.authLogin) */
   function vodPane() {
@@ -356,6 +359,7 @@
     card.querySelectorAll(".lg-svc [data-k]").forEach((a) => { const on = a.dataset.k === (vod ? "vod" : "dg"); a.classList.toggle("on", on); a.setAttribute("aria-selected", String(on)); });
     card.querySelectorAll(".lg-pane").forEach((p) => { p.hidden = p.dataset.pane !== (vod ? "vod" : "dg"); });
     const stack = card.closest(".login-stack"); if (stack) stack.classList.toggle("svc-vod", vod);
+    const hb = document.querySelector(".login-home-big"), t = homeBigTo(vod); if (hb) { hb.setAttribute("href", t[0]); const sp = hb.querySelector("span"); if (sp) sp.textContent = t[1]; }
     if (vod) vodPaneReady(card);
   }
   // ‘두고클래스’ 칸을 열 때: 서버 설정(카카오 · 사람 확인)을 받아 두고 사람 확인 칸을 붙여요
@@ -406,7 +410,7 @@
           '<div class="login-foot"><span class="login-copy">© 2026 ' + esc(B.name) + "</span>" + window.poweredBy("white", "login-powered") + "</div>" +
         "</section>" +
         '<section class="login-panel">' +
-          '<div class="login-topright"><a class="login-home-big" href="#/doinggo">' + icon("arrowLeft", "sm") + "<span>두잉고 홈페이지 이동하기</span></a><span>강사님이신가요?</span><a class=\"btn btn-dark btn-sm\" href=\"#/center\">강사센터</a></div>" +
+          '<div class="login-topright">' + homeBig() + "<span>강사님이신가요?</span><a class=\"btn btn-dark btn-sm\" href=\"#/center\">강사센터</a></div>" +
           '<div class="login-stack' + (svcIsVod() ? " svc-vod" : "") + '">' +
             '<div class="login-card">' + svcTabs() + dgPaneOpen() +
               '<p class="login-label"><a href="#/doinggo" title="두잉고 홈으로" aria-label="두잉고 홈으로">' + (window.doogoClassLock ? window.doogoClassLock() : window.doogoLogo("color")) + "</a></p>" +
@@ -561,9 +565,10 @@
     const wasVod = TRACK === "vod";
     DB.session.setStudent(null);
     me = null; P = null;
-    ROUTE.hash = wasVod ? "#/vod/my/classes" : "#/login";
-    // 서버 모드: 로그인 쿠키를 지우고 내 정보가 남지 않게 새로 불러온다
-    if (DB.remote.on) DB.remote.logout("student").catch(() => {}).then(() => location.reload());
+    ROUTE.hash = wasVod ? "#/vod" : "#/login";
+    // 서버 모드: 로그인 쿠키를 지우고 내 정보가 남지 않게 새로 불러온다 — 이 브라우저의 로그인 모두(수강생 · 강사센터 · DOOGO CLASS 회원 · 2026-11-06)
+    if (DB.remote.on) DB.remote.logout("all").catch(() => {}).then(() => location.reload());
+    else if (window.VOD && window.VOD.logoutAll) window.VOD.logoutAll();
   }
   // 서버에서 다른 사람이 바꾼 내용(예: 코치 검수 · 답변)이 들어오면 내 계정과 기록을 새로 읽는다
   DB.remote.listen((type) => {

@@ -1374,7 +1374,7 @@
         '<nav class="vd-gf-grid" aria-label="바로가기">' +
           col("클래스", [["#/vod", "돈되는 클래스"], ["#/vod/c/all?tab=vod", "VOD 강의"], bizOn("ebook") && ["#/vod/c/all?tab=ebook", "전자책"], bizOn("flive") && ["#/vod/c/all?tab=flive", "무료 LIVE"], bizOn("live") && ["#/vod/c/all?tab=premium", "LIVE · 오프라인 강의"], bizOn("free") && ["#/vod/c/all?tab=free", "무료강의"], ["#/vod/teachers", "강사진"], ["#/vod/c/soon", "오픈 예정"]].filter(Boolean)) +
           col("마이페이지", [["#/vod/my/classes", "내 강의실"], ["#/vod/my/coupons", "쿠폰"], ["#/vod/my/orders", "주문 · 결제 내역"], ["#/vod/my/account", "회원 정보 수정"]]) +
-          col("DOOGO CLASS", [["#/vod/about", "DOOGO CLASS 소개"], ["#/vod/partners", "두고 파트너스 (강사 지원)"], ["#/center", "강사센터"], ["#/doinggo", "두잉고 (강의 운영 시스템)"]]) +
+          col("DOOGO CLASS", [["#/vod/about", "DOOGO CLASS 소개"], ["#/vod/partners", "두고 파트너스 (강사 지원)"], ["#/doinggo", "두잉고 (강의 운영 시스템)"], ["#/center", "강사센터"]]) +
         "</nav>" +
         '<div class="vd-gf-help"><b>도움이 필요하신가요?</b><p>수강 · 결제 · 환불 문의를 남겨 주시면<br>영업일 기준 하루 안에 답해 드려요.</p><div class="vd-gf-hbtn"><a class="vd-btn vd-btn-p" href="#/vod/my/help">1:1 문의하기 ' + icon("arrowRight", "xs") + "</a>" + kkBtn("vd-btn vd-btn-kakao", "카카오톡 상담") + "</div>" +
           (S.phone || S.hours ? '<p class="vd-gf-cs">' + (S.phone ? "<b>" + tel(S.phone) + "</b>" : "") + (S.hours ? "<small>" + esc(S.hours) + "</small>" : "") + "</p>" : "") + "</div></div>" +
@@ -3649,7 +3649,7 @@
   function likeFlip(m, id) { const L2 = (V().likes[m.id] = V().likes[m.id] || []), i = L2.indexOf(id), p = product(id); if (i >= 0) L2.splice(i, 1); else L2.push(id); likeBump(id, i < 0); save(); return { added: i < 0, soon: !!(p && p.status === "soon"), p }; }
   function topicFlip(k) { const mine = myTopics().slice(), i = mine.indexOf(k), tv = (V().topicVotes = V().topicVotes || {}); if (i >= 0) { mine.splice(i, 1); if (!SRV()) tv[k] = Math.max(0, (tv[k] || 1) - 1); } else { mine.push(k); if (!SRV()) tv[k] = (tv[k] || 0) + 1; } setTopics(mine); return i < 0; }
   function logoutAll() {
-    if (SRV()) return Promise.resolve(DB.remote.flush && DB.remote.flush()).catch(() => {}).then(() => authApi("logout")).then(() => DB.remote.logout("student")).catch(() => {}).then(() => { try { DB.session.setStudent(null); } catch (e) {} return DB.remote.refresh(); });
+    if (SRV()) return Promise.resolve(DB.remote.flush && DB.remote.flush()).catch(() => {}).then(() => authApi("logout")).then(() => DB.remote.logout("all")).catch(() => {}).then(() => { try { DB.session.setStudent(null); DB.session.setAdmin(null); } catch (e) {} return DB.remote.refresh(); });
     setMe(null); return Promise.resolve();
   }
   /** 약관 팝업 내용 { href(바깥 주소면) · title · html } */

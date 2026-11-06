@@ -378,7 +378,9 @@
   }
   function logout() {
     S = null; DB.session.setAdmin(null); ROUTE.hash = "#/center/login";
-    if (DB.remote.on) DB.remote.logout("admin").catch(() => {}).then(() => location.reload());
+    // 이 브라우저의 로그인 모두 풀어요 (강사센터 · 두잉고 수강생 · DOOGO CLASS 회원 — 2026-11-06)
+    if (DB.remote.on) DB.remote.logout("all").catch(() => {}).then(() => location.reload());
+    else if (window.VOD && window.VOD.logoutAll) window.VOD.logoutAll();
   }
 
   /* ---------------- 셸 ---------------- */
@@ -481,8 +483,8 @@
           '<span class="a-logo"><a class="a-logo-home" href="#/doinggo" title="두잉고 홈으로" aria-label="두잉고 홈으로">' + window.doogoClassLock("hm-lock-xs") + '</a><a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "파트너센터" : media ? "온드미디어 센터" : master ? (MT() === "dc" ? "DOOGO CLASS 관리" : "마스터 관리자") : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + "</span>" +
           '<div class="a-top-right">' +
             (ins ? '<span class="a-chip a-hide-sm' + (TRK() === "vod" ? " a-chip-vod" : "") + '">' + (TRK() === "vod" ? "DOOGO CLASS · VOD 수강생 " + VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? esc(co.name) + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음") + "</span>" +
-              // 수강생 화면 미리보기 — 휴대폰에서는 짧게 ‘미리보기’ (눈 아이콘만 있으면 뭔지 몰라서)
-              btn(icon("eye", "sm") + '<span class="a-hide-sm">' + (TRK() === "vod" ? "VOD 수강생 화면 보기" : "수강생 화면 보기") + '</span><span class="a-only-sm">미리보기</span>', "preview", "a-btn-outline a-btn-sm a-pv-btn", ' title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면 미리보기"') : "") +
+              // 수강생 화면 미리보기 — 휴대폰에서도 ‘수강생 화면 미리보기’ (그냥 ‘미리보기’면 뭘 보는지 몰라서 · 2026-11-06)
+              btn(icon("eye", "sm") + '<span class="a-hide-sm">' + (TRK() === "vod" ? "VOD 수강생 화면 미리보기" : "수강생 화면 미리보기") + '</span><span class="a-only-sm">수강생 화면 미리보기</span>', "preview", "a-btn-outline a-btn-sm a-pv-btn", ' title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면 미리보기"') : "") +
             (() => {
               let n = 0, href = "", tip = "";
               if (partner) { const ni = affInqNew(PM), nn = affNoticeNew(PM); n = ni + nn; href = ni || !nn ? "#/center/partner/inquiries" : "#/center/partner/notices"; tip = n ? "입점 문의 새 소식 " + ni + "건 · 새 공지 " + nn + "건" : "새 알림이 없어요"; }
@@ -506,7 +508,7 @@
             '<div class="a-side-foot">' + (S && S.role !== "master" ? '<a class="a-side-kk" href="' + esc(DB.opsKakao().chat) + '" target="_blank" rel="noopener" data-kk-ops>' + icon("headset", "xs") + "운영팀 상담 (카카오톡)</a>" : "") + '<a href="#/login" data-action="to-student">' + icon("arrowLeft", "xs") + "수강생 로그인 화면</a>" + window.poweredBy("color") + "</div>" +
           "</aside>" +
           '<div class="a-scrim" data-action="toggle-nav"></div>' +
-          (master || partner || media ? "" : '<nav class="bw-tabbar bw-tabbar-a" aria-label="빠른 메뉴">' + (TRK() === "vod" ? [["#/center", "grid", "대시보드"], ["#/center/vod-students", "users", "VOD 수강생"], ["#/center/vod", "monitorPlay", "판매"], ["#/center/coaching", "message", "코칭"]] : [["#/center", "grid", "대시보드"], ["#/center/students", "users", "수강생"], ["#/center/reviews", "checks", "과제 검수"], ["#/center/questions", "message", "1:1"]]).filter((x) => { const k = x[0].replace(/^#\/center\/?/, ""); return !k || can(k); }).map((x) => '<a class="bw-tab" href="' + x[0] + '">' + icon(x[1]) + "<span>" + x[2] + "</span></a>").join("") + '<button type="button" class="bw-tab" data-action="toggle-nav">' + icon("menu") + "<span>전체</span></button></nav>") +
+          (master || partner || media ? "" : (() => { /* 휴대폰 아래 탭: 전체(메뉴) 왼쪽 · 가운데 동그란 홈(대시보드) · 2026-11-06 */ const vt = TRK() === "vod", o = (vt ? [["#/center", "grid", "대시보드"], ["#/center/vod-students", "users", "VOD 수강생"], ["#/center/vod", "monitorPlay", "판매"], ["#/center/coaching", "message", "코칭"]] : [["#/center", "grid", "대시보드"], ["#/center/students", "users", "수강생"], ["#/center/reviews", "checks", "과제 검수"], ["#/center/questions", "message", "1:1"]]).filter((x) => { const k = x[0].replace(/^#\/center\/?/, ""); return !k || can(k); }).filter((x) => x[0] !== "#/center"), half = Math.floor(o.length / 2), tab = (x) => '<a class="bw-tab" href="' + x[0] + '">' + icon(x[1]) + "<span>" + x[2] + "</span></a>"; return '<nav class="bw-tabbar bw-tabbar-a ' + (vt ? "bw-tr-vod" : "bw-tr-live") + '" aria-label="빠른 메뉴"><button type="button" class="bw-tab" data-action="toggle-nav">' + icon("menu") + "<span>전체</span></button>" + o.slice(0, half).map(tab).join("") + '<a class="bw-tab bw-tab-home" href="#/center"><i class="bw-tab-hc">' + icon("home") + "</i><span>홈</span></a>" + o.slice(half).map(tab).join("") + (o.length % 2 ? "" : '<span class="bw-tab-sp" aria-hidden="true"></span>') + "</nav>"; })()) +
           '<main class="a-main" id="a-main"></main>' +
         "</div>" +
       "</div>";

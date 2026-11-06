@@ -3,7 +3,7 @@
  *  { action: "admin", tab, id, pw, iid? }           강사 · 코치 · 마스터 로그인 (tab: instructor | coach | master — 마스터 탭에서 운영자 · 파트너 · 온드미디어 계정도 받아요)
  *        코치가 여러 강사님 강의를 맡고 있으면(같은 이름 + 뒷자리) 로그인 대신 { choose, courses } 를 돌려주고, iid 를 골라 다시 보내면 그 강의로 들어가요
  *  { action: "coachSwitch", iid? }                  로그인한 코치가 맡은 다른 강의로 옮기기 (iid 없으면 맡은 강의 목록)
- *  { action: "logout", which: "student"|"admin" }
+ *  { action: "logout", which: "student"|"admin"|"all" }   all = 이 브라우저의 로그인 모두 (수강생 · 강사센터 · DOOGO CLASS 회원 · 2026-11-06)
  * 비밀번호(전화번호 뒷자리)는 서버에서만 확인하고, 15분에 여러 번 틀리면 잠시 막는다. */
 "use strict";
 const crypto = require("crypto");
@@ -204,6 +204,8 @@ module.exports = handler(["POST"], async (req, res) => {
   if (b.action === "logout") {
     const w = b.which === "admin" ? ["admin"] : b.which === "student" ? ["student"] : ["student", "admin"];
     w.forEach((x) => auth.setCookie(req, res, x, ""));
+    // 어디서 로그아웃하든(스토어 · 두잉고 강의실 · 강사센터) DOOGO CLASS 회원 로그인도 같이 풀어요 — 강의실 · 강사센터에서 로그아웃해도 스토어에 ‘체험회원님’이 남던 것
+    if (b.which === "all") require("./_lib/vod").logout(req, res);
     return send(res, 200, { ok: true });
   }
   send(res, 400, { error: "action" });

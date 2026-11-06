@@ -1735,6 +1735,17 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(su.json.ok === true, "LIVE 강사 기수 신청은 그대로 받아요", su.json);
     su = await call("auth", { body: { action: "admin", tab: "instructor", id: " 브 이 ", pw: "1111" } });
     ok(su.json.ok && su.json.role === "instructor" && su.json.iid === "t-vod", "VOD 강사: 이름(띄어쓰기 무시) + 전화번호 뒷자리로 강사센터 로그인", su.json);
+    // 로그아웃 (2026-11-06): 어디서 로그아웃하든(스토어 · 두잉고 강의실 · 강사센터) which "all" 로 이 브라우저의 로그인을 모두 풀어요
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "t-vod" }), dc_s: auth.sign({ r: "student", iid: "t-live", sid: "x1" }), dc_v: auth.sign({ r: "vod", mid: "vm-x1" }) });
+    su = await call("auth", { body: { action: "logout", which: "all" } });
+    ok(su.json.ok && !jar.dc_a && !jar.dc_s && !jar.dc_v, "로그아웃 which all: 강사센터 · 두잉고 수강생 · DOOGO CLASS 회원 로그인이 모두 풀려요 (강의실 · 강사센터에서 로그아웃해도 스토어에 ‘체험회원님’이 남지 않게)", Object.keys(jar));
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "t-vod" }), dc_v: auth.sign({ r: "vod", mid: "vm-x1" }) });
+    su = await call("auth", { body: { action: "logout", which: "admin" } });
+    ok(su.json.ok && !jar.dc_a && !!jar.dc_v, "which admin 은 예전처럼 강사센터만 (자동 로그아웃 등)", Object.keys(jar));
+    const lgs = ["app.js", "admin.js", "vod.js"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8"));
+    ok(/DB\.remote\.logout\("all"\)/.test(lgs[0]) && /DB\.remote\.logout\("all"\)/.test(lgs[1]) && /authApi\("logout"\)\)\.then\(\(\) => DB\.remote\.logout\("all"\)\)/.test(lgs[2]),
+      "화면: 두잉고 강의실 · 강사센터 · 스토어 로그아웃 버튼이 모두 which all (React 화면도 같은 함수)");
+    useJar({});
   }
 
   {

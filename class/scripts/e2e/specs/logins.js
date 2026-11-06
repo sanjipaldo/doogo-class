@@ -60,6 +60,34 @@ module.exports = {
     await run.check(await FL.logout(page), "회원: 로그아웃 단추가 있어요", null, page);
     m = await FL.serverMe(page);
     await run.check(!m || !m.vod, "회원 로그아웃 → 서버 쿠키도 풀림", m, page);
+    // 같은 브라우저에서 회원 + 강사센터 → 강사센터에서 로그아웃해도 스토어에 ‘체험회원님’이 남지 않아요 (어디서 로그아웃하든 모두 풀려요 · 2026-11-06)
+    await FL.member(page, base, info.vodDemo.email, info.vodDemo.pw);
+    await L.open(page, base, "/center/login");
+    await page.click('[data-action="login-tab"][data-tab="instructor"]');
+    await page.fill("#al-id", info.instructor.name); await page.fill("#al-pw", info.instructor.pin); await page.press("#al-pw", "Enter");
+    await page.waitForFunction(() => !!(window.DB && DB.session.admin()), null, { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(600);
+    m = await FL.serverMe(page);
+    const both = !!(m && m.vod && m.vod.mid && m.admin);
+    await FL.logout(page);
+    m = await FL.serverMe(page);
+    await L.open(page, base, "/vod");
+    const chip = await page.evaluate(() => ({ me: !!document.querySelector(".vd-acct"), login: !!document.querySelector(".vd-login") }));
+    await run.check(both && (!m || (!m.vod && !m.admin)) && !chip.me && chip.login, "회원 + 강사센터 로그인 → 강사센터에서 로그아웃 → 스토어도 ‘로그인’ (회원 로그인이 남지 않아요)", { both, m, chip }, page);
+    // 두잉고 VOD 강의실에서 로그아웃해도 스토어 회원까지 풀려요
+    await FL.member(page, base, info.vodDemo.email, info.vodDemo.pw);
+    await page.goto(base + "/vod/dg", { waitUntil: "load" }); await page.waitForTimeout(2500);
+    const dgA = await page.$('[data-v="dg"]');
+    if (dgA) { await Promise.all([page.waitForNavigation({ waitUntil: "load", timeout: 15000 }).catch(() => {}), dgA.click()]); await page.waitForTimeout(2000); }
+    await L.ready(page).catch(() => {});
+    {
+      const inDg = await page.evaluate(() => !!(window.DB && DB.session.student && DB.session.student()));
+      await FL.logout(page);
+      await page.waitForTimeout(800);
+      m = await FL.serverMe(page);
+      await L.open(page, base, "/vod");
+      const chip2 = await page.evaluate(() => !!document.querySelector(".vd-acct"));
+      await run.check(inDg && (!m || (!m.vod && !m.student)) && !chip2, "두잉고 VOD 강의실에서 로그아웃 → 스토어 회원 로그인도 풀려요", { inDg, m, chip2 }, page);
+    }
     await page.context().close();
   }
 };
