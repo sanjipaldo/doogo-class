@@ -1355,7 +1355,7 @@
       "</div></div>" +
       '<nav class="vd-nav" aria-label="메뉴"><div class="vd-wrap vd-nav-in"><div class="vd-nav-l"><button type="button" class="vd-allcat" data-v="mega" aria-haspopup="true" aria-expanded="false" aria-controls="vd-mega">' + icon("menu", "sm") + "<span>전체 카테고리</span></button>" +
         NAV.filter((x) => !x[3] || bizOn(x[3])).map((x) => '<a href="' + x[1] + '" class="' + (nav === x[0] ? "on" : "") + '">' + x[2] + "</a>").join("") +
-      '</div><div class="vd-nav-r"><a href="#/vod/about" class="' + (nav === "about" ? "on" : "") + '">DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a><a href="#/center">강사센터</a>' + kkBtn("vd-nav-kk", "문의하기") + "</div></div></nav></header>";
+      '</div><div class="vd-nav-r"><a href="#/vod/about" class="' + (nav === "about" ? "on" : "") + '">DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a><a href="#/center" class="vd-nav-ct">강사센터</a>' + kkBtn("vd-nav-kk", "문의하기") + "</div></div></nav></header>";
   }
   // 바닥: 긱스쿨 푸터 틀(큰 흐르는 글씨 · 바로가기 칸 · ‘도움이 필요하신가요?’ 상자 · 오른쪽 약관 줄 · 사업자 정보) + DOOGO CLASS 색
   function footer() {

@@ -1056,7 +1056,15 @@ body[data-mode="vod"]:has(.vd-player) { background: #0c0c0c; }
   .vd-pl-grid { grid-template-columns: minmax(0, 1fr) 300px; }
   .vd-pay-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vd-search { max-width: 300px; }
-  .vd-nav-r { display: none; }
+  /* 휴대폰 · 태블릿: 오른쪽 줄은 ‘강사센터’만 탭 줄 오른쪽 끝에 고정 (PC 처럼 같은 줄 오른쪽 · 2026-11-06) — 탭은 왼쪽 칸 안에서만 옆으로 밀려요 */
+  .vd-nav-in { overflow: visible; }
+  .vd-nav-l { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .vd-nav-l::-webkit-scrollbar { display: none; }
+  .vd-nav-r { position: relative; flex: none; align-items: center; gap: 0; }
+  .vd-nav-r > :not(.vd-nav-ct) { display: none !important; }
+  .vd-nav-r::before { content: ""; position: absolute; top: 0; bottom: 0; right: 100%; width: 28px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff); pointer-events: none; }
+  .vd-nav-r a.vd-nav-ct { gap: 4px; height: 30px; padding: 0 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--ln10); background: #fff; font-size: 13px; font-weight: 700; color: var(--on1); }
+  .vd-nav-r a.vd-nav-ct:active { background: var(--s1); }
   .vd-tl span { display: none; }
   .vd-my-grid { grid-template-columns: 220px minmax(0, 1fr); gap: 24px; }
   .vd-my-row { grid-template-columns: minmax(0, 1fr); }
@@ -1071,6 +1079,8 @@ body[data-mode="vod"]:has(.vd-player) { background: #0c0c0c; }
   .vd-bdgs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .vd-reader-g { grid-template-columns: 300px minmax(0, 1fr); gap: 24px; }
 }
+/* 태블릿(640~959px): 머리띠 검색창이 0~140px 로 눌려 ‘두고 파트너스’ 위로 겹치던 것 — 휴대폰처럼 숨기고 검색은 ‘전체 카테고리’(전체 메뉴) 맨 위 검색으로 (2026-11-06) */
+@media (max-width: 959px) { .vd-top .vd-search { display: none; } }
 @media (max-width: 860px) {
   .vd-pd-grid { grid-template-columns: minmax(0, 1fr); }
   .vd-pd-side { display: none; }

@@ -168,7 +168,7 @@ function Header({ nav, open }) {
       </div></div>
       <nav className="vd-nav" aria-label="메뉴"><div className="vd-wrap vd-nav-in"><div className="vd-nav-l"><button type="button" className="vd-allcat" data-v="mega" aria-haspopup="true" aria-expanded={mega !== null ? "true" : "false"} aria-controls="vd-mega" onClick={megaBtn}><Icon n="menu" c="sm" /><span>전체 카테고리</span></button>
         {X.NAV.filter((x) => !x[3] || X.bizOn(x[3])).map((x) => <a key={x[0]} href={x[1]} className={nav === x[0] ? "on" : ""}>{x[2]}</a>)}
-      </div><div className="vd-nav-r"><a href="#/vod/about" className={nav === "about" ? "on" : ""}>DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a><a href="#/center">강사센터</a><KakaoBtn cls="vd-nav-kk" label="문의하기" /></div></div></nav>
+      </div><div className="vd-nav-r"><a href="#/vod/about" className={nav === "about" ? "on" : ""}>DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a><a href="#/center" className="vd-nav-ct">강사센터</a><KakaoBtn cls="vd-nav-kk" label="문의하기" /></div></div></nav>
       {mega !== null ? <Mega cat={mega} onPick={setMega} /> : null}
     </header>
   );
