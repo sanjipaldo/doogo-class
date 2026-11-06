@@ -1732,7 +1732,8 @@ body[data-master="1"] .a-side-foot { padding-top: 10px; gap: 8px; }
 .a-trk-k { position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .1), 0 4px 10px -3px rgba(16, 24, 40, .2); transition: transform .45s cubic-bezier(.2, .85, .2, 1), background-color .3s ease; }
 .a-trk-sw.at-vod .a-trk-k { transform: translateX(100%); background: linear-gradient(135deg, #ff4468, #fc1c49 55%, #e30f3c); box-shadow: 0 4px 12px -3px rgba(252, 28, 73, .55); }
 .a-trk-sw button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 32px; padding: 0 6px; border-radius: 999px; font-size: 12px; font-weight: 800; color: #6b7280; white-space: nowrap; transition: color .3s ease; }
-.a-trk-sw.at-live button:first-child { color: #111827; }
+.a-trk-sw.at-live .a-trk-k { background: linear-gradient(135deg, #4a8dff, #2563eb 55%, #1849c6); box-shadow: 0 4px 12px -3px rgba(37, 99, 235, .55); } /* 두잉고 = 파란색 (2026-11-06) */
+.a-trk-sw.at-live > :first-of-type:not(i) { color: #fff; } /* 맨 앞은 손잡이(<i>) — 첫 번째 버튼 · 링크 */
 .a-trk-sw.at-vod button:last-child { color: #fff; }
 .a-trk-sw button:focus-visible { outline: 2px solid var(--m-primary); outline-offset: 2px; }
 .a-trk small { font-size: 11px; line-height: 1.45; color: var(--m-slate); }
@@ -3507,7 +3508,7 @@ body[data-ath="nz"] .a-user-av { background: linear-gradient(135deg, #2f74c0, #0
 body[data-ath="nz"] .a-user-co .a-user-av { background: linear-gradient(135deg, #7cc7ff, #2f74c0); }
 body[data-ath="nz"] .a-logout:hover { border-color: #2f74c0; color: #0b2a5b; background: #f1f5fb; }
 body[data-ath="nz"] .a-toast .icon { color: #9cc3ee; }
-body[data-ath="nz"] .a-trk-sw.at-vod .a-trk-k { background: linear-gradient(135deg, #2f74c0, #0b2a5b); box-shadow: 0 4px 12px -3px rgba(11, 42, 91, .55); }
+/* 관리 영역 바꾸기는 테마와 상관없이 두잉고 = 파란색 · DOOGO CLASS = 빨간색 (2026-11-06 — 예전 NZ 네이비 손잡이 대신) */
 /* 코치 화면의 초록 포인트도 네이비로 */
 body[data-ath="nz"][data-coach="1"] .a-logo-role { color: #0b2a5b; }
 body[data-ath="nz"] .a-coach-chip { border-color: #cbd8ec; background: #eef3fa; color: #0b2a5b; }

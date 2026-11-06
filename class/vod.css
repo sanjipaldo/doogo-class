@@ -10,17 +10,20 @@
 .site-sw-k { position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 0; width: var(--kw, 0); border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .08), 0 4px 12px -2px rgba(16, 24, 40, .18); transform: translateX(var(--kx, 0)); opacity: 0; transition: transform .5s cubic-bezier(.2, .85, .2, 1), width .5s cubic-bezier(.2, .85, .2, 1), background-color .35s ease, box-shadow .35s ease; }
 .site-sw.ready .site-sw-k { opacity: 1; }
 .site-sw.no-anim .site-sw-k { transition: none; }
+/* 두잉고 = 파란색 · 두고클래스 = 빨간색 (2026-11-06 — 강사센터 ‘관리 영역’ 바꾸기도 같은 색) */
+.site-sw.at-dg .site-sw-k { background: linear-gradient(135deg, #4a8dff, #2563eb 55%, #1849c6); box-shadow: 0 4px 14px -3px rgba(37, 99, 235, .55), inset 0 1px 0 rgba(255, 255, 255, .28); }
 .site-sw.at-vod .site-sw-k { background: linear-gradient(135deg, #ff4468, #fc1c49 55%, #e30f3c); box-shadow: 0 4px 14px -3px rgba(252, 28, 73, .55), inset 0 1px 0 rgba(255, 255, 255, .28); }
 .site-sw a { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--sw-h); padding: 0 14px 0 11px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #6b7280; text-decoration: none; white-space: nowrap; transition: color .35s ease; }
 .site-sw a:hover { color: #111827; }
 .site-sw-ic { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; }
 .site-sw-ic svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.site-sw:not(.ready) a.on { background: #fff; color: #111827; box-shadow: 0 1px 3px rgba(16, 24, 40, .14); }
+.site-sw:not(.ready) a.on { background: #2563eb; color: #fff; box-shadow: 0 1px 3px rgba(37, 99, 235, .35); }
 .site-sw:not(.ready) a.on:last-child { background: #fc1c49; color: #fff; }
-.site-sw.ready.at-dg a:first-child { color: #111827; }
+.site-sw.ready.at-dg a:first-of-type, .site-sw.ready.at-dg a:first-of-type:hover { color: #fff; }
 .site-sw.ready.at-vod a:last-child { color: #fff; }
 .site-sw.ready.at-vod a:last-child:hover { color: #fff; }
 .site-sw a:focus-visible { outline: 2px solid #fc1c49; outline-offset: 2px; }
+.site-sw a:first-of-type:focus-visible { outline-color: #2563eb; }
 .hm-top-in > .site-sw { margin-left: -16px; }
 @media (max-width: 639px) {
   .site-sw { --sw-h: 28px; padding: 2px; }
