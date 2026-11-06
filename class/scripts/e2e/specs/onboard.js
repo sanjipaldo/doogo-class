@@ -147,9 +147,13 @@ module.exports = {
     await FL.master(page, base, info);
     await L.open(page, base, "/center/master/vod-ins");
     const viId = await page.evaluate((nm) => (DB.data.instructors.find((x) => x.name === nm) || {}).id || "", vod.name);
+    // 한 쪽에 2명 — 아래 쪽 번호로 넘기며 그 강사 카드를 찾아요
+    const goCard = async (iid) => { for (let i = 0; i < 20; i++) { if (await page.$('.vi-card[data-vi="' + iid + '"]')) return true; const nx = await page.$('.a-pg [data-action="pg"][data-k="vdIns"][aria-label="다음 쪽"]:not([disabled])'); if (!nx) return false; await nx.click(); await page.waitForTimeout(250); } return false; };
+    const perPage = await page.evaluate(() => document.querySelectorAll(".vi-card").length);
+    await goCard(viId);
     const vi = await page.evaluate(([iid, ptitle]) => { const c = document.querySelector('.vi-card[data-vi="' + iid + '"]');
       return { nav: !!document.querySelector('.a-nav[href="#/center/master/vod-ins"].on'), logo: !!document.querySelector(".a-top .a-logo-home.a-logo-dc img.a-dc-word"), card: !!c, cls: !!c && c.innerText.indexOf(ptitle) >= 0, rate: !!c && /VOD 강의 60%/.test(c.innerText.replace(/\s+/g, " ")) }; }, [viId, ptitle]);
-    await run.check(viId && vi.nav && vi.logo && vi.card && vi.cls && vi.rate, "DOOGO CLASS › 강사 관리: 왼쪽 메뉴 · DOOGO CLASS 로고 · 강사 카드에 옮긴 클래스 · 정산 비율(VOD 60%)", vi, page);
+    await run.check(viId && perPage <= 2 && vi.nav && vi.logo && vi.card && vi.cls && vi.rate, "DOOGO CLASS › 강사 관리: 왼쪽 메뉴 · DOOGO CLASS 로고 · 한 쪽에 2명(쪽 번호로 넘김) · 강사 카드에 옮긴 클래스 · 정산 비율(VOD 60%)", Object.assign({ perPage }, vi), page);
     await page.click('.vi-card[data-vi="' + viId + '"] [data-action="vins-edit"]');
     await page.waitForSelector("#vins-edit-form #ve-pw");
     await page.fill("#ve-pw", "9753"); await page.selectOption("#ve-type", "biz");
@@ -160,7 +164,7 @@ module.exports = {
     const r9 = await page.evaluate(() => (DB.session.admin() || {}).role || "");
     await run.check(ed.pw === "9753" && ed.t === "biz" && ed.by === "master" && r9 === "instructor", "계정 · 정보 수정: 뒷자리(비밀번호) · 정산 유형(사업자 · 마스터가 정함) 저장 → 새 뒷자리로 강사센터 로그인", { ed, r9 }, page);
     await FL.master(page, base, info);
-    await L.open(page, base, "/center/master/vod-ins");
+    await L.open(page, base, "/center/master/vod-ins"); await goCard(viId);
     await page.click('.vi-card[data-vi="' + viId + '"] [data-action="vins-del"]');
     await page.waitForSelector('#modal-root [data-action="confirm-ok"]');
     await page.click('#modal-root [data-action="confirm-ok"]');

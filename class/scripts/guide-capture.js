@@ -39,14 +39,14 @@ const INS = [
       { t: nm("liveTime"), cap: "[라이브 시간]을 넣으면 수강생 홈에 카운트다운이 떠요", act: "none" },
       { t: nm("botName"), cap: "[AI 조교 이름]을 정해요 — 수강생이 밤에도 바로 물어봐요", act: "none" },
       { t: btn("저장", { sel: "button", last: true }), cap: "[저장]을 누르면 수강생 화면에 바로 반영돼요" },
-      { t: btn("수강생 화면 보기", { scope: "doc" }), cap: "위쪽 [수강생 화면 보기]로 바뀐 모습을 확인해요", act: "none" }
+      { t: btn("수강생 화면", { scope: "doc" }), cap: "위쪽 [수강생 화면]로 바뀐 모습을 확인해요", act: "none" }
     ] },
     { id: "i-menus", icon: "menu", title: "수강생 메뉴 구성", sub: "강사센터 › 메뉴 구성", lead: "수강생 왼쪽 메뉴를 [켜고 · 끄고 · 이름 바꾸기]", steps: [
       { go: "#/center", t: side("메뉴 구성"), cap: "왼쪽 메뉴에서 [메뉴 구성]을 눌러요" },
       { t: { sel: ".a-menu-label", nth: 2 }, cap: "메뉴 이름 칸을 눌러 [원하는 이름]으로 바꿔요", act: { fill: "보충 · 특강" } },
       { t: { sel: '[data-action="menu-move"]', nth: 5 }, cap: "[화살표]로 메뉴 순서를 바꿔요" },
       { t: { sel: '[data-action="menu-off"]', nth: 3 }, cap: "안 쓰는 메뉴는 [빼기]로 숨겨요 — 바꾸면 바로 저장돼요" },
-      { t: btn("수강생 화면 보기", { sel: '[data-action="preview"]' }), cap: "[수강생 화면 보기]로 바뀐 메뉴를 확인해요", act: "none" }
+      { t: btn("수강생 화면", { sel: '[data-action="preview"]' }), cap: "[수강생 화면]로 바뀐 메뉴를 확인해요", act: "none" }
     ] }
   ] },
   { title: "기수 · 수강생", items: [

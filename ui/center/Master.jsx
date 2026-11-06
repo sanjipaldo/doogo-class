@@ -15,7 +15,7 @@ function InsTable() {
           const c = DB.content(x.id), cos = DB.cohortsOf(x.id), cur = DB.currentCohort(x.id), ss = DB.studentsOf(x.id), paid = DB.bills(x.id).filter((b) => !b.canceledAt && b.paidAt), o = DB.tracksOf(x), rq = x.trackReq || {}, pend = ss.filter((s) => s.status === "pending").length;
           return (
             <tr key={x.id}><td><b>{x.displayName}</b><small className="a-memo">{fmtMD(x.createdAt || today)} 개설</small></td>
-              <td><Isl html={A.seedLoginWarn(x)} />{x.name} <span className="a-muted num">/ {canIns ? <button type="button" className="a-pw-peek" data-action="pw-peek" data-pw={x.phone4} title="눌러서 보기">••••</button> : "••••"}</span></td>
+              <td>{x.name} <span className="a-muted num">/ {canIns ? <button type="button" className="a-pw-peek" data-action="pw-peek" data-pw={x.phone4} title="눌러서 보기">••••</button> : "••••"}</span></td>
               <td>{c ? c.brand.courseTitle : "-"}</td>
               <td><span className="a-ins-trk">{o.live ? <Pill cls="trk-dg">두잉고 LIVE</Pill> : <span className="a-pill mute"><Icon n="lock" c="xs" />두잉고{rq.live ? " · 신청 중" : ""}</span>}{o.vod ? <Pill cls="trk-dc">DOOGO CLASS</Pill> : <span className="a-pill mute"><Icon n="lock" c="xs" />DOOGO CLASS{rq.vod ? " · 신청 중" : ""}</span>}</span></td>
               <td>{cos.length}개{cur ? <> <small className="a-memo">{cur.name + " " + DB.STATUS_LABEL[DB.cohortStatus(cur)]}</small></> : null}</td>

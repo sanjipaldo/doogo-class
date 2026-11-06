@@ -2040,13 +2040,9 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const rS = await call("auth", { body: { action: "student", iid: stu30.instructorId, name: stu30.name, phone4: stu30.phone4 }, headers: ipH(77) });
     await st30.rlClear([sk, "day:" + sk]); delete jar.dc_s;
     ok(rS.status === 429 && rS.json.error === "locked-day", "두잉고 수강생 로그인도 하루 30번까지", rS.json);
-    // 화면: 하루 잠금 안내 문구 · 마스터 강사 목록의 ‘처음 데이터 숫자 그대로’ 표시
+    // 화면: 하루 잠금 안내 문구 (마스터 강사 목록의 ‘처음 데이터 숫자 그대로’ 빨간 표시는 2026-11-06 운영자 요청으로 뺐어요)
     const app30 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), adm30 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
-    const fnSrc = (adm30.match(/  function seedLoginWarn\(x\) \{[\s\S]*?\n  \}\n/) || [])[0] || "";
-    const warn = new Function("window", "esc", "icon", fnSrc + "\nreturn seedLoginWarn;")({ CLASS_SEED: { instructors: [{ id: "a", name: "가 나", phone4: "1234", coaches: [{ name: "코치", phone4: "5678" }] }] } }, (x) => String(x), () => "");
-    const w1 = warn({ id: "a", name: "가나", phone4: "1234", coaches: [{ name: "코치", phone4: "5678", status: "active" }] }), w2 = warn({ id: "a", name: "가나", phone4: "9999", coaches: [{ name: "코치", phone4: "0001" }] }), w3 = warn({ id: "b", name: "가나", phone4: "1234" }), w4 = warn({ id: "a", name: "가나", phone4: "9999", coaches: [{ name: "코 치", phone4: "5678" }] });
-    ok(/"locked-day": "오늘 여러 번 틀려서/.test(app30) && /"locked-day": "오늘 여러 번 틀려서/.test(adm30) && /seedLoginWarn\(x\) \+ esc\(x\.name\)/.test(adm30) && /처음 데이터 숫자 그대로 · 강사 로그인 · 코치 1명/.test(w1) && w2 === "" && w3 === "" && /코치 1명/.test(w4) && !/1234|5678/.test(w1 + w4),
-      "화면: 하루 잠금 안내(수강생 · 강사센터) · 마스터 강사 목록에 처음 데이터 숫자 그대로인 강사 · 코치 표시 (숫자는 안 보여요)");
+    ok(/"locked-day": "오늘 여러 번 틀려서/.test(app30) && /"locked-day": "오늘 여러 번 틀려서/.test(adm30), "화면: 하루 잠금 안내(수강생 · 강사센터)");
   }
 
   {

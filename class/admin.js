@@ -41,7 +41,7 @@
   const IID = () => (S.role === "instructor" || S.role === "coach" ? S.instructorId : S.actingAs);
   /** 그 강사 전용 강의실 색(예: 문대표 뉴질랜드)이면 강사센터 · 코치센터도 그 색으로 — admin.css body[data-ath] */
   const athOf = (iid) => { const k = ((DB.content(iid) || {}).brand || {}).theme, t = DB.THEMES[k]; return t && Array.isArray(t.only) && t.only.indexOf(iid) >= 0 ? k : ""; };
-  /* 코치가 볼 수 있는 강사센터 메뉴 (강사가 ‘코치 관리’에서 고른다). 대시보드와 수강생 화면 미리보기는 늘 열려 있다
+  /* 코치가 볼 수 있는 강사센터 메뉴 (강사가 ‘코치 관리’에서 고른다). 대시보드와 수강생 화면은 늘 열려 있다
    * 2026-11: 코치마다 담당 두잉고(LIVE · VOD · 둘 다)를 정하고, 메뉴도 LIVE 두잉고 / VOD 두잉고로 나눠서 골라요 — 표는 coach-perms.js (서버와 같이 써요) */
   const CP = window.COACH;
   const isCoach = () => !!S && S.role === "coach";
@@ -484,8 +484,8 @@
           (() => { const dcL = master ? MT() === "dc" : !!ins && TRK() === "vod"; return '<span class="a-logo"><a class="a-logo-home' + (dcL ? " a-logo-dc" : "") + '" href="' + (dcL ? "#/vod" : "#/doinggo") + '" title="' + (dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로") + '" aria-label="' + (dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로") + '">' + (dcL ? '<img class="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">' : window.doogoClassLock("hm-lock-xs")) + '</a>'; })() + '<a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "파트너센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + "</span>" +
           '<div class="a-top-right">' +
             (ins ? '<span class="a-chip a-hide-sm' + (TRK() === "vod" ? " a-chip-vod" : "") + '">' + (TRK() === "vod" ? "DOOGO CLASS · VOD 수강생 " + VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? esc(co.name) + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음") + "</span>" +
-              // 수강생 화면 미리보기 — 휴대폰에서도 ‘수강생 화면 미리보기’ (그냥 ‘미리보기’면 뭘 보는지 몰라서 · 2026-11-06)
-              btn(icon("eye", "sm") + '<span class="a-hide-sm">' + (TRK() === "vod" ? "VOD 수강생 화면 미리보기" : "수강생 화면 미리보기") + '</span><span class="a-only-sm">수강생 화면 미리보기</span>', "preview", "a-btn-outline a-btn-sm a-pv-btn", ' title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면 미리보기"') : "") +
+              // 수강생에게 보이는 화면 미리 보기 버튼 — 이름은 PC · 휴대폰 모두 ‘수강생 화면’ (VOD 탭은 PC ‘VOD 수강생 화면’ · 2026-11-06)
+              btn(icon("eye", "sm") + '<span class="a-hide-sm">' + (TRK() === "vod" ? "VOD 수강생 화면" : "수강생 화면") + '</span><span class="a-only-sm">수강생 화면</span>', "preview", "a-btn-outline a-btn-sm a-pv-btn", ' title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면"') : "") +
             (() => {
               let n = 0, href = "", tip = "";
               if (partner) { const ni = affInqNew(PM), nn = affNoticeNew(PM); n = ni + nn; href = ni || !nn ? "#/center/partner/inquiries" : "#/center/partner/notices"; tip = n ? "입점 문의 새 소식 " + ni + "건 · 새 공지 " + nn + "건" : "새 알림이 없어요"; }
@@ -505,7 +505,7 @@
               return '<a class="a-nav' + (on ? " on" : "") + '" href="#/center' + (it[0] ? "/" + it[0] : "") + '"' + (on ? ' aria-current="page"' : "") + ">" + icon(it[2], "sm") + "<span>" + esc(it[1]) + "</span>" + (it[3] ? '<span class="a-count">' + it[3] + "</span>" : "") + "</a>";
             }).join("") + "</div>").join("") +
             (media ? '<div class="a-side-card"><b>RS ' + mdRate(MDM) + "% · 매월 10일 지급</b><p>내 홍보 링크로 VOD가 팔리면 판매가 × " + (100 - mdR().pg) + "% × " + mdRate(MDM) + "%가 쌓여요.</p>" + '<a class="a-btn a-btn-primary a-btn-sm a-btn-block" href="#/center/media/links">' + icon("link", "sm") + "내 홍보 링크</a></div>" : "") +
-            (partner ? '<div class="a-side-card"><b>RS ' + (PM.rs !== null && PM.rs !== undefined && PM.rs !== "" ? PM.rs : affDefRs()) + '% · 매월 ' + AFF().affSettings.payDay + '일 지급</b><p>소개한 강사님이 기수 이용료를 입금하면 수익이 확정돼요.</p></div>' : master || media ? "" : '<div class="a-side-card"><b>수강생 화면과 똑같은 메뉴</b><p>‘수강생 화면 콘텐츠’에서 고친 내용이 수강생 화면에 바로 반영돼요.</p>' + btn(icon("eye", "sm") + "수강생 화면 보기", "preview", "a-btn-primary a-btn-sm a-btn-block") + "</div>") +
+            (partner ? '<div class="a-side-card"><b>RS ' + (PM.rs !== null && PM.rs !== undefined && PM.rs !== "" ? PM.rs : affDefRs()) + '% · 매월 ' + AFF().affSettings.payDay + '일 지급</b><p>소개한 강사님이 기수 이용료를 입금하면 수익이 확정돼요.</p></div>' : master || media ? "" : '<div class="a-side-card"><b>수강생 화면과 똑같은 메뉴</b><p>‘수강생 화면 콘텐츠’에서 고친 내용이 수강생 화면에 바로 반영돼요.</p>' + btn(icon("eye", "sm") + "수강생 화면", "preview", "a-btn-primary a-btn-sm a-btn-block") + "</div>") +
             '<div class="a-side-foot">' + (S && S.role !== "master" ? '<a class="a-side-kk" href="' + esc(DB.opsKakao().chat) + '" target="_blank" rel="noopener" data-kk-ops>' + icon("headset", "xs") + "운영팀 상담 (카카오톡)</a>" : "") + '<a href="#/login" data-action="to-student">' + icon("arrowLeft", "xs") + "수강생 로그인 화면</a>" + window.poweredBy("color") + "</div>" +
           "</aside>" +
           '<div class="a-scrim" data-action="toggle-nav"></div>' +
@@ -908,7 +908,7 @@
     commit(insName(iid) + " " + co.name + " 일정을 저장했어요. 수강생 대시보드 · 수업 캘린더에 바로 보여요.");
     if (then === "pv") planSplit(iid, co.id);
   }
-  /** 수강생 화면 미리보기 (오른쪽 분할) — 그 기수 수강생처럼 대시보드 · 수업 캘린더를 봐요 (이 브라우저의 미리보기 세션) */
+  /** 수강생 화면 (오른쪽 분할) — 그 기수 수강생처럼 대시보드 · 수업 캘린더를 봐요 (이 브라우저의 미리보기 세션) */
   const planSplit = (iid, coId, page) => dgSplit("plan:" + (page || "home") + ":" + iid + ":" + coId);
   function planChips(iid, co) {
     const sp = planEvs(iid, co.id), L = (t) => DB.evLabel(iid, t);
@@ -1528,7 +1528,7 @@
     return head("수업 캘린더", auto + "은 기수 시작일로 자동 계산돼요. " + DB.calManual(iid).filter((k) => k !== "open").map(L).join(" · ") + " 같은 일정만 추가하세요. 기수 하나의 무료 강의 · 오프라인 강의 · 챌린지 날짜는 ‘기수 관리 › 일정 설계’에서 한 번에 정할 수도 있어요.", addBtn("event", "일정 추가")) +
       '<section class="a-card"><div class="a-card-head"><h2>추가한 일정</h2><span class="a-muted">' + c.schedule.length + "개</span></div>" +
         simpleList("event", c.schedule, (e) => '<div class="a-item-main"><b>' + esc(e.title) + "</b><small>" + esc(DB.ruleText(e)) + (DB.evTime(e) ? " · " + esc(DB.evTime(e)) : "") + (e.place ? " · " + esc(e.place) : "") + "</small></div>" + pill(L(e.type), cls[e.type]), "추가한 일정이 없어요.") + "</section>" +
-      '<section class="a-card"><div class="a-card-head"><h2>기수별 전체 일정 미리보기</h2><select class="a-input a-sm" id="sched-cohort" aria-label="기수">' + cos.map((x) => '<option value="' + x.id + '"' + (x.id === ui.schedCohort ? " selected" : "") + ">" + esc(x.name) + "</option>").join("") + "</select>" + (co ? btn(icon("eye", "sm") + "수강생 화면 미리보기", "plan-pv", "a-btn-ghost a-btn-sm", ' data-iid="' + esc(iid) + '" data-id="' + esc(co.id) + '" data-pg="schedule"') : "") + "</div>" +
+      '<section class="a-card"><div class="a-card-head"><h2>기수별 전체 일정 미리보기</h2><select class="a-input a-sm" id="sched-cohort" aria-label="기수">' + cos.map((x) => '<option value="' + x.id + '"' + (x.id === ui.schedCohort ? " selected" : "") + ">" + esc(x.name) + "</option>").join("") + "</select>" + (co ? btn(icon("eye", "sm") + "수강생 화면", "plan-pv", "a-btn-ghost a-btn-sm", ' data-iid="' + esc(iid) + '" data-id="' + esc(co.id) + '" data-pg="schedule"') : "") + "</div>" +
         (co ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>날짜</th><th>종류</th><th>일정</th></tr></thead><tbody>' + DB.events(iid, co).map((e) => '<tr><td class="num">' + fmtMD(e.date) + (DB.evTime(e) ? " " + esc(DB.evTime(e)) : "") + "</td><td>" + pill(L(e.type), cls[e.type]) + "</td><td>" + esc(e.title) + (e.place ? ' <small class="a-muted">· ' + esc(e.place) + "</small>" : "") + (e.auto ? ' <small class="a-muted">자동</small>' : "") + "</td></tr>").join("") + "</tbody></table></div>" : emptyBox("calendar", "기수를 먼저 만들어 주세요.")) +
       "</section>";
   }
@@ -1655,7 +1655,7 @@
         '<div class="a-field"><label for="cf-cstatus">상태</label><select class="a-input" id="cf-cstatus" name="cstatus"><option value="active"' + (x.status === "active" ? " selected" : "") + '>사용 중</option><option value="paused"' + (x.status !== "active" ? " selected" : "") + ">중지 (로그인 막기)</option></select></div></div>" +
         '<div class="a-field"><span class="a-label" id="cf-ctrack-l">담당 두잉고 <small>(담당이 아닌 쪽 메뉴는 체크해도 열리지 않아요)</small></span>' +
           '<div class="a-ctrack" role="radiogroup" aria-labelledby="cf-ctrack-l">' + CP.TRACKS.map((r) => '<label class="a-ctrack-o ' + r[0] + (okT(r[0]) ? "" : " is-lock") + '"><input type="radio" name="ctrack" value="' + r[0] + '"' + (t === r[0] ? " checked" : "") + (okT(r[0]) ? "" : " disabled") + "><span><b>" + (okT(r[0]) ? "" : icon("lock", "xs")) + esc(r[1]) + "</b><small>" + esc(okT(r[0]) ? r[2] : "강사님 " + (r[0] === "vod" || (r[0] === "both" && !op.vod) ? "DOOGO CLASS" : "두잉고") + " 영역이 잠겨 있어요") + "</small></span></label>").join("") + "</div></div>" +
-        '<div class="a-field"><span class="a-label">볼 수 있는 메뉴 <small>(대시보드 · 수강생 화면 보기는 늘 열려 있어요)</small></span>' +
+        '<div class="a-field"><span class="a-label">볼 수 있는 메뉴 <small>(대시보드 · 수강생 화면은 늘 열려 있어요)</small></span>' +
           panel("live", "LIVE 두잉고 메뉴", "기수 · 주차 · 과제로 운영하는 프로그램", CP.LIVE) +
           panel("vod", "VOD 두잉고 메뉴", "DOOGO CLASS에서 VOD를 산 수강생 · 매출은 보기만 · 정산 계좌 · 세금계산서는 강사님만", CP.VOD) +
         '</div><p class="a-error" id="coach-error"></p></form>',
@@ -2030,10 +2030,10 @@
         (x.key === "home" ? '<span class="a-pm locked" title="홈은 뺄 수 없어요">' + icon("lock", "sm") + "</span>" : '<button class="a-pm minus" data-action="menu-off" data-key="' + x.key + '" aria-label="' + esc(nameOf(x)) + ' 빼기">' + icon("minus", "sm") + "</button>") + "</li>";
     };
     return (own
-      ? head(isV ? "VOD 버전 메뉴 구성" : "메뉴 구성", isV ? "DOOGO CLASS에서 VOD를 산 수강생이 보는 왼쪽 메뉴예요. 꼭 필요한 메뉴만 켜 두세요. 주차별 강의 · 라이브 다시보기 · 과제 · 모범 과제 · 수업 캘린더 · 수료증은 VOD 버전에 없어요." : "수강생 화면 왼쪽 메뉴를 더하고(＋) 빼고(−), 이름과 순서를 바꿔요. 필요한 페이지나 링크 메뉴도 새로 만들 수 있어요. 바꾸면 바로 저장돼요.", btn(icon("eye", "sm") + (isV ? "VOD 수강생 화면 보기" : "수강생 화면 보기"), "preview", "a-btn-outline"))
+      ? head(isV ? "VOD 버전 메뉴 구성" : "메뉴 구성", isV ? "DOOGO CLASS에서 VOD를 산 수강생이 보는 왼쪽 메뉴예요. 꼭 필요한 메뉴만 켜 두세요. 주차별 강의 · 라이브 다시보기 · 과제 · 모범 과제 · 수업 캘린더 · 수료증은 VOD 버전에 없어요." : "수강생 화면 왼쪽 메뉴를 더하고(＋) 빼고(−), 이름과 순서를 바꿔요. 필요한 페이지나 링크 메뉴도 새로 만들 수 있어요. 바꾸면 바로 저장돼요.", btn(icon("eye", "sm") + (isV ? "VOD 수강생 화면" : "수강생 화면"), "preview", "a-btn-outline"))
       : head("메뉴 · 색상 설정", "강사와 협의한 대로 수강생 화면의 메뉴를 더하고(＋) 빼고(−), 이름과 순서, 화면 색상을 정해요. 바꾸면 바로 저장돼요. 오른쪽 미리보기로 바뀐 강의실을 바로 확인해요.", dgSplitBtn("room:" + ins.id, "강의실 미리보기")) +
       '<section class="a-card a-menu-top"><label class="a-label" for="m-menu-ins">강사 플랫폼</label><select class="a-input" id="m-menu-ins">' + list.map((x) => '<option value="' + x.id + '"' + (x.id === ins.id ? " selected" : "") + ">" + esc(x.displayName) + " · " + esc(x.name) + "</option>").join("") + "</select>" +
-        btn(icon("eye", "sm") + "수강생 화면 보기", "m-preview", "a-btn-outline a-btn-sm", ' data-id="' + ins.id + '"') + "</section>") +
+        btn(icon("eye", "sm") + "수강생 화면", "m-preview", "a-btn-outline a-btn-sm", ' data-id="' + ins.id + '"') + "</section>") +
       '<div class="a-menu-grid">' +
         '<div class="a-stack">' +
           '<section class="a-card"><div class="a-card-head"><h2>수강생에게 보이는 메뉴</h2><span class="a-muted">' + onItems.length + "개</span></div>" +
@@ -3052,18 +3052,7 @@
           '<p class="a-lvm-top">잘하고 있는 학생: ' + top.map((r) => esc(r.s.name) + " (" + esc(r.lv.cur.name) + " · " + r.st.pct + "%)").join(", ") + "</p></div>";
       }).join("") + "</div></section>";
   }
-  /* 처음 데이터(data.js · 공개 저장소)에 적힌 로그인 숫자를 그대로 쓰는 강사 · 코치 표시 (Next.js 전환 4단계 · 2026-11)
-   * data.js 는 누구나 받을 수 있는 공개 파일이라, 그 값 그대로면 누구나 그 강사센터에 들어올 수 있어요 → ‘수정’에서 숫자를 바꾸면 사라져요.
-   * 숫자는 화면에 보이지 않고 같은지만 봐요 (마스터 화면 · 이 브라우저 안에서만) */
-  function seedLoginWarn(x) {
-    const seed = ((window.CLASS_SEED || {}).instructors || []).find((s) => s && s.id === x.id), nm = (v) => String(v || "").replace(/\s+/g, "");
-    if (!seed) return "";
-    const insSame = !!seed.phone4 && seed.phone4 === x.phone4 && nm(seed.name) === nm(x.name);
-    const coachSame = (x.coaches || []).filter((c) => c && c.status !== "removed" && (seed.coaches || []).some((s) => s && s.phone4 && s.phone4 === c.phone4 && nm(s.name) === nm(c.name))).length;
-    if (!insSame && !coachSame) return "";
-    const what = (insSame ? "강사 로그인" : "") + (insSame && coachSame ? " · " : "") + (coachSame ? "코치 " + coachSame + "명" : "");
-    return '<span class="a-pill bad" title="처음 데이터(공개 파일 data.js)에 적힌 이름 · 숫자 그대로예요. 누구나 들어올 수 있어요 — 수정(강사) · 강사센터 › 코치 관리(코치)에서 숫자를 바꿔 주세요.">' + icon("alert", "xs") + "처음 데이터 숫자 그대로 · " + esc(what) + "</span> ";
-  }
+
   function insTable() {
     const list = DB.data.instructors;
     return '<section class="a-card"><div class="a-card-head"><h2>강사 플랫폼</h2><span class="a-muted">' + list.length + "개</span></div>" +
@@ -3071,7 +3060,7 @@
         list.map((x) => {
           const c = DB.content(x.id), cos = DB.cohortsOf(x.id), cur = DB.currentCohort(x.id);
           const ss = DB.studentsOf(x.id), paid = DB.bills(x.id).filter((b) => !b.canceledAt && b.paidAt);
-          return "<tr><td><b>" + esc(x.displayName) + '</b><small class="a-memo">' + fmtMD(x.createdAt || todayStr()) + " 개설</small></td><td>" + seedLoginWarn(x) + esc(x.name) + ' <span class="a-muted num">/ ' + (staffCan("master/instructors") ? '<button type="button" class="a-pw-peek" data-action="pw-peek" data-pw="' + esc(x.phone4) + '" title="눌러서 보기">••••</button>' : "••••") + "</span></td><td>" + esc(c ? c.brand.courseTitle : "-") + "</td>" +
+          return "<tr><td><b>" + esc(x.displayName) + '</b><small class="a-memo">' + fmtMD(x.createdAt || todayStr()) + " 개설</small></td><td>" + esc(x.name) + ' <span class="a-muted num">/ ' + (staffCan("master/instructors") ? '<button type="button" class="a-pw-peek" data-action="pw-peek" data-pw="' + esc(x.phone4) + '" title="눌러서 보기">••••</button>' : "••••") + "</span></td><td>" + esc(c ? c.brand.courseTitle : "-") + "</td>" +
             "<td>" + (() => { const o = DB.tracksOf(x), rq = x.trackReq || {}; return '<span class="a-ins-trk">' + (o.live ? pill("두잉고 LIVE", "trk-dg") : '<span class="a-pill mute">' + icon("lock", "xs") + "두잉고" + (rq.live ? " · 신청 중" : "") + "</span>") + (o.vod ? pill("DOOGO CLASS", "trk-dc") : '<span class="a-pill mute">' + icon("lock", "xs") + "DOOGO CLASS" + (rq.vod ? " · 신청 중" : "") + "</span>") + "</span>"; })() + "</td>" +
             "<td>" + cos.length + "개" + (cur ? ' <small class="a-memo">' + esc(cur.name) + " " + DB.STATUS_LABEL[DB.cohortStatus(cur)] + "</small>" : "") + '</td><td class="num">' + ss.filter((s) => s.status === "approved").length + "명" + (ss.filter((s) => s.status === "pending").length ? ' <small class="a-memo">대기 ' + ss.filter((s) => s.status === "pending").length + "</small>" : "") + "</td>" +
             '<td class="num">' + (!staffCan("master/billing") ? '<span class="a-muted">-</span>' : paid.length ? won(sumMoney(paid, "supply")) + ' <small class="a-memo">' + paid.length + "개 기수</small>" : '<span class="a-muted">-</span>') + "</td>" +
@@ -4030,7 +4019,7 @@
         (x ? btn(icon("trash", "sm") + "강사 삭제", "vins-del", "a-btn-ghost a-btn-sm danger", at) : "") + "</div></article>";
   }
   function pageMasterVodIns() {
-    const rows = vdInsRows(), gone = DB.data.instructors.filter((x) => x.status === "removed"), pg = pageSlice("vdIns", rows, 8);
+    const rows = vdInsRows(), gone = DB.data.instructors.filter((x) => x.status === "removed"), pg = pageSlice("vdIns", rows, 2);
     const acc = rows.filter((r) => r.ins), sumM = rows.reduce((a, r) => a + r.nM, 0);
     return head("강사 관리", "DOOGO CLASS에서 판매하는 강사 · 크리에이터예요. 누가 무엇을 팔고 있는지, 판매 실적 · 정산 비율 · 정산 유형을 보고, 로그인 · 계정 정보를 고치고, 떠난 강사는 삭제해요.", btn(icon("monitorPlay", "sm") + "VOD 강사 등록", "vins-add", "a-btn-primary") + '<a class="a-btn a-btn-outline" href="#/center/master/vod-recruit">' + icon("handshake", "sm") + "두고 파트너스 지원</a>") +
       '<div class="a-kpis">' + kpi("강사 계정", acc.length + "명", "로그인 중지 " + acc.filter((r) => r.ins.status !== "active").length + "명", "#/center/master/vod-ins") +
@@ -4564,12 +4553,12 @@
       if (!co || co.instructorId !== iid) { toast("기수를 찾지 못했어요.", "warn"); return; }
       DB.session.setStudent({ preview: true, by: S.role === "master" ? "master" : isCoach() ? "coach" : "instructor", instructorId: iid, cohortId: co.id, at: Date.now() });
       const tg = []; DB.cohortsOf(iid).forEach((c) => { tg.push(["plan:home:" + iid + ":" + c.id, c.name + " · 수강생 대시보드"], ["plan:schedule:" + iid + ":" + c.id, c.name + " · 수업 캘린더"]); });
-      openSplit(id === "schedule" ? "#/schedule" : "#/home", "수강생 화면 미리보기 · " + insName(iid), tg, t);
+      openSplit(id === "schedule" ? "#/schedule" : "#/home", "수강생 화면 · " + insName(iid), tg, t);
       return;
     }
     let href = k === "p" ? "#/p/" + id : k === "free" ? "#/free/" + id : k === "login" ? "#/login" : "#/doinggo";
     if (k === "room") {
-      // 강사센터 ‘수강생 화면 미리보기’와 같은 미리보기 세션 (이 브라우저에만 · 실제 수강생 기록은 안 바뀜)
+      // 강사센터 ‘수강생 화면’과 같은 미리보기 세션 (이 브라우저에만 · 실제 수강생 기록은 안 바뀜)
       const co = DB.currentCohort(id);
       if (!co) { toast("기수가 없어 강의실을 미리볼 수 없어요.", "warn"); return; }
       DB.session.setStudent({ preview: true, instructorId: id, cohortId: co.id, at: Date.now() }); href = "#/home";
@@ -5211,7 +5200,7 @@
     ];
     // 코치: 강사가 열어 준 메뉴의 단계 · 할 일만 (매출 숫자는 매출 메뉴를 맡았을 때만)
     const coach = isCoach(), me = ME_COACH() || {}, stepsV = coach ? steps.filter((x) => can(x[0])) : steps;
-    return head(coach ? (me.name || "") + " 코치님 · VOD 두잉고" : ins.name + " 강사님 · VOD 두잉고", coach ? "DOOGO CLASS에서 " + esc(ins.displayName) + " 강사님 VOD를 산 수강생의 강의실이에요. 강사님 대신 맡은 메뉴(1:1 코칭 · TEA TIME · 매출 · 강의실 꾸미기)만 보여요." + (me.memo ? " · " + esc(me.memo) : "") : "DOOGO CLASS에서 " + esc(ins.displayName) + " 강사님 VOD를 산 수강생의 강의실이에요. 주차 · 과제 없이 자료 · 업데이트 소식 · FAQ로 운영하고, 1:1 코칭권 · TEA TIME을 산 수강생은 직접 챙겨요.", (coach && myCoachCourses().length > 1 ? btn(icon("swap", "sm") + "다른 강의 코치센터 (" + myCoachCourses().length + "개)", "coach-switch", "a-btn-outline") : "") + btn(icon("eye", "sm") + "VOD 수강생 화면 보기", "preview", "a-btn-outline")) +
+    return head(coach ? (me.name || "") + " 코치님 · VOD 두잉고" : ins.name + " 강사님 · VOD 두잉고", coach ? "DOOGO CLASS에서 " + esc(ins.displayName) + " 강사님 VOD를 산 수강생의 강의실이에요. 강사님 대신 맡은 메뉴(1:1 코칭 · TEA TIME · 매출 · 강의실 꾸미기)만 보여요." + (me.memo ? " · " + esc(me.memo) : "") : "DOOGO CLASS에서 " + esc(ins.displayName) + " 강사님 VOD를 산 수강생의 강의실이에요. 주차 · 과제 없이 자료 · 업데이트 소식 · FAQ로 운영하고, 1:1 코칭권 · TEA TIME을 산 수강생은 직접 챙겨요.", (coach && myCoachCourses().length > 1 ? btn(icon("swap", "sm") + "다른 강의 코치센터 (" + myCoachCourses().length + "개)", "coach-switch", "a-btn-outline") : "") + btn(icon("eye", "sm") + "VOD 수강생 화면", "preview", "a-btn-outline")) +
       '<div class="a-kpis">' +
         kpi("VOD 수강생", act.length + "명", "두잉고 입장 " + joined.length + "명 · 아직 " + (act.length - joined.length) + "명", "#/center/vod-students") +
         kpi("평균 진도율", avg + "%", "수강 중인 " + act.length + "명 기준", "#/center/vod-students") +
@@ -5222,7 +5211,7 @@
       (!coach || can("vod-settle") ? vdShareStrip(iid) : "") +
       (coach && !stepsV.length ? "" : '<section class="a-card a-vsteps"><div class="a-card-head"><h2>' + icon("sparkles", "sm") + " VOD 버전 세팅 순서</h2><span class=\"a-muted\">" + stepsV.filter((x) => x[3]).length + " / " + stepsV.length + " 완료 · 원하는 대로 바꿀 수 있어요</span></div><ol class=\"a-vstep-list\">" +
         stepsV.map((x, i) => '<li class="' + (x[3] ? "ok" : "") + '"><span class="a-vstep-n">' + (x[3] ? icon("check", "xs") : i + 1) + '</span><div><b>' + esc(x[1]) + "</b><small>" + esc(x[2]) + '</small></div><a class="a-link" href="#/center/' + x[0] + '">' + (x[3] ? "고치기" : "하러 가기") + " " + icon("arrowRight", "xs") + "</a></li>").join("") +
-        '<li><span class="a-vstep-n">' + (stepsV.length + 1) + "</span><div><b>수강생 화면 미리보기</b><small>VOD 수강생 눈으로 한 번 둘러보기</small></div>" + btn("미리보기 " + icon("arrowRight", "xs"), "preview", "a-btn-ghost a-btn-sm") + "</li></ol></section>") + vodAddonTodo(iid, ids) +
+        '<li><span class="a-vstep-n">' + (stepsV.length + 1) + "</span><div><b>수강생 화면</b><small>VOD 수강생 눈으로 한 번 둘러보기</small></div>" + btn("미리보기 " + icon("arrowRight", "xs"), "preview", "a-btn-ghost a-btn-sm") + "</li></ol></section>") + vodAddonTodo(iid, ids) +
       '<div class="a-grid-2">' +
         '<section class="a-card"><div class="a-card-head"><h2>연결된 VOD 클래스</h2>' + (can("vodlink") ? '<a class="a-link" href="#/center/vodlink">VOD 강의 연결 ' + icon("arrowRight", "xs") + "</a>" : "") + "</div>" +
           (prods.length ? '<ul class="a-list">' + prods.map((p) => { const bs = buyers.filter((b) => b.active && b.paid.some((x) => x.p.id === p.id)); return '<li><div class="vda-cl">' + vdThumb(p) + "<div><b>" + esc(p.title) + '</b><small class="a-memo">수강생 ' + bs.length + "명 · 강의 " + X.lessons(p).length + "개 · " + esc(X.accessTxt(p)) + "</small></div></div>" + (p.dg !== false ? pill("두잉고 열림", "ok") : pill("닫힘", "mute")) + "</li>"; }).join("") + "</ul>"
@@ -8898,7 +8887,7 @@
     vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
     vdKey, vdKeep, vdStmt, vdStState, vdRefundsOf, vdRfAmt, vdRfKind, vdRfSettle, vdRfSum, vdRfCases, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
     // 마스터: 대시보드 · 강사 플랫폼 · 전체 수강생 (운영자 계정이면 맡지 않은 버튼 · 링크를 빼요 — staffStrip)
-    seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqRegHtml, inqAcc, inqTodo, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
+    sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqRegHtml, inqAcc, inqTodo, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
     legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
       const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);

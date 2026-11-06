@@ -35,7 +35,7 @@ export default function Shell({ r, children, pageHtml }) {
           {ins ? (many ? <button type="button" className="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기"><Icon n="swap" c="xs" /><span>{ins.displayName}</span><Icon n="chevDown" c="xs" /></button> : <em className="a-hide-sm">{ins.displayName}</em>) : null}</span>
         <div className="a-top-right">
           {ins ? <><span className={"a-chip a-hide-sm" + (vod ? " a-chip-vod" : "")}>{vod ? "DOOGO CLASS · VOD 수강생 " + A.VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? co.name + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음"}</span>
-            <Btn action="preview" cls="a-btn-outline a-btn-sm a-pv-btn" title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면 미리보기"><Icon n="eye" c="sm" /><span className="a-hide-sm">{vod ? "VOD 수강생 화면 미리보기" : "수강생 화면 미리보기"}</span><span className="a-only-sm">수강생 화면 미리보기</span></Btn></> : null}
+            <Btn action="preview" cls="a-btn-outline a-btn-sm a-pv-btn" title="수강생에게 보이는 화면을 미리 봐요 (수강생 기록은 바뀌지 않아요)" aria-label="수강생 화면"><Icon n="eye" c="sm" /><span className="a-hide-sm">{vod ? "VOD 수강생 화면" : "수강생 화면"}</span><span className="a-only-sm">수강생 화면</span></Btn></> : null}
           <Bell partner={partner} master={master} PM={PM} />
           <span className={"a-user a-user-" + u[3] + " a-hide-sm"}><span className="a-user-av"><Icon n={u[2]} c="sm" /></span><span className="a-user-t"><b>{u[0] + (u[3] === "ms" ? "" : " 님")}</b><small>{u[1]}</small></span><i className="a-user-dot" aria-hidden="true" /></span>
           <Btn action="logout" cls="a-btn-outline a-btn-sm a-logout"><Icon n="logout" c="sm" /><span className="a-hide-sm">로그아웃</span></Btn>
@@ -50,7 +50,7 @@ export default function Shell({ r, children, pageHtml }) {
           })}</div>)}
           {media ? <div className="a-side-card"><b>RS {A.mdRate(MDM)}% · 매월 10일 지급</b><p>내 홍보 링크로 VOD가 팔리면 판매가 × {100 - A.mdR().pg}% × {A.mdRate(MDM)}%가 쌓여요.</p><a className="a-btn a-btn-primary a-btn-sm a-btn-block" href="#/center/media/links"><Icon n="link" c="sm" />내 홍보 링크</a></div> : null}
           {partner ? <div className="a-side-card"><b>RS {PM.rs !== null && PM.rs !== undefined && PM.rs !== "" ? PM.rs : A.affDefRs()}% · 매월 {A.AFF().affSettings.payDay}일 지급</b><p>소개한 강사님이 기수 이용료를 입금하면 수익이 확정돼요.</p></div>
-            : master || media ? null : <div className="a-side-card"><b>수강생 화면과 똑같은 메뉴</b><p>‘수강생 화면 콘텐츠’에서 고친 내용이 수강생 화면에 바로 반영돼요.</p><Btn action="preview" cls="a-btn-primary a-btn-sm a-btn-block"><Icon n="eye" c="sm" />수강생 화면 보기</Btn></div>}
+            : master || media ? null : <div className="a-side-card"><b>수강생 화면과 똑같은 메뉴</b><p>‘수강생 화면 콘텐츠’에서 고친 내용이 수강생 화면에 바로 반영돼요.</p><Btn action="preview" cls="a-btn-primary a-btn-sm a-btn-block"><Icon n="eye" c="sm" />수강생 화면</Btn></div>}
           <div className="a-side-foot">{S.role !== "master" ? <a className="a-side-kk" href={DB.opsKakao().chat} target="_blank" rel="noopener" data-kk-ops=""><Icon n="headset" c="xs" />운영팀 상담 (카카오톡)</a> : null}<a href="#/login" data-action="to-student"><Icon n="arrowLeft" c="xs" />수강생 로그인 화면</a><RawOne html={window.poweredBy("color")} /></div>
         </aside>
         <div className="a-scrim" data-action="toggle-nav" />

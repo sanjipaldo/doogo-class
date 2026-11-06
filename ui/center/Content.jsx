@@ -63,7 +63,7 @@ export function Schedule() {
     <section className="a-card"><div className="a-card-head"><h2>추가한 일정</h2><span className="a-muted">{c.schedule.length}개</span></div>
       <SimpleList coll="event" items={c.schedule} one={(e) => <><Main b={e.title} s={DB.ruleText(e) + (DB.evTime(e) ? " · " + DB.evTime(e) : "") + (e.place ? " · " + e.place : "")} /><Pill cls={EV_CLS[e.type]}>{L(e.type)}</Pill></>} empty="추가한 일정이 없어요." /></section>
     <section className="a-card"><div className="a-card-head"><h2>기수별 전체 일정 미리보기</h2><select key={"s" + ui.schedCohort} className="a-input a-sm" id="sched-cohort" aria-label="기수" defaultValue={ui.schedCohort}>{cos.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-      {co ? <Btn action="plan-pv" cls="a-btn-ghost a-btn-sm" data-iid={iid} data-id={co.id} data-pg="schedule"><Icon n="eye" c="sm" />수강생 화면 미리보기</Btn> : null}</div>
+      {co ? <Btn action="plan-pv" cls="a-btn-ghost a-btn-sm" data-iid={iid} data-id={co.id} data-pg="schedule"><Icon n="eye" c="sm" />수강생 화면</Btn> : null}</div>
       {co ? <div className="a-table-wrap"><table className="a-table"><thead><tr><th>날짜</th><th>종류</th><th>일정</th></tr></thead><tbody>{DB.events(iid, co).map((e, i) => (
         <tr key={i}><td className="num">{fmtMD(e.date) + (DB.evTime(e) ? " " + DB.evTime(e) : "")}</td><td><Pill cls={EV_CLS[e.type]}>{L(e.type)}</Pill></td><td>{e.title}{e.place ? <> <small className="a-muted">· {e.place}</small></> : null}{e.auto ? <> <small className="a-muted">자동</small></> : null}</td></tr>
       ))}</tbody></table></div> : <Empty ic="calendar">기수를 먼저 만들어 주세요.</Empty>}

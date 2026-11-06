@@ -84,7 +84,7 @@ function VodDash() {
   const sub = coach ? "DOOGO CLASS에서 " + ins.displayName + " 강사님 VOD를 산 수강생의 강의실이에요. 강사님 대신 맡은 메뉴(1:1 코칭 · TEA TIME · 매출 · 강의실 꾸미기)만 보여요." + (me.memo ? " · " + me.memo : "")
     : "DOOGO CLASS에서 " + ins.displayName + " 강사님 VOD를 산 수강생의 강의실이에요. 주차 · 과제 없이 자료 · 업데이트 소식 · FAQ로 운영하고, 1:1 코칭권 · TEA TIME을 산 수강생은 직접 챙겨요.";
   return <>
-    <Head title={coach ? (me.name || "") + " 코치님 · VOD 두잉고" : ins.name + " 강사님 · VOD 두잉고"} sub={sub} right={<>{coach && many.length > 1 ? <Btn action="coach-switch" cls="a-btn-outline"><Icon n="swap" c="sm" />다른 강의 코치센터 ({many.length}개)</Btn> : null}<Btn action="preview" cls="a-btn-outline"><Icon n="eye" c="sm" />VOD 수강생 화면 보기</Btn></>} />
+    <Head title={coach ? (me.name || "") + " 코치님 · VOD 두잉고" : ins.name + " 강사님 · VOD 두잉고"} sub={sub} right={<>{coach && many.length > 1 ? <Btn action="coach-switch" cls="a-btn-outline"><Icon n="swap" c="sm" />다른 강의 코치센터 ({many.length}개)</Btn> : null}<Btn action="preview" cls="a-btn-outline"><Icon n="eye" c="sm" />VOD 수강생 화면</Btn></>} />
     <div className="a-kpis">
       <Kpi label="VOD 수강생" value={act.length + "명"} sub={"두잉고 입장 " + joined.length + "명 · 아직 " + (act.length - joined.length) + "명"} href="#/center/vod-students" />
       <Kpi label="평균 진도율" value={avg + "%"} sub={"수강 중인 " + act.length + "명 기준"} href="#/center/vod-students" />
@@ -96,7 +96,7 @@ function VodDash() {
     {!coach || A.can("vod-settle") ? <Isl html={A.vdShareStrip(iid)} /> : null}
     {coach && !stepsV.length ? null : <section className="a-card a-vsteps"><div className="a-card-head"><h2><Icon n="sparkles" c="sm" /> VOD 버전 세팅 순서</h2><span className="a-muted">{stepsV.filter((x) => x[3]).length} / {stepsV.length} 완료 · 원하는 대로 바꿀 수 있어요</span></div><ol className="a-vstep-list">
       {stepsV.map((x, i) => <li key={x[0]} className={x[3] ? "ok" : ""}><span className="a-vstep-n">{x[3] ? <Icon n="check" c="xs" /> : i + 1}</span><div><b>{x[1]}</b><small>{x[2]}</small></div><a className="a-link" href={"#/center/" + x[0]}>{x[3] ? "고치기" : "하러 가기"} <Icon n="arrowRight" c="xs" /></a></li>)}
-      <li><span className="a-vstep-n">{stepsV.length + 1}</span><div><b>수강생 화면 미리보기</b><small>VOD 수강생 눈으로 한 번 둘러보기</small></div><Btn action="preview" cls="a-btn-ghost a-btn-sm">미리보기 <Icon n="arrowRight" c="xs" /></Btn></li></ol></section>}
+      <li><span className="a-vstep-n">{stepsV.length + 1}</span><div><b>수강생 화면</b><small>VOD 수강생 눈으로 한 번 둘러보기</small></div><Btn action="preview" cls="a-btn-ghost a-btn-sm">미리보기 <Icon n="arrowRight" c="xs" /></Btn></li></ol></section>}
     <Isl html={A.vodAddonTodo(iid, ids)} />
     <div className="a-grid-2">
       <section className="a-card"><div className="a-card-head"><h2>연결된 VOD 클래스</h2>{A.can("vodlink") ? <More href="#/center/vodlink">VOD 강의 연결</More> : null}</div>
