@@ -25,6 +25,8 @@ async function signup(req, res, b) {
   const docs = await store.getDocs(["ins:" + iid, "cohorts:" + iid]);
   const ins = (docs["ins:" + iid] || {}).v, cos = (docs["cohorts:" + iid] || {}).v || [];
   if (!ins || ins.status !== "active") return send(res, 200, { error: "notfound" });
+  // 두잉고(LIVE)가 잠긴 강사(VOD 강사로만 등록)는 기수 수강 신청을 받지 않아요 (2026-11-06) — 예전 강사(tracks 없음)는 그대로
+  if (ins.tracks && ins.tracks.live === false) return send(res, 200, { error: "notfound" });
   const co = cos.find((c) => c.id === cohortId);
   if (!co || co.recruiting === false) return send(res, 200, { error: "cohort" });
   const list = (await store.listDocs({ prefixes: ["stu:" + iid + ":%"] })).map((r) => r.v);

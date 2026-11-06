@@ -1193,6 +1193,29 @@ body[data-mode="admin"] { background: #fdfbfb; }
 .a-inq-ctl .a-inq-sels { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 18px; }
 .a-inq-ctl .a-inq-sels select { min-width: 150px; }
 @media (max-width: 720px) { .a-inq-ctl { grid-template-columns: minmax(0, 1fr); } .a-inq-ctl .a-inq-sels { display: grid; } }
+/* 입점 카드 · 강사센터 계정 칸 (2026-11-06): 아직이면 등록 안내 + 버튼, 만들었으면 아이디 · 비밀번호 · 열린 영역 · 연결된 클래스 */
+.a-inq-reg { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--m-hairline, #ececec); background: #fafafa; }
+.a-inq-reg.is-next { border-color: var(--m-primary); background: var(--m-primary-soft, #fff4f6); }
+.a-inq-reg-t { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.a-inq-reg-t > .icon { flex: none; margin-top: 2px; color: var(--m-primary-deep, #c2334d); }
+.a-inq-reg-t b { display: block; font-size: 14px; }
+.a-inq-reg-t p { margin: 4px 0 0; font-size: 13px; line-height: 1.55; color: var(--m-slate); }
+.a-inq-reg-t p b { display: inline; font-size: inherit; }
+.a-inq-acc { display: grid; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--m-hairline, #ececec); background: #fff; }
+.a-inq-acc-h { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.a-inq-acc-h > .icon { flex: none; color: var(--m-success); }
+.a-inq-acc-h b { display: block; font-size: 14px; }
+.a-inq-acc-h small { display: block; font-size: 12px; color: #888; }
+.a-inq-acc-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.a-inq-acc-ext { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 10px; background: #f6f6f7; font-size: 13px; line-height: 1.55; color: var(--m-slate); }
+.a-inq-acc-ext > .icon { flex: none; margin-top: 3px; }
+.a-inq-acc-ext.hit { background: #fff6e0; color: #6b4e00; }
+.a-inq-acc .a-row-actions { justify-content: flex-start; flex-wrap: wrap; }
+.a-inq-acc-dl { margin: 12px 0; }
+.a-trk-lead p b { display: inline; font-size: inherit; } /* 문장 속 굵은 글자는 줄을 바꾸지 않게 (계정 결과 창) */
+.a-ext-pick .a-check { align-items: flex-start; }
+.a-ext-pick .a-check small { display: block; margin-top: 2px; font-size: 12px; }
+@media (max-width: 720px) { .a-inq-reg { grid-template-columns: minmax(0, 1fr); } .a-inq-reg .a-btn { justify-self: start; } .a-inq-acc-pills { margin-left: 0; } }
 
 /* 수강생 화면 색상: 6개씩(3 × 2줄) 넘겨 보기 */
 .a-sw-wrap { display: grid; gap: 12px; }

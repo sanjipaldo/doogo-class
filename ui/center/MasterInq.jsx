@@ -2,6 +2,7 @@
 /* 마스터 두잉고 — 강사 입점 문의 #/center/master/partners · 두고 파트너스 지원 #/center/master/vod-recruit
  * 예전 admin.js pageMasterPartners(r, only) 를 React 로 (Next.js 전환 6단계)
  *  · 펼치기 · 처리 상태 · 소개 파트너 · 메모 · 플랫폼 만들기 · 엑셀 · 1:1 대화 보내기는 예전 admin.js 이벤트가 그대로 받아요
+ *  · 강사센터 계정 칸(inqRegHtml: VOD 강사 등록 · 만든 계정 · 스토어 클래스 연결 · 로그인 안내)도 예전 조각을 같이 써요
  *  · 진행 칸(inqTrack) · 1:1 대화(inqThread) · 처리 기록(inqLogHtml)은 파트너센터와 같이 쓰는 예전 조각
  *  · 펼친 카드가 1.5초 넘게 보이면 예전처럼 파트너 메시지를 읽음으로(markInqSeen) — 메뉴 · 종 숫자는 React 가 다시 그려서 바꿔요 */
 import { useEffect } from "react";
@@ -9,13 +10,13 @@ import Icon from "../lib/Icon.jsx";
 import { ADM, DBX, Btn, Head, Empty, Pill, Isl } from "./bits.jsx";
 
 export function MasterPartners({ only }) {
-  const A = ADM(), DB = DBX(), ui = A.ui, isVod = A.inqIsVod, fk = only ? "vrFilter" : "inqFilter", TODO = A.INQ_TODO;
-  const all = DB.inquiries().filter((x) => !only || isVod(x)), todo = all.filter((x) => TODO.indexOf(x.status || "new") >= 0);
+  const A = ADM(), DB = DBX(), ui = A.ui, isVod = A.inqIsVod, fk = only ? "vrFilter" : "inqFilter";
+  const all = DB.inquiries().filter((x) => !only || isVod(x)), todo = all.filter(A.inqTodo); // 계약 완료인데 아직 계정을 안 만든 새 강사도 처리할 일 (2026-11-06)
   const noOf = {}; all.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((x, i) => { noOf[x.id] = i + 1; });
   let f = ui[fk] || (todo.length ? "todo" : "all");
   const unread = all.filter((x) => A.msgUnreadM(x) > 0);
   if ((f === "msg" && !unread.length) || (only && (f === "aff" || f === "vod"))) f = ui[fk] = "all";
-  const shown = all.filter((x) => f === "all" || (f === "todo" ? TODO.indexOf(x.status || "new") >= 0 : f === "msg" ? A.msgUnreadM(x) > 0 : f === "aff" ? !!A.inqAff(x) : f === "vod" ? isVod(x) : (x.status || "new") === f));
+  const shown = all.filter((x) => f === "all" || (f === "todo" ? A.inqTodo(x) : f === "msg" ? A.msgUnreadM(x) > 0 : f === "aff" ? !!A.inqAff(x) : f === "vod" ? isVod(x) : (x.status || "new") === f));
   if (f === "todo" || f === "new" || f === "seen" || f === "contact") shown.sort((a, b) => (a.at || 0) - (b.at || 0)); // 처리할 일은 오래된 것부터
   const nextId = (todo.slice().sort((a, b) => (a.at || 0) - (b.at || 0))[0] || {}).id, act = only ? "vr-tab" : "inq-tab";
   const tabs = (unread.length ? [["msg", "새 메시지", unread.reduce((a, x) => a + A.msgUnreadM(x), 0)]] : []).concat([["todo", "처리할 일", todo.length], ["all", "전체", all.length]]).concat(only ? [] : [["aff", "파트너 소개", all.filter((x) => A.inqAff(x)).length], ["vod", "두고 파트너스", all.filter(isVod).length]]);
@@ -34,7 +35,7 @@ export function MasterPartners({ only }) {
         {isVod(x) && !(only && pt) ? <span className="a-pill inq-vod"><Icon n={pt ? "handshake" : "monitorPlay"} c="xs" />{pt ? "두고 파트너스" : "DOOGO CLASS 강사 모집"}</span> : null}
         {x.addTo ? <span className="a-pill inq-add"><Icon n="lock" c="xs" />{"기존 강사 · " + (x.want === "vod" ? "DOOGO CLASS" : "LIVE 두잉고") + " 열기 신청"}</span> : null}
         {pa ? <span className="a-pill p-aff-pill"><Icon n="handshake" c="xs" />{pa.name} 파트너 소개</span> : null}{un ? <span className="a-pill inq-new-msg"><Icon n="bell" c="xs" />새 메시지 {un}</span> : null}<Pill cls={st[2]}>{st[1]}</Pill></span>
-      <span className="a-inq-when">{DB.date.fmtStamp(x.at)}<small>{TODO.indexOf(cur) >= 0 ? ago(x.at) : x.ref ? "추천 코드 " + x.ref : ""}</small></span><span className="a-inq-chev"><Icon n="chevDown" c="sm" /></span></button>;
+      <span className="a-inq-when">{DB.date.fmtStamp(x.at)}<small>{A.inqTodo(x) ? ago(x.at) : x.ref ? "추천 코드 " + x.ref : ""}</small></span><span className="a-inq-chev"><Icon n="chevDown" c="sm" /></span></button>;
     const cls = "a-inq a-inq2" + (open ? " open" : "") + (next ? " is-next" : "") + (un ? " has-msg" : "");
     if (!open) return <article className={cls} data-inq={x.id}>{row}</article>;
     const ai = x.addTo ? DB.instructor(x.addTo) : null, w = x.want === "vod" ? "vod" : "live", id = { "data-id": x.id };
@@ -48,10 +49,12 @@ export function MasterPartners({ only }) {
       {x.message ? <div className="a-inq-block"><b>남긴 말</b><p>{x.message}</p></div> : null}
       {pa ? <Isl html={A.inqThread(x, "master")} /> : null}
       <div className="a-inq-proc"><b>처리 상태</b><div className="a-inq-sbs" role="group" aria-label="처리 상태 바꾸기">{A.INQ_STATUS.map((s) => <button key={s[0]} type="button" className={"a-inq-sb " + s[2] + (s[0] === cur ? " on" : "")} data-action="inq-st" data-id={x.id} data-st={s[0]} aria-pressed={String(s[0] === cur)}>{s[0] === cur ? <Icon n="check" c="xs" /> : null}{s[1]}</button>)}</div></div>
+      {/* 강사센터 계정 칸 (2026-11-06): 만든 계정 · 열린 영역 · 연결된 클래스 · 아직이면 ‘VOD 강사로 등록’ · ‘LIVE 플랫폼 만들기’ — 예전 화면과 같은 조각 */}
+      <Isl html={A.inqRegHtml(x)} />
       <div className="a-inq-ctl"><div className="a-inq-sels"><label className="a-inq-st"><span>소개 파트너</span><select key={pa ? pa.id : "none"} className="a-input a-sm" data-inq-aff={x.id} defaultValue={pa ? pa.id : "none"}><option value="none">없음</option>{A.affList().map((p) => <option key={p.id} value={p.id}>{p.name + " (" + (p.code || p.loginId) + ")"}</option>)}</select></label></div>
         <textarea key={x.memo || ""} className="a-input" rows={2} data-inq-memo={x.id} placeholder="메모 (예: 11/03 통화 · 다음 주 미팅) — 마스터만 봐요" aria-label="메모" defaultValue={x.memo || ""} />
         <div className="a-row-actions">{x.addTo ? (!ai ? null : DB.tracksOf(ai)[w] ? <Pill cls="ok">{A.TRACK_TAB[w] + " 열림"}</Pill> : cur !== "fail" ? <Btn action="inq-open-track" cls="a-btn-primary a-btn-sm" {...id}><Icon n="lock" c="sm" />{w === "vod" ? "DOOGO CLASS 열어 주기" : "LIVE 두잉고 열어 주기"}</Btn> : null)
-          : !x.iid && cur !== "fail" ? <Btn action="inq-make" cls="a-btn-primary a-btn-sm" {...id}><Icon n="store" c="sm" />{isVod(x) ? "VOD 강사로 등록" : "LIVE 플랫폼 만들기"}</Btn> : null}
+          : null}
           <Btn action="inq-memo" cls="a-btn-outline a-btn-sm" {...id}><Icon n="check" c="sm" />메모 저장</Btn><Btn action="inq-del" cls="a-btn-ghost a-btn-sm danger" {...id}><Icon n="trash" c="sm" />삭제</Btn></div></div>
       <Isl html={A.inqLogHtml(x)} /></div></article>;
   };

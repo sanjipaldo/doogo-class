@@ -2145,6 +2145,8 @@
   const INQ_STATUS = [["new", "새 접수", "warn"], ["seen", "열람", "info"], ["contact", "상담 중", "info"], ["done", "계약 완료", "ok"], ["fail", "계약 안 됨", "bad"], ["hold", "보류", "mute"]];
   /** 아직 끝나지 않은 일 — 마스터 직원이 들어온 순서(오래된 것 먼저)대로 하나씩 처리해요 */
   const INQ_TODO = ["new", "seen", "contact"];
+  /** 처리할 일: 새 접수 · 열람 · 상담 중 + 계약 완료인데 아직 강사센터 계정을 안 만든 문의(새 강사) — 등록까지 끝나야 목록에서 빠져요 (2026-11-06) */
+  const inqTodo = (x) => { const st = x.status || "new"; return INQ_TODO.indexOf(st) >= 0 || (st === "done" && !x.addTo && !inqAcc(x)); };
   /** 상태 바꾸기 (누가 · 언제 기록 남김 → 처리 기록 · 파트너센터 진행 단계에 날짜로 보여요) */
   function setInqStatus(x, st) {
     if ((x.status || "new") === st) return;
@@ -2168,12 +2170,117 @@
     if (x.addTo && st === "fail") { const ai = DB.instructor(x.addTo), w = x.want === "vod" ? "vod" : "live"; if (ai && ai.trackReq && ai.trackReq[w]) { delete ai.trackReq[w]; if (!Object.keys(ai.trackReq).length) delete ai.trackReq; } }
     const lb = inqStatus(x)[1], ro = "’" + josa(lb, "으로", "로").slice(lb.length);
     actLog(x.name + " 님 " + (inqIsVod(x) ? "두고 파트너스 지원" : "입점 문의") + "을 ‘" + lb + ro + " 바꿨어요."); DB.save(); render();
-    const nx = INQ_TODO.indexOf(st) < 0 ? DB.inquiries().filter((q) => q.id !== x.id && inqIsVod(q) === inqIsVod(x) && INQ_TODO.indexOf(q.status || "new") >= 0).sort((a, b) => (a.at || 0) - (b.at || 0))[0] : null;
-    toast("‘" + lb + ro + " 바꿨어요." + (inqAff(x) ? " 파트너센터에도 보여요." : "") + (nx ? " 다음 차례는 " + nx.name + " 님이에요." : ""));
+    const nx = !inqTodo(x) ? DB.inquiries().filter((q) => q.id !== x.id && inqIsVod(q) === inqIsVod(x) && inqTodo(q)).sort((a, b) => (a.at || 0) - (b.at || 0))[0] : null;
+    const reg = st === "done" && !x.addTo && !inqAcc(x) ? (inqIsVod(x) ? " 이제 ‘VOD 강사로 등록’을 눌러 강사센터 계정을 열어 주세요." : " 이제 ‘LIVE 플랫폼 만들기’로 강사센터 계정을 열어 주세요.") : "";
+    toast("‘" + lb + ro + " 바꿨어요." + reg + (inqAff(x) ? " 파트너센터에도 보여요." : "") + (nx ? " 다음 차례는 " + nx.name + " 님이에요." : ""));
   }
   /** 진행 단계: 접수 → 열람 → 상담 → 계약 완료(또는 계약 안 됨) → VOD 강사 등록 · 플랫폼 오픈 */
   const inqIsPt = (x) => x.source === "partners" || /^\[두고 파트너스/.test(x.where || "");
   const inqIsVod = (x) => inqIsPt(x) || x.source === "doogoclass" || /^\[DOOGO CLASS/.test(x.where || "");
+  /* ---------- 입점 → 강사센터 계정 (2026-11-06) ----------
+   * 계약 완료 뒤 ‘VOD 강사로 등록’(두고 파트너스 · DOOGO CLASS 문의) · ‘LIVE 플랫폼 만들기’(두잉고 문의)를 누르면 지원서의 이름(아이디) + 전화번호 뒷자리 4자리(비밀번호)로
+   * 계정이 바로 열려요 — VOD 는 DOOGO CLASS 탭만(두잉고 LIVE 자물쇠), LIVE 는 두잉고 탭만(DOOGO CLASS 자물쇠). 카드에는 만든 계정 · 열린 영역 · 연결된 클래스를 보여 주고,
+   * 연결된 계정이 지워졌으면 등록 버튼을 다시 보여 줘요. 스토어에 ‘두잉고 계정 없는 강사’(강사 키 ext:이름)로 먼저 올린 클래스는 그 계정으로 옮겨요(linkExt) */
+  const inqAcc = (x) => (x && x.iid && !x.addTo ? DB.instructor(x.iid) : null);
+  // 강사센터 로그인 이름 비교 — 서버(auth.norm)와 같게 띄어쓰기만 빼요
+  const loginNorm = (s) => String(s || "").replace(/\s+/g, "");
+  /** 같은 이름 + 뒷자리로 이미 로그인하는 강사 · 코치 (없으면 "") — 겹치면 ‘강사’ 탭 로그인이 다른 계정으로 들어가요 */
+  function loginTaken(name, phone4, exceptIid) {
+    const n = loginNorm(name);
+    for (const x of DB.data.instructors) {
+      if (x.id !== exceptIid && loginNorm(x.name) === n && x.phone4 === phone4) return x.displayName + " 강사";
+      const c = (x.coaches || []).find((y) => loginNorm(y.name) === n && y.phone4 === phone4);
+      if (c) return x.displayName + " 강의 코치 " + c.name;
+    }
+    return "";
+  }
+  /** 스토어에 두잉고 계정 없이(강사 키 ext:이름) 올린 클래스 묶음 — [{ key, name, ps, orders }] */
+  function extGroups() {
+    const v = VD(), map = {};
+    (v.products || []).forEach((p) => { if (!p || p.iid || !p.creator) return; const k = "ext:" + p.creator; (map[k] = map[k] || { key: k, name: p.creator, ps: [], orders: 0 }).ps.push(p); });
+    return Object.keys(map).map((k) => { const g = map[k], ids = g.ps.map((p) => p.id); g.orders = (v.orders || []).filter((o) => o && !o.demo && ids.indexOf(o.pid) >= 0 && (o.status === "paid" || o.status === "refunded")).length; return g; });
+  }
+  /** 외부 강사 클래스 → 강사 계정: 클래스 강사(iid)를 바꾸고, ext:이름 키로 쓰던 스토어 노출 · 정산 비율 · 강사진 순서 · 지급 기록도 같이 옮겨요 (옮긴 클래스 수) */
+  function linkExt(name, nid) {
+    const v = VD(), key = "ext:" + name;
+    let n = 0;
+    (v.products || []).forEach((p) => { if (p && !p.iid && p.creator === name) { p.iid = nid; n++; } });
+    const swap = (a) => { const out = []; a.forEach((k) => { const y = k === key ? nid : k; if (out.indexOf(y) < 0) out.push(y); }); return out; };
+    if (Array.isArray(v.insOff)) v.insOff = swap(v.insOff);
+    if (v.insRates && v.insRates[key]) { if (!v.insRates[nid]) v.insRates[nid] = v.insRates[key]; delete v.insRates[key]; }
+    (Array.isArray(v.homeRails) ? v.homeRails : []).forEach((r) => { if (r && r.k === "teach") ["picks", "hide"].forEach((f) => { if (Array.isArray(r[f])) r[f] = swap(r[f]); }); });
+    (v.payouts || []).forEach((x) => { if (x && x.key === key) x.key = nid; });
+    return n;
+  }
+  // 이 이름들(지원서 이름 · 활동명 · 계정 이름)과 같은 외부 강사면 미리 체크
+  const extNames = (list) => list.map(loginNorm).filter(Boolean);
+  const extChecks = (gs, names) => '<fieldset class="a-perm-group a-ext-pick"><legend>스토어에 두잉고 계정 없이 올린 클래스</legend>' + gs.map((g) => '<label class="a-check"><input type="checkbox" name="ext" value="' + esc(g.name) + '"' + (names.indexOf(loginNorm(g.name)) >= 0 ? " checked" : "") + "><span><b>" + esc(g.name) + "</b> · 클래스 " + g.ps.length + "개" + (g.orders ? " · 팔린 주문 " + g.orders + "건" : "") + '<small class="a-muted">' + esc(g.ps.map((p) => p.title).join(" · ").slice(0, 140)) + "</small></span></label>").join("") + "</fieldset>";
+  /** 강사님께 보낼 로그인 안내 (비밀번호 숫자는 안 넣어요 — 본인 전화번호 뒷자리) */
+  function insGuideText(acc) {
+    const o = DB.tracksOf(acc), vodOnly = o.vod && !o.live, liveOnly = o.live && !o.vod;
+    return "[두잉고] " + acc.displayName + " 강사님, 강사센터 계정이 만들어졌어요.\n" +
+      "· 강사센터: " + location.origin + "/center/login\n" +
+      "· 로그인: ‘강사’ 탭 → 아이디 " + acc.name + " · 비밀번호 전화번호 뒷자리 4자리\n" +
+      "· 열린 메뉴: " + (vodOnly ? "DOOGO CLASS(VOD) — 클래스 · 판매 · 정산 · VOD 수강생 강의실" : liveOnly ? "두잉고(LIVE) — 기수 · 수강생 · 과제" : "두잉고(LIVE) · DOOGO CLASS(VOD)") +
+      (vodOnly ? "\n두잉고(LIVE) 탭은 잠겨 있어요. 필요하면 자물쇠를 눌러 입점 신청해 주세요." : liveOnly ? "\nDOOGO CLASS(VOD) 탭은 잠겨 있어요. 필요하면 자물쇠를 눌러 입점 신청해 주세요." : "");
+  }
+  /** 계정을 만든 뒤(또는 ‘로그인 안내’) 창: 아이디 · 비밀번호 · 열린 영역 + 강사님께 보낼 안내 복사 */
+  function insDoneModal(acc, linked, again) {
+    const o = DB.tracksOf(acc), vodOnly = o.vod && !o.live;
+    openModal(again ? "강사센터 로그인 안내" : vodOnly ? "VOD 강사 계정을 만들었어요" : "강사 플랫폼을 만들었어요",
+      '<div class="a-trk-lead ok">' + icon("check", "sm") + "<div><b>" + esc(acc.displayName) + " 강사님이 지금 바로 로그인할 수 있어요</b><p>강사센터 로그인 → ‘강사’ 탭에서 아래 아이디 · 비밀번호를 넣으면 " +
+        (vodOnly ? "<b>DOOGO CLASS(VOD) 탭</b>이 열리고 두잉고(LIVE) 탭은 자물쇠예요." : o.live && !o.vod ? "<b>두잉고(LIVE) 탭</b>이 열리고 DOOGO CLASS(VOD) 탭은 자물쇠예요." : "두잉고(LIVE) · DOOGO CLASS(VOD) 탭이 모두 열려요.") + (acc.status === "active" ? "" : " 지금은 ‘멈춤’이라 로그인이 막혀 있어요.") + "</p></div></div>" +
+      '<dl class="a-inq-info a-inq-acc-dl"><div><dt>아이디 (강사 이름)</dt><dd><b>' + esc(acc.name) + "</b></dd></div><div><dt>비밀번호</dt><dd>전화번호 뒷자리 <b>" + esc(acc.phone4) + "</b></dd></div>" +
+        (linked ? "<div><dt>연결한 스토어 클래스</dt><dd>" + linked + "개 — 강사센터 DOOGO CLASS 탭에 보여요</dd></div>" : "") + "</dl>" +
+      '<div class="a-field"><label for="ins-guide-ta">강사님께 보낼 안내 <small>(카카오톡 · 문자로 보내 주세요)</small></label><textarea class="a-input" id="ins-guide-ta" rows="6" readonly>' + esc(insGuideText(acc)) + "</textarea></div>",
+      '<span class="a-spacer"></span>' + btn("닫기", "modal-close") + btn(icon("clipboard", "sm") + "안내 복사", "ins-guide-copy", "a-btn-primary"), "md");
+  }
+  /** 카드의 ‘강사센터 계정’ 칸 (예전 화면 · React 같이 씀): 만든 계정(아이디 · 비밀번호 · 열린 영역 · 연결된 클래스) · 아직이면 등록 버튼 */
+  function inqRegHtml(x) {
+    if (!x || x.addTo) return "";
+    const cur = x.status || "new", vod = inqIsVod(x), acc = inqAcc(x), id = ' data-id="' + esc(x.id) + '"', make = vod ? "VOD 강사로 등록해" : "LIVE 강사 플랫폼을 만들어";
+    if (!acc) {
+      if (cur === "fail") return "";
+      const gone = !!x.iid, done = cur === "done";
+      return '<div class="a-inq-reg' + (done || gone ? " is-next" : "") + '"><div class="a-inq-reg-t">' + icon(vod ? "monitorPlay" : "layers", "sm") + "<div><b>" +
+        (gone ? "연결된 강사 계정을 찾지 못했어요" : done ? "계약 완료 — 이제 " + make + " 주세요" : "계약이 끝나면 " + make + " 주세요") + "</b><p>" + (gone ? "예전에 만든 계정이 지워졌어요. 다시 누르면 새 계정이 만들어져요. " : "") +
+        "누르면 지원서의 <b>이름(아이디)</b> + <b>전화번호 뒷자리 4자리(비밀번호)</b>로 강사센터 계정이 바로 열려요. " + (vod ? "DOOGO CLASS 탭만 열리고 두잉고(LIVE) 탭은 자물쇠예요." : "두잉고(LIVE) 탭만 열리고 DOOGO CLASS(VOD) 탭은 자물쇠예요.") + "</p></div></div>" +
+        btn(icon("store", "sm") + (vod ? "VOD 강사로 등록" : "LIVE 플랫폼 만들기"), "inq-make", done || gone ? "a-btn-primary" : "a-btn-outline", id) + "</div>";
+    }
+    const o = DB.tracksOf(acc), mine = VD().products.filter((p) => p.iid === acc.id), cos = DB.cohortsOf(acc.id), F = x.form || {};
+    const ext = o.vod ? extGroups() : [], names = extNames([acc.displayName, F.nick, x.name, acc.name]), hit = ext.filter((g) => names.indexOf(loginNorm(g.name)) >= 0);
+    const tp = (k, label) => pill(label + (o[k] ? " 열림" : " 잠김"), o[k] ? "ok" : "mute");
+    return '<div class="a-inq-acc"><div class="a-inq-acc-h">' + icon("shieldCheck", "sm") + "<div><b>강사센터 계정이 열려 있어요</b><small>" + esc(acc.createdAt || "") + " 만듦" + (x.openedAt ? " · " + fmtStamp(x.openedAt) + " 이 지원서로 등록" : "") + "</small></div>" +
+        '<span class="a-inq-acc-pills">' + (acc.status === "active" ? pill("사용 중", "ok") : pill("멈춤 · 로그인 안 됨", "warn")) + tp("vod", "DOOGO CLASS") + tp("live", "두잉고") + "</span></div>" +
+      '<dl class="a-inq-info"><div><dt>아이디 (강사 이름)</dt><dd><b>' + esc(acc.name) + "</b></dd></div><div><dt>비밀번호</dt><dd>전화번호 뒷자리 <b>" + esc(acc.phone4) + "</b></dd></div>" +
+        "<div><dt>보이는 이름</dt><dd>" + esc(acc.displayName) + "</dd></div><div><dt>" + (o.vod ? "DOOGO CLASS 클래스" : "LIVE 기수") + "</dt><dd>" + (o.vod ? (mine.length ? mine.length + "개 연결됨" : "아직 없어요") : (cos.length ? cos.length + "개" : "아직 없어요")) + "</dd></div></dl>" +
+      (ext.length ? '<p class="a-inq-acc-ext' + (hit.length ? " hit" : "") + '">' + icon("link", "xs") + "<span>" + (hit.length ? "스토어에 ‘" + esc(hit.map((g) => g.name).join(", ")) + "’ 이름으로 올린 클래스 " + hit.reduce((a, g) => a + g.ps.length, 0) + "개가 아직 이 계정과 연결돼 있지 않아요. 연결하면 강사님 강사센터 DOOGO CLASS 탭에서 판매 · 정산 · 수강생 강의실을 볼 수 있어요." : "스토어에 두잉고 계정 없이 올린 클래스가 있어요. 이 강사님 것이면 연결해 주세요.") + "</span></p>" : "") +
+      '<div class="a-row-actions">' + (ext.length ? btn(icon("link", "sm") + "스토어 클래스 연결", "inq-link", hit.length ? "a-btn-primary a-btn-sm" : "a-btn-outline a-btn-sm", id) : "") +
+        btn(icon("clipboard", "sm") + "로그인 안내", "inq-guide", "a-btn-outline a-btn-sm", id) + btn(icon("pen", "sm") + "강사 계정 수정", "ins-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(acc.id) + '"') + "</div></div>";
+  }
+  /** ‘스토어 클래스 연결’ 창 — 지원서 · 계정 이름과 같은 외부 강사는 미리 체크 */
+  function linkExtForm(inqId) {
+    const x = findInq(inqId), acc = inqAcc(x); if (!acc) { toast("강사 계정을 찾지 못했어요.", "warn"); return; }
+    const gs = extGroups(); if (!gs.length) { toast("연결할 스토어 클래스가 없어요."); return; }
+    openModal("스토어 클래스를 " + acc.displayName + " 계정으로",
+      '<form id="ext-link-form" class="a-form" data-iid="' + esc(acc.id) + '" novalidate><p class="a-hint">' + icon("link", "xs") + "<span>고른 크리에이터의 클래스 강사가 <b>" + esc(acc.displayName) + "</b> 계정으로 바뀌어요. 강사님 강사센터 DOOGO CLASS 탭에서 판매 · 정산 · VOD 수강생 강의실을 보고, 스토어 노출 · 정산 비율 · 강사진 순서는 그대로 옮겨요. 이미 팔린 주문도 이 강사 정산에 들어가요.</span></p>" +
+        extChecks(gs, extNames([acc.displayName, (x.form || {}).nick, x.name, acc.name])) + '<p class="a-error" id="xl-error"></p></form>',
+      '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="ext-link-form">' + icon("link", "sm") + "연결하기</button>", "md");
+  }
+  function saveLinkExt(f) {
+    const acc = DB.instructor(f.dataset.iid), err = document.getElementById("xl-error");
+    if (!acc) { err.textContent = "강사 계정을 찾지 못했어요."; return; }
+    if (!DB.tracksOf(acc).vod) { err.textContent = "이 강사님은 DOOGO CLASS(VOD)가 잠겨 있어요. 먼저 열어 주세요."; return; }
+    const names = Array.from(f.querySelectorAll("input[name=ext]:checked")).map((i) => i.value);
+    if (!names.length) { err.textContent = "연결할 크리에이터를 골라 주세요."; return; }
+    const n = names.reduce((a, nm) => a + linkExt(nm, acc.id), 0);
+    commit(acc.displayName + " 계정에 스토어 클래스 " + n + "개를 연결했어요. 강사님 강사센터 DOOGO CLASS 탭에 보여요.");
+  }
+  /** 복사 (안 되면 글 상자를 골라 두고 안내) */
+  function copyOut(text, msg, ta) {
+    const fall = () => { if (ta) { ta.focus(); ta.select(); toast("내용을 골라 뒀어요. 길게 눌러 복사해 주세요."); } else toast("복사하지 못했어요.", "warn"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast(msg), fall); else fall();
+  }
   /** 두고 파트너스 지원서 칸 (form) → [이름, 화면 HTML] */
   const inqLink = (u) => (/^https?:\/\//i.test(u || "") ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(u) + "</a>" : esc(u || "-"));
   const inqFormRows = (F) => (F ? [["활동명", esc(F.nick || "")], ["연락받기 편한 시간", esc(F.ctime || "")], ["강의 분야", esc(F.cat || "")], ["열고 싶은 클래스", esc((F.kinds || []).join(", "))], ["클래스 주제", esc(F.topic || ""), 1], ["수강 대상", esc(F.target || ""), 1], ["강사 소개 · 이력", esc(F.career || ""), 1], ["직접 낸 결과", esc(F.result || ""), 1], ["커리큘럼 초안", esc(F.curri || ""), 1], ["강의 경험", esc(F.exp || "")], ["강의 자료 준비", esc(F.ready || "")], ["촬영 방식", esc(F.film || "")], ["원하는 오픈 시기", esc(F.when || "")], ["희망 판매가", esc(F.price || "")], ["채널 규모", esc(F.reach || "")], ["다른 주소", F.link2 ? inqLink(F.link2) : ""], ["알게 된 곳", esc(F.from || "")]].filter((r) => r[1]) : []);
@@ -2186,7 +2293,9 @@
   };
   function inqTrack(x) {
     const st = x.status || "new", hold = st === "hold", fail = st === "fail", been = (k) => (x.log || []).some((e) => e.st === k);
-    const lv = st === "new" ? 0 : st === "seen" ? 1 : st === "contact" ? 2 : st === "done" ? (x.iid ? 4 : 3) : fail ? 3 : been("contact") ? 2 : 1;
+    // 5단계(VOD 강사 등록 · 플랫폼 오픈): 계정이 정말 있을 때만 끝 — 마스터 화면은 지워진 계정을 알아보고, 파트너센터는 예전처럼 연결 표시(iid)로
+    const reg = !!x.iid && (!!x.addTo || !!DB.instructor(x.iid) || !(S && S.role === "master"));
+    const lv = st === "new" ? 0 : st === "seen" ? 1 : st === "contact" ? 2 : st === "done" ? (reg ? 5 : 3) : fail ? 3 : been("contact") ? 2 : 1;
     // 계약 안 됨: 4단계를 ‘계약 안 됨(✕)’로 바꿔 보여 주고, 5단계는 흐리게
     const vod = inqIsVod(x), cAt = inqStepAt(x, "contact");
     const steps = [[vod ? "지원 접수" : "문의 접수", x.at], ["열람", x.seenAt || inqStepAt(x, "seen") || cAt || (fail ? x.failAt : null)], [vod ? "상담" : "두잉고 상담", cAt || (fail ? x.failAt : null)], fail ? ["계약 안 됨", x.failAt || inqStepAt(x, "fail")] : ["계약 완료", x.doneAt || inqStepAt(x, "done")], [x.addTo ? (x.want === "vod" ? "DOOGO CLASS 열기" : "LIVE 두잉고 열기") : vod ? "VOD 강사 등록" : "플랫폼 오픈", x.openedAt]];
@@ -2247,12 +2356,12 @@
   function pageMasterPartners(r, only) {
     const isVod = inqIsVod, fk = only ? "vrFilter" : "inqFilter";
     const all = DB.inquiries().filter((x) => !only || isVod(x));
-    const todo = all.filter((x) => INQ_TODO.indexOf(x.status || "new") >= 0);
+    const todo = all.filter(inqTodo);
     const noOf = {}; all.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((x, i) => { noOf[x.id] = i + 1; });
     let f = ui[fk] || (todo.length ? "todo" : "all");
     const unread = all.filter((x) => msgUnreadM(x) > 0);
     if ((f === "msg" && !unread.length) || (only && (f === "aff" || f === "vod"))) f = ui[fk] = "all";
-    const shown = all.filter((x) => f === "all" || (f === "todo" ? INQ_TODO.indexOf(x.status || "new") >= 0 : f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? isVod(x) : (x.status || "new") === f));
+    const shown = all.filter((x) => f === "all" || (f === "todo" ? inqTodo(x) : f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? isVod(x) : (x.status || "new") === f));
     if (f === "todo" || f === "new" || f === "seen" || f === "contact") shown.sort((a, b) => (a.at || 0) - (b.at || 0)); // 처리할 일은 오래된 것부터
     const nextId = (todo.slice().sort((a, b) => (a.at || 0) - (b.at || 0))[0] || {}).id;
     const tabBtn = (t) => '<button type="button" class="a-tab' + (f === t[0] ? " on" : "") + '" data-action="' + (only ? "vr-tab" : "inq-tab") + '" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + t[2] + "</span></button>";
@@ -2272,7 +2381,7 @@
           (isVod(x) && !(only && inqIsPt(x)) ? '<span class="a-pill inq-vod">' + icon(inqIsPt(x) ? "handshake" : "monitorPlay", "xs") + (inqIsPt(x) ? "두고 파트너스" : "DOOGO CLASS 강사 모집") + "</span>" : "") +
           (x.addTo ? '<span class="a-pill inq-add">' + icon("lock", "xs") + "기존 강사 · " + (x.want === "vod" ? "DOOGO CLASS" : "LIVE 두잉고") + " 열기 신청</span>" : "") +
           (pa ? '<span class="a-pill p-aff-pill">' + icon("handshake", "xs") + esc(pa.name) + " 파트너 소개</span>" : "") + (un ? '<span class="a-pill inq-new-msg">' + icon("bell", "xs") + "새 메시지 " + un + "</span>" : "") + pill(st[1], st[2]) + "</span>" +
-        '<span class="a-inq-when">' + fmtStamp(x.at) + "<small>" + (INQ_TODO.indexOf(cur) >= 0 ? ago(x.at) : (x.ref ? "추천 코드 " + esc(x.ref) : "")) + "</small></span>" + '<span class="a-inq-chev">' + icon("chevDown", "sm") + "</span></button>";
+        '<span class="a-inq-when">' + fmtStamp(x.at) + "<small>" + (inqTodo(x) ? ago(x.at) : (x.ref ? "추천 코드 " + esc(x.ref) : "")) + "</small></span>" + '<span class="a-inq-chev">' + icon("chevDown", "sm") + "</span></button>";
       if (!open) return '<article class="a-inq a-inq2' + (next ? " is-next" : "") + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '">' + row + "</article>";
       return '<article class="a-inq a-inq2 open' + (next ? " is-next" : "") + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '"' + (un ? ' data-unread="1"' : "") + ">" + row + '<div class="a-inq-body">' +
         inqTrack(x) +
@@ -2284,11 +2393,12 @@
         (x.message ? '<div class="a-inq-block"><b>남긴 말</b><p>' + esc(x.message) + "</p></div>" : "") +
         (pa ? inqThread(x, "master") : "") +
         '<div class="a-inq-proc"><b>처리 상태</b><div class="a-inq-sbs" role="group" aria-label="처리 상태 바꾸기">' + INQ_STATUS.map((s) => '<button type="button" class="a-inq-sb ' + s[2] + (s[0] === cur ? " on" : "") + '" data-action="inq-st" data-id="' + esc(x.id) + '" data-st="' + s[0] + '" aria-pressed="' + (s[0] === cur) + '">' + (s[0] === cur ? icon("check", "xs") : "") + s[1] + "</button>").join("") + "</div></div>" +
+        inqRegHtml(x) +
         '<div class="a-inq-ctl"><div class="a-inq-sels">' +
           '<label class="a-inq-st"><span>소개 파트너</span><select class="a-input a-sm" data-inq-aff="' + esc(x.id) + '"><option value="none">없음</option>' + affList().map((p) => '<option value="' + esc(p.id) + '"' + (pa && pa.id === p.id ? " selected" : "") + ">" + esc(p.name) + " (" + esc(p.code || p.loginId) + ")</option>").join("") + "</select></label></div>" +
           '<textarea class="a-input" rows="2" data-inq-memo="' + esc(x.id) + '" placeholder="메모 (예: 11/03 통화 · 다음 주 미팅) — 마스터만 봐요" aria-label="메모">' + esc(x.memo || "") + "</textarea>" +
           '<div class="a-row-actions">' + (x.addTo ? (() => { const ai = DB.instructor(x.addTo), w = x.want === "vod" ? "vod" : "live"; return !ai ? "" : DB.tracksOf(ai)[w] ? pill(TRACK_TAB[w] + " 열림", "ok") : cur !== "fail" ? btn(icon("lock", "sm") + (w === "vod" ? "DOOGO CLASS 열어 주기" : "LIVE 두잉고 열어 주기"), "inq-open-track", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : ""; })()
-            : !x.iid && cur !== "fail" ? btn(icon("store", "sm") + (inqIsVod(x) ? "VOD 강사로 등록" : "LIVE 플랫폼 만들기"), "inq-make", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : "") + btn(icon("check", "sm") + "메모 저장", "inq-memo", "a-btn-outline a-btn-sm", ' data-id="' + esc(x.id) + '"') + btn(icon("trash", "sm") + "삭제", "inq-del", "a-btn-ghost a-btn-sm danger", ' data-id="' + esc(x.id) + '"') + "</div></div>" +
+            : "") + btn(icon("check", "sm") + "메모 저장", "inq-memo", "a-btn-outline a-btn-sm", ' data-id="' + esc(x.id) + '"') + btn(icon("trash", "sm") + "삭제", "inq-del", "a-btn-ghost a-btn-sm danger", ' data-id="' + esc(x.id) + '"') + "</div></div>" +
         inqLogHtml(x) + "</div></article>";
     };
     // 화면에 1.5초 이상 보인 카드의 파트너 메시지는 읽음으로 (메뉴 · 종 숫자가 줄어요)
@@ -2310,7 +2420,7 @@
   function inqXl(only, f) {
     const all = DB.inquiries().filter((x) => !only || inqIsVod(x));
     const noOf = {}; all.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((x, i) => { noOf[x.id] = i + 1; });
-    const list = all.filter((x) => !f || f === "all" || (f === "todo" ? INQ_TODO.indexOf(x.status || "new") >= 0 : f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? inqIsVod(x) : (x.status || "new") === f));
+    const list = all.filter((x) => !f || f === "all" || (f === "todo" ? inqTodo(x) : f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? inqIsVod(x) : (x.status || "new") === f));
     if (!list.length) { toast("내려받을 지원이 없어요."); return; }
     const head = ["접수 번호", "접수 일시", "구분", "상태", "열람 일시", "마지막 처리", "성함", "활동명", "연락처", "이메일", "연락받기 편한 시간", "강의 분야", "열고 싶은 클래스", "클래스 주제", "수강 대상", "어떤 강의인가요", "커리큘럼 초안", "강사 소개 · 이력", "직접 낸 결과", "강의 경험", "강의 자료 준비", "촬영 방식", "원하는 오픈 시기", "희망 판매가", "강의 · 활동하는 곳", "채널 주소", "다른 주소", "채널 규모", "알게 된 곳", "남긴 말", "추천 코드", "소개 파트너", "메모", "처리 기록"];
     const p2 = (n) => String(n).padStart(2, "0"), full = (t) => { const d = new Date(t); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); };
@@ -3019,7 +3129,7 @@
    *  두잉고(LIVE) 탭은 자물쇠 (신청하면 입점 문의로) · pre: 두고 파트너스 지원서에서 미리 채울 값 { inq, name, phone, email, form } */
   function vodInsForm(pre) {
     pre = pre || {};
-    const F = pre.form || {}, ph4 = String(pre.phone || "").replace(/\D/g, "").slice(-4);
+    const F = pre.form || {}, ph4 = String(pre.phone || "").replace(/\D/g, "").slice(-4), gs = extGroups();
     openModal("VOD 강사 등록 · DOOGO CLASS",
       '<form id="vins-form" class="a-form" data-inq="' + esc(pre.inq || "") + '" novalidate>' +
         '<p class="a-hint">' + icon("monitorPlay", "xs") + "<span>DOOGO CLASS에 VOD를 올릴 강사님의 강사센터 계정을 만들어요. 강사님은 강사센터에 <b>이름 + 전화번호 뒷자리</b>로 로그인해서 <b>DOOGO CLASS 탭</b>(VOD 판매 · 정산 · VOD 수강생 강의실 · 1:1 코칭 · TEA TIME)을 써요. 기수 · 1인 수강료는 없고 VOD 판매 정산으로 정산해요. 두잉고(LIVE) 탭은 잠겨 있고, 강사님이 자물쇠를 눌러 신청하면 ‘강사 입점 문의’로 들어와요.</span></p>" +
@@ -3029,6 +3139,8 @@
         '<div class="a-field"><label for="vf-course">대표 클래스 이름 <small>(선택)</small></label><input class="a-input" id="vf-course" name="courseTitle" maxlength="60" value="' + esc(String(F.topic || "").slice(0, 60)) + '" placeholder="예: 광고 없이 월 100 버는 중국 구매대행"></div>' +
         '<div class="a-form-row"><div class="a-field"><label for="vf-cphone">연락처</label><input class="a-input" id="vf-cphone" name="cphone" type="tel" maxlength="20" value="' + esc(pre.phone || "") + '" placeholder="010-0000-0000"></div>' +
         '<div class="a-field"><label for="vf-email">이메일 <small>(정산 · 안내 받을 곳)</small></label><input class="a-input" id="vf-email" name="email" type="email" maxlength="100" value="' + esc(pre.email || "") + '"></div></div>' +
+        // 스토어에 두잉고 계정 없이 먼저 올린 이 강사님 클래스(예: ‘셀러훈’)가 있으면 같이 옮겨요 — 지원서 이름 · 활동명과 같으면 미리 체크
+        (gs.length ? '<div class="a-field">' + extChecks(gs, extNames([F.nick, pre.name])) + '<small class="a-muted">체크한 크리에이터의 클래스가 이 계정으로 옮겨져요. 강사님 강사센터 DOOGO CLASS 탭에서 판매 · 정산 · 수강생 강의실을 보고, 스토어 노출 · 정산 비율 · 강사진 순서는 그대로예요.</small></div>' : "") +
         '<p class="a-error" id="vf-error"></p></form>',
       '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="vins-form">' + icon("monitorPlay", "sm") + "VOD 강사 등록</button>", "md");
   }
@@ -3037,7 +3149,7 @@
     const name = f.name.value.trim(), phone4 = f.phone4.value.trim(), displayName = f.displayName.value.trim() || name, email = f.email.value.trim();
     if (!name) { err.textContent = "강사 이름을 입력해 주세요."; return; }
     if (!/^\d{4}$/.test(phone4)) { err.textContent = "전화번호 뒷자리는 숫자 4자리예요."; return; }
-    if (DB.data.instructors.some((x) => x.name === name && x.phone4 === phone4)) { err.textContent = "같은 이름 · 뒷자리의 강사가 이미 있어요."; return; }
+    { const t = loginTaken(name, phone4); if (t) { err.textContent = "같은 이름 · 뒷자리로 로그인하는 계정이 이미 있어요 (" + t + "). 이름을 조금 다르게(예: 이름 뒤 숫자) 해 주세요."; return; } }
     if (email && !EMAIL_RE.test(email)) { err.textContent = "이메일을 확인해 주세요."; return; }
     const nid = DB.uid("i");
     DB.data.instructors.push({ id: nid, name, phone4, displayName, status: "active", createdAt: todayStr(), tracks: { live: false, vod: true }, contact: { phone: f.cphone.value.trim(), email } });
@@ -3054,7 +3166,10 @@
       if (pa && !affList().some((p) => (p.instructors || []).some((l) => l.iid === nid))) { (pa.instructors = pa.instructors || []).push({ iid: nid, rs: null, since: todayStr(), fromInq: inq.id }); }
       DB.saveInquiry(inq);
     }
-    commit(displayName + " VOD 강사 계정을 만들었어요. 강사센터 로그인: " + name + " / " + phone4 + " · DOOGO CLASS › VOD 클래스 관리에서 이 강사님 클래스를 만들어 주세요.");
+    // 스토어에 먼저 올린 이 강사님 클래스(외부 크리에이터)를 이 계정으로
+    const linked = Array.from(f.querySelectorAll("input[name=ext]:checked")).reduce((a, i) => a + linkExt(i.value, nid), 0);
+    commit(displayName + " VOD 강사 계정을 만들었어요. 강사센터 로그인: " + name + " / 전화번호 뒷자리" + (linked ? " · 스토어 클래스 " + linked + "개 연결" : " · DOOGO CLASS › VOD 클래스 관리에서 이 강사님 클래스를 만들어 주세요."));
+    insDoneModal(DB.instructor(nid), linked);
   }
   function saveIns(f) {
     const err = document.getElementById("if-error");
@@ -3062,7 +3177,7 @@
     if (!name || !displayName) { err.textContent = "강사 이름과 보이는 이름을 입력해 주세요."; return; }
     if (!/^\d{4}$/.test(phone4)) { err.textContent = "전화번호 뒷자리는 숫자 4자리예요."; return; }
     const id = f.dataset.id;
-    if (DB.data.instructors.some((x) => x.id !== id && x.name === name && x.phone4 === phone4)) { err.textContent = "같은 이름·뒷자리의 강사가 이미 있어요."; return; }
+    { const t = loginTaken(name, phone4, id); if (t) { err.textContent = "같은 이름 · 뒷자리로 로그인하는 계정이 이미 있어요 (" + t + "). 이름을 조금 다르게(예: 이름 뒤 숫자) 해 주세요."; return; } }
     if (!id && f.email && f.email.value.trim() && !EMAIL_RE.test(f.email.value.trim())) { err.textContent = "이메일을 확인해 주세요."; return; }
     if (id) {
       const live = !!(f.trkLive && f.trkLive.checked), vod = !!(f.trkVod && f.trkVod.checked);
@@ -3100,7 +3215,8 @@
       if (pa && !affList().some((p) => (p.instructors || []).some((l) => l.iid === nid))) { (pa.instructors = pa.instructors || []).push({ iid: nid, rs: null, since: todayStr(), fromInq: inq.id }); }
       DB.saveInquiry(inq);
     }
-    commit(displayName + " 플랫폼을 만들었어요. 강사 로그인: " + name + " / " + phone4 + (fee ? " · 1기 이용료 기록" : ""));
+    commit(displayName + " 플랫폼을 만들었어요. 강사 로그인: " + name + " / 전화번호 뒷자리" + (fee ? " · 1기 이용료 기록" : ""));
+    insDoneModal(DB.instructor(nid), 0);
   }
 
   /* ================= DOOGO CLASS · VOD 판매 (마스터 4개 메뉴 + 강사 ‘내 VOD 판매’) =================
@@ -3866,7 +3982,7 @@
     const list = Object.keys(map).map((k) => map[k]).sort((a, b) => (off.indexOf(a.k) >= 0) - (off.indexOf(b.k) >= 0) || b.n - a.n);
     if (!list.length) return "";
     return '<section class="a-card vda-ins"><div class="a-card-head"><h2>강사 스토어 노출</h2><span class="a-muted">끄면 그 강사의 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 새로 살 수 없어요. 클래스는 지우지 않아서 다시 켜면 그대로 돌아와요. 이미 산 회원은 내 강의실에서 계속 들어요.</span></div><div class="vda-ins-g">' +
-      list.map((t) => { const on = off.indexOf(t.k) < 0; return '<div class="vda-ins-i' + (on ? "" : " off") + '"><span class="vda-ins-ph">' + (t.ph ? '<img src="' + esc(t.ph) + '" alt="">' : "<em>" + esc((t.name || "?").slice(0, 1)) + "</em>") + "</span><div><b>" + esc(t.name) + "</b><small>" + (/^ext:/.test(t.k) ? "두잉고 계정 없는 강사 · " : "") + "클래스 " + t.n + "개" + (t.live ? " · 판매 · 오픈 예정 " + t.live + "개" : "") + "</small></div>" + (on ? pill("노출", "ok") : pill("미노출", "mute")) + '<button type="button" class="a-switch' + (on ? " on" : "") + '" data-action="vda-insoff" data-k="' + esc(t.k) + '" data-n="' + esc(t.name) + '" role="switch" aria-checked="' + on + '" aria-label="' + esc(t.name) + ' 스토어 노출"><i></i></button></div>'; }).join("") + "</div></section>";
+      list.map((t) => { const on = off.indexOf(t.k) < 0; return '<div class="vda-ins-i' + (on ? "" : " off") + '"><span class="vda-ins-ph">' + (t.ph ? '<img src="' + esc(t.ph) + '" alt="">' : "<em>" + esc((t.name || "?").slice(0, 1)) + "</em>") + "</span><div><b>" + esc(t.name) + "</b><small>" + (/^ext:/.test(t.k) ? "두잉고 계정 없는 강사(강사 입점 문의 › VOD 강사 등록에서 계정 연결) · " : "") + "클래스 " + t.n + "개" + (t.live ? " · 판매 · 오픈 예정 " + t.live + "개" : "") + "</small></div>" + (on ? pill("노출", "ok") : pill("미노출", "mute")) + '<button type="button" class="a-switch' + (on ? " on" : "") + '" data-action="vda-insoff" data-k="' + esc(t.k) + '" data-n="' + esc(t.name) + '" role="switch" aria-checked="' + on + '" aria-label="' + esc(t.name) + ' 스토어 노출"><i></i></button></div>'; }).join("") + "</div></section>";
   }
   function pageMasterVodClasses(r) {
     const id = r && r.parts[2];
@@ -8388,6 +8504,10 @@
         break;
       }
       case "vins-add": if (staffDeny("master/instructors")) break; vodInsForm(null); break;
+      // 입점 카드의 강사센터 계정 칸: 스토어 클래스 연결 · 로그인 안내(아이디 · 비밀번호 · 강사님께 보낼 글)
+      case "inq-link": if (staffDeny("master/instructors")) break; linkExtForm(d.id); break;
+      case "inq-guide": { const acc = inqAcc(findInq(d.id)); if (acc) insDoneModal(acc, 0, true); else toast("강사 계정을 찾지 못했어요.", "warn"); break; }
+      case "ins-guide-copy": { const ta = document.getElementById("ins-guide-ta"); if (ta) copyOut(ta.value, "안내를 복사했어요. 카카오톡 · 문자로 보내 주세요.", ta); break; }
       case "inq-memo": { const x = findInq(d.id), ta = document.querySelector('[data-inq-memo="' + d.id + '"]'); if (x && ta) { x.memo = ta.value.trim(); DB.saveInquiry(x); toast("메모를 저장했어요."); } break; }
       case "inq-del": { const x = findInq(d.id); if (!x) break; confirmModal("입점 문의 삭제", "‘" + esc(x.name) + "’ 님의 입점 문의를 삭제할까요?<br>삭제하면 되돌릴 수 없어요.", "삭제", true, () => { DB.removeInquiry(x.id); closeModal(); render(); toast("입점 문의를 삭제했어요."); }); break; }
       case "brand-photo-del": if (C().brand.photo) setBrandPhoto(""); break;
@@ -8513,7 +8633,7 @@
       render(); toast("입금 계좌 · 부가세 설정을 저장했어요.");
       return;
     }
-    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "vins-form": saveVodIns, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "coach-form": saveCoach };
+    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "coach-form": saveCoach };
     if (forms[f.id]) { e.preventDefault(); forms[f.id](f); return; }
     if (f.classList.contains("vda-price")) { e.preventDefault(); saveVodPrice(f); return; }
     if (f.classList.contains("a-q-form")) {
@@ -8653,7 +8773,7 @@
     vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
     vdKey, vdKeep, vdStmt, vdStState, vdRefundsOf, vdRfAmt, vdRfKind, vdRfSettle, vdRfSum, vdRfCases, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
     // 마스터: 대시보드 · 강사 플랫폼 · 전체 수강생 (운영자 계정이면 맡지 않은 버튼 · 링크를 빼요 — staffStrip)
-    seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
+    seedLoginWarn, sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqRegHtml, inqAcc, inqTodo, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
     legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
       const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);

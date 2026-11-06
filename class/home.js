@@ -189,15 +189,19 @@
       };
     }).concat(vodOnly());
   }
-  // 두잉고 기수 계정 없이 DOOGO CLASS 에서 VOD 를 파는 강사(예: 셀러훈) — 수강생은 두잉고 VOD 강의실에서 들어요. 사진 · 클래스로 가는 카드
+  // 두잉고 기수 없이 DOOGO CLASS 에서 VOD 를 파는 강사(예: 셀러훈) — 수강생은 두잉고 VOD 강의실에서 들어요. 사진 · 클래스로 가는 카드
+  //  · 두잉고 계정 없는 강사(클래스 강사 칸이 비고 크리에이터 이름만) + VOD 강사로 등록한 계정(두잉고 LIVE 가 잠긴 강사 — 2026-11-06, 클래스를 계정으로 옮겨도 카드가 그대로)
   function vodOnly() {
     const X = window.VOD;
     if (!X || !X.V) return [];
     const v = X.V(), off = Array.isArray(v.insOff) ? v.insOff : [], seen = {}, out = [];
-    (v.products || []).filter((p) => !p.iid && p.creator && (p.status === "on" || p.status === "soon") && off.indexOf("ext:" + p.creator) < 0).forEach((p) => {
-      if (seen[p.creator]) return;
-      seen[p.creator] = 1;
-      out.push({ id: p.id, vod: "#/vod/p/" + p.id, name: p.creator, who: p.creator, title: p.title, t: null, photo: X.phOf ? X.phOf(p) : p.creatorPhoto || "", field: p.tagline || "",
+    const key = (p) => (X.tkey ? X.tkey(p) : p.iid || "ext:" + p.creator);
+    const vodAcc = (iid) => { const ins = DB.instructor ? DB.instructor(iid) : null; return !!ins && ins.status === "active" && !!DB.tracksOf && !DB.tracksOf(ins).live; };
+    (v.products || []).filter((p) => (p.iid ? vodAcc(p.iid) && (p.creator || DB.instructor(p.iid).displayName) : !!p.creator) && (p.status === "on" || p.status === "soon") && off.indexOf(key(p)) < 0).forEach((p) => {
+      const k = key(p), nm = p.creator || DB.instructor(p.iid).displayName;
+      if (seen[k]) return;
+      seen[k] = 1;
+      out.push({ id: p.id, vod: "#/vod/p/" + p.id, name: nm, who: nm, title: p.title, t: null, photo: X.phOf ? X.phOf(p) : p.creatorPhoto || "", field: p.tagline || "",
         yt: "", ig: "", kakao: "", weeks: 0, missions: 0, landing: false, free: false, plat: PLATFORMS.doogo });
     });
     return out;

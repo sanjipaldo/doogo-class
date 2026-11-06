@@ -212,7 +212,7 @@ function InsCard() {
   const list = Object.keys(map).map((k) => map[k]).sort((a, b) => (off.indexOf(a.k) >= 0) - (off.indexOf(b.k) >= 0) || b.n - a.n);
   if (!list.length) return null;
   return <section className="a-card vda-ins"><div className="a-card-head"><h2>강사 스토어 노출</h2><span className="a-muted">끄면 그 강사의 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 새로 살 수 없어요. 클래스는 지우지 않아서 다시 켜면 그대로 돌아와요. 이미 산 회원은 내 강의실에서 계속 들어요.</span></div><div className="vda-ins-g">
-    {list.map((t) => { const on = off.indexOf(t.k) < 0; return <div key={t.k} className={"vda-ins-i" + (on ? "" : " off")}><span className="vda-ins-ph">{t.ph ? <img src={t.ph} alt="" /> : <em>{(t.name || "?").slice(0, 1)}</em>}</span><div><b>{t.name}</b><small>{(/^ext:/.test(t.k) ? "두잉고 계정 없는 강사 · " : "") + "클래스 " + t.n + "개" + (t.live ? " · 판매 · 오픈 예정 " + t.live + "개" : "")}</small></div>{on ? <Pill cls="ok">노출</Pill> : <Pill cls="mute">미노출</Pill>}
+    {list.map((t) => { const on = off.indexOf(t.k) < 0; return <div key={t.k} className={"vda-ins-i" + (on ? "" : " off")}><span className="vda-ins-ph">{t.ph ? <img src={t.ph} alt="" /> : <em>{(t.name || "?").slice(0, 1)}</em>}</span><div><b>{t.name}</b><small>{(/^ext:/.test(t.k) ? "두잉고 계정 없는 강사(강사 입점 문의 › VOD 강사 등록에서 계정 연결) · " : "") + "클래스 " + t.n + "개" + (t.live ? " · 판매 · 오픈 예정 " + t.live + "개" : "")}</small></div>{on ? <Pill cls="ok">노출</Pill> : <Pill cls="mute">미노출</Pill>}
       <button type="button" className={"a-switch" + (on ? " on" : "")} data-action="vda-insoff" data-k={t.k} data-n={t.name} role="switch" aria-checked={String(on)} aria-label={t.name + " 스토어 노출"}><i /></button></div>; })}</div></section>;
 }
 export function MasterVodClasses() {

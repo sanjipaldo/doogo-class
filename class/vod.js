@@ -1622,7 +1622,12 @@
   const snsOf = (iid) => { const b = insBrand(iid), url = (v, base) => (!v ? "" : /^https?:\/\//.test(v) ? v : base + String(v).replace(/^@/, "")); return [[url(b.instagram, "https://instagram.com/"), "camera", "인스타그램"], [url(b.youtubeChannel, "https://youtube.com/"), "video", "유튜브"], [url(b.kakaoChannel, "https://pf.kakao.com/"), "message", "카카오톡 채널"]].filter((x) => x[0]); };
   // 강사 페이지 주소: STORE_AS 강사는 스토어 이름(slug)으로 (#/vod/teachers/yuna) · 예전 주소(choi)도 그대로 열려요
   const tHref = (iid) => "#/vod/teachers/" + encodeURIComponent((storeAs(iid) || {}).slug || iid);
-  const tFromSlug = (s) => Object.keys(STORE_AS).find((k) => STORE_AS[k].slug === s) || s;
+  // 예전 ‘두잉고 계정 없는 강사’ 주소(#/vod/teachers/ext:셀러훈)는 그 클래스를 강사 계정으로 옮긴 뒤에도 그 강사 페이지로 열려요 (2026-11-06)
+  const tFromSlug = (s) => {
+    const k = Object.keys(STORE_AS).find((x) => STORE_AS[x].slug === s); if (k) return k;
+    if (/^ext:/.test(s || "") && !V().products.some((p) => tkey(p) === s)) { const nm = String(s).slice(4), p = V().products.find((x) => x.iid && x.creator === nm); if (p) return p.iid; }
+    return s;
+  };
   /* 강사진 검색: 이름 · 소개 · 분야로 찾고, 초성(ㅁㄷㅍ → 문대표)도 맞춰요. 고른 분야 · 검색어는 다시 그려도 남아요 */
   const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
   const choOf = (s) => String(s || "").replace(/[가-힣]/g, (c) => CHO[Math.floor((c.charCodeAt(0) - 0xac00) / 588)]);

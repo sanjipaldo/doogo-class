@@ -1714,6 +1714,27 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const adsrc = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
     ok(/case "inq-open-track"/.test(adsrc) && /function vodInsForm/.test(adsrc) && /tracks: \{ live: false, vod: true \}/.test(adsrc) && /tracks: \{ live: true, vod: false \}/.test(adsrc) && /inqIsVod\(x\)\) vodInsForm/.test(adsrc),
       "마스터: 두고 파트너스 지원 → VOD 강사 등록 창(DOOGO CLASS만) · 두잉고 문의 → LIVE 플랫폼(두잉고만) · 기존 강사 신청 → 열어 주기");
+    // 입점 → 강사센터 계정 (2026-11-06): 카드의 계정 칸 · 지워진 계정이면 다시 등록 · 외부 클래스 연결 · 로그인 겹침 · LIVE 잠긴 강사의 기수 신청
+    const minq = fs.readFileSync(path.join(ROOT, "../ui/center/MasterInq.jsx"), "utf8");
+    ok(/function inqRegHtml\(x\)/.test(adsrc) && /<Isl html=\{A\.inqRegHtml\(x\)\} \/>/.test(minq) && /inqRegHtml\(x\) \+\n/.test(adsrc) && /inqTrack, inqRegHtml, inqAcc,/.test(adsrc) && !/!x\.iid && cur !== "fail"/.test(adsrc + minq) && /const inqAcc = \(x\) => \(x && x\.iid && !x\.addTo \? DB\.instructor\(x\.iid\) : null\)/.test(adsrc),
+      "입점 카드: 강사센터 계정 칸(예전 화면 · React 같은 조각) — 계정이 정말 있을 때만 ‘등록 끝’, 지워졌으면 등록 버튼을 다시");
+    ok(/st === "done" \? \(reg \? 5 : 3\)/.test(adsrc) && /!\(S && S\.role === "master"\)/.test(adsrc), "진행 칸: 계정이 있으면 5단계까지 모두 끝(채운 동그라미) · 파트너센터는 예전처럼 연결 표시로");
+    ok(/function linkExt\(name, nid\)/.test(adsrc) && /v\.insOff = swap\(v\.insOff\)/.test(adsrc) && /v\.insRates\[nid\] = v\.insRates\[key\]/.test(adsrc) && /r\.k === "teach"/.test(adsrc) && /x\.key === key\) x\.key = nid/.test(adsrc) && /linkExt\(i\.value, nid\)/.test(adsrc) && /"ext-link-form": saveLinkExt/.test(adsrc),
+      "스토어 클래스 연결(등록 창 · 계정 칸): 클래스 강사 + ext:이름으로 쓰던 노출 스위치 · 정산 비율 · 강사진 순서 · 지급 기록 키를 같이 옮겨요");
+    ok(/const loginNorm = \(s\) => String\(s \|\| ""\)\.replace\(\/\\s\+\/g, ""\)/.test(adsrc) && /loginTaken\(name, phone4\)/.test(adsrc) && /loginTaken\(name, phone4, id\)/.test(adsrc) && /\(x\.coaches \|\| \[\]\)\.find\(\(y\) => loginNorm\(y\.name\) === n && y\.phone4 === phone4\)/.test(adsrc),
+      "계정 만들 때 겹침 확인: 서버 로그인처럼 띄어쓰기를 빼고 강사 · 코치 모두 (VOD 등록 · LIVE 만들기 · 강사 수정)");
+    const hsrc = fs.readFileSync(path.join(ROOT, "home.js"), "utf8"), vsrc = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8");
+    ok(/const vodAcc = \(iid\) =>/.test(hsrc) && /!DB\.tracksOf\(ins\)\.live/.test(hsrc) && /\/\^ext:\/\.test\(s \|\| ""\) && !V\(\)\.products\.some\(\(p\) => tkey\(p\) === s\)/.test(vsrc),
+      "클래스를 계정으로 옮겨도: 두잉고 첫 화면 VOD 강사 카드는 그대로 · 예전 강사 페이지 주소(ext:이름)도 그 강사로 열려요");
+    await st23.writeDoc("cohorts:t-vod", [{ id: "cv1", instructorId: "t-vod", name: "1기", startDate: "2026-12-05", recruiting: true }], null);
+    await st23.writeDoc("cohorts:t-live", [{ id: "cl1", instructorId: "t-live", name: "1기", startDate: "2026-12-05", recruiting: true }], null);
+    useJar({});
+    let su = await call("public", { body: { action: "signup", iid: "t-vod", cohortId: "cv1", name: "수강생", phone4: "4321" } });
+    ok(su.json.error === "notfound", "두잉고(LIVE)가 잠긴 VOD 강사는 기수 수강 신청을 받지 않아요 (서버)", su.json);
+    su = await call("public", { body: { action: "signup", iid: "t-live", cohortId: "cl1", name: "수강생", phone4: "4321" } });
+    ok(su.json.ok === true, "LIVE 강사 기수 신청은 그대로 받아요", su.json);
+    su = await call("auth", { body: { action: "admin", tab: "instructor", id: " 브 이 ", pw: "1111" } });
+    ok(su.json.ok && su.json.role === "instructor" && su.json.iid === "t-vod", "VOD 강사: 이름(띄어쓰기 무시) + 전화번호 뒷자리로 강사센터 로그인", su.json);
   }
 
   {
