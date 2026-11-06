@@ -1355,7 +1355,7 @@
       "</div></div>" +
       '<nav class="vd-nav" aria-label="메뉴"><div class="vd-wrap vd-nav-in"><div class="vd-nav-l"><button type="button" class="vd-allcat" data-v="mega" aria-haspopup="true" aria-expanded="false" aria-controls="vd-mega">' + icon("menu", "sm") + "<span>전체 카테고리</span></button>" +
         NAV.filter((x) => !x[3] || bizOn(x[3])).map((x) => '<a href="' + x[1] + '" class="' + (nav === x[0] ? "on" : "") + '">' + x[2] + "</a>").join("") +
-      '</div><div class="vd-nav-r"><a href="#/vod/about" class="' + (nav === "about" ? "on" : "") + '">DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a>' + kkBtn("vd-nav-kk", "문의하기") + "</div></div></nav></header>";
+      '</div><div class="vd-nav-r"><a href="#/vod/about" class="' + (nav === "about" ? "on" : "") + '">DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a><a href="#/center">강사센터</a>' + kkBtn("vd-nav-kk", "문의하기") + "</div></div></nav></header>";
   }
   // 바닥: 긱스쿨 푸터 틀(큰 흐르는 글씨 · 바로가기 칸 · ‘도움이 필요하신가요?’ 상자 · 오른쪽 약관 줄 · 사업자 정보) + DOOGO CLASS 색
   function footer() {
@@ -3682,7 +3682,7 @@
       "<p>클래스</p>" + item("#/vod", "돈되는 클래스", "home") + item("#/vod/c/all", "전체 클래스", "layers") + item("#/vod/c/all?tab=vod", "VOD 강의", "monitorPlay") + (bizOn("ebook") ? item("#/vod/c/all?tab=ebook", "전자책", "book") : "") + (bizOn("flive") ? item("#/vod/c/all?tab=flive", "무료 LIVE", "video") : "") + (bizOn("live") ? item("#/vod/c/all?tab=premium", "LIVE · 오프라인 강의", "calendar") : "") + (bizOn("free") ? item("#/vod/c/all?tab=free", "무료강의", "sparkles") : "") + item("#/vod/teachers", "강사진", "users") + item("#/vod/c/soon", "오픈 예정", "bell") +
       "<p>분야</p>" + cats().map((c) => item("#/vod/c/" + c.key, esc(c.label), c.icon)).join("") +
       "<p>마이페이지</p>" + item("#/vod/my/classes", "내 강의실", "monitorPlay") + item("#/vod/my/likes", "찜 · 관심 부업", "heart") + item("#/vod/my/coupons", "쿠폰", "coins") + item("#/vod/my/orders", "주문 · 결제 내역", "file") + item("#/vod/my/help", "고객센터 · 1:1 문의", "headset") +
-      "<p>DOOGO CLASS</p>" + item("#/vod/about", "DOOGO CLASS 소개", "store") + item("#/vod/partners", "두고 파트너스 (강사 지원)", "handshake") + item("#/doinggo", "두잉고 (기수 강의)", "arrowUpRight") + '<a href="' + esc(opsKk().chat) + '" target="_blank" rel="noopener" data-kk-ops>' + icon("message", "sm") + "<span>카카오톡 상담 (문의하기)</span></a>" + (m ? '<button type="button" data-v="logout">' + icon("logout", "sm") + "<span>로그아웃</span></button>" : "") + "</div>", "vd-modal-drawer");
+      "<p>DOOGO CLASS</p>" + item("#/vod/about", "DOOGO CLASS 소개", "store") + item("#/vod/partners", "두고 파트너스 (강사 지원)", "handshake") + item("#/doinggo", "두잉고 (기수 강의)", "arrowUpRight") + item("#/center", "강사센터 (강사 · 코치 로그인)", "monitor") + '<a href="' + esc(opsKk().chat) + '" target="_blank" rel="noopener" data-kk-ops>' + icon("message", "sm") + "<span>카카오톡 상담 (문의하기)</span></a>" + (m ? '<button type="button" data-v="logout">' + icon("logout", "sm") + "<span>로그아웃</span></button>" : "") + "</div>", "vd-modal-drawer");
   }
   /* ---------- PC 전체 카테고리 펼침 메뉴 (탈잉 · 패스트캠퍼스처럼) ----------
      [전체 카테고리]를 누르면 머리띠 바로 아래로 넓은 창이 열려요: 왼쪽 분야 → 가운데 그 분야의 종류별 바로가기 · 인기 클래스 → 오른쪽 바로가기 · 두고 파트너스.

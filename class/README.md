@@ -403,6 +403,8 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 - 서버: 두잉고(LIVE)가 잠긴 강사(VOD 강사로만 등록)는 기수 수강 신청(`/api/public` signup)을 받지 않아요(예전 강사 · 칸 없음은 그대로).
 - 테스트: `node scripts/vod-test.js` 23번 · 화면 `node scripts/e2e/run.js onboard`(지원서 → 계약 완료 → 등록 · 클래스 연결 → 강사 로그인 자물쇠 · LIVE 반대 · 겹침 · 지워진 계정 — 예전 화면 · `E2E_SERVER=next E2E_REACT=1` React 화면 모두).
 
+- 스토어 머리띠(2026-11-06): 아래 줄 오른쪽 ‘DOOGO CLASS 소개 · 두잉고 · **강사센터** · 문의하기’ — 강사센터는 `#/center`(로그인 안 했으면 강사센터 로그인, 했으면 대시보드). 1023px 이하(휴대폰 · 태블릿)는 머리띠 오른쪽이 숨어서 ‘메뉴’(전체 메뉴) › DOOGO CLASS 묶음의 두잉고 바로 아래에 ‘강사센터 (강사 · 코치 로그인)’. 예전 화면(`vod.js`) · React(`ui/store/Shell.jsx`) 같게.
+
 ## 강사 정산: 무엇이 팔렸는지 (상품 종류 탭 · 2026-11-03)
 
 - 마스터 › 강사 정산 위에 **상품 종류 탭**(전체 · VOD 강의 · 전자책 · 종이책 · LIVE · 오프라인 · 1:1 코칭권 · TEA TIME, 숫자 = 그 달 건수)이 있어요. 탭을 고르면 그 종류를 판 강사만 남고, 위 요약 줄에 그 종류의 강사 수 · 건수 · 판매가 · 강사 정산액이 보여요.

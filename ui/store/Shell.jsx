@@ -121,7 +121,7 @@ function Drawer({ m, onClose }) {
         <p>클래스</p>{item("#/vod", "돈되는 클래스", "home")}{item("#/vod/c/all", "전체 클래스", "layers")}{item("#/vod/c/all?tab=vod", "VOD 강의", "monitorPlay")}{X.bizOn("ebook") ? item("#/vod/c/all?tab=ebook", "전자책", "book") : null}{X.bizOn("flive") ? item("#/vod/c/all?tab=flive", "무료 LIVE", "video") : null}{X.bizOn("live") ? item("#/vod/c/all?tab=premium", "LIVE · 오프라인 강의", "calendar") : null}{X.bizOn("free") ? item("#/vod/c/all?tab=free", "무료강의", "sparkles") : null}{item("#/vod/teachers", "강사진", "users")}{item("#/vod/c/soon", "오픈 예정", "bell")}
         <p>분야</p>{X.cats().map((c) => item("#/vod/c/" + c.key, c.label, c.icon))}
         <p>마이페이지</p>{item("#/vod/my/classes", "내 강의실", "monitorPlay")}{item("#/vod/my/likes", "찜 · 관심 부업", "heart")}{item("#/vod/my/coupons", "쿠폰", "coins")}{item("#/vod/my/orders", "주문 · 결제 내역", "file")}{item("#/vod/my/help", "고객센터 · 1:1 문의", "headset")}
-        <p>DOOGO CLASS</p>{item("#/vod/about", "DOOGO CLASS 소개", "store")}{item("#/vod/partners", "두고 파트너스 (강사 지원)", "handshake")}{item("#/doinggo", "두잉고 (기수 강의)", "arrowUpRight")}<a href={X.opsKk().chat} target="_blank" rel="noopener" data-kk-ops=""><Icon n="message" c="sm" /><span>카카오톡 상담 (문의하기)</span></a>{m ? <button type="button" data-v="logout" onClick={logout}><Icon n="logout" c="sm" /><span>로그아웃</span></button> : null}
+        <p>DOOGO CLASS</p>{item("#/vod/about", "DOOGO CLASS 소개", "store")}{item("#/vod/partners", "두고 파트너스 (강사 지원)", "handshake")}{item("#/doinggo", "두잉고 (기수 강의)", "arrowUpRight")}{item("#/center", "강사센터 (강사 · 코치 로그인)", "monitor")}<a href={X.opsKk().chat} target="_blank" rel="noopener" data-kk-ops=""><Icon n="message" c="sm" /><span>카카오톡 상담 (문의하기)</span></a>{m ? <button type="button" data-v="logout" onClick={logout}><Icon n="logout" c="sm" /><span>로그아웃</span></button> : null}
       </div>
     </Modal>
   );
@@ -168,7 +168,7 @@ function Header({ nav, open }) {
       </div></div>
       <nav className="vd-nav" aria-label="메뉴"><div className="vd-wrap vd-nav-in"><div className="vd-nav-l"><button type="button" className="vd-allcat" data-v="mega" aria-haspopup="true" aria-expanded={mega !== null ? "true" : "false"} aria-controls="vd-mega" onClick={megaBtn}><Icon n="menu" c="sm" /><span>전체 카테고리</span></button>
         {X.NAV.filter((x) => !x[3] || X.bizOn(x[3])).map((x) => <a key={x[0]} href={x[1]} className={nav === x[0] ? "on" : ""}>{x[2]}</a>)}
-      </div><div className="vd-nav-r"><a href="#/vod/about" className={nav === "about" ? "on" : ""}>DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a><KakaoBtn cls="vd-nav-kk" label="문의하기" /></div></div></nav>
+      </div><div className="vd-nav-r"><a href="#/vod/about" className={nav === "about" ? "on" : ""}>DOOGO CLASS 소개</a><a href="#/doinggo">두잉고</a><a href="#/center">강사센터</a><KakaoBtn cls="vd-nav-kk" label="문의하기" /></div></div></nav>
       {mega !== null ? <Mega cat={mega} onPick={setMega} /> : null}
     </header>
   );
