@@ -2483,6 +2483,18 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       const bk = await st39.backup("시험 39"), rows = await st39.backupRows((await st39.listBackups())[0].id), nRestore = await st39.restoreRows(rows), afterR = await snap();
       ok(bk && bk.docs === rows.length && nRestore === rows.length && [...afterR.keys()].length === rows.length && JSON.stringify((await st39.getDoc(ordK)).v.memo39) === '"only 에서 씀"',
         "백업 · 되돌리기: only 에서도 문서 " + rows.length + "개가 백업에 · 되돌리면 제 표로 (내용 그대로 · 버전은 올라가요)", { bk: bk && bk.docs, n: nRestore });
+      // 배포 전 백업 (2026-11-07): 바로 앞 백업과 내용이 같으면 새로 쌓지 않아요 · 이미 쌓인 같은 내용 백업은 먼저 것 하나만
+      {
+        const s1 = await st39.backup("시험 39 같은 내용 1", { skipSame: true }), n1 = (await st39.listBackups()).length;
+        const s2 = await st39.backup("시험 39 같은 내용 2", { skipSame: true }), n2 = (await st39.listBackups()).length;
+        await st39.backup("시험 39 같은 내용 3"); await st39.backup("시험 39 같은 내용 4"); // skipSame 없이 — 예전처럼 같은 내용이 쌓인 상태
+        const n3 = (await st39.listBackups()).length, pr = await st39.pruneSameBackups(), after = await st39.listBackups();
+        const keepFirst = after.some((x) => x.reason === "시험 39 같은 내용 1") && !after.some((x) => /같은 내용 [34]/.test(x.reason));
+        await st39.writeDoc("vr:rv39b", { id: "rv39b", pid: "v5", mid: "m39", name: "시OO", rating: 4, text: "다시", at: Date.now() }, null);
+        const s3 = await st39.backup("시험 39 바뀐 뒤", { skipSame: true }), n4 = (await st39.listBackups()).length, pr2 = await st39.pruneSameBackups();
+        ok(s1 && !s1.same && s2 && s2.same && n2 === n1 && n3 === n1 + 2 && pr === 2 && after.length === n1 && keepFirst && s3 && !s3.same && n4 === n1 + 1 && pr2 === 0,
+          "배포 전 백업: 바뀐 데이터가 없으면 새로 쌓지 않아요 · 이미 쌓인 같은 내용 백업은 먼저 것 하나만 남기고 정리 · 데이터가 바뀌면 다시 쌓여요", { s1: s1 && s1.same, s2: s2 && s2.same, n1, n2, n3, pr, after: after.length, s3: s3 && s3.same, n4, pr2 });
+      }
       const base2 = await snap();
       // 같은 버전인데 내용이 다르면 맞추기가 멈춰요 (사람이 봐야)
       await stepTo("table");

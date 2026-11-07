@@ -177,6 +177,13 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **예전 모양 표 다시 만들기** (`areasync.rebuild` · 배포 빌드가 자동): 표마다 한 트랜잭션 — 잠그고 → 줄(k · v · ver · updated · created) 읽고 → 지우고 → 새 모양으로 만들고 → 같은 줄 다시(꺼낸 값 · 한 건씩 표는 v 에서 다시). 실패하면 그 표는 예전 그대로 · 빌드 멈춤. 다시 만든 뒤 보기 · RLS · 표 설명도 다시(`pgSetup`). 미리보기(시험용 DB 아님) · 쓰기 멈춤 중에는 찾기만. 운영 표는 지금 비어 있어 다음 배포 때 바로 새 모양.
 - **시험**: 서버 시험 40번(예전 모양 표 3개 → 찾기 · 다시 만들기 · 문서 · 버전 · 시각 그대로 · 한 건씩 표 · 한국 시간 · Postgres 보기 · RLS 35) · 로컬 리허설(PGlite · 시험용 DB 역할 · only · 영역 표 18개 모두 예전 모양 → 진짜 `db-build.js` → 18개 다시 · 문서 그대로 · 보기 6개 · 2부 비교 모두 맞음).
 
+#### DB 점검 (2026-11-07) — 지금 어디까지 옮겨졌나 · JSON 이 많아 보이는 까닭
+
+- **옮긴 상태** (운영 배포 bc8bef8 빌드 기록 기준): ① 1부 Turso → Supabase **끝** (운영 doogo-prod · 미리보기 doogo-staging · 서울) ② 2부 B2~B6 문서 종류마다 제 표 **끝** — 운영 · 미리보기 모두 `DB_AREAS=all:only`, 영역마다 ‘맞음’ ③ 2부 B1 사진 · 첨부 → Supabase Storage **아직** — `SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY` 가 운영 · 미리보기 둘 다 없어요(지금은 파일 0개라 옮길 것은 없고, 키를 넣으면 앞으로 올리는 파일부터 Storage 로). `FILES_STORE=supabase` 는 2026-11-07 Vercel(운영 · 미리보기)에 넣어 뒀어요 — 키가 없으면 예전처럼 DB 에 · 빌드 기록에 한 줄.
+- **Supabase 화면에서 보는 곳**: Table Editor 왼쪽 위 스키마를 **`app`** 으로(기본 `public` 은 비어 있어요). 표마다 왼쪽은 읽는 값(주문번호 · 회원 · 금액 · 상태 · 한국 시간 …), 맨 오른쪽 `v` 는 화면이 쓰는 원본 문서 JSON(일부러 남김 · 위 ‘2부 표 모양’). 사람이 보기 편한 건 보기 `v_orders` · `v_members` · `v_students` · `v_cohorts` · `v_bills` · `v_inquiries`(한국어 열 이름).
+- **JSON 이 많아 보인 까닭**: ① `backups` 표 — 배포할 때마다 DB 전체를 JSON 한 덩어리(약 240KB)로 남겨 최대 40개까지 쌓였어요. 배포는 하루에도 여러 번인데 데이터는 그대로인 때가 많아 **같은 내용**이 여러 개였어요 → **고침**: 바로 앞 백업과 내용이 같으면 새로 쌓지 않고(`backup(…, { skipSame: true })`), 이미 쌓인 같은 내용 백업은 먼저 것 하나만 남겨요(`pruneSameBackups` · 배포 빌드가 자동 · 기록 `[db] 백업 표: n개 · 같은 내용 백업 m개 정리`). ② 모든 영역 표의 `v` 칸(원본 문서) ③ `docs` 에 남은 `sys` · 지운 문서 표시(v 가 빈 줄 — 다른 기기에 ‘지워짐’을 알리는 표시) ④ `oplog`(일회성 작업 기록).
+- **사진 · 첨부 Storage 켜기 (남은 일 · 운영자가 키를 넣어요)**: Supabase › 각 프로젝트(doogo-staging · doogo-prod) › Project Settings › Data API 의 Project URL · API Keys 의 secret 키 → Vercel › Settings › Environment Variables 에 `SUPABASE_URL`(Plain) · `SUPABASE_SERVICE_ROLE_KEY`(**Sensitive**)를 미리보기(doogo-staging 값) · 운영(doogo-prod 값) 따로. 채팅에는 붙이지 않아요. 넣은 뒤 미리보기 배포 → 기록 `[db] Storage 버킷 class-files: 비공개 · 새로 만들었어요 · 새 파일 내용은 Storage 에` 확인 → 운영 배포(따로 여쭤봐요).
+
 로컬에서 서버 모드로 띄우기 (Node 22 내장 SQLite 사용):
 
 ```bash

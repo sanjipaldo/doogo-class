@@ -43,6 +43,7 @@ const init = require("../api/_lib/init");
     if (bk && bk.public) { console.error("[db] Storage 버킷 " + bk.id + " 이 공개(public)로 되어 있어요 — 볼 수 있는 범위 확인을 건너뛰게 돼요. Supabase › Storage 에서 비공개로 바꾼 뒤 다시 배포해 주세요"); process.exit(1); }
     if (bk) console.log("[db] Storage 버킷 " + bk.id + ": 비공개" + (bk.created ? " · 새로 만들었어요" : "") + " · 새 파일 내용은 " + (blob.on() ? "Storage 에 (FILES_STORE=supabase)" : "예전처럼 DB 에 (FILES_STORE 를 supabase 로 하면 Storage)"));
   } else if (/^supabase$/i.test(String(process.env.FILES_STORE || "").trim())) console.log("[db] 주의: FILES_STORE=supabase 인데 SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY 가 없어서 새 파일은 예전처럼 DB 에 저장돼요");
+  else console.log("[db] 사진 · 첨부 Storage(2부 B1): 아직 꺼져 있어요 — 새 파일 내용은 DB(app.files)에 저장돼요. Supabase Storage 로 바꾸려면 SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY · FILES_STORE=supabase 를 넣어요 (README ‘2부 B1’)");
   // 한 번만: FILES_MOVE=to-storage | to-db | verify — 이미 있는 파일을 옮기고 파일마다 확인 (하나라도 다르면 빌드 멈춤 · 끝나면 FILES_MOVE 는 지워요)
   if (process.env.FILES_MOVE) {
     const FM = require("./files-move"), mode = String(process.env.FILES_MOVE).trim();
@@ -92,8 +93,10 @@ const init = require("../api/_lib/init");
     }
     console.log("[db] 시험용 DB: 처음 데이터 · 일회성 작업 · 기본값 채우기를 돌려요 (운영 DB는 건드리지 않아요)");
   }
-  const b = await store.backup("배포 전 자동 백업" + (process.env.VERCEL_GIT_COMMIT_SHA ? " (" + process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) + ")" : ""));
-  console.log("[db] 배포 전 백업: " + (b ? "문서 " + b.docs + "개 · " + Math.round(b.size / 1024) + "KB" : "비어 있어 건너뜀"));
+  // 배포 전 백업 — 바로 앞 백업과 내용이 같으면 새로 쌓지 않고, 이미 쌓인 같은 내용 백업도 하나만 남겨요 (2026-11-07)
+  const b = await store.backup("배포 전 자동 백업" + (process.env.VERCEL_GIT_COMMIT_SHA ? " (" + process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) + ")" : ""), { skipSame: true });
+  console.log("[db] 배포 전 백업: " + (b ? (b.same ? "바뀐 데이터가 없어 새로 쌓지 않았어요 (최근 백업 #" + b.id + " 그대로 · 문서 " + b.docs + "개)" : "문서 " + b.docs + "개 · " + Math.round(b.size / 1024) + "KB") : "비어 있어 건너뜀"));
+  if (!ro) { const nd = await store.pruneSameBackups(), nb = (await store.listBackups()).length; console.log("[db] 백업 표: " + nb + "개" + (nd ? " · 같은 내용 백업 " + nd + "개 정리" : "") + " (최대 40개 · 내용이 바뀔 때만 쌓여요)"); }
   if (ro) return;
   // 2부 표 모양 (2026-11-06): 예전 모양 표(문서 JSON 이 둘째 칸 · 시각이 ms 숫자)를 내용 그대로 새 모양으로 — 보기(v_orders …) · RLS · 설명은 바로 다시
   let rb;

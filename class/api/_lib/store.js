@@ -304,14 +304,41 @@ async function wipe() { await batch([{ sql: "DELETE FROM docs" }, { sql: "DELETE
 
 /* ---------------- 백업 ---------------- */
 const KEEP_BACKUPS = 40;
-async function backup(reason) {
+/* opts.skipSame (배포 전 자동 백업 · 2026-11-07): 바로 앞 백업과 내용이 한 글자도 같으면 새로 쌓지 않아요 —
+ * 배포는 하루에도 여러 번인데 데이터는 그대로인 때가 많아서, 같은 DB 전체 JSON 이 백업 표에 40개까지 쌓였어요(Supabase 에서 JSON 이 많아 보이던 까닭 하나) */
+async function backup(reason, opts) {
   const u = readUnion("k, v, ver, updated, created"); // 2부: 제 표에서 읽는 영역은 제 표에서 (백업 모양은 그대로 — 문서 줄 목록)
   const rows = (await exec(u.sql, u.args)).rows;
   if (!rows.length) return null;
   const data = JSON.stringify(rows);
+  if (opts && opts.skipSame) {
+    const last = (await exec("SELECT id, size FROM backups ORDER BY id DESC LIMIT 1")).rows[0];
+    if (last && Number(last.size) === data.length) {
+      const prev = (await exec("SELECT data FROM backups WHERE id = ?", [Number(last.id)])).rows[0];
+      if (prev && prev.data === data) return { docs: rows.length, size: data.length, same: true, id: Number(last.id) };
+    }
+  }
   await exec("INSERT INTO backups (at, reason, docs, size, data) VALUES (?, ?, ?, ?, ?)", [Date.now(), String(reason || "").slice(0, 120), rows.length, data.length, data]);
   await exec("DELETE FROM backups WHERE id NOT IN (SELECT id FROM backups ORDER BY id DESC LIMIT " + KEEP_BACKUPS + ")");
   return { docs: rows.length, size: data.length };
+}
+/* 같은 내용 백업 정리 (배포 빌드 · 2026-11-07): 이어진 백업끼리 내용이 한 글자도 같으면 먼저 것만 남겨요 (같은 내용이 둘 있을 필요가 없어요 · 되돌릴 수 있는 시점은 그대로).
+ * 크기가 같은 이웃만 내용을 받아 비교해요. 지운 개수 */
+async function pruneSameBackups() {
+  const list = (await exec("SELECT id, size FROM backups ORDER BY id")).rows.map((r) => ({ id: Number(r.id), size: Number(r.size) }));
+  const del = [];
+  let keep = null, keepData = null;
+  for (const r of list) {
+    if (keep && keep.size === r.size) {
+      if (keepData === null) keepData = ((await exec("SELECT data FROM backups WHERE id = ?", [keep.id])).rows[0] || {}).data || "";
+      const d = ((await exec("SELECT data FROM backups WHERE id = ?", [r.id])).rows[0] || {}).data || "";
+      if (d === keepData) { del.push(r.id); continue; }
+      keep = r; keepData = d; continue;
+    }
+    keep = r; keepData = null;
+  }
+  if (del.length) await batch(del.map((id) => ({ sql: "DELETE FROM backups WHERE id = ?", args: [id] })));
+  return del.length;
 }
 async function listBackups() { return (await exec("SELECT id, at, reason, docs, size FROM backups ORDER BY id DESC LIMIT " + KEEP_BACKUPS)).rows; }
 async function backupRows(id) {
@@ -418,7 +445,7 @@ function pgAuthHint(u, why, pooler) {
 }
 
 module.exports = {
-  exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, listBackups, backupRows, restoreRows, opsDone, opMark,
+  exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, pruneSameBackups, listBackups, backupRows, restoreRows, opsDone, opMark,
   insertDocs, putSys, allDocRows, fileStats, readUnion, db, pgProbe, pgAuthHint, pgSetup, close, openClient, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
   kind: () => getClient().kind
 };
