@@ -1,7 +1,8 @@
 "use client";
 /* 클래스 상세 (/vod/p/<클래스>) — 예전 vod.js pageProduct 를 React 로 (Next.js 전환 · 스토어 공개 화면)
- *  위: 대표 배너(미리보기) · 분류 · 제목 · 별점 · 소개 · 강의 정보 · 추천 · 강사 코멘트 | 가격 · 수강권 · 쿠폰 · 수강신청 카드
- *  탭(클래스 소개 · 커리큘럼 · 후기 · 이용 안내) → 소개 · 미리보기 · 강사 · 수강권 · 커리큘럼 · 후기 · 다짐 · 강의 정보 · FAQ · 환불 · 함께 보는 클래스
+ *  2026-11-07 탈잉형: [PC] 왼쪽 영상(소리 끈 채로 저절로 재생) · 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 영상 → 카드 → 탭 → 본문
+ *  카드: 뱃지 · 제목 · 별점 → 가격(제목 바로 아래) → 한눈에 보는 정보 → 수강권 · 쿠폰 · 수강신청 · 찜 · 공유
+ *  탭(클래스 소개 · 커리큘럼 · 후기 · 강사 소개 · 이용 안내) → 소개 · 커리큘럼(미리보기) · 후기 · 다짐 · 강사(코멘트) · 강의 정보 · 수강권 · FAQ · 환불 · 함께 보는 클래스
  *  아래: 휴대폰 결제 막대(위 가격 카드가 지나가면 올라와요 · 수강 옵션 창)
  *  · 무엇을 보여 줄지(가격 · 수강권 · 쿠폰 · 버튼 · 탭 · 함께 보는 클래스 …)는 예전 계산 그대로 (VOD.productView · buyView · planView · fbarView · ctaOf …)
  *  · 쿠폰 받기 · 후기 · 다짐 · 공감은 예전 함수 그대로 (VOD.cpGet · doReview · doPledge · plUp · plDel)
@@ -80,77 +81,57 @@ function CpBtn({ p, m, onOpen }) {
   if (!cs.length) return null;
   return <button type="button" className={"vd-cpdl" + (left ? "" : " got")} data-v="cp-open" data-p={p.id} onClick={onOpen}><Icon n={left ? "download" : "check"} c="xs" />{left ? "사용 가능한 쿠폰이 있어요!" : "받은 쿠폰 " + cs.length + "장 · 결제할 때 적용돼요"}</button>;
 }
+/* ---------- 카드 위쪽: 뱃지 · 제목 · 별점 → 가격 → 한눈에 보는 정보 (예전 pcHead · headView) ---------- */
+function PcHead({ p }) {
+  const X = VOD(), { rt, lk, hp, end, eb, cdOn, bs, rows } = X.headView(p), fb = X.freshBand(p);
+  return <>
+    {bs.length ? <div className="vd-badges">{bs.map((b, i) => <span key={i} className={"vd-badge vd-b-" + b[1]}>{b[0]}</span>)}</div> : null}
+    <h1 className="vd-pdt-h1">{p.title}</h1>
+    <div className="vd-pdt-rate">{rt.n ? <><button type="button" data-v="jump" data-to="vd-s-reviews" onClick={() => jump("vd-s-reviews")}><span className="vd-stars sm"><Stars v={rt.avg} /></span><b>{rt.avg.toFixed(1)}</b><small>({rt.n})</small></button><i /></> : null}
+      {X.isBook(p) ? (X.soldOf(p) ? <><span>판매 <b>{X.soldOf(p).toLocaleString()}권+</b></span><i /></> : null) : <><span>수강생 <b>{X.soldOf(p).toLocaleString()}명+</b></span><i /></>}
+      <span><Icon n="heart" c="xs" />{X.likeCount(p)}</span>{lk.length ? <><i /><span className="vd-avs">{lk.map((n, i) => <Av key={i} nick={n} />)}</span></> : null}</div>
+    {hp ? <div className="vd-hp">{hp.was ? <s className="vd-hp-was">{hp.was}</s> : null}<div className="vd-hp-row">{hp.pct ? <em>{hp.pct}%</em> : null}{hp.lab ? <span className="vd-hp-lab">{hp.lab}</span> : null}<strong className={hp.free ? "free" : undefined}>{hp.main}</strong></div>{hp.note ? <small className="vd-hp-note">{hp.note}</small> : null}</div> : null}
+    {cdOn ? <div className={"vd-cd" + (eb ? " vd-cd-eb" : "")}><Icon n="clock" c="xs" /><span>{eb ? "얼리버드 마감까지" : "할인 마감까지"}</span><Cd end={end} /><span>남음</span></div> : null}
+    <ul className="vd-hi">{rows.map((r, i) => <li key={i} className={r[2] ? "dg" : undefined}><Icon n={r[0]} c="sm" /><span>{r[1]}</span></li>)}</ul>
+    {fb ? <RawOne html={fb} onClick={() => jump("vd-s-curri")} /> : null}
+    {p.fromFree ? <a className="vd-pdt-free" href={"#/free/" + p.fromFree}><Icon n="sparkles" c="sm" /><span><b>신청자 전용 선물 자료 · 사전 질문</b>은 무료강의 안내 페이지에서 받아요</span><Icon n="chevRight" c="xs" /></a> : null}
+  </>;
+}
 function BuyCard({ p, act }) {
-  const X = VOD(), { m, own, pr, pct, left, isLiked, pvs, end, best, mo, eb, ps, rb } = X.buyView(p);
-  const cd = end && !own ? <div className={"vd-cd" + (eb ? " vd-cd-eb" : "")}><Icon n="clock" c="xs" /><span>{eb ? "얼리버드 마감까지" : "할인 마감까지"}</span><Cd end={end} /><span>남음</span></div> : null;
-  const signupCp = <p className="vd-buy-cp"><span className="vd-tag vd-tag-red">쿠폰</span>가입하면 바로 쓰는 5,000원 할인 쿠폰을 드려요</p>;
-  let price;
-  if (p.status === "soon") price = <><div className="vd-pc-top"><span className="vd-pc-lab">오픈 예정가</span><strong>{pr ? won(pr) : "무료"}</strong></div>{p.openAt ? <p className="vd-buy-mo">{X.fmtOpen(p.openAt)} · 알림 신청하면 오픈 할인을 알려 드려요</p> : null}</>;
-  else if (pr === 0) price = <div className="vd-pc-top"><span className="vd-pc-lab">수강료</span><strong className="free">무료</strong></div>;
+  const X = VOD(), { m, own, pr, left, isLiked, pvs, best, ps, rb } = X.buyView(p);
+  const signup = !m && !X.isBook(p) ? <p className="vd-buy-cp"><span className="vd-tag vd-tag-red">쿠폰</span>가입하면 바로 쓰는 5,000원 할인 쿠폰을 드려요</p> : null;
+  let price = null;
+  if (p.status === "soon" || pr === 0) price = null;
   else if (own && ps.length) price = <OwnBox p={p} m={m} />;
   else if (rb) price = <><p className="vd-pc-exp vd-rb-note"><Icon n="refresh" c="xs" /><span>{fmtDay(X.accessEnd(m.id, p.id))}에 수강 기간이 끝났어요. <b>재수강 {rb}% 할인</b>이 자동으로 적용돼요 · 진도 · 노트는 그대로 이어져요.</span></p><PlanBox p={p} sfx="a" onPlan={act.plan} /><p className="vd-buy-cp vd-rb-cp">재수강 할인은 쿠폰과 함께 쓸 수 없어요 (포인트는 쓸 수 있어요)</p></>;
-  else if (ps.length && p.status === "on") price = <><PlanBox p={p} sfx="a" onPlan={act.plan} />{cd}{best ? <p className="vd-buy-cp"><span className="vd-tag vd-tag-red">쿠폰</span>‘{best.c.name}’ 쿠폰은 결제 화면에서 수강권에 적용돼요</p> : !m && !X.isBook(p) ? signupCp : null}</>;
-  else price = <>
-    <div className="vd-pc-top">{eb ? <span className="vd-pc-lab vd-pc-eb">얼리버드가</span> : null}{pct ? <em>{pct}%</em> : <span className="vd-pc-lab">판매가</span>}<strong>{won(pr)}</strong></div>
-    <dl className="vd-pc-rows">{pct ? <><div><dt>정가</dt><dd><s>{won(p.price)}</s></dd></div><div><dt>할인 금액</dt><dd className="red">-{won(p.price - pr)}</dd></div></> : null}{best && !own ? <div><dt>쿠폰 적용가</dt><dd><b>{won(pr - best.off)}</b></dd></div> : null}{mo ? <div><dt>12개월 할부 시</dt><dd>월 {won(mo)}</dd></div> : null}</dl>
-    {cd}{own || best ? null : !m && !X.isBook(p) ? signupCp : null}</>;
+  else if (ps.length && p.status === "on") price = <><PlanBox p={p} sfx="a" onPlan={act.plan} />{best ? <p className="vd-buy-cp"><span className="vd-tag vd-tag-red">쿠폰</span>‘{best.c.name}’ 쿠폰은 결제 화면에서 수강권에 적용돼요</p> : signup}</>;
+  else price = own ? null : best ? <dl className="vd-pc-rows"><div><dt>쿠폰 적용가</dt><dd><b>{won(pr - best.off)}</b></dd></div></dl> : signup;
   const fl = X.flNote(p), rk = X.refundKey(p);
   return (
-    <aside className={"vd-pc" + (ps.length ? " vd-pc-plans" : "")} id="vd-pdt-info">{fl ? <RawOne html={fl} /> : null}{price}
+    <div className={"vd-pc vd-pc8" + (ps.length ? " vd-pc-plans" : "")} id="vd-pdt-info"><PcHead p={p} />{fl ? <RawOne html={fl} /> : null}{price}
       {X.isEvent(p) && left != null ? <div className="vd-seat"><div><span>신청 현황</span><b>{p.seats - left} / {p.seats}명</b></div><i><u style={{ width: Math.round((p.seats - left) / p.seats * 100) + "%" }} /></i>{left && left <= 5 ? <small>마감까지 {left}자리 남았어요</small> : null}</div> : null}
       <CpBtn p={p} m={m} onOpen={act.cpOpen} />
       <div className="vd-pc-btns"><Cta p={p} c={X.ctaOf(p, m)} cls="vd-btn-xl" onLike={act.like} />{own ? <AddonBtns p={p} m={m} /> : null}{pvs.length && !own ? <button type="button" className="vd-btn vd-btn-o vd-btn-xl" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><Icon n="play" c="sm" />무료 미리보기 {pvs.length}개</button> : null}</div>
       <div className="vd-pc-sub"><button type="button" className={"vd-pc-like" + (isLiked ? " on" : "")} data-v="like" data-id={p.id} onClick={() => act.like(p.id)}><Icon n="heart" c="sm" />찜 {X.likeTxt(X.likeCount(p))}</button><button type="button" className="vd-pc-like" data-v="share" onClick={act.share}><Icon n="link" c="sm" />공유하기</button></div>
-      <p className="vd-buy-note"><Icon n="shieldCheck" c="xs" />{rk === "vod" ? "결제 후 " + X.rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : rk === "ebook" ? "내려받기 전 7일 이내 전액 환불" : rk === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : rk === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강"} <button type="button" className="vd-link" data-v="jump" data-to="vd-s-refund" onClick={() => jump("vd-s-refund")}>환불 규정</button></p></aside>
+      <p className="vd-buy-note"><Icon n="shieldCheck" c="xs" />{rk === "vod" ? "결제 후 " + X.rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : rk === "ebook" ? "내려받기 전 7일 이내 전액 환불" : rk === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : rk === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강"} <button type="button" className="vd-link" data-v="jump" data-to="vd-s-refund" onClick={() => jump("vd-s-refund")}>환불 규정</button></p></div>
   );
 }
 
-/* ---------- 위 왼쪽: 분류 · 제목 · 별점 · 소개 · 강의 정보 · 추천 · 코멘트 (예전 pdtMain · pitchTop · recoBox) ---------- */
-function Pitch({ p }) {
+/* ---------- 맨 위 영상 (예전 heroHtml · 붙이기 heroWire · 소리 heroSnd 는 예전 함수 그대로) ---------- */
+function Hero({ p, act }) {
+  const X = VOD(), h = X.heroOf(p), pvs = X.previewsOf(p);
+  return (
+    <div className={"vd-pdt-banner vd-th-" + X.typeOf(p) + (h ? " has-hero" : "")} data-hero={h ? h.k : undefined}>{h ? <div className="vd-hero" data-src={h.src} /> : null}<RawOne html={X.bannerArt(p)} />
+      {h ? <button type="button" className="vd-hero-snd" data-v="hero-snd" aria-label="소리 켜기 · 끄기" onClick={(e) => X.heroSnd(e.currentTarget)}><span className="off"><Icon n="volumeX" c="sm" />소리 켜기</span><span className="on"><Icon n="volume2" c="sm" />소리 끄기</span></button> : null}
+      {pvs.length ? <button type="button" className="vd-pdt-play" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><i><Icon n="play" /></i><span>미리보기 <b>{pvs.length}개</b></span></button> : null}</div>
+  );
+}
+/** 강사 코멘트 (강사 소개 칸 아래 — 예전 cmtHtml) */
+function Cmt({ p }) {
+  const X = VOD(), cm = X.cmtOf(p);
   const [open, setOpen] = useState(false);
-  const qs = (p.pains || []).slice(0, 3), txt = qs.map((q) => "“" + q + "”").join(" ") + " " + p.pitch;
-  return (
-    <div className={"vd-pitch" + (open ? " open" : "")}><p className="vd-pitch-t">{qs.map((q, i) => <Fragment key={i}>{i ? " " : null}<b>“{q}”</b></Fragment>)}{qs.length ? " " : null}{p.pitch}</p>
-      {txt.length > 150 ? <button type="button" className="vd-pitch-more" data-v="pitch-more" onClick={() => setOpen((v) => !v)}>{open ? "접기" : "더보기"}<Icon n="chevDown" c="xs" /></button> : null}
-      {(p.tags || []).length ? <div className="vd-pitch-tags">{p.tags.map((t, i) => <span key={i}>#{String(t).replace(/^#/, "")}</span>)}</div> : null}</div>
-  );
-}
-function TagLine({ x }) {
-  const m = /^\[([^\]]{1,20})\]\s*/.exec(String(x));
-  return m ? <span><b>[{m[1]}]</b> {String(x).slice(m[0].length)}</span> : <span>{x}</span>;
-}
-function Reco({ p }) {
-  const X = VOD(), who = (p.who || []).filter(Boolean), cm = X.cmtOf(p);
-  const [open, setOpen] = useState(false);
-  if (!who.length && !cm) return null;
-  return (
-    <div className={"vd-reco" + (who.length && cm ? "" : " one")}>
-      {who.length ? <div className="vd-reco-l"><h3>이런 분들께 추천드려요</h3><ul>{who.map((x, i) => <li key={i}><Icon n="check" c="sm" /><TagLine x={x} /></li>)}</ul></div> : null}
-      {cm ? <div className="vd-reco-r"><div className={"vd-cmt" + (open ? " open" : "")}><b><Icon n="message" c="sm" />{p.creator || "강사"} 코멘트</b><p>{cm}</p>{cm.length > 90 ? <button type="button" className="vd-cmt-more" data-v="cmt-more" onClick={() => setOpen((v) => !v)}>{open ? "접기" : "더보기"}</button> : null}</div></div> : null}
-    </div>
-  );
-}
-function PdtMain({ p }) {
-  const X = VOD(), t = X.typeOf(p), lz = X.lessons(p), rt = X.ratingOf(p.id), lk = X.likersOf(p);
-  const desc = p.sub || String(p.intro || "").split(/\n\n+/)[0];
-  const rows = X.infoRows(p).concat(t === "vod" ? [["강의 자료", lz.some((l) => (l.files || []).length) ? "강의 노트 · 첨부 자료" : "강의 노트"]] : []).concat(t === "book" ? [] : [["크리에이터", p.creator || "-"]]);
-  const bs = X.badgesOf(p), fb = X.freshBand(p);
-  return (
-    <div className="vd-pdt-main">
-      <div className="vd-buy-cat"><a href={"#/vod/c/" + p.cat}>{X.catOf(p.cat).label}</a><Icon n="chevRight" c="xs" /><span>{X.TYPE[t][0]}</span></div>
-      {bs.length ? <div className="vd-badges">{bs.map((b, i) => <span key={i} className={"vd-badge vd-b-" + b[1]}>{b[0]}</span>)}</div> : null}
-      <h1 className="vd-pdt-h1">{p.title}</h1>
-      <div className="vd-pdt-rate">{rt.n ? <><button type="button" data-v="jump" data-to="vd-s-reviews" onClick={() => jump("vd-s-reviews")}><span className="vd-stars sm"><Stars v={rt.avg} /></span><b>{rt.avg.toFixed(1)}</b><small>({rt.n})</small></button><i /></> : null}
-        {X.isBook(p) ? (X.soldOf(p) ? <><span>판매 <b>{X.soldOf(p).toLocaleString()}권+</b></span><i /></> : null) : <><span>수강생 <b>{X.soldOf(p).toLocaleString()}명+</b></span><i /></>}
-        <span><Icon n="heart" c="xs" />{X.likeCount(p)}</span>{lk.length ? <><i /><span className="vd-avs">{lk.map((n, i) => <Av key={i} nick={n} />)}</span></> : null}</div>
-      {p.pitch ? <Pitch p={p} /> : desc ? <p className="vd-pdt-desc">{desc}</p> : null}
-      {p.fromFree ? <a className="vd-pdt-free" href={"#/free/" + p.fromFree}><Icon n="sparkles" c="sm" /><span><b>신청자 전용 선물 자료 · 사전 질문</b>은 무료강의 안내 페이지에서 받아요</span><Icon n="chevRight" c="xs" /></a> : null}
-      {fb ? <RawOne html={fb} onClick={() => jump("vd-s-curri")} /> : null}
-      <div className="vd-pdt-box"><b className="vd-pdt-box-h">{t === "book" ? "도서 정보" : "강의 정보"}</b><dl>{rows.map((r, i) => <div key={i}><dt>{r[0]}</dt><dd>{r[1]}</dd></div>)}</dl></div>
-      {X.dgOpen(p) ? <div className="vd-pdt-dg"><Raw as="span" className="vd-dg-ic" html={window.doinggoB ? window.doinggoB("black", "vd-dg-logo") : "두잉고"} /><div><b>구매하면 <em>{p.creator} 강사 두잉고 강의실</em>이 열려요</b><small>강의 영상 · 교재 · 업데이트 소식 · 실습 체크리스트를 한 곳에서 보고, 원하면 1:1 코칭 · 강사님과 TEA TIME까지</small></div></div> : null}
-      <Reco p={p} />
-    </div>
-  );
+  if (!cm) return null;
+  return <div className={"vd-cmt" + (open ? " open" : "")}><b><Icon n="message" c="sm" />{p.creator || "강사"} 코멘트</b><p>{cm}</p>{cm.length > 90 ? <button type="button" className="vd-cmt-more" data-v="cmt-more" onClick={() => setOpen((v) => !v)}>{open ? "접기" : "더보기"}</button> : null}</div>;
 }
 
 /* ---------- 본문 섹션들 ---------- */
@@ -193,7 +174,8 @@ function Curri({ p, v, act }) {
   const X = VOD(), t = v.t, bk = v.bk, own = v.own, ev = v.ev, lz = v.lz;
   const unit = (l) => (t === "ebook" || bk ? (Number(l.min) || 0) + "쪽" : X.lLen(l));
   return (
-    <Sec k="curri" ttl={v.curName}><p className="vd-curri-sum">{t === "ebook" || bk ? (p.curriculum || []).length + "장 · 총 " + (Number(p.pages) || 0) + "쪽" : ev ? "총 " + X.durTxt(Number(p.eventMin) || X.totalMin(p)) + " 진행" : "파트 " + (p.curriculum || []).length + "개 · 클립 " + lz.length + "개 · 총 " + X.durTxt(X.totalMin(p))}</p>
+    <Sec k="curri" ttl={v.curName}>{v.pvs.length ? <><div className="vd-pvs-h"><b><Icon n="play" c="xs" />무료 미리보기 {v.pvs.length}개</b><small>강의 {lz.length}개 중 {v.pvs.length}개를 결제 전에 먼저 볼 수 있어요</small></div>
+      <div className="vd-pvs" data-rv-kids="">{v.pvs.map((l) => <button key={l.id} type="button" className="vd-pv-card" data-v="pv-open" data-p={p.id} data-l={l.id} onClick={() => act.pv(l.id)}><RawOne html={X.pvThumb(p, l)} /><b>{l.title}</b><span>{l.desc || (X.chapOf(p, l).ch || {}).title || ""}</span></button>)}</div></> : null}<p className="vd-curri-sum">{t === "ebook" || bk ? (p.curriculum || []).length + "장 · 총 " + (Number(p.pages) || 0) + "쪽" : ev ? "총 " + X.durTxt(Number(p.eventMin) || X.totalMin(p)) + " 진행" : "파트 " + (p.curriculum || []).length + "개 · 클립 " + lz.length + "개 · 총 " + X.durTxt(X.totalMin(p))}</p>
       {(p.curriculum || []).map((ch, ci) => {
         const fc = X.freshCnt(ch.lessons || []);
         return (
@@ -268,6 +250,8 @@ function Fbar({ p, st, setSt, act }) {
 function PvModal({ p, lid, onClose }) {
   const X = VOD(), pvs = X.previewsOf(p), lz = X.lessons(p), ebook = X.typeOf(p) === "ebook";
   const [cur, setCur] = useState(() => pvs.find((l) => l.id === lid) || pvs[0] || lz.find((l) => l.id === lid));
+  // 창이 열려 있는 동안 맨 위 영상은 멈춰요 (예전 화면과 같은 heroPause)
+  useEffect(() => { X.heroPause(true); return () => X.heroPause(false); }, [X]);
   if (!cur) return null;
   const vid = (l) => (ebook ? '<div class="vd-pl-ph">' + window.icon("book") + "<b>" + DB().esc(l.title) + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : X.videoHtml(l, true, "미리보기 영상을 준비하고 있어요"));
   const ch = X.chapOf(p, cur), c = X.ctaOf(p, X.me());
@@ -337,32 +321,28 @@ function Product({ p, n }) {
   // LIVE 이어지는 혜택 안내(예전 HTML) 안의 남은 시간
   useEffect(() => { const i = setInterval(() => document.querySelectorAll("#root .vd-fln [data-cd]").forEach((x) => { x.textContent = X.cdTxt(x.dataset.cd); }), 1000); return () => clearInterval(i); }, [X]);
   useEffect(() => { const root = document.getElementById("root"); if (root && X.hydrate) X.hydrate(root); }, [n, X]);
-  const pvs = v.pvs, t = v.t, bk = v.bk, info = v.info, faq = v.faq;
+  // 맨 위 영상: 그린 뒤 붙이기 (예전 화면과 같은 heroWire — 재생이 시작되면 배너를 걷어요)
+  useEffect(() => { const root = document.getElementById("root"); if (root) X.heroWire(root); }, [p.id, n, X]);
+  const t = v.t, bk = v.bk, info = v.info, faq = v.faq;
   return (
     <>
-      <div className="vd-pd5">
-        <section className="vd-pdt vd-pdt7"><div className="vd-wrap"><nav className="vd-crumbs"><a href="#/vod">홈</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/" + p.cat}>{v.cat.label}</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/all?tab=" + (v.ev ? "premium" : bk ? "ebook" : t)}>{X.TYPE[t][0]}</a></nav>
-          <div className={"vd-pdt-banner vd-th-" + t}><RawOne html={X.bannerArt(p)} />{pvs.length ? <button type="button" className="vd-pdt-play" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><i><Icon n="play" /></i><span>미리보기 <b>{pvs.length}개</b></span></button> : null}</div>
-          <div className="vd-pdt-g7"><PdtMain p={p} /><BuyCard p={p} act={act} /></div></div></section>
-        <nav className="vd-pd-tabs"><div className="vd-wrap vd-pd-tabs-in">{v.tabs.map((x, i) => <button key={x[0]} type="button" data-v="jump" data-to={"vd-s-" + x[0]} className={i === tab ? "on" : ""} onClick={() => jump("vd-s-" + x[0])}>{x[1]}</button>)}</div></nav>
-        <div className="vd-wrap"><div className="vd-pd5-col">
-          <Intro p={p} v={v} />
-          {pvs.length ? <Sec k="preview" cls="vd-pd-pv" ttl={<>구매 전에 <span data-accent="">미리보기</span></>}><p className="vd-curri-sum">강의 {v.lz.length}개 중 {pvs.length}개를 결제 전에 먼저 볼 수 있어요. 나에게 맞는지 확인하고 시작하세요.</p>
-            <div className="vd-pvs" data-rv-kids="">{pvs.map((l) => <button key={l.id} type="button" className="vd-pv-card" data-v="pv-open" data-p={p.id} data-l={l.id} onClick={() => act.pv(l.id)}><RawOne html={X.pvThumb(p, l)} /><b>{l.title}</b><span>{l.desc || (X.chapOf(p, l).ch || {}).title || ""}</span></button>)}</div></Sec> : null}
-          <Sec k="creator" ttl={bk ? "저자 소개" : "강사 소개"}><div className="vd-crd vd-crd2" data-rv=""><div className={"vd-crd-ph" + (X.phOf(p) ? "" : " no")}>{X.phOf(p) ? <img src={X.phOf(p)} alt={p.creator + " 강사"} /> : <i>{(p.creator || "?").slice(0, 1)}</i>}<span className="vd-crd-cap"><small>CREATOR</small><b>{p.creator}</b></span></div>
-            <div className="vd-crd-body"><small>{p.tagline || v.insB.field || "크리에이터"}</small><div className="vd-crd-nm"><b>{p.creator} <em>강사</em></b>{X.crdStats(p) ? <RawOne html={X.crdStats(p)} /> : null}</div><p>{p.creatorBio || p.creator + "님은 두잉고에서 기수를 운영하며 수강생과 함께 결과를 만들고 있어요. 이 클래스는 기수 강의의 핵심만 골라 언제든 볼 수 있게 만든 " + X.TYPE[t][0] + "예요."}</p>
-              {v.career.length ? <ul className="vd-crd-car">{v.career.map((x, i) => <li key={i}>{x}</li>)}</ul> : null}<a className="vd-tl-btn" href={p.iid ? X.tHref(p.iid) : "#/vod/search?q=" + encodeURIComponent(p.creator || "")}>{p.creator} 강사 페이지 · 다른 클래스<Icon n="chevRight" c="xs" /></a></div></div></Sec>
-          <Plans p={p} />
-          {v.noCur ? null : <Curri p={p} v={v} act={act} />}
-          <Reviews p={p} v={v} />
-          <Pledges p={p} v={v} act={act} />
-          <Sec k="info" ttl={bk ? "도서 정보" : "강의 정보"}><table className="vd-info-t"><tbody>{info.map((r, i) => <tr key={i}><th>{r[0]}</th><td>{r[1]}</td></tr>)}</tbody></table></Sec>
-          <Sec k="faq" ttl="자주 묻는 질문">{faq.map((f, i) => <details key={i} className="vd-faq"><summary><b>Q</b><span>{f[0]}</span><Icon n="chevDown" c="sm" /></summary><p>{f[1]}</p></details>)}</Sec>
-          <Refund p={p} v={v} />
-        </div>
-          {v.related.length ? <section className="vd-pd-sec vd-pd-rel"><Eg as="h2">함께 많이 보는 <span data-accent="">클래스</span></Eg><div className="vd-grid vd-grid-3" data-rv-kids="">{v.related.map((x) => <Card key={x.id} p={x} onLike={onLike} />)}</div></section> : null}
-        </div>
-      </div>
+      <div className="vd-pd5 vd-pd8"><div className="vd-wrap"><nav className="vd-crumbs"><a href="#/vod">홈</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/" + p.cat}>{v.cat.label}</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/all?tab=" + (v.ev ? "premium" : bk ? "ebook" : t)}>{X.TYPE[t][0]}</a></nav>
+        <div className="vd-pd8-g"><div className="vd-pd8-media"><Hero p={p} act={act} /></div><aside className="vd-pd8-side"><BuyCard p={p} act={act} /></aside>
+          <div className="vd-pd8-body"><nav className="vd-pd-tabs"><div className="vd-pd-tabs-in">{v.tabs.map((x, i) => <button key={x[0]} type="button" data-v="jump" data-to={"vd-s-" + x[0]} className={i === tab ? "on" : ""} onClick={() => jump("vd-s-" + x[0])}>{x[1]}</button>)}</div></nav>
+            <Intro p={p} v={v} />
+            {v.noCur ? null : <Curri p={p} v={v} act={act} />}
+            <Reviews p={p} v={v} />
+            <Pledges p={p} v={v} act={act} />
+            <Sec k="creator" ttl={bk ? "저자 소개" : "강사 소개"}><div className="vd-crd vd-crd2" data-rv=""><div className={"vd-crd-ph" + (X.phOf(p) ? "" : " no")}>{X.phOf(p) ? <img src={X.phOf(p)} alt={p.creator + " 강사"} /> : <i>{(p.creator || "?").slice(0, 1)}</i>}<span className="vd-crd-cap"><small>CREATOR</small><b>{p.creator}</b></span></div>
+              <div className="vd-crd-body"><small>{p.tagline || v.insB.field || "크리에이터"}</small><div className="vd-crd-nm"><b>{p.creator} <em>강사</em></b>{X.crdStats(p) ? <RawOne html={X.crdStats(p)} /> : null}</div><p>{p.creatorBio || p.creator + "님은 두잉고에서 기수를 운영하며 수강생과 함께 결과를 만들고 있어요. 이 클래스는 기수 강의의 핵심만 골라 언제든 볼 수 있게 만든 " + X.TYPE[t][0] + "예요."}</p>
+                {v.career.length ? <ul className="vd-crd-car">{v.career.map((x, i) => <li key={i}>{x}</li>)}</ul> : null}<a className="vd-tl-btn" href={p.iid ? X.tHref(p.iid) : "#/vod/search?q=" + encodeURIComponent(p.creator || "")}>{p.creator} 강사 페이지 · 다른 클래스<Icon n="chevRight" c="xs" /></a></div></div><Cmt p={p} /></Sec>
+            <Sec k="info" ttl={bk ? "도서 정보" : "강의 정보"}><table className="vd-info-t"><tbody>{info.map((r, i) => <tr key={i}><th>{r[0]}</th><td>{r[1]}</td></tr>)}</tbody></table></Sec>
+            <Plans p={p} />
+            <Sec k="faq" ttl="자주 묻는 질문">{faq.map((f, i) => <details key={i} className="vd-faq"><summary><b>Q</b><span>{f[0]}</span><Icon n="chevDown" c="sm" /></summary><p>{f[1]}</p></details>)}</Sec>
+            <Refund p={p} v={v} />
+          </div></div>
+        {v.related.length ? <section className="vd-pd-sec vd-pd-rel"><Eg as="h2">함께 많이 보는 <span data-accent="">클래스</span></Eg><div className="vd-grid vd-grid-3" data-rv-kids="">{v.related.map((x) => <Card key={x.id} p={x} onLike={onLike} />)}</div></section> : null}
+      </div></div>
       <Fbar p={p} st={fb} setSt={setFb} act={act} />
       {pop && pop.k === "pv" ? <PvModal p={p} lid={pop.l} onClose={() => setPop(null)} /> : null}
       {pop && pop.k === "cp" ? <CpModal p={p} onClose={() => setPop(null)} onGet={cpGet} /> : null}

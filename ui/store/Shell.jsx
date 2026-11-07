@@ -111,17 +111,22 @@ function AcctMenu({ m, onClose }) {
     </Modal>
   );
 }
+/** 메뉴 한 줄 아이콘: 3D 카테고리 그림(img) 또는 색 칩(tone) — 예전 drIc */
+function DrIc({ x }) {
+  return <i className={"vd-dr-ic " + (x.img ? "is-3d" : "t-" + x.tone)} aria-hidden="true">{x.img ? <img src={VOD().tileImg(x.img)} alt="" loading="lazy" /> : <Icon n={x.ic} c="sm" />}</i>;
+}
+/** 전체 메뉴 (휴대폰은 화면 전체) — 무엇을 보여 줄지는 예전 화면과 같은 VOD.drawerSecs */
 function Drawer({ m, onClose }) {
-  const X = VOD(), logout = useLogout(onClose), item = (h, t, ic) => <a key={h} href={h} data-v="close"><Icon n={ic} c="sm" /><span>{t}</span></a>;
+  const X = VOD(), logout = useLogout(onClose);
+  const it = (x) => (x.out ? <button key="out" type="button" className="vd-dr-it" data-v="logout" onClick={logout}><DrIc x={x} /><span>{x.t}</span></button>
+    : x.kk ? <a key={x.h} className="vd-dr-it" href={x.h} target="_blank" rel="noopener" data-kk-ops=""><DrIc x={x} /><span>{x.t}</span></a>
+    : <a key={x.h} className="vd-dr-it" href={x.h} data-v="close"><DrIc x={x} /><span>{x.t}</span></a>);
   return (
     <Modal title="전체 메뉴" cls="vd-modal-drawer" onClose={onClose}>
       <div className="vd-drawer">
         <SearchForm cls="vd-search vd-dr-search" value={undefined} onDone={onClose} />
         {m ? <a className="vd-dr-me" href="#/vod/my" data-v="close"><span className="vd-me-av lg">{m.name.slice(0, 1)}</span><div><b>{m.name} 님</b><small>{m.email} · {(Number(m.points) || 0).toLocaleString()}P</small></div><Icon n="chevRight" c="sm" /></a> : <a className="vd-btn vd-btn-p vd-btn-xl" href="#/vod/login" data-v="close">로그인 · 회원가입</a>}
-        <p>클래스</p>{item("#/vod", "돈되는 클래스", "home")}{item("#/vod/c/all", "전체 클래스", "layers")}{item("#/vod/c/all?tab=vod", "VOD 강의", "monitorPlay")}{X.bizOn("ebook") ? item("#/vod/c/all?tab=ebook", "전자책", "book") : null}{X.bizOn("flive") ? item("#/vod/c/all?tab=flive", "무료 LIVE", "video") : null}{X.bizOn("live") ? item("#/vod/c/all?tab=premium", "LIVE · 오프라인 강의", "calendar") : null}{X.bizOn("free") ? item("#/vod/c/all?tab=free", "무료강의", "sparkles") : null}{item("#/vod/teachers", "강사진", "users")}{item("#/vod/c/soon", "오픈 예정", "bell")}
-        <p>분야</p>{X.cats().map((c) => item("#/vod/c/" + c.key, c.label, c.icon))}
-        <p>마이페이지</p>{item("#/vod/my/classes", "내 강의실", "monitorPlay")}{item("#/vod/my/likes", "찜 · 관심 부업", "heart")}{item("#/vod/my/coupons", "쿠폰", "coins")}{item("#/vod/my/orders", "주문 · 결제 내역", "file")}{item("#/vod/my/help", "고객센터 · 1:1 문의", "headset")}
-        <p>DOOGO CLASS</p>{item("#/vod/about", "DOOGO CLASS 소개", "store")}{item("#/vod/partners", "두고 파트너스 (강사 지원)", "handshake")}{item("#/doinggo", "두잉고 (기수 강의)", "arrowUpRight")}{item("#/center", "강사센터 (강사 · 코치 로그인)", "monitor")}<a href={X.opsKk().chat} target="_blank" rel="noopener" data-kk-ops=""><Icon n="message" c="sm" /><span>카카오톡 상담 (문의하기)</span></a>{m ? <button type="button" data-v="logout" onClick={logout}><Icon n="logout" c="sm" /><span>로그아웃</span></button> : null}
+        {X.drawerSecs(m).map((s) => <div key={s[0]} className="vd-dr-sec"><p>{s[0]}</p>{s[1].map(it)}</div>)}
       </div>
     </Modal>
   );
