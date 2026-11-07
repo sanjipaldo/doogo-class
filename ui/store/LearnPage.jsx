@@ -19,8 +19,8 @@ function rawClick(e, pid, m) {
   const X = VOD(), t = e.target.closest && e.target.closest("[data-v]"); if (!t) return;
   const v = t.dataset.v;
   if (v === "dg") { e.preventDefault(); X.enterDg(t.dataset.p, "", t.dataset.to); return; }
-  if (v === "mat") { e.preventDefault(); if (m) X.markMat(m.id, pid); X.matOpen({ url: t.dataset.u, name: t.dataset.n }, "dl").then((ok) => { if (!ok) toast("이 브라우저에 저장된 파일이 아니에요. 강사님께 다시 올려 달라고 요청해 주세요.", "warn"); }); return; }
-  if (v === "dl-none") { e.preventDefault(); toast("시안이라 첨부 파일은 정식 오픈 때 연결돼요."); }
+  if (v === "mat") { e.preventDefault(); if (m) X.markMat(m.id, pid); X.matOpen({ url: t.dataset.u, name: t.dataset.n }, "dl").then((ok) => { if (!ok) toast("파일을 찾을 수 없어요. 강사님께 알려 주세요.", "warn"); }); return; }
+  if (v === "dl-none") { e.preventDefault(); toast("시안이라 첨부는 오픈 때 연결돼요."); }
 }
 function EbAct({ p, xl }) {
   const X = VOD(), fn = X.bizOn("flive") && X.eventPast(p) && X.funnelOf(p), nx = fn && X.product(fn.next);

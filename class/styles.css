@@ -555,6 +555,20 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 #toast-root { position: fixed; left: 50%; bottom: 32px; z-index: 120; transform: translateX(-50%); display: grid; gap: 8px; pointer-events: none; }
 .toast { padding: 12px 20px; border-radius: var(--r-pill); background: var(--ink); color: var(--canvas-soft); font-size: 14px; font-weight: 600; box-shadow: var(--shadow-pop); animation: pop .2s; display: flex; align-items: center; gap: 8px; }
 .toast .icon { color: var(--accent); }
+/* 알림은 한 줄로 (2026-11-07) — 글자는 줄을 바꾸지 않고(t-one), 넘치면 조금 작게(t-sm) · 그래도 넘치면 그때만 두 줄(icons.js toastFit) */
+#toast-root { max-width: min(720px, calc(100vw - 48px)); grid-template-columns: minmax(0, 1fr); justify-items: center; } /* 긴 알림도 상자 안에서 (그리드 칸이 글자 따라 넓어지지 않게) */
+.toast { max-width: 100%; min-width: 0; }
+.toast .icon { flex: none; }
+.toast > span { min-width: 0; }
+.toast.t-one > span { white-space: nowrap; }
+.toast.t-sm { font-size: 12px; letter-spacing: -.01em; }
+@media (max-width: 720px) {
+  /* 휴대폰: 화면 폭에 맞춰 넓게 · 아래 탭 막대 위에 */
+  #toast-root { width: max-content; max-width: calc(100vw - 24px); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); justify-items: center; }
+  #toast-root .toast { max-width: 100%; padding: 10px 16px; font-size: 13px; border-radius: 999px; }
+  #toast-root .toast.t-sm { font-size: 12px; }
+  #toast-root .toast:not(.t-one) { border-radius: 16px; }
+}
 
 /* ---------- 반응형 ---------- */
 @media (max-width: 1100px) {

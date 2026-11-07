@@ -147,6 +147,22 @@
     ? '<svg class="bmark ' + (cls || "") + '" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#03c75a"/><path d="M29 27h15l13 20V27h15v46H57L44 53v20H29z" fill="#fff"/></svg>'
     : '<svg class="bmark ' + (cls || "") + '" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#fee500"/><path d="M52 15c19.9 0 36 13.7 36 30.5S71.9 76 52 76c-3.4 0-6.7-.4-9.8-1.1L26 86l3.6-16.7C21 63.8 16 55.1 16 45.5 16 28.7 32.1 15 52 15z" fill="#231815"/>' +
       '<text x="52" y="56.5" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="29" font-weight="800" fill="#fee500" letter-spacing="-1">Ch</text></svg>';
+  /* 알림 한 줄 맞추기 (2026-11-07): #toast-root 에 알림이 붙을 때마다 — 한 줄(t-one)로 두고, 넘치면 글자를 조금 작게(t-sm),
+   * 그래도 넘치면 그때만 줄을 바꿔요(긴 이름 · 숫자가 들어간 드문 경우). 알림을 만드는 곳(admin · app · vod · React · main)은 그대로 */
+  window.toastFit = (t) => {
+    const s = t && t.querySelector && t.querySelector("span"); if (!s) return;
+    t.classList.add("t-one"); t.classList.remove("t-sm");
+    if (s.scrollWidth <= s.clientWidth + 1) return;
+    t.classList.add("t-sm");
+    if (s.scrollWidth > s.clientWidth + 1) t.classList.remove("t-one");
+  };
+  const toastWatch = () => {
+    const box = document.getElementById("toast-root"); if (!box || box.dataset.fit) return !!box;
+    box.dataset.fit = "1";
+    new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1 && n.classList.contains("toast")) window.toastFit(n); }))).observe(box, { childList: true });
+    return true;
+  };
+  if (!toastWatch()) document.addEventListener("DOMContentLoaded", toastWatch);
   const kebab = (n) => String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
   window.ICON_PATHS = ICONS; // React 화면(ui/lib/Icon.jsx)이 같은 그림을 써요 (Next.js 전환 4-4)
   window.icon = (name, cls) => '<svg class="icon lucide lucide-' + kebab(name) + " " + (cls || "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || "") + "</svg>";

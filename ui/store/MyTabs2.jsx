@@ -120,7 +120,7 @@ function RvEdit({ rv, onClose, onSaved }) {
 }
 export function Reviews({ m, d, act }) {
   const X = VOD(), v = X.V(), can = d.vods.filter((x) => !d.rv.some((r) => r.pid === x.p.id)), [edit, setEdit] = useState(null);
-  const del = (id) => { const rv = v.reviews.find((x) => x.id === id && x.mid === m.id); if (!rv) return; v.reviews.splice(v.reviews.indexOf(rv), 1); X.save(); act.redraw(); toast("후기를 지웠어요. 받은 포인트는 그대로예요 (다시 써도 추가 적립은 없어요)."); };
+  const del = (id) => { const rv = v.reviews.find((x) => x.id === id && x.mid === m.id); if (!rv) return; v.reviews.splice(v.reviews.indexOf(rv), 1); X.save(); act.redraw(); toast("후기를 지웠어요. 포인트는 그대로예요."); };
   const pt = (Number(v.settings.reviewPoint) || 0).toLocaleString();
   return (
     <>

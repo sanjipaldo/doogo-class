@@ -52,7 +52,7 @@ function DgPane() {
 /* ---------- 팝업: 비밀번호 찾기 · 자주 묻는 질문 ---------- */
 const FAQ = [["두잉고 계정으로 로그인할 수 있나요?", "아니요. DOOGO CLASS는 VOD 수강생 계정을 따로 써요. 두잉고 기수 수강생은 두잉고 로그인을 이용해 주세요."], ["카카오로 가입했는데 이메일 로그인이 안 돼요.", "카카오로 가입한 계정은 ‘카카오로 1초 만에 시작하기’로 로그인해 주세요."], ["비밀번호를 잊었어요.", "로그인 화면의 ‘비밀번호 찾기’에서 가입한 이메일로 재설정 링크를 받을 수 있어요."]];
 function PwFind({ onClose }) {
-  return <Modal title="비밀번호 찾기" onClose={onClose}><div className="vd-modal-b vd-form"><p className="vd-muted">가입한 이메일을 적으면 비밀번호를 다시 정하는 링크를 보내 드려요.</p><label>이메일<input id="vd-find-mail" type="email" placeholder="example@doogoclass.com" /></label><button type="button" className="vd-btn vd-btn-p vd-btn-xl" data-v="pw-send" onClick={() => { onClose(); toast("시안이라 메일은 가지 않아요. 체험 계정 비밀번호는 vod예요."); }}>링크 보내기</button></div></Modal>;
+  return <Modal title="비밀번호 찾기" onClose={onClose}><div className="vd-modal-b vd-form"><p className="vd-muted">가입한 이메일을 적으면 비밀번호를 다시 정하는 링크를 보내 드려요.</p><label>이메일<input id="vd-find-mail" type="email" placeholder="example@doogoclass.com" /></label><button type="button" className="vd-btn vd-btn-p vd-btn-xl" data-v="pw-send" onClick={() => { onClose(); toast("시안이라 메일은 안 가요. 비밀번호는 vod예요."); }}>링크 보내기</button></div></Modal>;
 }
 const AuthFaq = ({ onClose }) => <Modal title="로그인 · 가입 자주 묻는 질문" onClose={onClose}><div className="vd-modal-b">{FAQ.map((f) => <details key={f[0]} className="vd-faq"><summary><b>Q</b><span>{f[0]}</span><Icon n="chevDown" c="sm" /></summary><p>{f[1]}</p></details>)}</div></Modal>;
 

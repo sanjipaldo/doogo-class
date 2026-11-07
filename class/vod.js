@@ -1051,13 +1051,13 @@
     if (!m || !p || !dgOpen(p) || !owns(m.id, pid)) { toast("이 VOD를 구매한 회원만 들어갈 수 있어요.", "warn"); return; }
     if (SRV()) {
       payApi("dg", { iid: p.iid }).then((r) => {
-        if (!r || !r.ok) { toast((r && r.message) || "강의실에 들어가지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"); return; }
+        if (!r || !r.ok) { toast((r && r.message) || "강의실에 들어가지 못했어요. 다시 시도해 주세요.", "warn"); return; }
         return DB.remote.refresh().then(() => { DB.session.setInstructorPick(p.iid); DB.session.setStudent({ id: r.sid, at: now(), vpid: p.id }); ROUTE.hash = to && /^#\/(qna|home|vodclass)/.test(to) ? to : "#/vodclass/" + encodeURIComponent(pid) + (lid ? "/" + encodeURIComponent(lid) : ""); });
       });
       return;
     }
     const s = dgStudent(m, p.iid);
-    if (s.status === "withdrawn") { toast("강사님이 두잉고 이용을 멈춘 계정이에요. 고객센터로 문의해 주세요.", "warn"); return; }
+    if (s.status === "withdrawn") { toast("두잉고 이용이 멈춘 계정이에요.", "warn"); return; }
     DB.session.setInstructorPick(p.iid); DB.session.setStudent({ id: s.id, at: now(), vpid: p.id });
     ROUTE.hash = to && /^#\/(qna|home|vodclass)/.test(to) ? to : "#/vodclass/" + encodeURIComponent(pid) + (lid ? "/" + encodeURIComponent(lid) : "");
   }
@@ -2522,7 +2522,7 @@
     const q = new URLSearchParams(location.search), pid = q.get("pay"); if (!pid || !remoteOn()) return;
     ROUTE.dropQuery(["pay", "paymentId", "code", "message", "pgCode", "pgMessage", "transactionType", "txId"]); // 포트원이 붙여 보내는 값
     if (q.get("code")) { payApi("abort", { paymentId: pid, code: q.get("code") }); toast("결제를 마치지 못했어요. 다시 시도해 주세요.", "warn"); return; }
-    payApi("complete", { paymentId: pid }).then((d) => { if (d && d.ok) { DB.remote.refresh().then(() => { render(); toast(d.vbank ? "가상계좌가 발급됐어요. 입금하면 바로 이용할 수 있어요." : "결제를 확인했어요."); }); } else toast((d && d.message) || "결제를 확인하지 못했어요. 고객센터로 알려 주세요.", "warn"); });
+    payApi("complete", { paymentId: pid }).then((d) => { if (d && d.ok) { DB.remote.refresh().then(() => { render(); toast(d.vbank ? "가상계좌 발급! 입금하면 바로 이용해요." : "결제를 확인했어요."); }); } else toast((d && d.message) || "결제를 확인하지 못했어요. 고객센터로 알려 주세요.", "warn"); });
   }
   let pgDone = null;
   /** 카카오: 서버 로그인에서 돌아오면(?vodlogin=ok) 서버의 회원 정보로 로그인 */
@@ -2537,7 +2537,7 @@
   function kkReturn() {
     const q = new URLSearchParams(location.search), st = q.get("vodlogin"); if (!st || !remoteOn()) return;
     ROUTE.dropQuery(["vodlogin"]);
-    if (st === "linked") { DB.remote.refresh().then(() => { render(); toast("카카오를 연결했어요. 다음부터 ‘카카오로 1초 만에 시작하기’로 바로 로그인할 수 있어요."); }); return; }
+    if (st === "linked") { DB.remote.refresh().then(() => { render(); toast("카카오를 연결했어요."); }); return; }
     if (st !== "ok") {
       toast(KK_BACK[st] || KK_BACK.fail, "warn");
       // 같은 이메일 계정이 있으면: 이메일로 로그인한 뒤 바로 ‘카카오 연결할까요?’를 물어봐요
@@ -2588,7 +2588,7 @@
   }
   Object.assign(window.VOD, { authLogin, kakaoGo, tsMount, tsToken, tsOn: () => !!tsKey(), KAKAO_ICON: KAKAO });
   function kakaoStart() {
-    if (SRV() && !kakaoServer()) { toast("카카오로 1초 가입은 곧 열려요. 지금은 이메일로 가입해 주세요.", "warn"); return; }
+    if (SRV() && !kakaoServer()) { toast("카카오 가입은 곧 열려요.", "warn"); return; }
     if (kakaoServer()) { const f = document.querySelector("[data-vd-auth]"), nx = (f && f.dataset.next) || "#/vod"; location.href = "/api/vod-auth?action=kakao&next=" + encodeURIComponent(nx); return; }
     const kid = ls.get(KEY_KK), hit = kid && V().members.find((x) => x.id === kid && !x.blocked);
     if (hit) { kakaoIn(hit, "카카오로 로그인했어요. (시안)"); return; }
@@ -2611,15 +2611,15 @@
     if (kakaoServer()) { location.href = "/api/vod-auth?action=kakao&link=1&next=" + encodeURIComponent("#/vod/my/account"); return; }
     // 시안: 체험용 카카오 회원번호로 연결
     m.kakaoId = "4" + String(now()).slice(-9); m.kakaoLinkedAt = now(); save(); closeModal(); keepScroll();
-    toast("카카오를 연결했어요. 다음부터 ‘카카오로 1초 만에 시작하기’로 바로 로그인할 수 있어요. (시안)");
+    toast("카카오를 연결했어요. (시안)");
   }
   function kakaoUnlink(t) {
     const m = me(); if (!m || !m.kakaoId || m.via === "kakao") return;
     if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 연결을 끊어요"; return; }
-    const done = () => { keepScroll(); toast("카카오 연결을 끊었어요. 이메일과 비밀번호로 로그인해 주세요."); };
+    const done = () => { keepScroll(); toast("카카오 연결을 끊었어요."); };
     if (!remoteOn()) { m.kakaoId = ""; m.kakaoUnlinkedAt = now(); save(); done(); return; }
     t.disabled = true;
-    authApi("kakao-off").then((r) => { if (!r || !r.ok) { t.disabled = false; toast((r && r.message) || "연결을 끊지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"); return; } return DB.remote.refresh().then(done); });
+    authApi("kakao-off").then((r) => { if (!r || !r.ok) { t.disabled = false; toast((r && r.message) || "연결을 끊지 못했어요. 다시 시도해 주세요.", "warn"); return; } return DB.remote.refresh().then(done); });
   }
   /** 이메일 로그인 직후: 같은 이메일의 카카오로 왔다가 막혔던 사람에게 바로 연결을 권해요 */
   function kkAsk() {
@@ -2642,7 +2642,7 @@
     if (q("birth")) Object.assign(mb, { birth: ["03-14", "07-22", "11-05", "12-24"][n % 4], gender: n % 2 ? "male" : "female", age: ["20~29", "30~39", "40~49"][n % 3] });
     list.push(mb); (V().coupons || []).filter((c) => c.auto === "signup" && c.on !== false).forEach((c) => issueCoupon(mb.id, c));
     ls.set(KEY_KK, mb.id);
-    kakaoIn(mb, "카카오로 1초 만에 가입했어요! 5,000원 할인 쿠폰을 넣어 드렸어요. (시안)");
+    kakaoIn(mb, "가입 완료! 5,000원 쿠폰을 드렸어요. (시안)");
   }
   /* ---------- 두잉고 VOD 강의실 입장 (#/vod/dg) — 두잉고 로그인 › 두고클래스 탭에서 이메일로 로그인하면 여기로 와요 ---------- */
   function dgList(m) {
@@ -2673,8 +2673,8 @@
       if (owns(m.id, p.id) && !isBook(p)) { ROUTE.redirect("#/vod/learn/" + p.id); return ""; }
       if (seatsLeft(p) === 0) return back("자리가 모두 찼어요.");
     } else if (k === "extend") { ROUTE.redirect("#/vod/checkout/" + p.id); return ""; } // 1년 연장권은 재수강 할인으로 바뀌었어요
-    else if (k === "coach" && !(coachOf(p) && owns(m.id, p.id))) return back("이 강의를 수강 중인 회원만 1:1 코칭권을 살 수 있어요.");
-    else if (k === "tea" && !(teaOf(p) && owns(m.id, p.id))) return back("이 강의를 수강 중인 회원만 TEA TIME을 신청할 수 있어요.");
+    else if (k === "coach" && !(coachOf(p) && owns(m.id, p.id))) return back("수강 중인 회원만 살 수 있어요.");
+    else if (k === "tea" && !(teaOf(p) && owns(m.id, p.id))) return back("수강 중인 회원만 신청할 수 있어요.");
     const ps = k === "course" ? plansFor(p, m.id) : [], s = PSEL[p.id] || {}, sel = ps.length ? ps.find((y) => y.d === Number(qs.get("plan") || s.d)) || ps.find((y) => y.d === 365) || ps[0] : null, c = coachOf(p), t = teaOf(p), x = extendOf(p), rbC = sel ? sel.rb || 0 : 0;
     const coachOn = k === "course" && !!c && !!sel && (qs.get("coach") === "1" || (!qs.get("plan") && !!s.coach));
     const pr = k === "course" ? (sel ? sel.sale : priceOf(p)) : k === "extend" ? x.sale : k === "coach" ? c.price : t.price;
@@ -2748,7 +2748,7 @@
   function addrFind(btn) {
     const f = btn.closest("form"), pre = btn.dataset.pre || "s", box = f && f.querySelector("[data-addr-pop]"); if (!f || !box) return;
     if (!box.hidden) { box.hidden = true; box.innerHTML = ""; return; }
-    const fail = () => { box.hidden = true; toast("주소 검색을 불러오지 못했어요. 주소를 직접 적어 주세요.", "warn"); const x = f.elements[pre + "addr1"]; if (x) x.focus(); };
+    const fail = () => { box.hidden = true; toast("주소 검색이 안 돼요. 직접 적어 주세요.", "warn"); const x = f.elements[pre + "addr1"]; if (x) x.focus(); };
     loadJs(POSTCODE).then(() => {
       const D = window.daum || window.kakao; if (!D || !D.Postcode) return fail();
       box.hidden = false; box.innerHTML = "";
@@ -3760,18 +3760,18 @@
       if (kind === "return" && /변심/.test(why) && sst === "done" && shipDoneAt(o) && now() - shipDoneAt(o) > 7 * 864e5) { if (er) er.textContent = "단순 변심 반품은 받은 날부터 7일 안에만 할 수 있어요. 파손 · 파본 · 잘못 보낸 책이면 사유를 골라 주세요."; return; }
       let acct = null; if ((o.method === "bank" || o.method === "vbank") && kind !== "exchange") { const r = acctRead(f); if (r.err) { if (er) er.textContent = r.err; return; } acct = r.acct; }
       o.refundReq = Object.assign({ at: now(), by: "member", why, text: f.text.value.trim().slice(0, 300) }, kind ? { kind } : {}, acct ? { acct } : {}); save(); closeModal(); render();
-      toast(o.ship ? CLAIM_K[kind] + " 요청을 보냈어요. 마이페이지 › 종이책 · 배송 조회에서 진행 상황을 볼 수 있어요." : "환불 요청을 보냈어요. 처리 결과는 주문 · 결제 내역에서 볼 수 있어요.");
+      toast(o.ship ? CLAIM_K[kind] + " 요청을 보냈어요." : "환불 요청을 보냈어요.");
   }
   function download(p, gi) {
     const f = gi != null ? ((p.gifts || [])[gi] || {}).file : p.file;
     if (f) {
       const nm = (gi != null ? ((p.gifts || [])[gi] || {}).title || p.title : p.title).replace(/[\\/:*?"<>|]/g, " ").trim() + ".pdf";
       // 마스터가 시안에서 올린 파일(이 브라우저 저장소)은 matOpen 으로, 서버 · 외부 주소는 내려받기 → 안 되면 새 창
-      if (/^idb:/.test(f)) { matOpen({ url: f, name: nm }, "dl").then((ok) => toast(ok ? "PDF를 내려받았어요." : "이 브라우저에 저장된 파일이 아니에요. 운영팀에 알려 주세요.", ok ? "" : "warn")); return; }
+      if (/^idb:/.test(f)) { matOpen({ url: f, name: nm }, "dl").then((ok) => toast(ok ? "PDF를 내려받았어요." : "파일을 찾을 수 없어요. 운영팀에 알려 주세요.", ok ? "" : "warn")); return; }
       if (window.DGFILE) window.DGFILE.saveUrl(f, nm).then((r) => { if (r === "saved") toast("PDF를 내려받았어요."); }, () => window.open(f, "_blank", "noopener")); else window.open(f, "_blank", "noopener");
       return;
     }
-    toast("시안이라 실제 PDF 파일은 정식 오픈 때 연결돼요.");
+    toast("시안이라 PDF는 오픈 때 연결돼요.");
   }
   document.addEventListener("click", (e) => {
     if (!isActive()) return;
@@ -3783,7 +3783,7 @@
     if (v === "tpg-cat") { tpgC = t.dataset.tpgCat || ""; tpgApply(); return; }
     if (v === "tpg-clear" || v === "tpg-reset") { tpgQ = ""; if (v === "tpg-reset") tpgC = ""; const q = document.querySelector("[data-tpg-q]"); if (q) { q.value = ""; if (v === "tpg-clear") q.focus(); } tpgApply(); return; }
     if (v === "dg") { e.preventDefault(); enterDg(t.dataset.p, "", t.dataset.to); return; }
-    if (v === "mat") { e.preventDefault(); { const rp = route().path; if (rp[0] === "learn" && m) markMat(m.id, rp[1]); } matOpen({ url: t.dataset.u, name: t.dataset.n }, "dl").then((ok) => { if (!ok) toast("이 브라우저에 저장된 파일이 아니에요. 강사님께 다시 올려 달라고 요청해 주세요.", "warn"); }); return; }
+    if (v === "mat") { e.preventDefault(); { const rp = route().path; if (rp[0] === "learn" && m) markMat(m.id, rp[1]); } matOpen({ url: t.dataset.u, name: t.dataset.n }, "dl").then((ok) => { if (!ok) toast("파일을 찾을 수 없어요. 강사님께 알려 주세요.", "warn"); }); return; }
     if (v === "dev-del") { const m = me(); if (!m || !Array.isArray(m.devices)) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 해제"; return; } m.devices = m.devices.filter((x) => x.id !== t.dataset.id); save(); render(); toast("기기를 해제했어요."); return; }
     if (v === "cp-open") { const p = product(t.dataset.p); if (p) modal("사용 가능한 쿠폰", cpModalBody(p), "vd-modal-cp"); return; }
     if (v === "cp-get") {
@@ -3791,7 +3791,7 @@
       cpGet(p, t.dataset.c).then((n) => {
         const mb = document.querySelector(".vd-cpm"); if (mb) mb.outerHTML = cpModalBody(p);
         const pc = document.querySelector(".vd-cpdl"); if (pc) pc.outerHTML = cpDlBtn(p, me());
-        toast(n ? "쿠폰 " + n + "장을 받았어요. 결제할 때 바로 쓸 수 있어요." : "이미 받은 쿠폰이에요.");
+        toast(n ? "쿠폰 " + n + "장을 받았어요." : "이미 받은 쿠폰이에요.");
       });
       return;
     }
@@ -3854,21 +3854,21 @@
     if (v === "kk-ok") { kakaoOk(); return; }
     if (v === "kk-demo") { const d = V().members.find((x) => x.id === "vm-demo"); if (!d) { toast("체험 계정이 없어요.", "warn"); return; } kakaoIn(d, "체험 계정으로 로그인했어요."); return; }
     if (v === "pw-find") { modal("비밀번호 찾기", '<div class="vd-modal-b vd-form"><p class="vd-muted">가입한 이메일을 적으면 비밀번호를 다시 정하는 링크를 보내 드려요.</p><label>이메일<input id="vd-find-mail" type="email" placeholder="example@doogoclass.com"></label><button type="button" class="vd-btn vd-btn-p vd-btn-xl" data-v="pw-send">링크 보내기</button></div>'); return; }
-    if (v === "pw-send") { closeModal(); toast("시안이라 메일은 가지 않아요. 체험 계정 비밀번호는 vod예요."); return; }
+    if (v === "pw-send") { closeModal(); toast("시안이라 메일은 안 가요. 비밀번호는 vod예요."); return; }
     if (v === "auth-faq") { modal("로그인 · 가입 자주 묻는 질문", '<div class="vd-modal-b">' + [["두잉고 계정으로 로그인할 수 있나요?", "아니요. DOOGO CLASS는 VOD 수강생 계정을 따로 써요. 두잉고 기수 수강생은 두잉고 로그인을 이용해 주세요."], ["카카오로 가입했는데 이메일 로그인이 안 돼요.", "카카오로 가입한 계정은 ‘카카오로 1초 만에 시작하기’로 로그인해 주세요."], ["비밀번호를 잊었어요.", "로그인 화면의 ‘비밀번호 찾기’에서 가입한 이메일로 재설정 링크를 받을 수 있어요."]].map((f) => '<details class="vd-faq"><summary><b>Q</b><span>' + f[0] + "</span>" + icon("chevDown", "sm") + "</summary><p>" + f[1] + "</p></details>").join("") + "</div>"); return; }
     if (v === "agree-all") { const f = t.closest("form"); if (f) { f.agree.checked = t.checked; f.mkt.checked = t.checked; authReady(f); } return; }
     if (v === "pt-all") { const f = t.closest("form"), r = f && coCalc(f); if (r) { f.points.value = Math.floor(r.maxPt / 1) || 0; coPaint(f); } return; }
     if (v === "qty") { const f = t.closest("form"), q = f && f.qty; if (q) { q.value = String(Math.max(1, Math.min(Number(q.max) || BOOK_MAX, (Number(q.value) || 1) + Number(t.dataset.d || 0)))); coPaint(f); } return; }
     if (v === "addr-find") { e.preventDefault(); addrFind(t); return; }
-    if (v === "ship-edit") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || !o.ship) return; if (["ready", "wait"].indexOf(shipStOf(o)) < 0) { toast("이미 책을 준비하고 있어 배송지를 바꿀 수 없어요. 고객센터로 알려 주세요.", "warn"); return; }
+    if (v === "ship-edit") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || !o.ship) return; if (["ready", "wait"].indexOf(shipStOf(o)) < 0) { toast("준비 중이라 배송지를 바꿀 수 없어요.", "warn"); return; }
       modal("배송지 바꾸기", '<form class="vd-modal-b vd-shipedit" data-vd-shipedit="' + esc(o.no) + '"><p class="vd-muted">책을 보내기 전까지 바꿀 수 있어요.</p>' + shipFields(o.ship, "e") + '<label class="vd-co-keep"><input type="checkbox" name="esave" checked><span>다음 주문에도 이 배송지 쓰기</span></label><p class="vd-err" data-se-err role="alert"></p><button type="submit" class="vd-btn vd-btn-p vd-btn-xl">배송지 저장</button></form>', "vd-modal-sm"); return; }
     if (v === "dl") { const p = product(t.dataset.p); if (p && m && owns(m.id, p.id)) { const o = ownOrder(m.id, p.id); if (o && !o.dlAt && typeOf(p) === "ebook") { o.dlAt = now(); save(); } download(p, t.dataset.g != null ? Number(t.dataset.g) : null); } return; }
-    if (v === "dl-none") { e.preventDefault(); toast("시안이라 첨부 파일은 정식 오픈 때 연결돼요."); return; }
+    if (v === "dl-none") { e.preventDefault(); toast("시안이라 첨부는 오픈 때 연결돼요."); return; }
     if (v === "ord-cancel") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || o.status !== "pending") return; t.disabled = true; ordCancelDo(o).then((msg) => { keepScroll(); toast(msg); }, (er) => { t.disabled = false; toast(String((er && er.message) || "취소하지 못했어요."), "warn"); }); return; }
     // 0원 신청(무료 LIVE · 0원 결제) 취소: 강의 전까지 · 자리를 돌려줘요
     if (v === "ord-cancel0") { const o = V().orders.find((x) => x.no === t.dataset.no), p = o && product(o.pid); if (!o || !m || o.mid !== m.id || o.status !== "paid" || o.amount > 0 || (p && eventPast(p))) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 취소"; return; } const msg0 = ordCancel0Do(o); keepScroll(); toast(msg0); return; }
     // 환불 요청: 사유를 남기면 마스터 ‘환불 요청’ 목록에 올라가요
-    if (v === "rf-now") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id) return; const nw = rfNowInfo(o), q = nw.q; if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } const r = nw.r, adds = nw.adds, tot = nw.tot, tag = q.acct ? "form" : "div";
+    if (v === "rf-now") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id) return; const nw = rfNowInfo(o), q = nw.q; if (!q.ok) { toast(q.why || "바로 취소가 안 돼요. 환불을 요청해 주세요.", "warn"); return; } const r = nw.r, adds = nw.adds, tot = nw.tot, tag = q.acct ? "form" : "div";
       modal("결제 취소 · 100% 환불", "<" + tag + ' class="vd-modal-b vd-rfnow"' + (q.acct ? ' data-vd-rfnow="" data-no="' + esc(o.no) + '"' : "") + '><p class="vd-rfq-t"><b>' + esc(o.title) + "</b>" + (optTxt(o) ? "<small>" + esc(optTxt(o)) + "</small>" : "") + "<span>결제 " + won(o.amount) + " · " + esc(DB.date.fmtFull(DB.date.toStr(new Date(o.paidAt || o.at)))) + "</span></p>" +
         '<div class="vd-rfnow-box"><b>' + won(tot) + "</b><span>전액 돌려드려요</span></div><ul class=\"vd-rfnow-l\">" + "<li>" + icon("check", "xs") + esc(q.why) + "</li>" + (adds.length ? "<li>" + icon("check", "xs") + "함께 결제한 " + adds.map((x) => esc(optTxt(x) || x.title)).join(", ") + "도 같이 취소돼요.</li>" : "") + (r.restore && (o.mcid || o.pointOff) ? "<li>" + icon("check", "xs") + "결제에 쓴 쿠폰 · 포인트도 돌려드려요.</li>" : "") + "<li>" + icon("check", "xs") + "취소하면 수강 권한이 바로 사라져요.</li><li>" + icon("clock", "xs") + esc(rfNowNote(o, q)) + "</li></ul>" +
         (q.acct ? '<div class="vd-rfq-acct"><b>환불 받을 계좌</b><small>' + (q.way === "vbank" ? "가상계좌" : "무통장 입금") + " 결제는 이 계좌로 돌려드려요. 본인 명의 계좌를 적어 주세요.</small>" + acctFields(null) + '</div><p class="vd-err" data-rfnow-err=""></p>' : "") +
@@ -3888,7 +3888,7 @@
       '<button type="submit" class="vd-btn vd-btn-p vd-btn-xl">' + (bk ? (pre ? "취소 요청 보내기" : "신청하기") : "환불 요청 보내기") + "</button></form>", "vd-modal-sm"); return; }
     if (v === "rf-undo") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o || !m || o.mid !== m.id || !o.refundReq || typeof o.refundReq !== "object") return; const msgU = rfUndoDo(o); keepScroll(); toast(msgU); return; }
     if (v === "rv-edit") { const rv = V().reviews.find((x) => x.id === t.dataset.id && x.mid === (me() || {}).id); if (!rv) return; modal("후기 고치기", '<form class="vd-modal-b vd-rv-edit" data-vd-rvedit="' + esc(rv.id) + '"><div class="vd-rv-stars" role="radiogroup" aria-label="별점">' + [5, 4, 3, 2, 1].map((n) => '<label><input type="radio" name="rating" value="' + n + '"' + (rv.rating === n ? " checked" : "") + "><span>" + n + "점</span></label>").join("") + '</div><textarea name="text" rows="5" maxlength="1000" aria-label="후기">' + esc(rv.text) + '</textarea><button type="submit" class="vd-btn vd-btn-p">저장</button></form>'); return; }
-    if (v === "rv-del") { const rv = V().reviews.find((x) => x.id === t.dataset.id && x.mid === (me() || {}).id); if (!rv) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 지워요"; setTimeout(() => { if (t.isConnected) { t.dataset.arm = ""; t.textContent = "지우기"; } }, 3000); return; } V().reviews.splice(V().reviews.indexOf(rv), 1); save(); render(); toast("후기를 지웠어요. 받은 포인트는 그대로예요 (다시 써도 추가 적립은 없어요)."); return; }
+    if (v === "rv-del") { const rv = V().reviews.find((x) => x.id === t.dataset.id && x.mid === (me() || {}).id); if (!rv) return; if (t.dataset.arm !== "1") { t.dataset.arm = "1"; t.textContent = "한 번 더 누르면 지워요"; setTimeout(() => { if (t.isConnected) { t.dataset.arm = ""; t.textContent = "지우기"; } }, 3000); return; } V().reviews.splice(V().reviews.indexOf(rv), 1); save(); render(); toast("후기를 지웠어요. 포인트는 그대로예요."); return; }
     if (v === "rcpt-print") { document.body.classList.add("vd-printing"); window.print(); setTimeout(() => document.body.classList.remove("vd-printing"), 500); return; }
     if (v === "receipt") { const o = V().orders.find((x) => x.no === t.dataset.no); if (!o) return; modal("결제 영수증", '<div class="vd-modal-b vd-rcpt2">' + rcptHtml(o) + '<div class="rc-acts" data-pdf-hide><button type="button" class="vd-btn vd-btn-p vd-btn-xl" data-v="rcpt-pdf" data-no="' + esc(o.no) + '">' + icon("download", "sm") + 'PDF로 내려받기</button></div></div>', "vd-modal-rcpt"); return; }
     if (v === "rcpt-pdf") { const el = document.getElementById("rc-doc"); if (window.DGFILE) window.DGFILE.pdfBtn(t, el, "DOOGO-CLASS-영수증-" + t.dataset.no + ".pdf", { width: 760, margin: 12, title: "DOOGO CLASS 영수증 " + t.dataset.no }, (msg) => toast(msg)); return; }
@@ -3972,7 +3972,7 @@
     if (remoteOn() && CFG && CFG.auth) {
       const b = { email, pw: f.pw.value, ts: tsToken(f) };
       if (mode !== "login") Object.assign(b, { name: v("name"), phone: v("phone"), mkt: !!(f.mkt && f.mkt.checked), agree: !!(f.agree && f.agree.checked), pw2: f.pw2 ? f.pw2.value : "", src: takeSrc() });
-      authApi(mode === "login" ? "login" : "signup", b).then((r) => { if (!r || !r.ok) { err.textContent = (r && r.message) || "다시 시도해 주세요."; return; } const nm = (r.member && r.member.name) || "회원", cps = (r.member && r.member.coupons) || [], ask = mode === "login" && kkLater() && kakaoServer() && !(r.member && r.member.kakaoId); kkLater(false); DB.remote.refresh().then(() => { if (!ask) toast(mode === "login" ? (nm + "님, 반가워요!") : "가입을 환영해요, " + nm + "님!" + (cps.length ? " 가입 쿠폰을 넣어 드렸어요." : "")); ROUTE.hash = f.dataset.next || "#/vod"; render(); if (ask) setTimeout(kkAsk, 150); }); }); // 화면 이동(hashchange)이 팝업을 비우니 이동 뒤에 띄워요
+      authApi(mode === "login" ? "login" : "signup", b).then((r) => { if (!r || !r.ok) { err.textContent = (r && r.message) || "다시 시도해 주세요."; return; } const nm = (r.member && r.member.name) || "회원", cps = (r.member && r.member.coupons) || [], ask = mode === "login" && kkLater() && kakaoServer() && !(r.member && r.member.kakaoId); kkLater(false); DB.remote.refresh().then(() => { if (!ask) toast(mode === "login" ? (nm + "님, 반가워요!") : "환영해요, " + nm + "님!" + (cps.length ? " 쿠폰을 드렸어요." : "")); ROUTE.hash = f.dataset.next || "#/vod"; render(); if (ask) setTimeout(kkAsk, 150); }); }); // 화면 이동(hashchange)이 팝업을 비우니 이동 뒤에 띄워요
       return;
     }
     if (mode === "login") {
@@ -3989,7 +3989,7 @@
     if (!f.agree.checked) { err.textContent = "필수 약관에 동의해 주세요."; return; }
     const mb = { id: DB.uid("vm"), via: "email", email, pw: f.pw.value, name: v("name"), phone: v("phone"), marketing: f.mkt.checked, consent: consentOf(f.mkt.checked), src: takeSrc(), kakaoCh: false, tags: [], notes: [], createdAt: now(), seenAt: now(), loginN: 1, points: 0, pointLog: [] };
     list.push(mb); (V().coupons || []).filter((c) => c.auto === "signup" && c.on !== false).forEach((c) => issueCoupon(mb.id, c));
-    setMe(mb.id); save(); toast("가입을 환영해요, " + mb.name + "님! 5,000원 할인 쿠폰(30일)을 넣어 드렸어요."); ROUTE.hash = f.dataset.next || "#/vod";
+    setMe(mb.id); save(); toast("환영해요, " + mb.name + "님! 5,000원 쿠폰을 드렸어요."); ROUTE.hash = f.dataset.next || "#/vod";
   }
   /** 현금영수증: 소득공제용(휴대폰 번호) · 지출증빙용(사업자등록번호) — 무통장 입금일 때만 */
   function cashRead(f) {
@@ -4072,7 +4072,7 @@
     run.then((res) => {
       if (!res) { if (btn) btn.disabled = false; err.textContent = "결제를 취소했어요. 주문은 만들어지지 않았어요."; return; }
       const no = (res.server && res.server.no) || "";
-      return DB.remote.refresh().then(() => { if (btn) btn.disabled = false; ROUTE.hash = "#/vod/order/" + no; render(); if (res.server && res.server.bank) toast(ship ? "주문을 받았어요. 입금이 확인되면 책을 준비해서 보내 드려요." : "주문을 받았어요. 입금이 확인되면 바로 이용할 수 있어요."); else if (res.server && res.server.vbank) toast(ship ? "가상계좌가 발급됐어요. 입금하면 책을 준비해서 보내 드려요." : "가상계좌가 발급됐어요. 입금하면 바로 이용할 수 있어요."); });
+      return DB.remote.refresh().then(() => { if (btn) btn.disabled = false; ROUTE.hash = "#/vod/order/" + no; render(); if (res.server && res.server.bank) toast(ship ? "주문 완료! 입금되면 책을 보내 드려요." : "주문 완료! 입금되면 바로 이용해요."); else if (res.server && res.server.vbank) toast(ship ? "가상계좌 발급! 입금하면 책을 보내 드려요." : "가상계좌 발급! 입금하면 바로 이용해요."); });
     }, (er) => { if (btn) btn.disabled = false; err.textContent = String((er && er.message) || "결제하지 못했어요. 잠시 후 다시 시도해 주세요."); });
   }
   /** 배송지 바꾸기 (보내기 전만 · 서버는 결제 완료 · 입금 대기 · 상품 준비 전인 주문만 받아요) */
@@ -4100,7 +4100,7 @@
     if (f.text.value.trim().length < 5) { err.textContent = "내용을 5자 이상 적어 주세요."; f.text.focus(); return; }
     const cat = (f.querySelector("input[name=cat]:checked") || {}).value || "기타";
     (V().inquiries = V().inquiries || []).push({ id: DB.uid("vq"), mid: m.id, cat, order: f.order ? f.order.value : "", title: f.title.value.trim(), text: f.text.value.trim().slice(0, 1000), at: now(), answer: "", answeredAt: null });
-    save(); ROUTE.hash = "#/vod/my/help?t=list"; render(); toast("문의를 남겼어요. 영업일 기준 하루 안에 답해 드릴게요.");
+    save(); ROUTE.hash = "#/vod/my/help?t=list"; render(); toast("문의를 남겼어요. 하루 안에 답해 드릴게요.");
   }
   function doReview(f) {
     const m = me(), pid = f.dataset.vdReview, text = f.text.value.trim();
@@ -4109,7 +4109,7 @@
     V().reviews.push({ id: DB.uid("vr"), pid, mid: m.id, name: m.name.slice(0, 1) + "OO", rating: Number((f.querySelector("input[name=rating]:checked") || {}).value) || 5, text, at: now() });
     const pp = product(pid), paidC = V().orders.some((o) => o.mid === m.id && o.pid === pid && o.status === "paid" && o.amount > 0) || priceOf(pp || {}) > 0, got = (m.rvPts = m.rvPts || []).indexOf(pid) >= 0;
     const pt = paidC && !got ? Number(V().settings.reviewPoint) || 0 : 0; if (pt && !SRV()) { addPoint(m, pt, "후기 작성 적립"); m.rvPts.push(pid); }
-    save(); render(); toast("후기를 남겨 주셔서 고마워요!" + (pt ? " " + pt.toLocaleString() + "P를 드렸어요." : ""));
+    save(); render(); toast("후기 고마워요!" + (pt ? " " + pt.toLocaleString() + "P를 드렸어요." : ""));
     setTimeout(() => { const s = document.getElementById("vd-s-reviews"); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 130 }); }, 30);
   }
   /** 다짐 공감 켜고 끄기 · 내 다짐 지우기 (예전 화면 · React 화면 같이 씀) → 바꿨으면 true */

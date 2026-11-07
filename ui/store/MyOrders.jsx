@@ -97,12 +97,12 @@ function useOrderActs(act) {
   const a = {
     receipt: (o) => setPop({ k: "rcpt", o }),
     rules: () => setPop({ k: "rules" }),
-    rfNow: (o) => { if (!mine(o)) return; const q = X.instantOf(o); if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } setPop({ k: "now", o }); },
+    rfNow: (o) => { if (!mine(o)) return; const q = X.instantOf(o); if (!q.ok) { toast(q.why || "바로 취소가 안 돼요. 환불을 요청해 주세요.", "warn"); return; } setPop({ k: "now", o }); },
     rfReq: (o) => { if (!mine(o) || o.status !== "paid") return; setPop({ k: "req", o }); },
     rfUndo: (o) => { if (!mine(o) || !o.refundReq || typeof o.refundReq !== "object") return; const msg = X.rfUndoDo(o); act.redraw(); toast(msg); },
     cancel: (o, btn) => { if (!mine(o) || o.status !== "pending") return; if (btn) btn.disabled = true; X.ordCancelDo(o).then((msg) => { act.redraw(); toast(msg); }, (er) => { if (btn) btn.disabled = false; toast(String((er && er.message) || "취소하지 못했어요."), "warn"); }); },
     cancel0: (o) => { const p = X.product(o.pid); if (!mine(o) || o.status !== "paid" || o.amount > 0 || (p && X.eventPast(p))) return; const msg = X.ordCancel0Do(o); act.redraw(); toast(msg); },
-    shipEdit: (o) => { if (!mine(o) || !o.ship) return; if (["ready", "wait"].indexOf(X.shipStOf(o)) < 0) { toast("이미 책을 준비하고 있어 배송지를 바꿀 수 없어요. 고객센터로 알려 주세요.", "warn"); return; } setPop({ k: "ship", o }); }
+    shipEdit: (o) => { if (!mine(o) || !o.ship) return; if (["ready", "wait"].indexOf(X.shipStOf(o)) < 0) { toast("준비 중이라 배송지를 바꿀 수 없어요.", "warn"); return; } setPop({ k: "ship", o }); }
   };
   const modal = !pop ? null : pop.k === "rcpt" ? <ReceiptModal o={pop.o} onClose={close} /> : pop.k === "rules" ? <RefundRules onClose={close} /> : pop.k === "now" ? <RfNowModal o={pop.o} onClose={close} onDone={act.redraw} /> : pop.k === "req" ? <RfReqModal o={pop.o} onClose={close} /> : pop.k === "ship" ? <ShipEditModal o={pop.o} onClose={close} /> : null;
   return { a, modal };

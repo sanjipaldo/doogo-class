@@ -319,7 +319,7 @@ function Product({ p, n }) {
     plUp: (id) => { if (!X.me()) { toast("로그인하면 공감할 수 있어요.", "warn"); return; } if (X.plUp(id)) redraw(); },
     plDel: (id) => { if (X.plDel(id)) { redraw(); toast("다짐을 지웠어요."); } }
   };
-  const cpGet = (cid) => X.cpGet(p, cid).then((k) => { bump((x) => x + 1); toast(k ? "쿠폰 " + k + "장을 받았어요. 결제할 때 바로 쓸 수 있어요." : "이미 받은 쿠폰이에요."); });
+  const cpGet = (cid) => X.cpGet(p, cid).then((k) => { bump((x) => x + 1); toast(k ? "쿠폰 " + k + "장을 받았어요." : "이미 받은 쿠폰이에요."); });
   // 위 가격 카드가 화면 위로 지나가면 아래 결제 막대가 올라와요
   useEffect(() => {
     const info = document.getElementById("vd-pdt-info");

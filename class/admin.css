@@ -1518,7 +1518,7 @@ body[data-master="1"] .a-side-foot { padding-top: 10px; gap: 8px; }
   .p-ref.p-ref-light code { min-width: 0; }
 }
 .p-kit-qr-r, .p-ref.p-ref-light { min-width: 0; } .p-ref.p-ref-light code { min-width: 0; }
-@media (max-width: 720px) { #toast-root { width: calc(100vw - 32px); bottom: 84px; } #toast-root .toast { max-width: 100%; font-size: 13px; padding: 11px 16px; border-radius: 14px; } }
+/* 휴대폰 알림 모양은 styles.css (한 줄 · 화면 폭에 맞춰 넓게 · 2026-11-07) */
 
 /* ===== 1:1 대화 — 카카오톡 짜임 · 두잉고 색 =====
    방 배경(카톡 하늘색 → 두잉고 연회색) · 내 말풍선(카톡 노랑 → 두잉고 연분홍) · 상대 말풍선 흰색 · 안 읽음 1(카톡 노랑 → 두잉고 빨강) */

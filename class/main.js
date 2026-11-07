@@ -101,7 +101,7 @@
     if (type === "reset") { location.reload(); return; }
     if (type === "error") { notify(info, "warn"); return; }
     // 서버 점검(쓰기 멈춤) 중이면 그 안내를 · 아니면 연결 안내 — 둘 다 바뀐 내용은 들고 있다가 다시 보내요
-    if (type === "offline") { notify(info && info.readonly ? "잠시 점검 중이에요. 이 창을 열어 두시면 점검이 끝난 뒤 고친 내용이 자동으로 저장돼요." : "인터넷 연결이 불안정해 저장을 다시 시도하고 있어요.", "warn", "offline"); return; }
+    if (type === "offline") { notify(info && info.readonly ? "점검 중이에요. 끝나면 자동으로 저장돼요." : "연결이 불안정해 다시 저장하는 중이에요.", "warn", "offline"); return; }
     if (type === "saving" && info === false) { const t = document.querySelector('.toast[data-key="offline"]'); if (t) t.remove(); return; }
     if (type !== "change") return;
     reconcile();
@@ -165,7 +165,7 @@
     try { sessionStorage.setItem("doinggo:idle-out", "1"); } catch (e) { /* 안내만 못 보여요 */ }
     return Promise.all(jobs);
   }
-  const idleMsg = () => { try { if (sessionStorage.getItem("doinggo:idle-out")) { sessionStorage.removeItem("doinggo:idle-out"); notify("오래 사용하지 않아 안전을 위해 로그아웃했어요. 다시 로그인해 주세요.", "warn"); } } catch (e) { /* 안내 생략 */ } };
+  const idleMsg = () => { try { if (sessionStorage.getItem("doinggo:idle-out")) { sessionStorage.removeItem("doinggo:idle-out"); notify("오래 사용하지 않아 로그아웃됐어요.", "warn"); } } catch (e) { /* 안내 생략 */ } };
   let idleBusy = false;
   function idleCheck() {
     if (idleBusy || (window.__dirty && window.__dirty())) return; // 저장하지 않은 편집이 있으면 기다려요

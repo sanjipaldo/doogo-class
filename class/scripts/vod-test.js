@@ -2244,7 +2244,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(sk36.withToken && !sk36.withToken[0] && sk36.withToken[1] && sk36.vercel === "blocked",
       "로그인 서명 키: SESSION_SECRET 하나만 — 예전 Turso 토큰 키 쿠키는 더 이상 안 받고(한 번 다시 로그인) · 운영에서 SESSION_SECRET 이 없으면(Turso 토큰이 남아 있어도) 누구나 아는 기본 키로 서명하지 않아요", sk36);
     const db36 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), mj36 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), hb36 = fs.readFileSync(path.join(ROOT, "api/_lib/http.js"), "utf8"), bd36 = fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8"), pkg36 = JSON.parse(fs.readFileSync(path.join(ROOT, "../package.json"), "utf8"));
-    ok(/if \(j\.error === "readonly"\) e\.readonly = true;/.test(db36) && /info && info\.readonly \? "잠시 점검 중이에요/.test(mj36) && /e\.code === "DC_READONLY"\) \{ if \(!res\.headersSent\) send\(res, 503/.test(hb36) && /if \(ro\) return;/.test(bd36) && /\.then\(\(\) => store\.close\(\)\)/.test(bd36),
+    ok(/if \(j\.error === "readonly"\) e\.readonly = true;/.test(db36) && /info && info\.readonly \? "점검 중이에요/.test(mj36) && /e\.code === "DC_READONLY"\) \{ if \(!res\.headersSent\) send\(res, 503/.test(hb36) && /if \(ro\) return;/.test(bd36) && /\.then\(\(\) => store\.close\(\)\)/.test(bd36),
       "쓰기 멈춤 안내: 서버 503 readonly → 화면 ‘잠시 점검 중’ · 배포 때는 백업만 · 빌드 끝에 DB 연결 닫기");
     ok(pkg36.dependencies.postgres === "3.4.9" && !Object.keys(pkg36.dependencies).concat(Object.keys(pkg36.devDependencies || {})).some((d) => /pglite/.test(d)), "운영 빌드 의존성: postgres 드라이버(3.4.9)만 · 시험용 PGlite 는 class/scripts/pg 폴더에만", pkg36.dependencies);
   }

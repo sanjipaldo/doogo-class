@@ -36,7 +36,7 @@
   const isActive = () => document.body.dataset.mode === "student" && !document.body.dataset.react;
 
   function saveProgress() {
-    if (!DB.saveProgress(me.id, P)) { toast("저장 공간이 부족해요. 사진 수를 줄여 다시 시도해 주세요.", "warn"); return false; }
+    if (!DB.saveProgress(me.id, P)) { toast("저장 공간이 부족해요. 사진 수를 줄여 주세요.", "warn"); return false; }
     return true;
   }
   const daysUntil = (s) => DB.date.diffDays(s, todayStr());
@@ -367,7 +367,7 @@
     const X = window.VOD; if (!X || !X.loadCfg) return;
     X.loadCfg().then(() => { if (X.tsMount) X.tsMount(scope || document); });
   }
-  function vodKakao() { const X = window.VOD; if (!X || !X.kakaoGo) { ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; return; } (X.loadCfg ? X.loadCfg() : Promise.resolve()).then(() => { const r = X.kakaoGo("#/vod/dg"); if (r === "off") toast("카카오로 1초 가입은 곧 열려요. 지금은 이메일로 로그인해 주세요."); else if (r === "demo") ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; }); }
+  function vodKakao() { const X = window.VOD; if (!X || !X.kakaoGo) { ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; return; } (X.loadCfg ? X.loadCfg() : Promise.resolve()).then(() => { const r = X.kakaoGo("#/vod/dg"); if (r === "off") toast("카카오 로그인은 곧 열려요."); else if (r === "demo") ROUTE.hash = "#/vod/login?next=%23%2Fvod%2Fdg"; }); }
   function doVodLogin(f) {
     const err = document.getElementById("lg-vod-error"), b = f.querySelector("button[type=submit]"), X = window.VOD;
     if (!X || !X.authLogin) { err.textContent = "DOOGO CLASS 로그인을 불러오지 못했어요. 새로고침해 주세요."; return; }
@@ -763,7 +763,7 @@
   }
   function guideDoneCheck(before) {
     const g = guideGroup();
-    if (before && !before.allDone && g && g.wk === before.wk && g.allDone) toast("모두 체크했어요! 아래 ‘완료’를 누르면 안내가 닫혀요.");
+    if (before && !before.allDone && g && g.wk === before.wk && g.allDone) toast("모두 체크했어요! ‘완료’를 눌러 주세요.");
   }
   // 자주 찾는 페이지 (강사센터에서 정함)
   function quickLinks() {
@@ -963,9 +963,9 @@
   const extOf = (n) => (String(n || "").match(/\.([a-z0-9]{2,5})$/i) || [])[1] || "file";
   /** 수업 자료 미리보기 · 내려받기 (예전 vt-mat · vt-dl — React 화면도 같이 씀) */
   function matClick(a) {
-    if (a.dataset.action === "vt-dl") { toast("수업 자료를 내려받고 있어요. 안 열리면 ‘미리보기’에서 저장할 수 있어요."); return; }
+    if (a.dataset.action === "vt-dl") { toast("수업 자료를 내려받고 있어요."); return; }
     if (a.dataset.m === "dl") { const st = DB.session.student(), vm = (me && me.vodMid) || (st && st.vodMid), mp = /^#\/vodclass\/([^/?]+)/.exec(ROUTE.hash); if (vm && mp && VX().markMat) VX().markMat(vm, decodeURIComponent(mp[1])); }
-    VX().matOpen({ url: a.dataset.u, name: a.dataset.n }, a.dataset.m).then((ok) => { if (!ok) toast("이 브라우저에 저장된 파일이 아니에요. 강사님이 다시 올리면 받을 수 있어요.", "warn"); else if (a.dataset.m === "dl") toast("수업 자료를 내려받았어요."); });
+    VX().matOpen({ url: a.dataset.u, name: a.dataset.n }, a.dataset.m).then((ok) => { if (!ok) toast("파일을 찾을 수 없어요. 강사님께 알려 주세요.", "warn"); else if (a.dataset.m === "dl") toast("수업 자료를 내려받았어요."); });
   }
   const docToggle = (id) => { if (P.docs[id]) delete P.docs[id]; else P.docs[id] = Date.now(); saveProgress(); };
   function vtFiles(files) {
@@ -1014,19 +1014,19 @@
     const f = findNote(id); if (!f) return;
     const x = vodList().find((v) => v.p.id === f.pid), l = x ? VX().lessons(x.p).find((y) => y.id === f.n.lid) : null;
     const ref = (x ? x.p.title : "") + (l ? " · " + l.title : "") + (f.n.t != null ? " (" + fmtT(f.n.t) + ")" : "");
-    if (!preview && coachN() <= 0) { const cp = addPid("coachOf"); toast("1:1 코칭권이 있으면 이 노트를 강사님께 바로 보낼 수 있어요.", "warn"); if (cp) ROUTE.hash = "#/vod/checkout/" + cp + "?item=coach"; return; }
+    if (!preview && coachN() <= 0) { const cp = addPid("coachOf"); toast("코칭권이 있으면 강사님께 보낼 수 있어요.", "warn"); if (cp) ROUTE.hash = "#/vod/checkout/" + cp + "?item=coach"; return; }
     try { sessionStorage.setItem("vt-ask", JSON.stringify({ title: f.n.text.split("\n")[0].slice(0, 70), body: "[강의] " + ref + "\n\n" + f.n.text, nid: f.n.id })); } catch (e2) {}
     ROUTE.hash = "#/qna/requests/new";
   }
   function noteDl(p) {
     const txt = notesText(p || "all");
     try { const url = URL.createObjectURL(new Blob(["\ufeff" + txt], { type: "text/plain;charset=utf-8" })), dl = document.createElement("a"); dl.href = url; dl.download = "강의노트_" + todayStr() + ".txt"; document.body.appendChild(dl); dl.click(); setTimeout(() => { URL.revokeObjectURL(url); dl.remove(); }, 1500); toast("노트를 텍스트 파일로 내려받았어요."); }
-    catch (e2) { toast("이 브라우저에서는 내려받기가 막혀 있어요. ‘복사’를 이용해 주세요.", "warn"); }
+    catch (e2) { toast("내려받기가 막혀 있어요. ‘복사’를 써 주세요.", "warn"); }
   }
-  function noteCopy() { const txt = notesText("all"); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("노트를 복사했어요. 메모장 · 카톡에 붙여 넣어 보세요."), () => toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn")); else toast("복사가 막혀 있어요. ‘내려받기’를 이용해 주세요.", "warn"); }
+  function noteCopy() { const txt = notesText("all"); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("노트를 복사했어요."), () => toast("복사가 막혀 있어요. ‘내려받기’를 써 주세요.", "warn")); else toast("복사가 막혀 있어요. ‘내려받기’를 써 주세요.", "warn"); }
   function notePrint(a) { const el = document.querySelector(".page.vn") || document.querySelector(".page"); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "내노트_" + todayStr() + ".pdf", { width: 820, title: "내 노트" }, (msg) => toast(msg)); else window.print(); }
-  function vtNowBtn() { const t = vtNow(), tf = document.getElementById("vt-note-t"); if (t == null) toast("영상 시간을 읽지 못했어요. 3:12처럼 직접 적어 주세요.", "warn"); else if (tf) tf.value = fmtT(t); }
-  function vtSeekBtn(t) { t = Number(t) || 0; if (!vtSeek(t)) toast("강사님이 영상을 연결하면 " + fmtT(t) + " 장면으로 바로 이동해요."); }
+  function vtNowBtn() { const t = vtNow(), tf = document.getElementById("vt-note-t"); if (t == null) toast("시간을 못 읽었어요. 3:12처럼 적어 주세요.", "warn"); else if (tf) tf.value = fmtT(t); }
+  function vtSeekBtn(t) { t = Number(t) || 0; if (!vtSeek(t)) toast("영상이 연결되면 " + fmtT(t) + "로 이동해요."); }
   function vtFocusFill() { const tf = document.getElementById("vt-note-t"), t = vtNow(); if (tf && !tf.value && t != null && t > 0) tf.value = fmtT(t); }
   function vtFs() { const st = document.getElementById("vt-stage"); if (!st) return; const d = document; if (d.fullscreenElement) d.exitFullscreen && d.exitFullscreen(); else if (st.requestFullscreen) st.requestFullscreen().catch(() => toast("이 화면에서는 전체 화면을 쓸 수 없어요.", "warn")); else if (st.webkitRequestFullscreen) st.webkitRequestFullscreen(); }
   function vodDone(pid, lid) {
@@ -1034,7 +1034,7 @@
     if (!X.markDone(me.vodMid, pid, lid)) { toast("수강 기간이 끝난 강의예요.", "warn"); return; }
     const x = vodList().find((v) => v.p.id === pid), lz = x ? X.lessons(x.p) : [], k = lz.findIndex((l) => l.id === lid), nx = lz[k + 1];
     checkLevelUp();
-    if (nx) ROUTE.hash = learnHref(pid, nx.id); else { render(); toast(vodPctOf(x) >= 100 ? "모든 강의를 끝까지 봤어요! DOOGO CLASS 클래스 페이지에서 후기를 남겨 주세요." : "완료했어요."); }
+    if (nx) ROUTE.hash = learnHref(pid, nx.id); else { render(); toast(vodPctOf(x) >= 100 ? "모든 강의를 봤어요! 후기를 남겨 주세요." : "완료했어요."); }
   }
   function notesText(pid) {
     let out = me.name + "님의 강의 노트 · " + todayStr() + "\n";
@@ -1388,7 +1388,7 @@
       if (draft.files.length >= 3) { toast("파일은 최대 3개까지 올릴 수 있어요.", "warn"); return; }
       if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
         // 1MB 이하 PDF는 강사가 열어 볼 수 있게 내용까지 보관 (그보다 크면 파일 이름만)
-        if (file.size > 1048576) { draft.files.push({ type: "pdf", name: file.name }); refreshThumbs(); toast("1MB가 넘는 PDF는 이름만 올라가요. 사진으로 찍어 올리면 강사님이 바로 볼 수 있어요.", "warn"); return; }
+        if (file.size > 1048576) { draft.files.push({ type: "pdf", name: file.name }); refreshThumbs(); toast("1MB 넘는 PDF는 이름만 올라가요.", "warn"); return; }
         const fr = new FileReader();
         fr.onload = () => { if (draft.files.length < 3) draft.files.push({ type: "pdf", name: file.name, data: fr.result }); refreshThumbs(); };
         fr.readAsDataURL(file);
@@ -1617,7 +1617,7 @@
     const i = (P.questions || []).findIndex((x) => x.id === id && !x.answer); if (i < 0) return false;
     const qq = P.questions[i]; P.questions.splice(i, 1); saveProgress();
     if (qq.coach && me.vodMid && VX() && VX().giveBackCoach) VX().giveBackCoach(me.vodMid, qq.id);
-    ROUTE.hash = "#/qna/requests"; toast(qq.coach ? "질문을 취소했어요. 코칭권 1회를 돌려드렸어요." : "요청을 취소했어요.");
+    ROUTE.hash = "#/qna/requests"; toast(qq.coach ? "질문을 취소하고 코칭권을 돌려드렸어요." : "요청을 취소했어요.");
     return true;
   }
   function pageRequestDetail(id) {
@@ -2674,7 +2674,7 @@
         else toast("비공개 글은 작성자와 강사님만 볼 수 있어요.", "warn");
         break;
       case "req-remove": reqDraft.splice(Number(a.dataset.i), 1); { const t = document.getElementById("req-thumbs"); if (t) t.innerHTML = reqThumbs(); } break;
-      case "guide-close": { P.guideClosed = P.guideClosed || {}; P.guideClosed[a.dataset.wk] = Date.now(); saveProgress(); render(); toast(Number(a.dataset.wk) === 1 ? "시작 가이드를 완료했어요! 이제 1주차 과제를 시작해 보세요." : a.dataset.wk + "주차 시작 가이드를 완료했어요!"); break; }
+      case "guide-close": { P.guideClosed = P.guideClosed || {}; P.guideClosed[a.dataset.wk] = Date.now(); saveProgress(); render(); toast(Number(a.dataset.wk) === 1 ? "시작 가이드 완료! 1주차 과제를 시작해요." : a.dataset.wk + "주차 시작 가이드를 완료했어요!"); break; }
       case "toggle-guide": { const g = a.dataset.id, before = guideGroup(); P.guide = P.guide || {}; if (P.guide[g]) delete P.guide[g]; else P.guide[g] = Date.now(); saveProgress(); render(); guideDoneCheck(before); break; }
       case "read-all": P.readNotices = P.readNotices || {}; D.notices.forEach((n) => { P.readNotices[n.id] = Date.now(); }); saveProgress(); render(); break;
       case "toggle-doc": docToggle(a.dataset.id); render(); break;
@@ -2685,7 +2685,7 @@
       case "clear-chat": P.chat = []; saveProgress(); refreshChats(); break;
       case "bot-open": document.getElementById("app").classList.remove("nav-open"); botOpen = true; DB.store.set(KEY_BOT, true); renderBotFab(route()); { const i = document.getElementById("chat-input-fab") || document.getElementById("chat-input-page"); if (i && !window.matchMedia("(max-width: 720px)").matches) i.focus(); } break;
       case "bot-close": botOpen = false; DB.store.set(KEY_BOT, false); renderBotFab(route()); break;
-      case "not-ready": toast("자료를 준비하고 있어요. 올라오면 공지로 알려 드릴게요."); break;
+      case "not-ready": toast("자료를 준비 중이에요. 곧 알려 드릴게요."); break;
       case "play": playModal(a.dataset.cat, a.dataset.id); break;
       case "cert-preview": certPreview = !certPreview; document.getElementById("main").innerHTML = pageCertificate(); if (certPreview) { const c = document.querySelector(".cert-wrap"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } break;
       case "rp-week": rpWeek = a.dataset.k; { const y = window.scrollY; render(); window.scrollTo(0, y); } break;
@@ -2788,7 +2788,7 @@
       const title = f.title.value.trim(), body = f.body.value.trim();
       if (!title || !body) { toast("제목과 내용을 모두 적어 주세요.", "warn"); return; }
       const vod = TRACK === "vod";
-      if (vod && !preview && coachN() <= 0) { toast("남은 1:1 코칭권이 없어요. DOOGO CLASS에서 코칭권을 사면 질문할 수 있어요.", "warn"); ROUTE.hash = "#/qna"; return; }
+      if (vod && !preview && coachN() <= 0) { toast("남은 1:1 코칭권이 없어요.", "warn"); ROUTE.hash = "#/qna"; return; }
       const q = { id: DB.uid("q"), category: f.category.value, title, body, images: reqDraft.slice(), at: Date.now(), answer: "", answeredAt: 0 };
       if (vod) q.coach = true;
       P.questions.push(q);
@@ -2797,7 +2797,7 @@
       if (vod) vtAskDone(q.id);
       reqDraft = [];
       ROUTE.hash = "#/qna/requests/" + q.id;
-      toast(vod ? "코칭 질문을 남겼어요. 코칭권 1회가 차감됐어요" + (preview ? "" : " (남은 " + coachN() + "회)") + "." : "1:1 요청을 남겼어요. 강사님 답변이 달리면 여기서 확인할 수 있어요.");
+      toast(vod ? "질문을 남겼어요 · 코칭권 1회 사용" + (preview ? "" : " (남은 " + coachN() + "회)") : "1:1 요청을 남겼어요.");
     }
   }
   let noteTimer = null, journalTimer = null;

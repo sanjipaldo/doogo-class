@@ -294,7 +294,7 @@
         DB.session.setAdmin(S);
         const next = DB.store.get("moonclass:after-login", ""); DB.store.remove("moonclass:after-login");
         ROUTE.hash = r.role === "master" ? "#/center/master" : r.role === "partner" ? "#/center/partner" : r.role === "media" ? "#/center/media" : r.role === "instructor" && next && /^#\/center\/(?!master)/.test(next) ? next : "#/center";
-        toast(r.role === "master" ? (r.staffId ? r.name + "님, 운영자로 로그인했어요." : "마스터 관리자로 로그인했어요.") : r.role === "partner" ? r.name + " 파트너님, 환영합니다!" : r.role === "media" ? (r.name || "온드미디어") + " 님, 온드미디어 센터에 오신 걸 환영해요!" : r.name + (r.role === "coach" ? " 코치님, 환영합니다!" + (picked ? " · " + picked + " 강사님 강의" : "") : " 강사님, 환영합니다!"));
+        toast(r.role === "master" ? (r.staffId ? r.name + "님, 운영자로 로그인했어요." : "마스터 관리자로 로그인했어요.") : r.role === "partner" ? r.name + " 파트너님, 환영합니다!" : r.role === "media" ? (r.name || "온드미디어") + " 님, 환영합니다!" : r.name + (r.role === "coach" ? " 코치님, 환영합니다!" + (picked ? " · " + picked : "") : " 강사님, 환영합니다!"));
       });
     }).catch(() => { err.textContent = "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."; }).then(() => { if (btn) btn.disabled = false; });
   }
@@ -339,7 +339,7 @@
     DB.session.setAdmin(S); DB.store.remove("moonclass:after-login");
     coach.lastLoginAt = Date.now(); DB.save(); coachPick = null;
     ROUTE.hash = "#/center"; render();
-    toast(coach.name + " 코치님, 환영합니다!" + (many ? " · " + ins.displayName + " 강사님 강의" : ""));
+    toast(coach.name + " 코치님, 환영합니다!" + (many ? " · " + ins.displayName : ""));
   }
   // 강의 고르기 목록에서 하나를 누르면: 로그인 중이면 그 강의로 로그인, 코치센터 안이면 그 강의로 옮기기
   function coachGo(iid, el) {
@@ -374,7 +374,7 @@
       if (r && r.ok) { S.courses = list; DB.session.setAdmin(S); }
       if (list.length < 2) { toast("지금은 이 강의 하나만 맡고 있어요.", "warn"); return; }
       coachPickModal(list, IID(), me.name);
-    }, () => toast("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"));
+    }, () => toast("서버에 연결하지 못했어요.", "warn"));
   }
   function logout() {
     S = null; DB.session.setAdmin(null); ROUTE.hash = "#/center/login";
@@ -905,7 +905,7 @@
       if (/^https?:\/\//i.test(e.place)) o.url = e.place; else if (e.place) o.place = e.place;
       return o;
     }));
-    commit(insName(iid) + " " + co.name + " 일정을 저장했어요. 수강생 대시보드 · 수업 캘린더에 바로 보여요.");
+    commit(co.name + " 일정을 저장했어요.");
     if (then === "pv") planSplit(iid, co.id);
   }
   /** 수강생 화면 (오른쪽 분할) — 그 기수 수강생처럼 대시보드 · 수업 캘린더를 봐요 (이 브라우저의 미리보기 세션) */
@@ -969,7 +969,7 @@
     const id = DB.uid("cur");
     c.curricula.push({ id, name, weeks });
     ui.curId = id;
-    commit("‘" + name + "’ 커리큘럼을 만들었어요. 이제 바꿀 부분을 고쳐 주세요.");
+    commit("‘" + name + "’ 커리큘럼을 만들었어요.");
   }
   /* ---------------- 강사: 과제 검수 ---------------- */
   function pageReviews() {
@@ -1024,7 +1024,7 @@
     Promise.all((sub.files || []).filter((f) => f.type === "image" && f.data).slice(0, 6).map(asData)).then((list) => {
       editItem("showcase", "", "", { title: m.title, missionId: main ? mid : "", week: w.no, author: (sco ? sco.name + " " : "") + DB.maskName(s.name), images: list.filter(Boolean),
         desc: sub.text ? String(sub.text).slice(0, 400) : (sub.link ? "제출 링크: " + sub.link : "") });
-      toast("사진과 과제를 채웠어요. 잘한 점을 코멘트로 적고 저장해 주세요.");
+      toast("사진 · 과제를 채웠어요. 코멘트를 적어 주세요.");
     });
   }
   function reviewModal(sid, mid) {
@@ -1227,7 +1227,7 @@
       const tok = k === "hr" ? "---" : "[사진" + n + "]";
       const before = v.slice(0, le), pre = before && !before.endsWith("\n") ? "\n" : "";
       nv = before + pre + tok + "\n" + v.slice(le).replace(/^\n/, ""); ca = cb = before.length + pre.length + tok.length + 1;
-      if (k === "img" && n > imgDraft.length) toast("사진 " + n + "번을 아래 ‘사진’에 올려 주세요. 올린 순서대로 1, 2, 3…이에요.");
+      if (k === "img" && n > imgDraft.length) toast("사진 " + n + "번을 아래 ‘사진’에 올려 주세요.");
     } else {
       const mark = { h: "## ", ul: "- ", ol: "", note: "> " }[k];
       let i = 0;
@@ -1282,7 +1282,7 @@
   const refreshAtt = () => { const el = document.getElementById("att-editor"); if (el) el.innerHTML = attEditorHtml(); };
   function addAttFiles(files) {
     Array.from(files || []).forEach((file) => {
-      if (file.size > MAX_FILE) { toast(file.name + " 은(는) 2MB가 넘어요. 구글 드라이브 링크로 추가해 주세요.", "warn"); return; }
+      if (file.size > MAX_FILE) { toast("2MB 넘는 파일은 링크로 추가해 주세요.", "warn"); return; }
       const r = new FileReader();
       r.onload = () => { attDraft.push({ id: DB.uid("a"), name: file.name, data: r.result, size: file.size }); refreshAtt(); };
       r.readAsDataURL(file);
@@ -1363,7 +1363,7 @@
       if (def.prepend) list.unshift(item); else list.push(item);
     }
     if (def.after) def.after(c);
-    if (!DB.save()) { if (!id) list.splice(list.indexOf(item), 1); toast("저장 공간이 부족해요. 큰 파일은 지우고 링크로 바꿔 주세요.", "warn"); DB.load(); return; }
+    if (!DB.save()) { if (!id) list.splice(list.indexOf(item), 1); toast("저장 공간이 부족해요.", "warn"); DB.load(); return; }
     commit(josa(def.name, "을", "를") + " 저장했어요.");
   }
   function deleteItem(coll, id, ctx) {
@@ -1456,7 +1456,7 @@
   function setBrandPhoto(v) {
     const b = C().brand, prev = b.photo;
     b.photo = v;
-    if (!DB.save()) { b.photo = prev; toast("저장 공간이 부족해요. 더 작은 사진을 올려 주세요.", "warn"); return; }
+    if (!DB.save()) { b.photo = prev; toast("저장 공간이 부족해요. 작은 사진으로 올려 주세요.", "warn"); return; }
     const box = document.getElementById("brand-photo-box");
     if (box) box.innerHTML = brandPhotoBox(v);
     toast(v ? "프로필 사진을 저장했어요." : "프로필 사진을 지웠어요.");
@@ -1468,7 +1468,7 @@
     b.worldClock = !!(f.worldClock && f.worldClock.checked);
     if (f.mlUrl) {
       const u = f.mlUrl.value.trim();
-      if (u && !/^https?:\/\//i.test(u)) { toast("메인 강의 링크는 https:// 로 시작하는 주소로 넣어 주세요.", "warn"); return; }
+      if (u && !/^https?:\/\//i.test(u)) { toast("메인 강의 링크(https://)를 확인해 주세요.", "warn"); return; }
       b.mainLec = { on: !!f.mlOn.checked, platform: f.mlPlatform.value.trim(), label: f.mlLabel.value.trim() || "메인 강의 들으러 가기", url: u, note: f.mlNote.value.trim() };
       b.lessonLabel = f.lessonLabel.value.trim();
     }
@@ -1676,7 +1676,7 @@
     const data = { name, phone4, memo: f.cmemo.value.trim(), status: f.cstatus.value, track, perms };
     if (id) Object.assign(DB.coach(iid, id), data);
     else list.push(Object.assign({ id: DB.uid("coach"), createdAt: todayStr() }, data));
-    commit(name + " 코치 계정을 저장했어요 · " + TRACK_PILL[track][0] + " 메뉴 " + perms.length + "개." + (id ? "" : " ‘코치’ 탭에서 이름 + 뒷자리로 로그인하면 돼요."));
+    commit(name + " 코치 계정을 저장했어요.");
   }
   // 코치 수정 창: 담당 두잉고를 바꾸면 그쪽 메뉴 묶음만 보여요 (form[data-track] · admin.css)
   document.addEventListener("change", (e) => { const t = e.target; if (!isActive() || t.name !== "ctrack" || !t.form || t.form.id !== "coach-form") return; t.form.dataset.track = t.value; });
@@ -2174,8 +2174,8 @@
     const lb = inqStatus(x)[1], ro = "’" + josa(lb, "으로", "로").slice(lb.length);
     actLog(x.name + " 님 " + (inqIsVod(x) ? "두고 파트너스 지원" : "입점 문의") + "을 ‘" + lb + ro + " 바꿨어요."); DB.save(); render();
     const nx = !inqTodo(x) ? DB.inquiries().filter((q) => q.id !== x.id && inqIsVod(q) === inqIsVod(x) && inqTodo(q)).sort((a, b) => (a.at || 0) - (b.at || 0))[0] : null;
-    const reg = st === "done" && !x.addTo && !inqAcc(x) ? (inqIsVod(x) ? " 이제 ‘VOD 강사로 등록’을 눌러 강사센터 계정을 열어 주세요." : " 이제 ‘LIVE 플랫폼 만들기’로 강사센터 계정을 열어 주세요.") : "";
-    toast("‘" + lb + ro + " 바꿨어요." + reg + (inqAff(x) ? " 파트너센터에도 보여요." : "") + (nx ? " 다음 차례는 " + nx.name + " 님이에요." : ""));
+    const reg = st === "done" && !x.addTo && !inqAcc(x) ? (inqIsVod(x) ? " ‘VOD 강사로 등록’을 눌러 주세요." : " ‘LIVE 플랫폼 만들기’를 눌러 주세요.") : "";
+    toast("‘" + lb + ro + " 바꿨어요." + reg);
   }
   /** 진행 단계: 접수 → 열람 → 상담 → 계약 완료(또는 계약 안 됨) → VOD 강사 등록 · 플랫폼 오픈 */
   const inqIsPt = (x) => x.source === "partners" || /^\[두고 파트너스/.test(x.where || "");
@@ -2277,7 +2277,7 @@
     const names = Array.from(f.querySelectorAll("input[name=ext]:checked")).map((i) => i.value);
     if (!names.length) { err.textContent = "연결할 크리에이터를 골라 주세요."; return; }
     const n = names.reduce((a, nm) => a + linkExt(nm, acc.id), 0);
-    commit(acc.displayName + " 계정에 두고클래스 강의 " + n + "개를 연결했어요. 강사님 강사센터 DOOGO CLASS 탭에 보여요.");
+    commit("두고클래스 강의 " + n + "개를 연결했어요.");
   }
   /** 복사 (안 되면 글 상자를 골라 두고 안내) */
   function copyOut(text, msg, ta) {
@@ -2621,7 +2621,7 @@
     }
     if (!DB.saveBill(b)) { err.textContent = "저장하지 못했어요. 잠시 후 다시 시도해 주세요."; return; }
     closeModal(); render();
-    toast(master ? "이용료 기록을 저장했어요." : old ? "신청 내용을 고쳤어요." : cohortName + " 신청을 보냈어요. 확인 후 연락드릴게요.");
+    toast(master ? "이용료 기록을 저장했어요." : old ? "신청 내용을 고쳤어요." : cohortName + " 신청을 보냈어요.");
   }
   const findBill = (id) => DB.bills().find((x) => x.id === id);
   function payForm(b) {
@@ -2661,7 +2661,7 @@
       if (!f.paidAt.value) { document.getElementById("py-error").textContent = "입금일을 골라 주세요."; return; }
       Object.assign(b, { paidAt: f.paidAt.value, vat });
       if (f.depositor.value.trim()) b.depositor = f.depositor.value.trim(); else delete b.depositor;
-      DB.saveBill(b); closeModal(); render(); toast("입금을 확인했어요. 세금계산서를 발행하고 기수를 열어 주세요.");
+      DB.saveBill(b); closeModal(); render(); toast("입금을 확인했어요. 기수를 열어 주세요.");
       return;
     }
     if (f.id === "inv-form") {
@@ -2685,7 +2685,7 @@
     DB.data.cohorts.push(co);
     Object.assign(b, { cohortId: co.id, openedAt: todayStr(), cohortName: name, startDate: start, vat });
     DB.saveBill(b);
-    commit(insName(b.instructorId) + " " + name + "를 열었어요. 강사센터 ‘기수 관리’에 바로 보여요.");
+    commit(insName(b.instructorId) + " " + name + "를 열었어요.");
   }
 
   /* 마스터: 기수 신청 · 매출 */
@@ -2866,7 +2866,7 @@
     if (!fresh.length) return;
     DB.store.set("moonclass:pmsg-seen", seen.concat(fresh.map((f) => f.k)).slice(-300));
     const f = fresh.slice().sort((a, b) => b.m.at - a.m.at)[0];
-    setTimeout(() => toast("🔔 " + (f.m.name || "파트너") + " 파트너 메시지 (" + f.q.name + " 님 문의): " + String(f.m.text).slice(0, 40) + (fresh.length > 1 ? " 외 " + (fresh.length - 1) + "건" : "")), 400);
+    setTimeout(() => toast("🔔 " + (f.m.name || "파트너") + " 파트너 새 메시지" + (fresh.length > 1 ? " 외 " + (fresh.length - 1) + "건" : "")), 400);
   }
   function notifyPartnerSide() {
     const p = affMe(); if (!p) return;
@@ -2874,7 +2874,7 @@
     affInqs(p).forEach((q) => { const u = inqUpdated(q); const k = q.id + ":" + u; if (u > (q.pSeen || 0) && seen.indexOf(k) === -1 && u !== q.at) fresh.push({ q, k }); });
     if (!fresh.length) return;
     DB.store.set("moonclass:pnote-seen", seen.concat(fresh.map((f) => f.k)).slice(-300));
-    setTimeout(() => toast("🔔 입점 문의에 새 소식이 있어요: " + fresh.map((f) => f.q.name + " 님").slice(0, 2).join(", ") + (fresh.length > 2 ? " 외 " + (fresh.length - 2) + "건" : "")), 400);
+    setTimeout(() => toast("🔔 입점 문의 새 소식 " + fresh.length + "건"), 400);
   }
   function notifyBills() {
     const seen = DB.store.get("moonclass:bill-seen", []) || [];
@@ -3019,7 +3019,7 @@
     if (yt && !yid) { document.getElementById("pf-error").textContent = "유튜브 주소를 확인해 주세요."; return; }
     const c = C();
     c.pages[f.dataset.key] = { title: f.title.value.trim(), summary: f.summary.value.trim(), youtubeId: yid, body: f.body.value, attachments: attDraft.slice() };
-    if (!DB.save()) { toast("저장 공간이 부족해요. 큰 파일은 링크로 바꿔 주세요.", "warn"); DB.load(); return; }
+    if (!DB.save()) { toast("저장 공간이 부족해요.", "warn"); DB.load(); return; }
     commit("추가 메뉴 내용을 저장했어요.");
   }
 
@@ -3160,7 +3160,7 @@
     }
     // 스토어에 먼저 올린 이 강사님 클래스(외부 크리에이터)를 이 계정으로
     const linked = Array.from(f.querySelectorAll("input[name=ext]:checked")).reduce((a, i) => a + linkExt(i.value, nid), 0);
-    commit(displayName + " VOD 강사 계정을 만들었어요. 강사센터 로그인: " + name + " / 전화번호 뒷자리" + (linked ? " · 두고클래스 강의 " + linked + "개 연결" : " · DOOGO CLASS › VOD 클래스 관리에서 이 강사님 클래스를 만들어 주세요."));
+    commit(displayName + " VOD 강사 계정을 만들었어요" + (linked ? " · 강의 " + linked + "개 연결" : "") + ".");
     insDoneModal(DB.instructor(nid), linked);
   }
   function saveIns(f) {
@@ -3207,7 +3207,7 @@
       if (pa && !affList().some((p) => (p.instructors || []).some((l) => l.iid === nid))) { (pa.instructors = pa.instructors || []).push({ iid: nid, rs: null, since: todayStr(), fromInq: inq.id }); }
       DB.saveInquiry(inq);
     }
-    commit(displayName + " 플랫폼을 만들었어요. 강사 로그인: " + name + " / 전화번호 뒷자리" + (fee ? " · 1기 이용료 기록" : ""));
+    commit(displayName + " 플랫폼을 만들었어요.");
     insDoneModal(DB.instructor(nid), 0);
   }
 
@@ -3253,7 +3253,7 @@
   function vdBankAct(action, nos, okMsg) {
     const list = [].concat(nos); let ok = 0, fail = "";
     return list.reduce((pr, no) => pr.then(() => VX().payApi(action, { no }).then((r) => { if (r && r.ok) ok++; else fail = (r && r.message) || "처리하지 못했어요."; }, () => { fail = "서버에 닿지 못했어요."; })), Promise.resolve())
-      .then(() => DB.remote.refresh()).then(() => { ui.vdBankLog = undefined; closeModal(); render(); if (ok) { actLog(okMsg); toast(okMsg + (fail ? " · " + (list.length - ok) + "건은 못 했어요: " + fail : "")); } else toast(fail || "처리하지 못했어요.", "warn"); });
+      .then(() => DB.remote.refresh()).then(() => { ui.vdBankLog = undefined; closeModal(); render(); if (ok) { actLog(okMsg); toast(okMsg + (fail ? " · " + (list.length - ok) + "건 실패" : "")); } else toast(fail || "처리하지 못했어요.", "warn"); });
   }
   function vdBankLoad() {
     if (!vdSrv() || ui.vdBankLog !== undefined || ui.vdBankBusy) return;
@@ -3874,7 +3874,7 @@
     const hist = (prev.hist || []).concat(prev.at ? [keep(prev)] : []).slice(-50);
     v.insRates[key] = Object.assign(vals, { addon: vals.coach, memo: f.memo.value.trim(), at: Date.now(), from, by: S && S.staffId ? (staffOf(S.staffId) || {}).name || "운영자" : "마스터", hist });
     const name = /^ext:/.test(key) ? key.slice(4) : vdName(key);
-    commit(name + " 강사 정산 비율을 확정했어요 (" + X.RATE_KEYS.map((x) => x[1] + " " + vals[x[0]] + "%").join(" · ") + " · " + fmtFull(DB.date.toStr(new Date(from))) + "부터).");
+    commit(name + " 정산 비율을 확정했어요.");
   }
   function saveVodTax(f) {
     const v = VD(), X = VX(), st = v.settings, pc = (x) => { const n = Math.round(Number(x)); return x !== "" && n >= 0 && n <= 100 ? n : null; }, rates = {};
@@ -3882,7 +3882,7 @@
     st.taxMode = "std"; // 2026-11: 기준은 하나 (판매가 − RS − PG 수수료) × 비율
     st.rates = rates;
     st.share = rates.vod; st.addonShare = rates.coach;
-    commit("기본 정산 비율을 저장했어요 (" + X.RATE_KEYS.map((x) => x[1] + " " + rates[x[0]] + "%").join(" · ") + ").");
+    commit("기본 정산 비율을 저장했어요.");
   }
   function saveVodPrice(f) {
     const p = vdP(f.dataset.id); if (!p) return;
@@ -3895,7 +3895,7 @@
     if (cp !== undefined) p.coach = Object.assign({}, p.coach || {}, { price: cp, n: cn || null });
     if (tp !== undefined) p.tea = Object.assign({}, p.tea || {}, { price: tp, min: tm || null, mode: "online" });
     p.updatedAt0 = Date.now();
-    commit("‘" + p.title + "’ 가격을 저장했어요. 스토어에 바로 반영돼요.");
+    commit("가격을 저장했어요.");
   }
   function saveVodAd(f) {
     const v = VD(), amt = Math.round(Number(f.amount.value)), err = document.getElementById("vda-ad-err"), iid = f.iid.value, pid = f.pid.value || "";
@@ -3905,12 +3905,12 @@
     if (f.day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return no("집행일을 골라 주세요.");
     if (!(amt > 0) || amt > 1e10) return no("광고비를 원 단위 숫자로 적어 주세요.");
     const p = pid ? vdP(pid) : null;
-    if (pid && (!p || p.iid !== iid)) return no("고른 강의가 이 강사님 강의가 아니에요. 강의를 다시 골라 주세요.");
-    if (vdAdLocked(iid, ym)) return no(vdName(iid) + " 강사님 " + vdYMtxt(ym) + " 정산이 이미 확정됐어요. 강사 정산에서 확정을 취소한 뒤 적거나, 다음 달 광고비로 적어 주세요.");
+    if (pid && (!p || p.iid !== iid)) return no("이 강사님 강의가 아니에요. 다시 골라 주세요.");
+    if (vdAdLocked(iid, ym)) return no(vdYMtxt(ym) + " 정산은 이미 확정됐어요.");
     const ch = f.ch && AD_CH.some((x) => x[0] === f.ch.value) ? f.ch.value : "";
     (v.adSpend = v.adSpend || []).push(Object.assign({ id: DB.uid("ad"), iid, pid, ym, amount: amt, memo: f.memo.value.trim(), at: Date.now() }, day ? { day } : {}, ch ? { ch } : {}));
     if (ui.adYM && ui.adYM !== ym) ui.adYM = ym;
-    commit(vdYMtxt(ym) + " 광고비 " + won(amt) + "을 적었어요. 강사 분담분은 그 달 정산에서 빠지고 강사센터에도 보여요.");
+    commit(vdYMtxt(ym) + " 광고비를 적었어요.");
   }
   // 정산 명세서 (마스터 · 강사 같은 화면)
   /** 세금계산서 안내: 누가 누구에게 얼마로 (공급가액 + 부가세) — 사업자 강사만 */
@@ -4059,7 +4059,7 @@
     Object.assign(x, { name, phone4, displayName, status: st, contact: Object.assign({}, x.contact || {}, { phone, email }) });
     if (pf.type !== t || (pf.type && pf.typeBy !== "master") || (!pf.type && t === "biz")) x.vodSettle = Object.assign({}, pf, { type: t, typeBy: "master", typeAt: Date.now() });
     closeModal();
-    commit(displayName + " 강사 정보를 저장했어요." + (st === "active" ? "" : " 강사센터 로그인을 멈췄어요."));
+    commit(displayName + (st === "active" ? " 강사 정보를 저장했어요." : " 강사 로그인을 멈췄어요."));
   }
   /** 스토어 노출 끄기 (insOff 에 넣기 · 이미 있으면 그대로) */
   const vdInsOffAdd = (key) => { const v = VD(); v.insOff = Array.isArray(v.insOff) ? v.insOff : []; if (v.insOff.indexOf(key) < 0) v.insOff.push(key); };
@@ -4070,7 +4070,7 @@
     if (vdInsLive(x)) {
       confirmModal("DOOGO CLASS에서 빼기", "<b>" + nm + "</b> 강사님은 두잉고(LIVE) 플랫폼도 쓰고 있어서 계정은 그대로 두고 <b>DOOGO CLASS 탭만 닫고</b> 클래스 " + ps.length + "개를 스토어에서 내려요(새로 못 삼 · 이미 산 회원은 계속 수강 · 주문 · 정산 기록은 그대로).<br>플랫폼째 지우려면 두잉고 탭 › 강사 플랫폼 관리 › 수정 › 플랫폼 삭제를 써 주세요.", "DOOGO CLASS에서 빼기", true, () => {
         setTrack(x, "vod", false); vdInsOffAdd(x.id);
-        commit(x.displayName + " 강사님을 DOOGO CLASS에서 뺐어요. 두잉고(LIVE)는 그대로예요.");
+        commit(x.displayName + " 강사님을 DOOGO CLASS에서 뺐어요.");
       });
       return;
     }
@@ -4085,14 +4085,14 @@
     }
     confirmModal("강사 삭제", "<b>" + nm + "</b> 강사를 삭제할까요?<span class=\"vi-del-ul\"><span>· 강사센터 로그인이 막혀요.</span><span>· 클래스 " + ps.length + "개 · 강사진 카드를 스토어에서 내려요 — 새로 살 수 없어요.</span><span>· 이미 산 회원은 내 강의실에서 계속 들어요. 강사님 VOD 두잉고 강의실(자료 · 코칭)은 닫혀요.</span><span>· 주문 " + os + "건 · 정산 기록은 그대로 남고, 이번 달 판매분 정산도 그대로 진행해요.</span><span>· 아래 ‘삭제한 강사’에서 되살릴 수 있어요.</span></span>", "삭제", true, () => {
       x.status = "removed"; x.removedAt = Date.now(); vdInsOffAdd(x.id);
-      commit(x.displayName + " 강사를 삭제했어요. 로그인이 막히고 스토어에서 내렸어요.");
+      commit(x.displayName + " 강사를 삭제했어요.");
     });
   }
   function vinsRestore(id) {
     const x = DB.instructor(id); if (!x || x.status !== "removed") return;
     const v = VD(); x.status = "active"; delete x.removedAt;
     if (Array.isArray(v.insOff)) v.insOff = v.insOff.filter((k) => k !== x.id);
-    commit(x.displayName + " 강사를 되살렸어요. 다시 로그인하고 스토어에 보여요.");
+    commit(x.displayName + " 강사를 되살렸어요.");
   }
   function pageMasterVodClasses(r) {
     const id = r && r.parts[2];
@@ -4392,7 +4392,7 @@
       } catch (e) { bad++; }
     }
     render();
-    toast(ok ? "상세 이미지 " + ok + "장을 가로 " + IMG_SPEC.dimg.w + "px로 맞췄어요." + (cut ? " 긴 이미지 " + cut + "장은 " + IMG_SPEC.dimg.slice.toLocaleString() + "px씩 나눠 빨리 열리게 했어요." : "") + " 저장을 눌러야 반영돼요." + (bad ? " (" + bad + "장은 이미지가 아니거나 20MB를 넘어 뺐어요)" : "") : "올릴 수 있는 이미지가 없어요. JPG · PNG · GIF 20MB 이하만 돼요.", ok ? "" : "warn");
+    toast(ok ? "상세 이미지 " + ok + "장을 올렸어요" + (bad ? " (" + bad + "장 제외)" : "") + ". 저장해 주세요." : "JPG · PNG · GIF 20MB 이하만 올릴 수 있어요.", ok ? "" : "warn");
   }
   async function vdImg(input) {
     const file = input.files && input.files[0], k = input.dataset.vdaImg, form = document.getElementById("vda-form");
@@ -4408,8 +4408,8 @@
         const blob = await new Promise((ok) => cv.toBlob(ok, png ? "image/png" : "image/jpeg", 0.86));
         // 정식 서버: 파일 저장소 주소 · 시안: 그림 그대로(data URL) — 화면이 바로 <img> 로 보여요
         ui.vdDraft.creatorPhoto = DB.remote && DB.remote.on ? (await VX().matPut(new File([blob], png ? "creator.png" : "creator.jpg", { type: blob.type }))).url : cv.toDataURL(png ? "image/png" : "image/jpeg", 0.86);
-        render(); toast("강사 사진을 올렸어요. 저장을 눌러야 반영돼요.");
-      } catch (e) { toast("사진을 올리지 못했어요. JPG · PNG로 다시 올려 주세요.", "warn"); }
+        render(); toast("강사 사진을 올렸어요. 저장해 주세요.");
+      } catch (e) { toast("사진을 못 올렸어요. JPG · PNG로 올려 주세요.", "warn"); }
       return;
     }
     if (k === "cover") {
@@ -4418,8 +4418,8 @@
       try {
         // 세로 표지: 자르지 않고 가로 640px 안으로 줄여 JPG로
         const o = await optImg(file, IMG_SPEC.cover), x = o.parts[0], r = await VX().matPut(new File([x.blob], jpgName(file.name, 0, 1), { type: "image/jpeg" }));
-        ui.vdDraft.cover = r.url; render(); toast("표지를 올렸어요 (" + x.w + " × " + x.h + "px). 저장을 눌러야 반영돼요.");
-      } catch (e) { toast("표지를 올리지 못했어요. JPG · PNG로 다시 올려 주세요.", "warn"); }
+        ui.vdDraft.cover = r.url; render(); toast("표지를 올렸어요. 저장해 주세요.");
+      } catch (e) { toast("표지를 못 올렸어요. JPG · PNG로 올려 주세요.", "warn"); }
       return;
     }
     if (k === "thumb") {
@@ -4428,8 +4428,8 @@
       try {
         const o = await optImg(file, sp), x = o.parts[0], r = await VX().matPut(new File([x.blob], jpgName(file.name, 0, 1), { type: "image/jpeg" }));
         ui.vdDraft.thumb = r.url; ui.vdDraft.thumbMeta = { src: o.w0 + "×" + o.h0, w: x.w, h: x.h, size: r.size, small: o.w0 < sp.min[0] || o.h0 < sp.min[1] };
-        render(); toast("썸네일을 " + sp.w + " × " + sp.h + "px · " + kbTxt(x.blob.size) + "로 맞췄어요." + (ui.vdDraft.thumbMeta.small ? " 원본이 작아서 조금 흐려 보일 수 있어요." : "") + " 저장을 눌러야 반영돼요.", ui.vdDraft.thumbMeta.small ? "warn" : "");
-      } catch (e) { toast("사진을 읽지 못했어요. JPG · PNG로 다시 올려 주세요.", "warn"); }
+        render(); toast("썸네일을 맞췄어요" + (ui.vdDraft.thumbMeta.small ? " (원본이 작아요)" : "") + ". 저장해 주세요.", ui.vdDraft.thumbMeta.small ? "warn" : "");
+      } catch (e) { toast("사진을 못 읽었어요. JPG · PNG로 올려 주세요.", "warn"); }
       return;
     }
     const max = k === "thumb" ? 1200 : 1400, rd = new FileReader();
@@ -4437,7 +4437,7 @@
       let w = img.width, h = img.height, cv = document.createElement("canvas");
       if (k === "thumb") { const r = 4 / 3, sw = w / h > r ? h * r : w, sh = w / h > r ? h : w / r; cv.width = Math.min(max, Math.round(sw)); cv.height = Math.round(cv.width / r); cv.getContext("2d").drawImage(img, (w - sw) / 2, (h - sh) / 2, sw, sh, 0, 0, cv.width, cv.height); }
       else { const sc = Math.min(1, max / w); cv.width = Math.round(w * sc); cv.height = Math.round(h * sc); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height); }
-      ui.vdDraft[k] = cv.toDataURL("image/jpeg", 0.82); render(); toast(k === "thumb" ? "썸네일을 올렸어요. 저장을 눌러야 반영돼요." : "상세 이미지를 올렸어요. 저장을 눌러야 반영돼요.");
+      ui.vdDraft[k] = cv.toDataURL("image/jpeg", 0.82); render(); toast(k === "thumb" ? "썸네일을 올렸어요. 저장해 주세요." : "상세 이미지를 올렸어요. 저장해 주세요.");
     }; img.onerror = () => toast("사진을 읽지 못했어요.", "warn"); img.src = rd.result; };
     rd.readAsDataURL(file);
   }
@@ -4667,7 +4667,7 @@
           '<button type="button" class="a-icon-btn" data-action="vda-rail-move" data-k="' + r.k + '" data-dir="-1" aria-label="위로"' + (i === 0 ? " disabled" : "") + ">" + icon("arrowUp", "sm") + '</button><button type="button" class="a-icon-btn" data-action="vda-rail-move" data-k="' + r.k + '" data-dir="1" aria-label="아래로"' + (i === rs.length - 1 ? " disabled" : "") + ">" + icon("arrowDown", "sm") + "</button></li>").join("") + "</ol></section>" +
         '<section class="a-card hk-ed" id="hk-ed">' + hmEditor(sel) + "</section></div>";
   }
-  function saveVodRails() { railSync(); commit("이름표 · 제목을 저장했어요. 스토어 첫 화면에 바로 보여요."); }
+  function saveVodRails() { railSync(); commit("이름표 · 제목을 저장했어요."); }
   /* 판매 영역: 지금 운영하는 사업만 켜요. 끄면 스토어 메뉴 · 홈 · 카테고리 아이콘 · 전체 클래스 · 검색 · 강사 페이지에서 숨겨요 (이미 산 수강생은 그대로) */
   const BIZ_NAME = { ebook: "전자책", flive: "LIVE 무료강의 → 얼리버드", live: "온/오프라인 강의 (유료)", free: "무료 VOD 특강" };
   function vdBizCard(v) {
@@ -4764,7 +4764,7 @@
     const note = [f.pre.value, f.note.value.trim()].filter(Boolean).join(" · ").slice(0, 160);
     if (!note) { toast("반려 사유를 골라 주세요.", "warn"); return; }
     o.claim = { k: c.k, st: "no", why: c.why, text: c.text, at: c.at, note, noAt: Date.now(), by: (staffMe() || {}).name || "마스터" }; delete o.refundReq;
-    commit("‘" + o.no + "’ " + X.CLAIM_K[c.k] + " 요청을 반려했어요. 회원 화면에 사유가 보여요.");
+    commit(X.CLAIM_K[c.k] + " 요청을 반려했어요.");
   }
   function saveVodRefund(f) {
     const v = VD(), o = v.orders.find((x) => x.id === f.dataset.id), amt = Math.round(Number(f.amt.value)), errEl = document.getElementById("vr-error");
@@ -4792,7 +4792,7 @@
       grp.filter(done).forEach((x) => { const ra = grpAmt(x); Object.assign(x, { status: "refunded", refundedAt: Date.now(), refundAmount: ra, refundWhy: "함께 결제한 강의 환불", refundBy: by }, real ? { pg: Object.assign({}, x.pg || {}, { st: "done", at: Date.now() }) } : {}); extra += ra; });
       // 무통장 (또는 PG 없이 처리한 가상계좌): 마스터가 직접 송금할 차례 → 환불 · 취소 관리 ‘계좌 송금 대기’
       if (acct && done(o) && !real) o.refundPay = Object.assign({}, acct, { amount: amt + extra, st: "wait", at: Date.now() });
-      commit(o.no + (amt < o.amount ? " 부분 환불(" + won(amt) + ")" : " 환불") + "을 처리했어요." + (extra ? " 함께 결제한 상품 " + won(extra) + "도 환불했어요." : ""));
+      commit((amt < o.amount ? "부분 환불(" + won(amt) + ")" : "환불") + "을 처리했어요.");
     };
     if (!real) return apply(null);
     // 정식 서버: 포트원 결제 취소가 성공한 주문만 환불 완료로 바꿔요 (실패하면 그대로 두고 알려 드려요)
@@ -4802,7 +4802,7 @@
     jobs.reduce((pr, j) => pr.then(() => VX().payApi("refund", Object.assign({ no: j[0], amount: j[1], reason: f.why.value }, acct && o.method === "vbank" ? { refundAccount: acct } : {})).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "결제 취소에 실패했어요."); okNos.push(j[0]); })), Promise.resolve())
       .then(() => apply(okNos), (e) => {
         delete f.dataset.busy;
-        if (okNos.length) { apply(okNos); toast(String(e.message) + " — 일부만 취소됐어요. 포트원 콘솔에서 확인해 주세요.", "warn"); return; }
+        if (okNos.length) { apply(okNos); toast("일부만 취소됐어요. 포트원에서 확인해 주세요.", "warn"); return; }
         errEl.textContent = String(e.message) + " 포트원 콘솔에서 결제 상태를 확인해 주세요.";
       });
   }
@@ -4830,7 +4830,7 @@
     if (!r) { closeModal(); return; }
     if (no.length < 6) { document.getElementById("vs-inv-error").textContent = "승인번호를 적어 주세요."; return; }
     Object.assign(r, { invReqAt: Date.now(), invNo: no });
-    commit("세금계산서 발행을 알렸어요. 마스터가 확인하면 지급돼요.");
+    commit("세금계산서 발행을 알렸어요.");
   }
   // 쿠폰: 원본(coupons) + 회원이 받은 쿠폰(memberCoupons). 이미 받은 회원이 있으면 지우지 않고 끄기만 한다
   const vdCpStat = (c) => { const all = []; Object.keys(VD().memberCoupons || {}).forEach((k) => (VD().memberCoupons[k] || []).forEach((x) => { if (x.cid === c.id) all.push(x); })); return { n: all.length, used: all.filter((x) => x.usedAt).length }; };
@@ -4880,7 +4880,7 @@
   function saveVodAnswer(f) {
     const x = (VD().inquiries || []).find((y) => y.id === f.dataset.id); if (!x) return;
     const a = f.answer.value.trim(); if (a.length < 2) { document.getElementById("vq-error").textContent = "답변을 적어 주세요."; return; }
-    x.answer = a; x.answeredAt = Date.now(); commit("문의에 답변했어요. 회원 마이페이지에 바로 보여요.");
+    x.answer = a; x.answeredAt = Date.now(); commit("문의에 답변했어요.");
   }
   /* ---------- 첫 화면 배너 편집 ----------
    * 이미지 배너: PC · 모바일 이미지를 따로 올리고(권장 크기 안내 + 미리보기), 누르면 갈 곳 · 새 창 · 노출 기간을 정해요.
@@ -4912,7 +4912,7 @@
   function saveVodTiles() {
     vtSync();
     const bad = VD().tiles.find((x) => x.href && !/^(#\/|https?:\/\/|\/)/.test(x.href));
-    if (bad) { toast("‘" + (bad.label || "아이콘") + "’ 링크는 #/ 로 시작하는 사이트 안 주소나 https:// 주소를 넣어 주세요.", "warn"); return; }
+    if (bad) { toast("‘" + (bad.label || "아이콘") + "’ 링크 주소를 확인해 주세요.", "warn"); return; }
     if (VD().tiles.some((x) => x.on !== false && !x.label)) { toast("보이는 아이콘에는 이름을 적어 주세요.", "warn"); return; }
     commit("첫 화면 카테고리 아이콘을 저장했어요.");
   }
@@ -4969,15 +4969,15 @@
   async function vbUpload(input) {
     const k = input.dataset.vbUp, file = input.files && input.files[0]; input.value = "";
     if (!file || !ui.vbDraft) return;
-    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { toast("JPG · PNG · WebP · GIF 이미지만 올릴 수 있어요.", "warn"); return; }
-    if (file.size > BAN_MAX) { toast("5MB 이하 이미지만 올릴 수 있어요. 지금 " + (file.size / 1048576).toFixed(1) + "MB예요.", "warn"); return; }
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { toast("JPG · PNG · WebP · GIF만 올릴 수 있어요.", "warn"); return; }
+    if (file.size > BAN_MAX) { toast("5MB 이하 이미지만 올릴 수 있어요.", "warn"); return; }
     let f = file;
     if (file.type !== "image/gif") f = await vbShrink(file, BANSZ[k][1][0]).catch(() => file);
     const r = await VX().matPut(f).catch(() => null);
-    if (!r) { toast("이미지를 저장하지 못했어요. 다른 브라우저에서 다시 해 주세요.", "warn"); return; }
+    if (!r) { toast("이미지를 저장하지 못했어요.", "warn"); return; }
     ui.vbDraft[k] = r.url; vbPaint(k); if (k === "pc") vbPaint("m");
     const e = document.getElementById("vb-error"); if (e) e.textContent = "";
-    toast(BANSZ[k][0] + "를 올렸어요. 저장을 눌러야 스토어에 반영돼요.");
+    toast(BANSZ[k][0] + "를 올렸어요. 저장해 주세요.");
   }
   document.addEventListener("change", (e) => { const t = e.target; if (!isActive() || !t.closest || !t.closest("#vda-ban-form")) return; if (t.matches("[data-vb-up]")) vbUpload(t); else if (t.name === "kind" || t.name === "fit") { t.form.dataset[t.name] = t.value; if (t.name === "fit") { vbInfo("pc"); vbInfo("m"); } } });
   document.addEventListener("input", (e) => { const t = e.target; if (isActive() && t.name === "bg" && t.closest && t.closest("#vda-ban-form")) t.form.style.setProperty("--vb-bg", t.value); });
@@ -5022,7 +5022,7 @@
     if (val("from") && val("to") && val("from") > val("to")) return err("노출 기간의 종료일이 시작일보다 빨라요.");
     const old = i == null ? { id: DB.uid("vb"), on: true } : v.banners[i];
     const link = { kind, pid: val("pid"), href, newTab: f.newTab.checked, from: val("from"), to: val("to") };
-    if (kind === "img") { const x = Object.assign({}, old, link, { pc: dr.pc, m: dr.m || "", fit: f.dataset.fit === "contain" ? "contain" : "cover", bg: val("bg") || "#111111", alt: val("alt") }); if (i == null) v.banners.unshift(x); else v.banners[i] = x; ui.vbDraft = null; commit("이미지 배너를 " + (i == null ? "맨 앞에 추가했어요." : "저장했어요.") + " 스토어 첫 화면에 바로 보여요."); return; }
+    if (kind === "img") { const x = Object.assign({}, old, link, { pc: dr.pc, m: dr.m || "", fit: f.dataset.fit === "contain" ? "contain" : "cover", bg: val("bg") || "#111111", alt: val("alt") }); if (i == null) v.banners.unshift(x); else v.banners[i] = x; ui.vbDraft = null; commit("배너를 " + (i == null ? "추가했어요." : "저장했어요.")); return; }
     const done = (img) => { const x = Object.assign({}, old, link, { eyebrow: val("eyebrow"), title: f.title.value.replace(/\r/g, "").trim(), sub: val("sub"), sticker: f.sticker.value.replace(/\r/g, "").trim(), dark: f.dark.checked, color: [val("c1"), val("c2")], img: img }); if (i == null) v.banners.push(x); else v.banners[i] = x; ui.vbDraft = null; commit("배너를 " + (i == null ? "추가했어요." : "저장했어요.")); };
     const file = f.img.files && f.img.files[0];
     if (!file) { done(f.imgdel && f.imgdel.checked ? "" : old.img || ""); return; }
@@ -5087,7 +5087,7 @@
   function trackLockOpen(want) {
     const ins = INS(); if (!ins) return;
     const what = want === "vod" ? "DOOGO CLASS(VOD)" : "두잉고(LIVE 두잉고)", req = trkReq(want);
-    if (isCoach()) { toast(what + "는 잠겨 있어요. 입점 신청은 강사님 계정에서 할 수 있어요.", "warn"); return; }
+    if (isCoach()) { toast(what + "는 잠겨 있어요.", "warn"); return; }
     if (S.role === "master") {
       confirmModal(what + " 열어 주기", "<b>" + esc(ins.displayName) + "</b> 강사님에게 " + what + " 영역을 열어 줄까요?<br>열면 강사님 강사센터에 " + TRACK_TAB[want] + " 탭이 바로 보여요." + (req ? "<br><small>강사님이 " + esc(fmtStamp(req.at)) + "에 입점 신청을 보냈어요.</small>" : ""), "열어 주기", false, () => { setTrack(ins, want, true); commit(ins.displayName + " 강사님 " + what + " 영역을 열었어요."); });
       return;
@@ -5147,7 +5147,7 @@
       if (r && r.ok) {
         const key = ins.id + ":" + want; (ui.trkSent = ui.trkSent || {})[key] = { at: Date.now() };
         if (DB.remote.on) DB.remote.refresh().then(() => { delete ui.trkSent[key]; if (!document.querySelector("#modal-root .a-modal")) render(); }, () => {});
-        closeModal(); render(); toast((vod ? "DOOGO CLASS" : "LIVE 두잉고") + " 입점 신청을 보냈어요. 운영팀이 확인하고 연락드릴게요."); return; }
+        closeModal(); render(); toast((vod ? "DOOGO CLASS" : "두잉고") + " 입점 신청을 보냈어요."); return; }
       const e2 = r && r.error;
       err.textContent = e2 === "dup" ? "이미 보낸 신청이 있어요. 운영팀이 확인하고 연락드릴게요." : e2 === "open" ? "이미 열려 있어요. 새로고침해 주세요." : e2 === "locked" ? "잠시 후 다시 시도해 주세요." : e2 === "auth" ? "강사님 계정으로 로그인해야 보낼 수 있어요." : "보내지 못했어요. 칸을 확인하고 다시 시도해 주세요.";
     };
@@ -5243,8 +5243,8 @@
   }
   function saveVpCopy(f) {
     const from = f.from.value, to = f.to.value;
-    if (!from || !to || from === to) { toast("가져올 강의실과 덮어쓸 강의실을 다르게 골라 주세요.", "warn"); return; }
-    confirmModal("강의실 내용 가져오기", "‘" + esc((vdP(from) || {}).title || "") + "’ 강의실의 메뉴 · 자료함 · 체크리스트 · FAQ · 소식을<br>‘" + esc((vdP(to) || {}).title || "") + "’ 강의실에 그대로 덮어쓸까요?", "덮어쓰기", true, () => { DB.vodCopy(IID(), to, from); setVpid(to); commit("강의실 내용을 가져왔어요. 필요한 부분만 고쳐 주세요."); });
+    if (!from || !to || from === to) { toast("서로 다른 강의실을 골라 주세요.", "warn"); return; }
+    confirmModal("강의실 내용 가져오기", "‘" + esc((vdP(from) || {}).title || "") + "’ 강의실의 메뉴 · 자료함 · 체크리스트 · FAQ · 소식을<br>‘" + esc((vdP(to) || {}).title || "") + "’ 강의실에 그대로 덮어쓸까요?", "덮어쓰기", true, () => { DB.vodCopy(IID(), to, from); setVpid(to); commit("강의실 내용을 가져왔어요."); });
   }
   function pageVodLink() {
     const iid = IID(), X = VX(), v = VD(), ins = INS();
@@ -5559,8 +5559,8 @@
     const o = VD().orders.find((x) => x.id === a.dataset.id); if (!o || !o.tea) return;
     if (act === "tea-done" && o.tea.when && new Date(o.tea.when).getTime() > Date.now()) { toast("아직 시작 전이에요. 진행한 뒤에 눌러 주세요.", "warn"); return; }
     if (act === "tea-done") { o.tea.st = "done"; o.tea.doneAt = Date.now(); commit("TEA TIME을 진행 완료로 바꿨어요."); }
-    else if (act === "tea-reopen") { o.tea.st = "req"; commit("일정을 다시 잡을 수 있게 확정 대기로 돌렸어요."); }
-    else confirmModal("TEA TIME 취소", esc((vdMember(o.mid) || {}).name || "") + " 님 TEA TIME을 취소할까요?<br>취소하면 마스터가 결제 금액 <b>" + won(o.amount) + "</b>을 전액 환불해요.", "취소하고 환불 요청", true, () => { o.tea.st = "cancel"; o.refundReq = Date.now(); commit("TEA TIME을 취소했어요. 마스터에게 환불 요청이 갔어요."); });
+    else if (act === "tea-reopen") { o.tea.st = "req"; commit("확정 대기로 돌렸어요."); }
+    else confirmModal("TEA TIME 취소", esc((vdMember(o.mid) || {}).name || "") + " 님 TEA TIME을 취소할까요?<br>취소하면 마스터가 결제 금액 <b>" + won(o.amount) + "</b>을 전액 환불해요.", "취소하고 환불 요청", true, () => { o.tea.st = "cancel"; o.refundReq = Date.now(); commit("TEA TIME을 취소했어요 (환불 요청됨)."); });
   });
   document.addEventListener("submit", (e) => {
     if (!isActive()) return;
@@ -5568,9 +5568,9 @@
     e.preventDefault();
     const o = VD().orders.find((x) => x.id === f.dataset.id); if (!o || !o.tea) return;
     if (!f.when.value) { toast("확정할 날짜와 시간을 골라 주세요.", "warn"); return; }
-    if (new Date(f.when.value).getTime() < Date.now()) { toast("이미 지난 시간이에요. 앞으로의 날짜와 시간을 골라 주세요.", "warn"); f.when.focus(); return; }
+    if (new Date(f.when.value).getTime() < Date.now()) { toast("지난 시간이에요. 다시 골라 주세요.", "warn"); f.when.focus(); return; }
     Object.assign(o.tea, { st: "ok", when: f.when.value, where: f.where.value.trim(), okAt: Date.now() });
-    commit("TEA TIME 일정을 확정했어요. 수강생 화면에 바로 보여요.");
+    commit("TEA TIME 일정을 확정했어요.");
   });
 
   /* ---------- VOD 강의 · 수업 자료 (강사가 직접: 비메오 링크 · 강의 노트 · PDF 등) ----------
@@ -5627,13 +5627,13 @@
     const p = vdP(f.dataset.p); if (!p) return;
     const at = f.at.value || todayStr(), title = f.title.value.replace(/\s+/g, " ").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(at) || at > todayStr()) { toast("업데이트 날짜를 확인해 주세요 (오늘까지).", "warn"); f.at.focus(); return; }
-    if (title.length < 4) { toast("무엇이 새로워졌는지 한 줄로 적어 주세요 (4자 이상).", "warn"); f.title.focus(); return; }
+    if (title.length < 4) { toast("새로워진 점을 4자 이상 적어 주세요.", "warn"); f.title.focus(); return; }
     const upd = [], neu = [];
     (p.curriculum || []).forEach((c, ci) => (c.lessons || []).forEach((l, li) => { const r = f.querySelector('input[name="k-' + ci + "-" + li + '"]:checked'); if (r && r.value === "upd") upd.push({ l, v: ((f.elements["v-" + ci + "-" + li] || {}).value || "").trim() }); }));
     let bad = false;
     f.querySelectorAll(".vu-nl").forEach((row) => { const t = row.querySelector("[name=nt]").value.trim(), v = row.querySelector("[name=nv]").value.trim(), m = Math.max(0, Math.min(600, Math.round(Number(row.querySelector("[name=nm]").value) || 0))); if (!t && !v) return; if (!t) bad = true; neu.push({ ci: Number(row.dataset.ci), t, v, m }); });
     if (bad) { toast("새 강의 이름을 적어 주세요.", "warn"); return; }
-    if (upd.concat(neu).some((x) => !vuUrl(x.v))) { toast("영상 링크는 https:// 로 시작하는 주소로 넣어 주세요.", "warn"); return; }
+    if (upd.concat(neu).some((x) => !vuUrl(x.v))) { toast("영상 링크(https://)를 확인해 주세요.", "warn"); return; }
     const uid = DB.uid("up");
     upd.forEach((x) => { if (x.v && x.v !== x.l.video) { x.l.video = x.v; delete x.l.durSec; } x.l.fresh = { k: "upd", at, uid }; });
     neu.forEach((x) => { const c = (p.curriculum || [])[x.ci]; if (!c) return; const l = { id: DB.uid("vl"), title: x.t, min: x.m, video: x.v, fresh: { k: "new", at, uid } }; (c.lessons = c.lessons || []).push(l); x.id = l.id; });
@@ -5642,18 +5642,18 @@
     p.upds = [rec].concat(Array.isArray(p.upds) ? p.upds : []).slice(0, 20);
     if (!p.updatedAt || at >= p.updatedAt) p.updatedAt = at;
     const want = !!(f.notify && f.notify.checked);
-    commit("‘" + p.title + "’ 최신성 업데이트를 저장했어요 (NEW " + rec.n.new + " · UPDATE " + rec.n.upd + ")." + (want ? " 산 수강생에게 알림을 보내는 중이에요…" : ""));
+    commit("‘" + p.title + "’ 업데이트 저장" + (want ? " · 알림 보내는 중…" : ""));
     if (want) vuSend(p.id, uid);
   }
   function vuSend(pid, uid) {
     const p = vdP(pid), u = p && (p.upds || []).find((x) => x.id === uid); if (!u) return;
     const keep = (r) => { const p2 = vdP(pid), u2 = p2 && (p2.upds || []).find((x) => x.id === uid); if (u2) { u2.notify = r; DB.save(); render(); } };
-    if (!vdSrv()) { const c = vuCounts(p); keep({ st: "local", at: Date.now(), act: { n: c.act }, end: { n: c.end } }); toast("시안이라 실제로 보내지 않고 대상만 남겼어요 — 수강 중 " + c.act + "명 · 수강 끝남 " + c.end + "명", "warn"); return; }
+    if (!vdSrv()) { const c = vuCounts(p); keep({ st: "local", at: Date.now(), act: { n: c.act }, end: { n: c.end } }); toast("시안이라 대상만 남겼어요 (" + (c.act + c.end) + "명)", "warn"); return; }
     DB.remote.flush().catch(() => {}).then(() => VX().payApi("updNotify", { pid, uid })).then((r) => {
       if (!r || !r.ok) { toast((r && r.message) || "알림을 보내지 못했어요.", "warn"); return; }
       keep({ st: r.st, at: r.at || Date.now(), act: r.act || {}, end: r.end || {}, why: r.why || "" });
-      toast(r.st === "sent" ? "알림톡을 보냈어요 — 수강 중 " + ((r.act || {}).sent || 0) + "명 · 수강 끝남 " + ((r.end || {}).sent || 0) + "명" : "보낼 대상만 남겼어요 (수강 중 " + ((r.act || {}).n || 0) + "명 · 수강 끝남 " + ((r.end || {}).n || 0) + "명) — " + (r.why || "알림톡 연결 후 다시 보내 주세요."), r.st === "sent" ? "" : "warn");
-    }).catch(() => toast("알림을 보내지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"));
+      toast(r.st === "sent" ? "알림톡을 " + (((r.act || {}).sent || 0) + ((r.end || {}).sent || 0)) + "명에게 보냈어요." : "대상만 남겼어요 (알림톡 연결 필요).", r.st === "sent" ? "" : "warn");
+    }).catch(() => toast("알림을 보내지 못했어요. 다시 시도해 주세요.", "warn"));
   }
   document.addEventListener("click", (e) => {
     if (!isActive()) return;
@@ -5710,8 +5710,8 @@
   function vlAddFiles(files, put, pid) {
     const X = VX(), list = Array.from(files || []);
     if (!list.length) return;
-    if (DB.remote.on && !pid) { toast("클래스를 한 번 저장한 뒤 수업 자료를 올려 주세요.", "warn"); return; }
-    const big = list.filter((f) => f.size > X.MAT_MAX); if (big.length) toast(big.map((f) => f.name).join(", ") + " 은(는) " + Math.round(X.MAT_MAX / 1048576) + "MB가 넘어요. 구글 드라이브 링크로 추가해 주세요.", "warn");
+    if (DB.remote.on && !pid) { toast("클래스를 먼저 저장해 주세요.", "warn"); return; }
+    const big = list.filter((f) => f.size > X.MAT_MAX); if (big.length) toast(Math.round(X.MAT_MAX / 1048576) + "MB 넘는 파일은 링크로 추가해 주세요.", "warn");
     Promise.all(list.filter((f) => f.size <= X.MAT_MAX).map((f) => X.matPut(f, "vodp:" + (pid || "")).catch(() => null))).then((saved) => { const ok = saved.filter(Boolean); if (!ok.length) { if (!big.length) toast("파일을 저장하지 못했어요. 다시 시도해 주세요.", "warn"); return; } put(ok); });
   }
   document.addEventListener("click", (e) => {
@@ -5720,13 +5720,13 @@
     const act = a.dataset.action;
     if (act === "vl-p") { ui.vlP = a.dataset.id; render(); return; }
     if (act === "vl-fdel") { const l = vlLesson(a.dataset); if (!l) return; const f = (l.files || [])[Number(a.dataset.fi)]; confirmModal("수업 자료 지우기", "‘" + esc((f || {}).name || "") + "’ 자료를 지울까요? 수강생 강의실에서도 사라져요.", "지우기", true, () => { const keep = vlSnap(null); l.files.splice(Number(a.dataset.fi), 1); commit("수업 자료를 지웠어요."); vlRestore(keep); }); return; }
-    if (act === "vl-flink") { const fm = a.closest("form.a-vl"), l = vlLesson(a.dataset); if (!fm || !l) return; const u = fm.lurl.value.trim(); if (!/^https?:\/\//.test(u)) { toast("https:// 로 시작하는 주소를 넣어 주세요.", "warn"); return; } (l.files = l.files || []).push({ name: fm.lname.value.trim() || "링크 자료", url: u }); fm.lname.value = ""; fm.lurl.value = ""; const keep = vlSnap(null); commit("링크 자료를 추가했어요. 수강생 강의실에 바로 보여요."); vlRestore(keep); }
+    if (act === "vl-flink") { const fm = a.closest("form.a-vl"), l = vlLesson(a.dataset); if (!fm || !l) return; const u = fm.lurl.value.trim(); if (!/^https?:\/\//.test(u)) { toast("https:// 주소를 넣어 주세요.", "warn"); return; } (l.files = l.files || []).push({ name: fm.lname.value.trim() || "링크 자료", url: u }); fm.lname.value = ""; fm.lurl.value = ""; const keep = vlSnap(null); commit("링크 자료를 추가했어요."); vlRestore(keep); }
   });
   document.addEventListener("change", (e) => {
     if (!isActive()) return;
     const t = e.target;
-    if (t.matches && t.matches("[data-vl-up]")) { const l = vlLesson(t.dataset); if (!l) return; const vpid = t.dataset.p; vlAddFiles(t.files, (ok) => { (l.files = l.files || []).push(...ok); const keep = vlSnap(null); setTimeout(() => vlRestore(keep), 0); commit("수업 자료 " + ok.length + "개를 올렸어요. 수강생 강의실에서 바로 내려받을 수 있어요."); }, vpid); t.value = ""; }
-    else if (t.matches && t.matches("[data-vda-up]")) { const ci = Number(t.dataset.ci), li = Number(t.dataset.li), form = document.getElementById("vda-form"); vlAddFiles(t.files, (ok) => { if (form) vdSync(form); const l = ui.vdDraft && ui.vdDraft.curriculum[ci] && ui.vdDraft.curriculum[ci].lessons[li]; if (!l) return; (l.files = l.files || []).push(...ok); render(); toast("수업 자료 " + ok.length + "개를 올렸어요. ‘저장’을 누르면 수강생 강의실에 보여요."); }, ui.vdDraft && ui.vdDraft.id); t.value = ""; }
+    if (t.matches && t.matches("[data-vl-up]")) { const l = vlLesson(t.dataset); if (!l) return; const vpid = t.dataset.p; vlAddFiles(t.files, (ok) => { (l.files = l.files || []).push(...ok); const keep = vlSnap(null); setTimeout(() => vlRestore(keep), 0); commit("수업 자료 " + ok.length + "개를 올렸어요."); }, vpid); t.value = ""; }
+    else if (t.matches && t.matches("[data-vda-up]")) { const ci = Number(t.dataset.ci), li = Number(t.dataset.li), form = document.getElementById("vda-form"); vlAddFiles(t.files, (ok) => { if (form) vdSync(form); const l = ui.vdDraft && ui.vdDraft.curriculum[ci] && ui.vdDraft.curriculum[ci].lessons[li]; if (!l) return; (l.files = l.files || []).push(...ok); render(); toast("수업 자료 " + ok.length + "개를 올렸어요. 저장해 주세요."); }, ui.vdDraft && ui.vdDraft.id); t.value = ""; }
   });
   document.addEventListener("submit", (e) => {
     if (!isActive()) return;
@@ -5738,10 +5738,10 @@
     if (/^\d{6,12}$/.test(video)) video = "https://vimeo.com/" + video;
     else if (/^[\w-]{11}$/.test(video)) video = "https://youtu.be/" + video;
     else if (video && !/^https?:\/\//.test(video) && /^(www\.)?(vimeo\.com|player\.vimeo\.com|youtu\.be|(m\.)?youtube\.com)\//i.test(video)) video = "https://" + video;
-    if (video && !/^https?:\/\//.test(video)) { toast("영상 링크는 https:// 로 시작하는 주소로 넣어 주세요. (비메오 번호만 넣어도 돼요)", "warn"); f.video.focus(); return; }
+    if (video && !/^https?:\/\//.test(video)) { toast("영상 링크(https://)를 확인해 주세요.", "warn"); f.video.focus(); return; }
     Object.assign(l, { title, min: Math.max(0, Math.round(Number(f.min.value) || 0)), video, desc: f.desc.value.trim(), preview: f.preview.checked });
     const keep = vlSnap(f);
-    commit("‘" + title + "’ 강의를 저장했어요. 수강생 강의실에 바로 보여요.");
+    commit("강의를 저장했어요.");
     vlRestore(keep);
   });
 
@@ -5764,7 +5764,7 @@
       case "rk-per": ui.rkPer = d.k; render(); break;
       case "ad-ym": ui.adYM = vdYMadd(ui.adYM || todayStr().slice(0, 7), Number(d.dir)); render(); break;
       case "vda-rate-edit": vdRateModal(d.k); break;
-      case "vda-ad-del": { const v = VD(), i = (v.adSpend || []).findIndex((x) => x.id === d.id); if (i < 0) break; if (vdAdLocked(v.adSpend[i].iid, v.adSpend[i].ym)) { toast("정산을 확정한 달의 광고비는 지울 수 없어요. 강사 정산에서 확정을 취소한 뒤 지워 주세요.", "warn"); break; } confirmModal("광고비 지우기", won(v.adSpend[i].amount) + " 광고비 기록을 지울까요? 확정 전 정산에서 다시 빠져요.", "지우기", true, () => { v.adSpend.splice(i, 1); commit("광고비 기록을 지웠어요."); }); break; }
+      case "vda-ad-del": { const v = VD(), i = (v.adSpend || []).findIndex((x) => x.id === d.id); if (i < 0) break; if (vdAdLocked(v.adSpend[i].iid, v.adSpend[i].ym)) { toast("정산을 확정한 달은 지울 수 없어요.", "warn"); break; } confirmModal("광고비 지우기", won(v.adSpend[i].amount) + " 광고비 기록을 지울까요? 확정 전 정산에서 다시 빠져요.", "지우기", true, () => { v.adSpend.splice(i, 1); commit("광고비 기록을 지웠어요."); }); break; }
       case "vc-ym": ui.vcYM = vdYMadd(ui.vcYM || todayStr().slice(0, 7), Number(d.dir)); ui.vcDay = ""; render(); break;
       case "vc-day": ui.vcDay = d.d; { const y0 = window.scrollY; render(); window.scrollTo(0, y0); const el = document.querySelector(".vc-detail"); if (el && window.innerWidth < 720) el.scrollIntoView({ behavior: "smooth", block: "start" }); } break;
       case "vda-ym": ui.vdYM = vdYMadd(ui.vdYM || vdYMadd(todayStr().slice(0, 7), -1), Number(d.dir)); render(); break;
@@ -5774,17 +5774,17 @@
       case "vda-ship-tab": ui.vsTab = d.k; ui.vsEdit = ""; (ui.vsPick || new Set()).clear(); render(); { const on = document.querySelector(".bo-tabs button.on"); if (on && on.scrollIntoView) on.scrollIntoView({ inline: "center", block: "nearest" }); } break;
       case "vda-ship-pick": { const pk = ui.vsPick || (ui.vsPick = new Set()); if (pk.has(d.id)) pk.delete(d.id); else pk.add(d.id); render(); break; }
       case "vda-ship-all": { const pk = ui.vsPick || (ui.vsPick = new Set()), tab = boTab(), list = vdShipAll().filter((o) => boIn(tab, o)); if (list.length && list.every((o) => pk.has(o.id))) pk.clear(); else list.forEach((o) => pk.add(o.id)); render(); break; }
-      case "vda-ship-prep": { const o = O(), X = VX(); if (!o || !o.ship || X.shipStOf(o) !== "ready") break; if (X.claimOf(o)) { toast("회원의 요청이 있어요. 아래 요청부터 처리해 주세요.", "warn"); break; } Object.assign(o.ship, { st: "prep", prepAt: Date.now() }); commit("‘" + o.no + "’ 주문을 배송 준비로 옮겼어요. 이제 회원은 바로 취소하지 못하고 취소 요청으로 받아요."); break; }
+      case "vda-ship-prep": { const o = O(), X = VX(); if (!o || !o.ship || X.shipStOf(o) !== "ready") break; if (X.claimOf(o)) { toast("회원 요청부터 처리해 주세요.", "warn"); break; } Object.assign(o.ship, { st: "prep", prepAt: Date.now() }); commit("주문을 배송 준비로 옮겼어요."); break; }
       case "vda-ship-bprep": { const pk = ui.vsPick || new Set(), X = VX(), list = vdShipAll().filter((o) => pk.has(o.id) && o.status === "paid" && X.shipStOf(o) === "ready" && !X.claimOf(o)); if (!list.length) { toast("배송 준비로 옮길 ‘신규 주문’을 골라 주세요.", "warn"); break; } const at = Date.now(); list.forEach((o) => Object.assign(o.ship, { st: "prep", prepAt: at })); pk.clear(); commit(list.length + "건을 배송 준비로 옮겼어요."); break; }
       case "vda-ship-send": {
         const o = O(), X = VX(); if (!o || !o.ship || o.status !== "paid") break;
         const st = X.shipStOf(o), c = X.claimOf(o), car = document.querySelector('[data-ship-car="' + d.id + '"]'), inv = document.querySelector('[data-ship-inv="' + d.id + '"]'), no = inv ? boInv(inv.value) : "";
-        if (c && c.st === "req") { toast("회원의 " + X.CLAIM_K[c.k] + " 요청이 있어요. 요청부터 처리해 주세요.", "warn"); break; }
-        if (!vsInvOk(no)) { toast("송장 번호를 확인해 주세요 (숫자 · 영문 6~20자).", "warn"); if (inv) inv.focus(); break; }
+        if (c && c.st === "req") { toast(X.CLAIM_K[c.k] + " 요청부터 처리해 주세요.", "warn"); break; }
+        if (!vsInvOk(no)) { toast("송장 번호(6~20자)를 확인해 주세요.", "warn"); if (inv) inv.focus(); break; }
         if (["ready", "prep", "ship"].indexOf(st) < 0) break;
         Object.assign(o.ship, { st: "ship", carrier: car ? car.value : X.shipSet().carrier, inv: no, prepAt: o.ship.prepAt || Date.now(), shipAt: st === "ship" && o.ship.shipAt ? o.ship.shipAt : Date.now(), by: (staffMe() || {}).name || "마스터" });
         ui.vsEdit = ""; (ui.vsPick || new Set()).delete(o.id);
-        commit(st === "ship" ? "‘" + o.no + "’ 송장을 고쳤어요." : "‘" + o.no + "’ 주문을 보냈어요. 회원 마이페이지에 배송 조회가 열려요."); break;
+        commit(st === "ship" ? "송장을 고쳤어요." : "발송 처리했어요."); break;
       }
       case "vda-ship-edit": ui.vsEdit = d.id || ""; render(); break;
       case "vda-ship-done": { const o = O(); if (!o || !o.ship || VX().shipStOf(o) !== "ship") break; Object.assign(o.ship, { st: "done", doneAt: Date.now(), doneBy: (staffMe() || {}).name || "마스터" }); commit("‘" + o.no + "’ 주문을 배송 완료로 바꿨어요."); break; }
@@ -5795,28 +5795,28 @@
           pk.clear(); const nos = list.map((o) => o.grp || o.no);
           if (vdSrv()) { vdBankAct("bankOk", nos, "입금 " + list.length + "건을 확인했어요. 신규 주문으로 넘어갔어요."); return; }
           const at = Date.now(), by = (staffMe() || {}).name || "ADMIN"; list.forEach((o) => { Object.assign(o, { status: "paid", paidAt: at, depositBy: by }); if (o.share == null) o.share = vdShare(o); });
-          commit("입금 " + list.length + "건을 확인했어요. 신규 주문으로 넘어갔어요."); }); break; }
+          commit("입금 " + list.length + "건을 확인했어요."); }); break; }
       case "vda-ship-copy": { const o = O(); if (!o || !o.ship) break; const t = [o.ship.name, o.ship.phone, (o.ship.zip ? "(" + o.ship.zip + ") " : "") + o.ship.addr1 + " " + (o.ship.addr2 || ""), o.ship.memo || ""].filter(Boolean).join(" / "); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("받는 분 · 주소를 복사했어요."), () => toast(t)); break; }
-      case "vda-ship-csv": { const pk = ui.vsPick || new Set(), X = VX(), tab = boTab(), list = vdShipAll().filter((o) => boIn(tab, o) && (!pk.size || pk.has(o.id))).filter((o) => ["ready", "prep"].indexOf(X.shipStOf(o)) >= 0); if (list.length) vsCsv(list); else toast("택배 접수용으로 내려받을 신규 · 배송 준비 주문이 없어요.", "warn"); break; }
+      case "vda-ship-csv": { const pk = ui.vsPick || new Set(), X = VX(), tab = boTab(), list = vdShipAll().filter((o) => boIn(tab, o) && (!pk.size || pk.has(o.id))).filter((o) => ["ready", "prep"].indexOf(X.shipStOf(o)) >= 0); if (list.length) vsCsv(list); else toast("내려받을 주문이 없어요.", "warn"); break; }
       case "bo-xl-orders": { const pk = ui.vsPick || new Set(), tab = boTab(), list = vdShipAll().filter((o) => boIn(tab, o) && (!pk.size || pk.has(o.id))); if (list.length) boXlOrders(list); break; }
       case "vda-ship-bulk": vsBulkModal(); break;
       case "bo-up-paste": { const f = document.getElementById("vda-shipbulk-form"); if (!f) break; ui.boRows = String(f.lines.value || "").split(/\n+/).map((l) => l.trim()).filter(Boolean).map((l) => l.split(/[\s,\t]+/)); boUpPreview(ui.boRows); break; }
-      case "bo-cash-done": { const o = O(); if (!o || !o.cashRcpt) break; o.cashRcpt.done = Date.now(); commit("‘" + o.no + "’ 현금영수증을 발급 완료로 표시했어요."); break; }
+      case "bo-cash-done": { const o = O(); if (!o || !o.cashRcpt) break; o.cashRcpt.done = Date.now(); commit("현금영수증 발급 완료로 표시했어요."); break; }
       case "bo-cl-ok": {
         const o = O(), X = VX(), c = o && X.claimOf(o); if (!c || c.st !== "req" || c.k === "cancel") break;
         confirmModal(X.CLAIM_K[c.k] + " 승인", esc(o.no) + " · " + esc(c.why) + "<br>택배사에 <b>반품(회수) 접수</b>를 하면 기사님이 회원 주소에서 책을 가져와요." + (c.k === "exchange" ? "<br>책이 돌아오면 ‘교환 상품 보내기’로 새 송장을 넣어요." : "<br>책이 돌아와 상태를 확인하면 ‘책이 도착했어요 · 환불’을 눌러요." + (X.claimFee(o, c) ? " 단순 변심이라 왕복 배송비 " + won(X.claimFee(o, c)) + "을 빼고 환불해요." : "")), "승인 · 수거 요청", false, () => {
           o.claim = { k: c.k, st: "pick", why: c.why, text: c.text, at: c.at, okAt: Date.now(), by: (staffMe() || {}).name || "마스터" }; if (c.acct) o.claim.acct = c.acct; delete o.refundReq;
-          commit("‘" + o.no + "’ " + X.CLAIM_K[c.k] + " 요청을 승인했어요. 회원 화면에 ‘수거 중’으로 보여요."); }); break; }
+          commit(X.CLAIM_K[c.k] + " 요청을 승인했어요."); }); break; }
       case "bo-cl-no": {
         const o = O(), X = VX(), c = o && X.claimOf(o); if (!c || (c.st !== "req" && c.st !== "pick")) break;
         openModal(X.CLAIM_K[c.k] + " 요청 반려", '<form id="bo-no-form" class="a-form" data-id="' + esc(o.id) + '" novalidate><p class="a-muted p-small">반려 사유는 회원 배송 조회 화면에 그대로 보여요.</p><div class="a-field"><label for="bo-no-t">반려 사유</label><select class="a-input" id="bo-no-t" name="pre"><option>이미 책을 보냈어요</option><option>반품 기간(받은 날부터 7일)이 지났어요</option><option>책을 사용해 다시 팔 수 없어요</option><option>요청한 내용과 책 상태가 달라요</option><option value="">직접 적기</option></select></div><div class="a-field"><input class="a-input" name="note" maxlength="120" placeholder="더 적을 말 (선택)"></div></form>', btn("취소", "modal-close") + '<button class="a-btn a-btn-danger" type="submit" form="bo-no-form">반려하기</button>'); break; }
-      case "bo-cl-rinv": { const o = O(), car = document.querySelector('[data-cl-car="' + d.id + '"]'), inv = document.querySelector('[data-cl-inv="' + d.id + '"]'); if (!o || !o.claim || o.claim.st !== "pick") break; const no = inv ? boInv(inv.value) : ""; if (no && !vsInvOk(no)) { toast("회수 송장 번호를 확인해 주세요.", "warn"); break; } Object.assign(o.claim, { rcar: car ? car.value : "", rinv: no }); commit(no ? "회수 송장을 저장했어요. 회원 화면에도 보여요." : "회수 송장을 지웠어요."); break; }
+      case "bo-cl-rinv": { const o = O(), car = document.querySelector('[data-cl-car="' + d.id + '"]'), inv = document.querySelector('[data-cl-inv="' + d.id + '"]'); if (!o || !o.claim || o.claim.st !== "pick") break; const no = inv ? boInv(inv.value) : ""; if (no && !vsInvOk(no)) { toast("회수 송장 번호를 확인해 주세요.", "warn"); break; } Object.assign(o.claim, { rcar: car ? car.value : "", rinv: no }); commit(no ? "회수 송장을 저장했어요." : "회수 송장을 지웠어요."); break; }
       case "bo-cl-xsend": {
         const o = O(), X = VX(); if (!o || !o.claim || o.claim.st !== "pick" || o.claim.k !== "exchange") break;
         const car = document.querySelector('[data-ship-car="' + d.id + '"]'), inv = document.querySelector('[data-ship-inv="' + d.id + '"]'), no = inv ? boInv(inv.value) : "";
         if (!vsInvOk(no)) { toast("교환 상품 송장 번호를 확인해 주세요.", "warn"); if (inv) inv.focus(); break; }
         const at = Date.now(); Object.assign(o.claim, { st: "done", xAt: at, oinv: o.ship.inv || "", ocar: o.ship.carrier || "" }); Object.assign(o.ship, { st: "ship", carrier: car ? car.value : X.shipSet().carrier, inv: no, shipAt: at, doneAt: 0, by: (staffMe() || {}).name || "마스터" });
-        commit("‘" + o.no + "’ 교환 상품을 보냈어요. 회원 배송 조회에 새 송장이 보여요."); break; }
+        commit("교환 상품을 보냈어요."); break; }
       case "vda-ship-save": {
         const f = document.getElementById("vda-ship-form"); if (!f) break; const n = (k, lo, hi, dv) => { const x = Math.round(Number(f[k].value)); return x >= lo && x <= hi ? x : dv; };
         v.settings.ship = { autoDays: n("autoDays", 1, 14, 3), outDays: n("outDays", 1, 14, 2), carrier: f.carrier.value, returnFee: n("returnFee", 0, 100000, 6000), returnAddr: f.returnAddr.value.trim().slice(0, 120) };
@@ -5825,8 +5825,8 @@
       case "vda-pginfo": { const o = O(); if (!o) break; const box = document.getElementById("od-pg"); if (box) box.innerHTML = '<p class="a-muted">포트원에 결제 상태를 물어보는 중…</p>';
         VX().payApi("pgInfo", { no: o.no }).then((r) => { const b = document.getElementById("od-pg"); if (!r || !r.ok) { if (b) b.innerHTML = '<p class="a-error">' + esc((r && r.message) || "조회하지 못했어요.") + "</p>"; return; } if (b) b.innerHTML = vdPgInfoHtml(r.pay); if (r.synced) DB.remote.refresh().then(() => { toast(r.synced); render(); }); }, () => { const b = document.getElementById("od-pg"); if (b) b.innerHTML = '<p class="a-error">서버에 닿지 못했어요.</p>'; }); break; }
       case "vda-rfsent": { const o = O(); if (!o || !o.refundPay || o.refundPay.st !== "wait") break; confirmModal("계좌 송금 완료", esc((vdMember(o.mid) || {}).name || "") + " 님께 <b>" + won(o.refundPay.amount || vdRefAmt(o)) + "</b>을<br>" + esc(vdAcctTxt(o.refundPay)) + " 계좌로 송금했나요?", "송금 완료", false, () => { Object.assign(o.refundPay, { st: "done", doneAt: Date.now(), by: (staffMe() || {}).name || "ADMIN" }); commit(o.no + " 환불 송금을 완료로 기록했어요."); }); break; }
-      case "vda-paid": { const o = O(); if (!o) break; if (o.method === "vbank") { toast("가상계좌는 회원이 입금하면 포트원이 알려 줘서 자동으로 확인돼요.", "warn"); break; } confirmModal("입금 확인", esc((vdMember(o.mid) || {}).name || "") + " 님 · " + esc(o.title) + "<br>입금자명 <b>" + esc(vdDep(o)) + "</b> · <b>" + won(vdGrpAmt(o)) + "</b> 입금을 확인했나요? " + (o.ship ? "확인하면 ‘신규 주문’으로 넘어가요." : "확인하면 바로 수강할 수 있어요."), "입금 확인", false, () => { if (vdSrv()) { vdBankAct("bankOk", o.grp || o.no, (o.grp || o.no) + (o.ship ? " 입금을 확인했어요. 신규 주문으로 넘어갔어요." : " 입금을 확인했어요. 회원이 바로 수강할 수 있어요.")); return; } o.status = "paid"; o.paidAt = Date.now(); o.depositBy = (staffMe() || {}).name || "ADMIN"; if (o.share == null) o.share = vdShare(o); v.orders.filter((x) => x.grp === o.no && x.status === "pending").forEach((x) => { x.status = "paid"; x.paidAt = o.paidAt; }); commit(o.no + (o.ship ? " 입금을 확인했어요. 신규 주문으로 넘어갔어요." : " 입금을 확인했어요. 회원이 바로 수강할 수 있어요.")); }); break; }
-      case "vda-cancel": { const o = O(); if (!o) break; confirmModal("주문 취소", esc(o.no) + " 주문을 취소할까요? (입금 기한이 지났을 때)" + (o.mcid || o.pointOff ? "<br>쓴 쿠폰 · 포인트는 회원에게 돌려줘요." : ""), "주문 취소", true, () => { if (vdSrv()) { vdBankAct("bankCancel", o.grp || o.no, (o.grp || o.no) + " 주문을 취소했어요. 쓴 쿠폰 · 포인트는 회원에게 돌려줬어요."); return; } if (VX().restoreOrder) VX().restoreOrder(o); if (o.tea) o.tea.st = "cancel"; Object.assign(o, { status: "canceled", canceledAt: Date.now(), canceledBy: (S && (S.name || S.role)) || "master" }); v.orders.filter((x) => x.grp === o.no && x.status === "pending").forEach((x) => { if (VX().restoreOrder) VX().restoreOrder(x); Object.assign(x, { status: "canceled", canceledAt: Date.now() }); }); commit(o.no + " 주문을 취소했어요. 주문 내역에 ‘취소’로 남아요."); }); break; }
+      case "vda-paid": { const o = O(); if (!o) break; if (o.method === "vbank") { toast("가상계좌는 입금되면 자동 확인돼요.", "warn"); break; } confirmModal("입금 확인", esc((vdMember(o.mid) || {}).name || "") + " 님 · " + esc(o.title) + "<br>입금자명 <b>" + esc(vdDep(o)) + "</b> · <b>" + won(vdGrpAmt(o)) + "</b> 입금을 확인했나요? " + (o.ship ? "확인하면 ‘신규 주문’으로 넘어가요." : "확인하면 바로 수강할 수 있어요."), "입금 확인", false, () => { if (vdSrv()) { vdBankAct("bankOk", o.grp || o.no, (o.grp || o.no) + (o.ship ? " 입금을 확인했어요. 신규 주문으로 넘어갔어요." : " 입금을 확인했어요. 회원이 바로 수강할 수 있어요.")); return; } o.status = "paid"; o.paidAt = Date.now(); o.depositBy = (staffMe() || {}).name || "ADMIN"; if (o.share == null) o.share = vdShare(o); v.orders.filter((x) => x.grp === o.no && x.status === "pending").forEach((x) => { x.status = "paid"; x.paidAt = o.paidAt; }); commit((o.ship ? "입금을 확인했어요 · 신규 주문" : "입금을 확인했어요.")); }); break; }
+      case "vda-cancel": { const o = O(); if (!o) break; confirmModal("주문 취소", esc(o.no) + " 주문을 취소할까요? (입금 기한이 지났을 때)" + (o.mcid || o.pointOff ? "<br>쓴 쿠폰 · 포인트는 회원에게 돌려줘요." : ""), "주문 취소", true, () => { if (vdSrv()) { vdBankAct("bankCancel", o.grp || o.no, (o.grp || o.no) + " 주문을 취소했어요. 쓴 쿠폰 · 포인트는 회원에게 돌려줬어요."); return; } if (VX().restoreOrder) VX().restoreOrder(o); if (o.tea) o.tea.st = "cancel"; Object.assign(o, { status: "canceled", canceledAt: Date.now(), canceledBy: (S && (S.name || S.role)) || "master" }); v.orders.filter((x) => x.grp === o.no && x.status === "pending").forEach((x) => { if (VX().restoreOrder) VX().restoreOrder(x); Object.assign(x, { status: "canceled", canceledAt: Date.now() }); }); commit("주문을 취소했어요."); }); break; }
       case "bo-cl-refund":
       case "vda-refund": { const X = VX(), o = O(); if (!o) break; if (o.ship) { vdBookRefund(o); break; } const done = X.usedOf ? X.usedOf(o.mid, o.pid) : 0, days = Math.floor((Date.now() - o.paidAt) / 864e5), k = X.kindOf(o), rf = X.rfSet ? X.rfSet() : { days: 7, maxUsed: 0 }, inRule = days < rf.days && done <= rf.maxUsed;
         const cu = o.coach ? Number(o.coach.used) || 0 : 0, cl = o.coach ? Math.max(0, (Number(o.coach.n) || 0) - cu) : 0, per = o.coach && o.coach.n ? Math.round(o.amount / o.coach.n) : 0;
@@ -5842,69 +5842,69 @@
           (v.orders.some((x) => x.grp === o.no && x.status === "paid") ? '<label class="a-check vr-grp"><input type="checkbox" name="withGrp" checked><span>함께 결제한 ' + v.orders.filter((x) => x.grp === o.no && x.status === "paid").map((x) => esc(X.optTxt(x) || x.title) + " (" + won(x.amount) + ")").join(", ") + "도 같이 환불 <small class=\"a-muted\">강의를 환불하면 두잉고 강의실이 닫혀 코칭권을 쓸 수 없어요 · 쓴 횟수만큼 빼고 환불해요</small></span></label>" : "") +
           '<p class="a-error" id="vr-error"></p></form>',
           btn("취소", "modal-close") + '<button class="a-btn a-btn-danger" type="submit" form="vda-ref-form">' + (vdPgReal(o) ? "포트원으로 환불하기" : o.method === "bank" ? "환불 처리 (송금 대기로)" : "환불 완료로 바꾸기") + "</button>", "md"); break; }
-      case "vda-stc": { const st = vdStmt(d.k, d.m); confirmModal("정산 확정", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 정산을 확정할까요?<br><b>지급액 " + won(st.pay) + "</b> (" + (st.biz ? "사업자 · 부가세 포함" : "개인 · 3.3% 원천징수 뒤") + ")<br><small>확정하면 강사센터 › 판매 정산에 ‘이번 달 정산 명세서’로 열리고(메뉴에 새 명세서 표시), 이후 환불은 다음 달 정산에서 차감돼요.</small>", "정산 확정", false, () => { const snap = Object.assign({}, st); delete snap.rec; const r = vdPayout(d.k, d.m); if (r) Object.assign(r, { st: "confirmed", confirmedAt: Date.now(), snap }); else v.payouts.push({ key: d.k, ym: d.m, st: "confirmed", confirmedAt: Date.now(), snap }); commit(st.name + " " + vdYMtxt(d.m) + " 정산을 확정했어요. 강사센터에 명세서가 보여요."); }); break; }
-      case "vda-sti": { const r = vdPayout(d.k, d.m); if (r) { Object.assign(r, { st: "invoiced", invoiceAt: Date.now() }); commit("세금계산서를 받은 것으로 기록했어요. 이제 지급하면 돼요."); } break; }
-      case "vda-pay": { const r = vdPayout(d.k, d.m), st = vdStmt(d.k, d.m); confirmModal("정산 지급 완료", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 <b>" + won(st.pay) + "</b>을 지급했나요?", "지급 완료", false, () => { if (r) Object.assign(r, { st: "paid", at: todayStr(), amount: st.pay }); else v.payouts.push({ key: d.k, ym: d.m, st: "paid", at: todayStr(), amount: st.pay }); commit(st.name + " " + vdYMtxt(d.m) + " VOD 정산을 지급 완료로 바꿨어요."); }); break; }
+      case "vda-stc": { const st = vdStmt(d.k, d.m); confirmModal("정산 확정", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 정산을 확정할까요?<br><b>지급액 " + won(st.pay) + "</b> (" + (st.biz ? "사업자 · 부가세 포함" : "개인 · 3.3% 원천징수 뒤") + ")<br><small>확정하면 강사센터 › 판매 정산에 ‘이번 달 정산 명세서’로 열리고(메뉴에 새 명세서 표시), 이후 환불은 다음 달 정산에서 차감돼요.</small>", "정산 확정", false, () => { const snap = Object.assign({}, st); delete snap.rec; const r = vdPayout(d.k, d.m); if (r) Object.assign(r, { st: "confirmed", confirmedAt: Date.now(), snap }); else v.payouts.push({ key: d.k, ym: d.m, st: "confirmed", confirmedAt: Date.now(), snap }); commit(vdYMtxt(d.m) + " 정산을 확정했어요."); }); break; }
+      case "vda-sti": { const r = vdPayout(d.k, d.m); if (r) { Object.assign(r, { st: "invoiced", invoiceAt: Date.now() }); commit("세금계산서 받음으로 기록했어요."); } break; }
+      case "vda-pay": { const r = vdPayout(d.k, d.m), st = vdStmt(d.k, d.m); confirmModal("정산 지급 완료", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 <b>" + won(st.pay) + "</b>을 지급했나요?", "지급 완료", false, () => { if (r) Object.assign(r, { st: "paid", at: todayStr(), amount: st.pay }); else v.payouts.push({ key: d.k, ym: d.m, st: "paid", at: todayStr(), amount: st.pay }); commit(vdYMtxt(d.m) + " 정산을 지급 완료로 바꿨어요."); }); break; }
       case "vda-unpay": { const r = vdPayout(d.k, d.m); if (!r) break; if (r.snap) { r.st = r.invoiceAt ? "invoiced" : "confirmed"; delete r.at; commit("지급 완료를 취소했어요."); } else { v.payouts.splice(v.payouts.indexOf(r), 1); commit("지급 완료를 취소했어요."); } break; }
       case "vda-sto": { const r = vdPayout(d.k, d.m); if (r && r.st !== "paid") confirmModal("정산 확정 취소", "확정을 취소하면 명세서가 다시 ‘집계’ 상태로 돌아가요. 취소할까요?", "확정 취소", true, () => { v.payouts.splice(v.payouts.indexOf(r), 1); commit("정산 확정을 취소했어요."); }); break; }
       case "vda-stm": vdStmtModal(d.k, d.m); if (S && S.role === "instructor") vsMarkSeen(d.k, d.m); break;
       case "vda-type": {
         if (!(S && S.role === "master") || /^ext:/.test(d.k)) break;
         const ins = DB.instructor(d.k); if (!ins) break;
-        const rec = vdPayout(d.k, d.m); if (rec && rec.snap) { toast("확정한 명세서는 유형을 바꿀 수 없어요. ‘확정 취소’ 뒤에 바꿔 주세요.", "warn"); break; }
+        const rec = vdPayout(d.k, d.m); if (rec && rec.snap) { toast("확정한 명세서는 유형을 못 바꿔요.", "warn"); break; }
         const t = d.t === "biz" ? "biz" : "person";
         if ((ins.vodSettle || {}).type === t && (ins.vodSettle || {}).typeBy === "master") break;
         ins.vodSettle = Object.assign({}, ins.vodSettle || {}, { type: t, typeBy: "master", typeAt: Date.now() });
-        commit(vdKeyName(d.k) + " 강사 정산 유형을 ‘" + (t === "biz" ? "사업자 · 세금계산서" : "개인 · 3.3% 원천징수") + "’로 정했어요.");
+        commit("정산 유형을 ‘" + (t === "biz" ? "사업자" : "개인 3.3%") + "’로 정했어요.");
         vdStmtModal(d.k, d.m);
         break;
       }
       case "vda-print": { const el = document.querySelector(".a-modal .vs-stmt") || document.querySelector(".a-modal-body"), tt = ((document.querySelector(".a-modal-head h2, .a-modal h2") || {}).textContent || "정산 명세서").trim(); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, "DOOGO-CLASS-" + tt.replace(/[\\/:*?"<>|\s]+/g, "-") + ".pdf", { width: 760, title: tt }, (msg) => toast(msg)); break; }
       case "vda-stcsv": vdStmtCsv(d.m, d.k); break;
       case "vda-inv": vdInvForm(d.m); break;
-      case "vda-copy": { const u = d.u; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast("링크를 복사했어요. 이 링크로 들어와 7일 안에 결제하면 강사 링크 비율로 정산돼요."), () => { const t = a.closest(".vs-link"); const inp = t && t.querySelector("input"); if (inp) { inp.select(); document.execCommand && document.execCommand("copy"); } toast("링크를 복사했어요."); }); break; }
+      case "vda-copy": { const u = d.u; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast("링크를 복사했어요."), () => { const t = a.closest(".vs-link"); const inp = t && t.querySelector("input"); if (inp) { inp.select(); document.execCommand && document.execCommand("copy"); } toast("링크를 복사했어요."); }); break; }
       case "vda-csv": { const X = VX(), rows = [["주문일", "주문번호", "회원", "이메일", "클래스", "상품", "강사", "유입", "결제수단", "판매가", "쿠폰", "포인트", "결제 금액", "상태", "결제일", "환불일", "환불 금액", "정산 비율", "강사 정산"]].concat(v.orders.slice().sort((a, b) => b.at - a.at).map((o) => { const m = vdMember(o.mid) || {}, p = vdP(o.pid) || {}; return [DB.date.toStr(new Date(o.at)), o.no, m.name || "", m.email || "", o.title, X.optTxt(o) || "", p.creator || "", X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"], VD_PAY[o.method] || o.method, X.baseOf(o), o.couponOff || 0, o.pointOff || 0, o.amount, (VD_OST[o.status] || [""])[0], o.paidAt ? DB.date.toStr(new Date(o.paidAt)) : "", o.refundedAt ? DB.date.toStr(new Date(o.refundedAt)) : "", o.refundAmount || "", o.share != null ? o.share : "", o.status === "paid" ? vdInsAmt(o) : 0]; }));
         const csv = "﻿" + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\n"), l = document.createElement("a"); l.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); l.download = "doogoclass-vod-orders-" + todayStr() + ".csv"; l.click(); break; }
       case "vda-new": ui.vdDraft = null; ROUTE.hash = "#/center/master/vod-classes/new"; break;
       case "vda-alarm": vdAlarmModal(d.id); break;
       case "vda-faq-edit": { const f = d.i != null ? VX().helpFaq()[Number(d.i)] : null, cats = HELP_CATS.concat(f && HELP_CATS.indexOf(f[0]) < 0 ? [f[0]] : []);
         openModal(f ? "FAQ 고치기" : "FAQ 추가", '<div class="a-form"><div class="a-field"><label for="vf-cat">분류</label><select class="a-input" id="vf-cat">' + cats.map((c) => "<option" + (f && f[0] === c ? " selected" : "") + ">" + esc(c) + "</option>").join("") + '</select></div><div class="a-field"><label for="vf-q">질문</label><input class="a-input" id="vf-q" maxlength="80" value="' + esc(f ? f[1] : "") + '"></div><div class="a-field"><label for="vf-a">답변</label><textarea class="a-input" id="vf-a" rows="5" maxlength="800">' + esc(f ? f[2] : "") + '</textarea></div><p class="a-error" id="vf-err"></p></div>', btn("취소", "modal-close") + btn("저장", "vda-faq-save", "a-btn-primary", d.i != null ? ' data-i="' + esc(d.i) + '"' : "")); break; }
-      case "vda-faq-save": { const q = (document.getElementById("vf-q") || {}).value || "", an = (document.getElementById("vf-a") || {}).value || "", cat = (document.getElementById("vf-cat") || {}).value || "기타"; if (!q.trim() || !an.trim()) { const e = document.getElementById("vf-err"); if (e) e.textContent = "질문과 답변을 모두 적어 주세요."; break; } const list = vdFaqMine(), item = [cat, q.trim(), an.trim()]; if (d.i != null) list[Number(d.i)] = item; else list.push(item); commit("FAQ를 저장했어요. 스토어 고객센터에 바로 보여요."); break; }
+      case "vda-faq-save": { const q = (document.getElementById("vf-q") || {}).value || "", an = (document.getElementById("vf-a") || {}).value || "", cat = (document.getElementById("vf-cat") || {}).value || "기타"; if (!q.trim() || !an.trim()) { const e = document.getElementById("vf-err"); if (e) e.textContent = "질문과 답변을 모두 적어 주세요."; break; } const list = vdFaqMine(), item = [cat, q.trim(), an.trim()]; if (d.i != null) list[Number(d.i)] = item; else list.push(item); commit("FAQ를 저장했어요."); break; }
       case "vda-faq-del": { const list = vdFaqMine(), i = Number(d.i); confirmModal("FAQ 삭제", "‘" + esc((list[i] || [])[1] || "") + "’ 질문을 지울까요?", "삭제", true, () => { list.splice(i, 1); commit("FAQ를 지웠어요."); }); break; }
       case "vda-faq-mv": { const list = vdFaqMine(), i = Number(d.i), j = i + Number(d.dir); if (j < 0 || j >= list.length) break; const t = list[i]; list[i] = list[j]; list[j] = t; commit("FAQ 순서를 바꿨어요."); break; }
       case "vda-nt-edit": { const x = (VD().notices || []).find((n) => n.id === d.id);
         openModal(x ? "공지 고치기" : "공지 쓰기", '<div class="a-form"><div class="a-field"><label for="vn-t">제목</label><input class="a-input" id="vn-t" maxlength="60" value="' + esc(x ? x.title : "") + '"></div><div class="a-field"><label for="vn-b">내용</label><textarea class="a-input" id="vn-b" rows="6" maxlength="1500">' + esc(x ? x.body : "") + '</textarea></div><label class="a-check"><input type="checkbox" id="vn-pin"' + (x && x.pin ? " checked" : "") + '><span>필독 (맨 위에 펼쳐서 보여요)</span></label><p class="a-error" id="vn-err"></p></div>', btn("취소", "modal-close") + btn("저장", "vda-nt-save", "a-btn-primary", x ? ' data-id="' + esc(x.id) + '"' : "")); break; }
-      case "vda-nt-save": { const t = ((document.getElementById("vn-t") || {}).value || "").trim(), b = ((document.getElementById("vn-b") || {}).value || "").trim(), pin = !!(document.getElementById("vn-pin") || {}).checked; if (!t || !b) { const e = document.getElementById("vn-err"); if (e) e.textContent = "제목과 내용을 적어 주세요."; break; } const list = (VD().notices = VD().notices || []), x = list.find((n) => n.id === d.id); if (x) Object.assign(x, { title: t, body: b, pin }); else list.push({ id: DB.uid("vn"), title: t, body: b, pin, on: true, at: Date.now() }); commit("공지를 저장했어요. 스토어 고객센터에 보여요."); break; }
+      case "vda-nt-save": { const t = ((document.getElementById("vn-t") || {}).value || "").trim(), b = ((document.getElementById("vn-b") || {}).value || "").trim(), pin = !!(document.getElementById("vn-pin") || {}).checked; if (!t || !b) { const e = document.getElementById("vn-err"); if (e) e.textContent = "제목과 내용을 적어 주세요."; break; } const list = (VD().notices = VD().notices || []), x = list.find((n) => n.id === d.id); if (x) Object.assign(x, { title: t, body: b, pin }); else list.push({ id: DB.uid("vn"), title: t, body: b, pin, on: true, at: Date.now() }); commit("공지를 저장했어요."); break; }
       case "vda-nt-on": { const x = (VD().notices || []).find((n) => n.id === d.id); if (!x) break; x.on = x.on === false; commit(x.on ? "공지를 보이게 했어요." : "공지를 숨겼어요."); break; }
       case "vda-nt-del": { const list = VD().notices || [], i = list.findIndex((n) => n.id === d.id); if (i < 0) break; confirmModal("공지 삭제", "‘" + esc(list[i].title) + "’ 공지를 지울까요?", "삭제", true, () => { list.splice(i, 1); commit("공지를 지웠어요."); }); break; }
       case "vda-roster": vdRosterModal(d.id); break;
       case "vda-al-csv": { const p = vdP(d.id); vdCsvDl("open-alarm-" + d.id, [["클래스", "이름", "이메일", "휴대폰", "마케팅 동의"]].concat(vdAlarmOf(d.id).map((m) => [p ? p.title : "", m.name, m.email, m.phone || "", m.marketing ? "동의" : ""]))); break; }
       case "vda-al-copy": { const t = document.getElementById("vda-al-txt"); if (t) { t.select(); try { document.execCommand("copy"); toast("알림 문구를 복사했어요."); } catch (e) { toast("문구를 길게 눌러 복사해 주세요.", "warn"); } } break; }
-      case "vda-al-give": { const c = (VD().coupons || []).find((x) => x.id === (document.getElementById("vda-al-cp") || {}).value), ms = vdAlarmOf(d.id); if (!c) { toast("보낼 쿠폰을 골라 주세요.", "warn"); break; } const n = ms.filter((m) => VX().issueCoupon(m.id, c)).length; DB.save(); toast("‘" + c.name + "’ 쿠폰을 " + n + "명에게 넣었어요." + (ms.length - n ? " (" + (ms.length - n) + "명은 이미 받았어요)" : "")); break; }
+      case "vda-al-give": { const c = (VD().coupons || []).find((x) => x.id === (document.getElementById("vda-al-cp") || {}).value), ms = vdAlarmOf(d.id); if (!c) { toast("보낼 쿠폰을 골라 주세요.", "warn"); break; } const n = ms.filter((m) => VX().issueCoupon(m.id, c)).length; DB.save(); toast("쿠폰을 " + n + "명에게 넣었어요." + (ms.length - n ? " (" + (ms.length - n) + "명 이미 받음)" : "")); break; }
       case "vda-roster-csv": { const p = vdP(d.id); vdCsvDl("roster-" + d.id, [["클래스", "일시", "번호", "이름", "휴대폰", "이메일", "신청일", "결제", "금액", "출석"]].concat(vdRoster(d.id).map((o, i) => { const m = vdMember(o.mid) || {}; return [p ? p.title : "", p ? p.eventAt : "", i + 1, (o.buyer && o.buyer.name) || m.name || "", vdPhoneOf(o, m), m.email || "", DB.date.toStr(new Date(o.at)), o.status === "pending" ? "입금 대기" : "완료", o.amount, o.attend ? "O" : ""]; }))); break; }
       case "vda-attend": { const o = VD().orders.find((x) => x.id === d.id); if (!o) break; o.attend = !o.attend; DB.save(); a.classList.toggle("on", o.attend); a.setAttribute("aria-checked", String(o.attend)); break; }
       case "vda-cancel0": { const o = O(); if (!o) break; confirmModal("신청 취소", esc((vdMember(o.mid) || {}).name || "") + " 님의 ‘" + esc(o.title) + "’ 신청을 취소할까요?" + (o.mcid || o.pointOff ? "<br>쓴 쿠폰 · 포인트는 회원에게 돌려줘요." : "") + "<br>LIVE · 온/오프라인 자리는 다시 열려요.", "신청 취소", true, () => { if (VX().restoreOrder) VX().restoreOrder(o); Object.assign(o, { status: "canceled", canceledAt: Date.now(), canceledBy: (S && (S.name || S.role)) || "master" }); commit(o.no + " 신청을 취소했어요."); }); break; }
       case "vda-blink": { const sel = document.querySelector('[data-blink="' + (window.CSS && CSS.escape ? CSS.escape(d.id) : d.id) + '"]'), no = sel && sel.value; if (!no) { toast("연결할 주문을 골라 주세요.", "warn"); break; }
         const o = VD().orders.find((x) => x.no === no), e = (ui.vdBankLog || []).find((x) => x.id === d.id) || {};
         confirmModal("입금 연결", esc(e.name || "") + " · " + won(e.amount || 0) + " 입금을<br><b>" + esc(o ? vdDep(o) + " · " + o.title : no) + "</b> 주문에 연결할까요? 연결하면 바로 수강이 열려요." + (o && vdGrpAmt(o) !== e.amount ? '<br><small class="a-memo-red">금액이 달라요 (주문 ' + won(vdGrpAmt(o)) + ")</small>" : ""), "연결 · 입금 확인", false, () => {
-          VX().payApi("bankLink", { id: d.id, no }).then((r) => DB.remote.refresh().then(() => { ui.vdBankLog = undefined; closeModal(); render(); if (r && r.ok) { actLog(no + " 입금을 연결했어요."); toast(no + " 입금을 연결했어요. 회원이 바로 수강할 수 있어요."); } else toast((r && r.message) || "연결하지 못했어요.", "warn"); }));
+          VX().payApi("bankLink", { id: d.id, no }).then((r) => DB.remote.refresh().then(() => { ui.vdBankLog = undefined; closeModal(); render(); if (r && r.ok) { actLog(no + " 입금을 연결했어요."); toast("입금을 연결했어요."); } else toast((r && r.message) || "연결하지 못했어요.", "warn"); }));
         }); break; }
       case "vda-insoff": { const v = VD(), k = d.k, nm = d.n || k; v.insOff = Array.isArray(v.insOff) ? v.insOff : []; const i = v.insOff.indexOf(k);
-        if (i >= 0) { v.insOff.splice(i, 1); commit(nm + " 강사 클래스를 스토어에 다시 보여 줘요."); break; }
-        confirmModal("스토어에서 숨기기", "<b>" + esc(nm) + "</b> 강사의 클래스 · 배너 · 강사진 카드를 스토어에서 숨길까요?<br>클래스는 지우지 않아요. 새로 살 수만 없고, 이미 산 회원은 계속 들을 수 있어요. 언제든 다시 켤 수 있어요.", "숨기기", true, () => { v.insOff.push(k); commit(nm + " 강사 클래스를 스토어에서 숨겼어요. 클래스는 그대로 남아 있어요."); }); break; }
-      case "vda-cph-del": if (ui.vdDraft) { ui.vdDraft.creatorPhoto = "none"; render(); toast("강사 사진을 지웠어요. 저장을 눌러야 반영돼요."); } break;
+        if (i >= 0) { v.insOff.splice(i, 1); commit(nm + " 강사를 스토어에 다시 보여요."); break; }
+        confirmModal("스토어에서 숨기기", "<b>" + esc(nm) + "</b> 강사의 클래스 · 배너 · 강사진 카드를 스토어에서 숨길까요?<br>클래스는 지우지 않아요. 새로 살 수만 없고, 이미 산 회원은 계속 들을 수 있어요. 언제든 다시 켤 수 있어요.", "숨기기", true, () => { v.insOff.push(k); commit(nm + " 강사를 스토어에서 숨겼어요."); }); break; }
+      case "vda-cph-del": if (ui.vdDraft) { ui.vdDraft.creatorPhoto = "none"; render(); toast("강사 사진을 지웠어요. 저장해 주세요."); } break;
       case "vda-cancel-exp": { const ex = vdExpired(); confirmModal("기한 지난 주문 취소", "입금 기한(" + (Number(VD().settings.payDays) || 3) + "일)이 지난 무통장 주문 " + ex.length + "건을 한 번에 취소할까요?<br>쓴 쿠폰 · 포인트는 회원에게 돌려주고, 잡아 둔 자리도 다시 열려요.", "모두 취소", true, () => { if (vdSrv()) { vdBankAct("bankCancel", ex.filter((o) => !o.grp).map((o) => o.no), "입금 기한 지난 주문 " + ex.filter((o) => !o.grp).length + "건을 취소했어요."); return; } const at = Date.now(); ex.forEach((o) => { if (VX().restoreOrder) VX().restoreOrder(o); if (o.tea) o.tea.st = "cancel"; Object.assign(o, { status: "canceled", canceledAt: at, canceledBy: "기한 지남" }); }); commit("기한 지난 주문 " + ex.length + "건을 취소했어요."); }); break; }
       case "vda-mem": vdMemberModal(d.id); break;
-      case "vda-pt": { const m = vdMember(d.id), amt = Math.round(Number((document.getElementById("vda-pt-amt") || {}).value) || 0), why = ((document.getElementById("vda-pt-why") || {}).value || "").trim(); if (!m) break; if (!amt) { toast("더하거나 뺄 포인트를 적어 주세요. (빼려면 -500처럼)", "warn"); break; } if (!why) { toast("사유를 적어 주세요. 회원 포인트 내역에 보여요.", "warn"); break; } if ((Number(m.points) || 0) + amt < 0) { toast("포인트가 0보다 작아질 수 없어요.", "warn"); break; } VX().addPoint(m, amt, why + " (운영자)"); DB.save(); actLog(m.name + " 포인트 " + (amt > 0 ? "+" : "") + amt); vdMemberModal(d.id); toast("포인트를 " + (amt > 0 ? "더했어요." : "뺐어요.")); break; }
+      case "vda-pt": { const m = vdMember(d.id), amt = Math.round(Number((document.getElementById("vda-pt-amt") || {}).value) || 0), why = ((document.getElementById("vda-pt-why") || {}).value || "").trim(); if (!m) break; if (!amt) { toast("포인트를 적어 주세요 (빼기는 -500).", "warn"); break; } if (!why) { toast("사유를 적어 주세요.", "warn"); break; } if ((Number(m.points) || 0) + amt < 0) { toast("포인트가 0보다 작아질 수 없어요.", "warn"); break; } VX().addPoint(m, amt, why + " (운영자)"); DB.save(); actLog(m.name + " 포인트 " + (amt > 0 ? "+" : "") + amt); vdMemberModal(d.id); toast("포인트를 " + (amt > 0 ? "더했어요." : "뺐어요.")); break; }
       case "vda-mc-add": { const c = (VD().coupons || []).find((x) => x.id === (document.getElementById("vda-mc-cid") || {}).value); if (!c) { toast("쿠폰을 골라 주세요.", "warn"); break; } if (!VX().issueCoupon(d.id, c)) { toast("이미 받은 쿠폰이에요.", "warn"); break; } DB.save(); vdMemberModal(d.id); toast("‘" + c.name + "’ 쿠폰을 넣었어요."); break; }
       case "vda-mc-del": { const list = (VD().memberCoupons || {})[d.id] || [], i = list.findIndex((x) => x.id === d.mc); if (i < 0) break; list.splice(i, 1); DB.save(); vdMemberModal(d.id); toast("쿠폰을 회수했어요."); break; }
-      case "vda-dev-reset": { const m = vdMember(d.id); if (!m) break; m.devices = []; DB.save(); vdMemberModal(d.id); toast("기기 목록을 초기화했어요. 다음 로그인부터 새로 등록돼요."); break; }
+      case "vda-dev-reset": { const m = vdMember(d.id); if (!m) break; m.devices = []; DB.save(); vdMemberModal(d.id); toast("기기 목록을 초기화했어요."); break; }
       case "vda-dup": { const src = vdP(d.id); if (!src) break; const c = DB.clone(src);
         ["id", "createdAt", "openedAt", "updatedAt", "thumbMeta"].forEach((k) => { delete c[k]; });
         Object.assign(c, { __id: "new", dupOf: src.id, title: (src.title + " (복사본)").slice(0, 60), status: "hidden", base: 0, likeBase: 0, badges: (src.badges || []).filter((b) => b !== "BEST" && b !== "HOT"), faq: (src.faq || []).map((x) => x.slice()) });
         (c.curriculum || []).forEach((ch) => { ch.id = ""; (ch.lessons || []).forEach((l) => { l.id = ""; }); });
         if (VX().isEvent(src)) c.eventAt = "";
-        ui.vdDraft = c; ROUTE.hash = "#/center/master/vod-classes/new"; toast("‘" + src.title + "’을 복사했어요. 이름 · 날짜 · 링크를 바꾸고 ‘클래스 만들기’를 누르면 새로 생겨요."); break; }
+        ui.vdDraft = c; ROUTE.hash = "#/center/master/vod-classes/new"; toast("복사했어요. 고쳐서 ‘클래스 만들기’를 눌러 주세요."); break; }
       case "vda-new-fl": ui.vdDraft = Object.assign(vdBlank(), { __id: "new", type: "live", price: 0, accessDays: null, via: "youtube", eventMin: 90, kakao: "", ytLive: "", hook: "LIVE 무료 특강", ebDays: 3, next: "", gate: false, curriculum: [{ id: "", title: "LIVE 진행 순서", lessons: [{ id: "", title: "오프닝 · 오늘 배울 것", min: 10, video: "", preview: false }, { id: "", title: "핵심 강의", min: 60, video: "", preview: false }, { id: "", title: "실시간 Q&A · LIVE 참여자 혜택 안내", min: 20, video: "", preview: false }] }] }); ROUTE.hash = "#/center/master/vod-classes/new"; break;
       case "vda-jump": { e.preventDefault(); const s = document.getElementById(d.to); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 80, behavior: "smooth" }); break; }
       case "vda-ch-add": edit((x) => { x.curriculum.push({ id: "", title: "", lessons: [{ id: "", title: "", min: 10, video: "", preview: false }] }); }); setTimeout(() => { const ins = document.querySelectorAll(".vda-ch-h input"); if (ins.length) ins[ins.length - 1].focus(); }, 30); break;
@@ -5916,30 +5916,30 @@
       case "vda-fq-del": edit((x) => { x.faq.splice(Number(d.i), 1); }); break;
       case "vda-img-del": edit((x) => { x[d.k] = ""; }); break;
       case "vda-dimg-move": edit((x) => { const im = vdDimgs(x), i = Number(d.i), j = i + Number(d.dir); if (j >= 0 && j < im.length) { const t0 = im[i]; im[i] = im[j]; im[j] = t0; } }); break;
-      case "vda-dimg-del": edit((x) => { vdDimgs(x).splice(Number(d.i), 1); }); toast("상세 이미지를 뺐어요. 저장을 눌러야 반영돼요."); break;
-      case "vda-dimg-url": { const inp = document.getElementById("vda-dimg-url"), u = inp ? inp.value.trim() : ""; if (!/^https?:\/\/\S+$/i.test(u)) { toast("https:// 로 시작하는 이미지 주소를 넣어 주세요.", "warn"); break; } edit((x) => { vdDimgs(x).push({ url: u, name: decodeURIComponent(u.split("/").pop().split("?")[0] || "상세 이미지") }); }); toast("이미지 주소를 추가했어요. 저장을 눌러야 반영돼요."); break; }
+      case "vda-dimg-del": edit((x) => { vdDimgs(x).splice(Number(d.i), 1); }); toast("상세 이미지를 뺐어요. 저장해 주세요."); break;
+      case "vda-dimg-url": { const inp = document.getElementById("vda-dimg-url"), u = inp ? inp.value.trim() : ""; if (!/^https?:\/\/\S+$/i.test(u)) { toast("https:// 이미지 주소를 넣어 주세요.", "warn"); break; } edit((x) => { vdDimgs(x).push({ url: u, name: decodeURIComponent(u.split("/").pop().split("?")[0] || "상세 이미지") }); }); toast("이미지 주소를 추가했어요. 저장해 주세요."); break; }
       case "vda-fdel": edit((x) => { const l = x.curriculum[Number(d.ci)].lessons[Number(d.li)]; (l.files = l.files || []).splice(Number(d.fi), 1); }); break;
-      case "vda-flink": { const k = "ls-" + d.ci + "-" + d.li, nm = (form[k + "-ln"] || {}).value || "", u = ((form[k + "-lu"] || {}).value || "").trim(); if (!/^https?:\/\//.test(u)) { toast("https:// 로 시작하는 주소를 넣어 주세요.", "warn"); break; } edit((x) => { const l = x.curriculum[Number(d.ci)].lessons[Number(d.li)]; (l.files = l.files || []).push({ name: nm.trim() || "링크 자료", url: u }); }); break; }
+      case "vda-flink": { const k = "ls-" + d.ci + "-" + d.li, nm = (form[k + "-ln"] || {}).value || "", u = ((form[k + "-lu"] || {}).value || "").trim(); if (!/^https?:\/\//.test(u)) { toast("https:// 주소를 넣어 주세요.", "warn"); break; } edit((x) => { const l = x.curriculum[Number(d.ci)].lessons[Number(d.li)]; (l.files = l.files || []).push({ name: nm.trim() || "링크 자료", url: u }); }); break; }
       case "vda-del": { const p = vdP(d.id); if (!p) break; const n = v.orders.filter((o) => o.pid === p.id && o.status !== "refunded").length;
         if (n) { confirmModal("클래스 삭제", "이 클래스는 구매한 회원이 " + n + "명 있어서 지울 수 없어요. 대신 ‘숨김’으로 바꾸면 새로 팔리지 않고, 이미 산 회원은 계속 볼 수 있어요.", "숨김으로 바꾸기", false, () => { p.status = "hidden"; ui.vdDraft = null; commit("‘" + p.title + "’ 클래스를 숨겼어요."); }); break; }
         confirmModal("클래스 삭제", "‘" + esc(p.title) + "’ 클래스를 지울까요? 되돌릴 수 없어요.", "삭제", true, () => { v.products.splice(v.products.indexOf(p), 1); v.banners.forEach((b) => { if (b.pid === p.id) b.pid = ""; }); ui.vdDraft = null; ROUTE.replace("#/center/master/vod-classes"); commit("‘" + p.title + "’ 클래스를 지웠어요."); }); break; }
-      case "vda-block": { const m = vdMember(d.id); if (!m) break; m.blocked = !m.blocked; commit(m.name + " 님을 " + (m.blocked ? "이용 중지했어요. 로그인할 수 없어요." : "다시 이용할 수 있게 했어요.")); break; }
-      case "vda-pl-hide": { const x = (v.pledges || []).find((y) => y.id === d.id); if (!x) break; x.hidden = !x.hidden; commit(x.hidden ? "다짐 한마디를 숨겼어요. 스토어에 안 보여요." : "다짐 한마디를 다시 보이게 했어요."); break; }
+      case "vda-block": { const m = vdMember(d.id); if (!m) break; m.blocked = !m.blocked; commit(m.name + " 님을 " + (m.blocked ? "이용 중지했어요." : "다시 이용할 수 있게 했어요.")); break; }
+      case "vda-pl-hide": { const x = (v.pledges || []).find((y) => y.id === d.id); if (!x) break; x.hidden = !x.hidden; commit(x.hidden ? "다짐 한마디를 숨겼어요." : "다짐 한마디를 다시 보이게 했어요."); break; }
       case "vda-acc": { const c2 = document.getElementById("vda-c2"); if (c2) { c2.value = d.c; c2.dispatchEvent(new Event("input", { bubbles: true })); } break; }
       case "vda-rv-hide": { const r = v.reviews.find((x) => x.id === d.id); if (!r) break; r.hidden = !r.hidden; commit(r.hidden ? "후기를 숨겼어요. 스토어에 안 보여요." : "후기를 다시 보이게 했어요."); break; }
       case "vda-ban-add": vdBanForm(null); break;
-      case "vda-tile-add": vtSync(); v.tiles.push({ id: DB.uid("vt"), key: "", label: "새 아이콘", href: "#/vod/c/all", img: "", badge: "", on: true }); commit("아이콘을 추가했어요. 이름 · 링크를 적고 아이콘 이미지를 올려 주세요."); break;
-      case "vda-biz": { const v = VD(); v.biz = Object.assign({}, VX().BIZ_DEF, v.biz || {}); v.biz[d.k] = !v.biz[d.k]; commit(BIZ_NAME[d.k] + (v.biz[d.k] ? " 판매 영역을 켰어요. 스토어 메뉴 · 홈에 다시 보여요." : " 판매 영역을 껐어요. 스토어 메뉴 · 홈 · 목록에서 숨겨요.")); break; }
-      case "vda-rail-on": { const rs = railSync(), r = rs.find((x) => x.k === d.k); if (!r) break; r.on = !r.on; commit(r.on ? "‘" + hmName(r) + "’ 섹션을 보이게 했어요." : "‘" + hmName(r) + "’ 섹션을 숨겼어요. 첫 화면에서 안 보여요."); break; }
+      case "vda-tile-add": vtSync(); v.tiles.push({ id: DB.uid("vt"), key: "", label: "새 아이콘", href: "#/vod/c/all", img: "", badge: "", on: true }); commit("아이콘을 추가했어요. 이름 · 링크를 채워 주세요."); break;
+      case "vda-biz": { const v = VD(); v.biz = Object.assign({}, VX().BIZ_DEF, v.biz || {}); v.biz[d.k] = !v.biz[d.k]; commit(BIZ_NAME[d.k] + (v.biz[d.k] ? " 판매 영역을 켰어요." : " 판매 영역을 껐어요.")); break; }
+      case "vda-rail-on": { const rs = railSync(), r = rs.find((x) => x.k === d.k); if (!r) break; r.on = !r.on; commit(r.on ? "‘" + hmName(r) + "’ 섹션을 보이게 했어요." : "‘" + hmName(r) + "’ 섹션을 숨겼어요."); break; }
       case "vda-rail-move": { const rs = railSync(), i = rs.findIndex((x) => x.k === d.k), j = i + Number(d.dir); if (i < 0 || j < 0 || j >= rs.length) break; const t = rs[i]; rs[i] = rs[j]; rs[j] = t; commit("섹션 순서를 바꿨어요."); break; }
       case "vda-rail-reset": confirmModal("홈 첫 화면 처음 상태로", "섹션 순서 · 켜기 · 제목 · 고정한 강의 · 뺀 강의 · 분야 탭 · 강사 순서를 모두 처음 상태로 되돌릴까요?", "되돌리기", true, () => { VD().homeRails = VX().RAIL_DEF.map((r) => ({ k: r.k, on: true, tag: r.tag, t: r.t.slice(), mode: "auto", picks: [], hide: [], cats: [] })); commit("홈 첫 화면을 처음 상태로 되돌렸어요."); }); break;
       /* 홈 꾸미기 */
       case "hk-sel": { railSync(); ui.hmSel = d.k; render(); const ed = document.getElementById("hk-ed"); if (ed && window.innerWidth < 900) ed.scrollIntoView({ block: "start" }); break; }
       case "hk-cat": { railSync(); ui.hmCat = d.c; render(); break; }
       case "hk-mv": { const rs = railSync(), tg = hmTarget(rs, d.k, d.c), i = Number(d.i), to = Number(d.to); if (!tg || i < 0 || i >= tg.ids.length || to < 0 || to >= tg.ids.length || i === to) break; hmPin(tg.o, tg.ids, i, to, tg.all); tg.done(); commit(to === 0 ? "맨 앞으로 옮겼어요." : "순서를 바꿨어요."); break; }
-      case "hk-hide": { const rs = railSync(), tg = hmTarget(rs, d.k, d.c); if (!tg) break; hmHide(tg.o, d.id); commit("이 자리에서 뺐어요. 아래 ‘뺀 " + (d.k === "teach" ? "강사" : "강의") + "’에서 다시 넣을 수 있어요."); break; }
+      case "hk-hide": { const rs = railSync(), tg = hmTarget(rs, d.k, d.c); if (!tg) break; hmHide(tg.o, d.id); commit("뺐어요. 아래 ‘뺀 " + (d.k === "teach" ? "강사" : "강의") + "’에서 되돌려요."); break; }
       case "hk-show": { const rs = railSync(), tg = hmTarget(rs, d.k, d.c); if (!tg) break; hmShow(tg.o, d.id, tg.all); commit("다시 넣었어요."); break; }
-      case "hk-add": { const sel = document.getElementById("hk-add"), id = sel ? sel.value : ""; if (!id) { toast("넣을 강의를 골라 주세요.", "warn"); break; } const rs = railSync(), r = rs.find((x) => x.k === d.k); if (!r) break; hmShow(r, id, true); if (r.mode === "auto") r.mode = "pin"; commit("‘" + hmPName(id) + "’ 강의를 넣었어요. ‘맨 앞’ · ↑ ↓로 자리를 옮겨요."); break; }
+      case "hk-add": { const sel = document.getElementById("hk-add"), id = sel ? sel.value : ""; if (!id) { toast("넣을 강의를 골라 주세요.", "warn"); break; } const rs = railSync(), r = rs.find((x) => x.k === d.k); if (!r) break; hmShow(r, id, true); if (r.mode === "auto") r.mode = "pin"; commit("‘" + hmPName(id) + "’ 강의를 넣었어요."); break; }
       case "hk-reset": { const rs = railSync(), r = rs.find((x) => x.k === d.k); if (!r) break; confirmModal("이 섹션 처음 규칙으로", "‘" + hmName(r) + "’의 고정한 순서 · 뺀 " + (d.k === "teach" ? "강사" : "강의") + (d.k === "cat" ? " · 탭 순서" : "") + "를 지우고 기본 규칙대로 보여 줄까요? (이름표 · 제목 · 켜기는 그대로)", "처음 규칙으로", true, () => { const r2 = railState().find((x) => x.k === d.k); Object.assign(r2, { mode: "auto", picks: [], hide: [], cats: [] }); commit("‘" + hmName(r2) + "’을 기본 규칙으로 되돌렸어요."); }); break; }
       case "hk-cat-on": { const rs = railSync(), r = rs.find((x) => x.k === "cat"); if (!r) break; const c = hmCats(r).find((x) => x.k === d.c); if (!c) break; c.on = !c.on; commit(c.on ? "분야 탭을 보이게 했어요." : "분야 탭을 숨겼어요."); break; }
       case "hk-cat-mv": { const rs = railSync(), r = rs.find((x) => x.k === "cat"); if (!r) break; const cs = hmCats(r), i = cs.findIndex((x) => x.k === d.c), j = i + Number(d.dir); if (i < 0 || j < 0 || j >= cs.length) break; const t = cs[i]; cs[i] = cs[j]; cs[j] = t; commit("분야 탭 순서를 바꿨어요."); break; }
@@ -5951,7 +5951,7 @@
       case "vda-ban-imgdel": if (ui.vbDraft) { ui.vbDraft[d.k] = ""; vbPaint(d.k); if (d.k === "pc") vbPaint("m"); } break;
       case "vda-cp-add": vdCpForm(null); break;
       case "vda-cp-edit": vdCpForm(Number(d.i)); break;
-      case "vda-cp-on": { const c = (v.coupons || [])[Number(d.i)]; if (!c) break; c.on = c.on === false; commit(c.on ? "‘" + c.name + "’ 쿠폰을 켰어요." : "‘" + c.name + "’ 쿠폰을 껐어요. 회원이 더는 쓸 수 없어요."); break; }
+      case "vda-cp-on": { const c = (v.coupons || [])[Number(d.i)]; if (!c) break; c.on = c.on === false; commit(c.on ? "‘" + c.name + "’ 쿠폰을 켰어요." : "‘" + c.name + "’ 쿠폰을 껐어요."); break; }
       case "vda-cp-del": { const c = (v.coupons || [])[Number(d.i)]; if (!c) break; const st = vdCpStat(c);
         if (st.n) { confirmModal("쿠폰 지우기", "‘" + esc(c.name) + "’ 쿠폰은 받은 회원이 " + st.n + "명 있어서 지울 수 없어요. 대신 꺼 두면 더는 쓸 수 없어요.", "끄기", false, () => { c.on = false; commit("쿠폰을 껐어요."); }); break; }
         confirmModal("쿠폰 지우기", "‘" + esc(c.name) + "’ 쿠폰을 지울까요?", "지우기", true, () => { v.coupons.splice(Number(d.i), 1); commit("쿠폰을 지웠어요."); }); break; }
@@ -5974,12 +5974,12 @@
     const file = input.files && input.files[0], pid = input.dataset.vdaPdf, form = document.getElementById("vda-form"); input.value = "";
     if (!file || !form || !ui.vdDraft) return;
     if (!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)) { toast("PDF 파일만 올릴 수 있어요.", "warn"); return; }
-    if (file.size > VX().MAT_MAX) { toast((DB.remote && DB.remote.on ? "3MB" : "20MB") + "를 넘는 PDF는 구글 드라이브 · 드롭박스 공유 링크로 넣어 주세요.", "warn"); return; }
+    if (file.size > VX().MAT_MAX) { toast((DB.remote && DB.remote.on ? "3MB" : "20MB") + " 넘는 PDF는 공유 링크로 넣어 주세요.", "warn"); return; }
     try {
       const r = await VX().matPut(file, "vodp:" + pid);
       vdSync(form); ui.vdDraft.file = r.url; if (form.file) form.file.value = r.url;
-      toast("PDF를 올렸어요 (" + kbTxt(file.size) + "). 저장을 눌러야 반영돼요.");
-    } catch (e) { toast("PDF를 올리지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"); }
+      toast("PDF를 올렸어요. 저장해 주세요.");
+    } catch (e) { toast("PDF를 올리지 못했어요. 다시 시도해 주세요.", "warn"); }
   }
   let vdT = null;
   document.addEventListener("input", (e) => {
@@ -6016,7 +6016,7 @@
     if (f.size > 10 * 1048576) { toast("10MB 이하 파일만 올릴 수 있어요.", "warn"); return; }
     let url = ""; if (window.VOD && window.VOD.matPut) { const r = await window.VOD.matPut(f, "adm").catch(() => null); url = r ? r.url : ""; }
     const cs = CONTRACTS(), c = (cs[iid] = cs[iid] || { feeNote: "", contact: "", phone: "", email: "", memo: "", docs: {} }); c.docs = c.docs || {};
-    c.docs[k] = { name: f.name, at: todayStr(), url, by: "instructor" }; DB.save(); render(); toast("‘" + (DOCS.find((x) => x[0] === k) || ["", "서류"])[1] + "’을 올렸어요. 운영팀이 확인할게요.");
+    c.docs[k] = { name: f.name, at: todayStr(), url, by: "instructor" }; DB.save(); render(); toast("‘" + (DOCS.find((x) => x[0] === k) || ["", "서류"])[1] + "’을 올렸어요.");
   });
   /* ---------------- 렌더 ---------------- */
   const PAGES = { "": pageDashboard, students: pageStudents, cohorts: pageCohorts, reviews: pageReviews, questions: pageQuestions, brand: pageBrand, menus: pageMenus, guide: pageGuide, landing: pageLanding, free: pageFree, curriculum: pageCurriculum, missions: pageMissions, schedule: pageSchedule, notices: pageNotices, faq: pageFaq, docs: pageDocs, library: pageLibrary, motivation: pageMotivation, replays: pageReplays, showcase: pageShowcase, glossary: pageGlossary, notes: pageNotePrompts, channels: pageChannels, partners: pagePartners, coaches: pageCoaches, pages: pageCustomPages, billing: pageBilling };
@@ -6354,15 +6354,15 @@
     if (!c.name) { toast("캠페인 이름을 적어 주세요.", "warn"); return; }
     if (c.text.length < 5) { toast("보낼 내용을 5자 이상 적어 주세요.", "warn"); return; }
     if (c.later && (!c.f.at.value || c.at < Date.now())) { toast("예약 시간을 지금 이후로 골라 주세요.", "warn"); return; }
-    if (c.r.blocked) { toast("밤 8시 50분 ~ 아침 8시에는 브랜드 메시지를 보낼 수 없어요. 예약으로 골라 주세요.", "warn"); return; }
-    if (!c.r.ok.length) { toast("보낼 수 있는 회원이 없어요. 대상이나 채널을 바꿔 주세요.", "warn"); return; }
-    if (c.live && c.ch === "alim" && !c.tpl) { toast("알림톡은 카카오가 승인한 템플릿을 골라야 보낼 수 있어요.", "warn"); return; }
+    if (c.r.blocked) { toast("밤 8:50~아침 8시엔 못 보내요. 예약해 주세요.", "warn"); return; }
+    if (!c.r.ok.length) { toast("보낼 수 있는 회원이 없어요.", "warn"); return; }
+    if (c.live && c.ch === "alim" && !c.tpl) { toast("승인된 알림톡 템플릿을 골라 주세요.", "warn"); return; }
     if (c.live && c.ch === "email" && !c.subject) { toast("메일 제목을 적어 주세요.", "warn"); return; }
     if (!c.live) return crmRecord(c, c.r.ok.map((pf) => pf.m.id), null);
     const b = document.querySelector('[data-action="crm-camp-send"]'); if (b) b.disabled = true;
     DB.remote.call("admin", { action: "msg-send", ch: c.ch, mids: c.r.ok.map((pf) => pf.m.id), text: c.text, subject: c.subject, templateId: c.tpl ? c.tpl.id : "", at: c.later ? c.at : 0 })
-      .then((r) => { if (!r || !r.ok) { if (b) b.disabled = false; toast((r && r.message) || "보내지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"); return; } crmRecord(c, r.to || [], r); })
-      .catch(() => { if (b) b.disabled = false; toast("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"); });
+      .then((r) => { if (!r || !r.ok) { if (b) b.disabled = false; toast((r && r.message) || "보내지 못했어요. 다시 시도해 주세요.", "warn"); return; } crmRecord(c, r.to || [], r); })
+      .catch(() => { if (b) b.disabled = false; toast("서버에 연결하지 못했어요.", "warn"); });
   }
   /** 캠페인 기록 · 쿠폰 지급 (r: 서버 실제 발송 결과 · 없으면 시안 기록) */
   function crmRecord(c, toIds, r) {
@@ -6373,7 +6373,7 @@
     if (!c.later) toIds.forEach((mid) => CRM().msgs.push({ at: c.at, mid, ch: c.ch, name: c.name, camp: id }));
     if (CRM().msgs.length > 3000) CRM().msgs.splice(0, CRM().msgs.length - 3000);
     ui.crmMt = "camp";
-    commit("‘" + c.name + "’ " + (c.later ? (r ? r.sent + "명에게 예약했어요" : "예약했어요") : "캠페인을 " + (r ? r.sent : toIds.length) + "명에게 보냈어요") + (r && r.failed ? " · 실패 " + r.failed + "명" : "") + (given ? " · 쿠폰 " + given + "장 지급" : "") + (r ? "." : ". (시안 · 실제 발송 없음)"));
+    commit((c.later ? (r ? r.sent + "명에게 예약했어요" : "예약했어요") : (r ? r.sent : toIds.length) + "명에게 보냈어요") + (r && r.failed ? " · 실패 " + r.failed + "명" : "") + (given ? " · 쿠폰 " + given + "장" : "") + (r ? "." : " (시안)"));
     if (ROUTE.hash.indexOf("vod-msg") < 0 && !/vod-crm\//.test(ROUTE.hash)) ROUTE.hash = "#/center/master/vod-msg";
   }
 
@@ -6438,21 +6438,21 @@
       case "crm-csv-ok": {
         const ids = d.sel === "1" ? crmSelIds() : null, list = ids ? crmAll().filter((pf) => ids.indexOf(pf.m.id) >= 0) : crmList(), why = ((document.getElementById("crm-dl-why") || {}).value || "") + (((document.getElementById("crm-dl-memo") || {}).value || "").trim() ? " · " + document.getElementById("crm-dl-memo").value.trim() : "");
         vdCsvDl("doogoclass-members", [["회원번호", "이름", "이메일", "휴대폰", "가입 방식", "가입일", "처음 들어온 경로", "단계", "결제 횟수", "누적 결제", "마지막 활동", "쓸 수 있는 쿠폰", "포인트", "소식 받기", "받을 곳", "동의한 날", "카카오톡 채널", "태그"]].concat(list.map((pf) => { const m = pf.m; return [m.id, m.name, m.email || "", m.phone || "", m.via === "kakao" ? "카카오" : "이메일", crmDate(m.createdAt), crmSrc(m), crmStage(pf.stage)[0], pf.paid.length, pf.ltv, crmDate(pf.last), pf.cpOk.length, Number(m.points) || 0, pf.sub ? "동의" : "안 함", CH3n(crmChs(m)), pf.sub ? crmDate((m.consent || {}).at) : "", m.kakaoCh ? "친구" : "", (m.tags || []).join(" / ")]; })));
-        CRM().dl.unshift({ at: Date.now(), who: whoAmI(), n: list.length, why }); commit("회원 " + list.length + "명 목록을 내려받았어요. (사유: " + why + ")"); break;
+        CRM().dl.unshift({ at: Date.now(), who: whoAmI(), n: list.length, why }); commit("회원 " + list.length + "명 목록을 내려받았어요."); break;
       }
       case "crm-b-cp": crmBulkModal("cp"); break;
       case "crm-b-pt": crmBulkModal("pt"); break;
       case "crm-b-tag": crmBulkModal("tag"); break;
       case "crm-bk-ok": {
         const ms = (d.one ? [d.one] : crmSelIds()).map(vdMember).filter(Boolean); if (!ms.length) { closeModal(); break; }
-        if (d.k === "cp") { const c = (v.coupons || []).find((x) => x.id === (document.getElementById("crm-bk-cp") || {}).value); if (!c) break; let n = 0; ms.forEach((m) => { if (VX().issueCoupon(m.id, c)) n++; }); commit("‘" + c.name + "’ 쿠폰을 " + n + "명에게 넣었어요." + (ms.length - n ? " (" + (ms.length - n) + "명은 이미 받음)" : "")); }
+        if (d.k === "cp") { const c = (v.coupons || []).find((x) => x.id === (document.getElementById("crm-bk-cp") || {}).value); if (!c) break; let n = 0; ms.forEach((m) => { if (VX().issueCoupon(m.id, c)) n++; }); commit("쿠폰을 " + n + "명에게 넣었어요." + (ms.length - n ? " (" + (ms.length - n) + "명 이미 받음)" : "")); }
         else if (d.k === "pt") { const amt = Math.round(Number((document.getElementById("crm-bk-pt") || {}).value) || 0), why = ((document.getElementById("crm-bk-why") || {}).value || "").trim(); if (amt <= 0) { toast("넣을 포인트를 적어 주세요.", "warn"); break; } if (!why) { toast("사유를 적어 주세요.", "warn"); break; } ms.forEach((m) => VX().addPoint(m, amt, why + " (운영자)")); commit(ms.length + "명에게 " + amt.toLocaleString() + "P를 넣었어요."); }
         else { const t = ((document.getElementById("crm-bk-tagn") || {}).value || "").trim() || (document.getElementById("crm-bk-tag") || {}).value; if (!t) { toast("태그를 고르거나 새로 적어 주세요.", "warn"); break; } let n = 0; ms.forEach((m) => { if (crmTagPut(m, t)) n++; }); commit("‘" + t + "’ 태그를 " + n + "명에게 붙였어요."); }
         break;
       }
       case "crm-1-cp": { const m = M(); if (m) crmBulkModal("cp", m.id); break; }
       case "crm-1-pt": { const m = M(); if (!m) break; openModal(m.name + " 님 포인트 조정", '<div class="a-form-row"><div class="a-field"><label for="crm-pt-amt">더하거나 뺄 포인트</label><input class="a-input" id="crm-pt-amt" type="number" step="100" placeholder="예) 1000 또는 -500"></div><div class="a-field"><label for="crm-pt-why">사유 <small>(회원에게 보여요)</small></label><input class="a-input" id="crm-pt-why" maxlength="40"></div></div><p class="a-muted p-small">지금 ' + (Number(m.points) || 0).toLocaleString() + "P</p>", btn("취소", "modal-close") + btn("포인트 조정", "crm-pt-ok", "a-btn-primary", ' data-id="' + esc(m.id) + '"')); break; }
-      case "crm-pt-ok": { const m = M(), amt = Math.round(Number((document.getElementById("crm-pt-amt") || {}).value) || 0), why = ((document.getElementById("crm-pt-why") || {}).value || "").trim(); if (!m) break; if (!amt) { toast("더하거나 뺄 포인트를 적어 주세요. (빼려면 -500처럼)", "warn"); break; } if (!why) { toast("사유를 적어 주세요.", "warn"); break; } if ((Number(m.points) || 0) + amt < 0) { toast("포인트가 0보다 작아질 수 없어요.", "warn"); break; } VX().addPoint(m, amt, why + " (운영자)"); commit(m.name + " 님 포인트 " + (amt > 0 ? "+" : "") + amt.toLocaleString() + "P"); break; }
+      case "crm-pt-ok": { const m = M(), amt = Math.round(Number((document.getElementById("crm-pt-amt") || {}).value) || 0), why = ((document.getElementById("crm-pt-why") || {}).value || "").trim(); if (!m) break; if (!amt) { toast("포인트를 적어 주세요 (빼기는 -500).", "warn"); break; } if (!why) { toast("사유를 적어 주세요.", "warn"); break; } if ((Number(m.points) || 0) + amt < 0) { toast("포인트가 0보다 작아질 수 없어요.", "warn"); break; } VX().addPoint(m, amt, why + " (운영자)"); commit(m.name + " 님 포인트 " + (amt > 0 ? "+" : "") + amt.toLocaleString() + "P"); break; }
       case "crm-cp-del": { const list = (v.memberCoupons || {})[d.id] || [], i = list.findIndex((x) => x.id === d.mc); if (i < 0) break; list.splice(i, 1); commit("쿠폰을 회수했어요."); break; }
       case "crm-block": { const m = M(); if (!m) break; confirmModal(m.blocked ? "이용 중지 풀기" : "이용 중지", esc(m.name) + " 님을 " + (m.blocked ? "다시 이용할 수 있게 할까요?" : "이용 중지할까요? 로그인할 수 없고, 메시지 · 자동 메시지 대상에서도 빠져요."), m.blocked ? "풀기" : "이용 중지", !m.blocked, () => { m.blocked = !m.blocked; commit(m.name + " 님을 " + (m.blocked ? "이용 중지했어요." : "다시 이용할 수 있게 했어요.")); }); break; }
       case "crm-tag-add": { const m = M(); if (!m) break; const t = ((document.getElementById("crm-tag-new") || {}).value || "").trim() || (document.getElementById("crm-tag-pick") || {}).value; if (!t) { toast("태그를 고르거나 새로 적어 주세요.", "warn"); break; } if (!crmTagPut(m, t)) { toast("이미 붙은 태그예요.", "warn"); break; } commit("‘" + t + "’ 태그를 붙였어요."); break; }
@@ -6461,7 +6461,7 @@
       case "crm-note-del": { const m = M(); if (!m) break; confirmModal("메모 지우기", "이 메모를 지울까요?", "지우기", true, () => { m.notes = (m.notes || []).filter((x) => x.id !== d.n); commit("메모를 지웠어요."); }); break; }
       case "crm-camp-new": crmCampModal(d.seg || "sub", d.id || ""); break;
       case "crm-camp-send": crmCampSend(); break;
-      case "crm-send-save": { const f = document.getElementById("crm-sendf"), S2 = crmSendCfg(), o = f.optout.value.trim(); if (o && !/^080-?\d{3,4}-?\d{4}$/.test(o)) { toast("080 수신거부 번호는 080-000-0000 모양으로 적어 주세요.", "warn"); break; } S2.optout = o; S2.targeting = f.targeting.value; if (f.updAct) S2.upd = { act: f.updAct.value, end: f.updEnd.value }; commit("메시지 발송 설정을 저장했어요."); break; }
+      case "crm-send-save": { const f = document.getElementById("crm-sendf"), S2 = crmSendCfg(), o = f.optout.value.trim(); if (o && !/^080-?\d{3,4}-?\d{4}$/.test(o)) { toast("080-000-0000 모양으로 적어 주세요.", "warn"); break; } S2.optout = o; S2.targeting = f.targeting.value; if (f.updAct) S2.upd = { act: f.updAct.value, end: f.updEnd.value }; commit("메시지 발송 설정을 저장했어요."); break; }
       case "crm-tpl-add": { const f = document.getElementById("crm-sendf"), n = f.tName.value.trim(), tid = f.tId.value.trim(), tx = f.tText.value.trim(); if (!n || !tid || tx.length < 5) { toast("템플릿 이름 · ID · 내용을 모두 적어 주세요.", "warn"); break; } crmSendCfg().tpls.push({ id: tid, name: n, text: tx }); commit("알림톡 템플릿 ‘" + n + "’을 추가했어요."); break; }
       case "crm-tpl-del": { const S2 = crmSendCfg(), t = S2.tpls[Number(d.i)]; if (!t) break; S2.tpls.splice(Number(d.i), 1); commit("알림톡 템플릿 ‘" + t.name + "’을 지웠어요."); break; }
       case "crm-mt": ui.crmMt = d.k; render(); break;
@@ -6469,9 +6469,9 @@
       case "crm-auto-who": { const x = CRM_AUTO.find((y) => y[0] === d.k); if (!x) break; const tg = x[5](crmAll()), r = crmReach(tg, x[3], Date.parse(todayStr() + "T10:00:00")), okIds = r.ok.map((pf) => pf.m.id); openModal(x[1] + " · 오늘 대상", '<ul class="crm-mini">' + tg.map((pf) => '<li><b><a class="a-link" href="#/center/master/vod-crm/' + esc(pf.m.id) + '">' + esc(pf.m.name) + "</a> " + pill(crmStage(pf.stage)[0], crmStage(pf.stage)[1]) + "</b><small>" + (okIds.indexOf(pf.m.id) >= 0 ? "보낼 수 있어요" : "빠짐 · 소식 받기 미동의") + "</small></li>").join("") + "</ul>", btn("닫기", "modal-close")); break; }
       case "crm-b-add": crmBsync(); ui.crmB.rules.push(["paid", "gte", "1"]); render(); break;
       case "crm-b-del": crmBsync(); ui.crmB.rules.splice(Number(d.i), 1); render(); break;
-      case "crm-b-save": { crmBsync(); const B = ui.crmB; if (!B.name.trim()) { toast("세그먼트 이름을 적어 주세요.", "warn"); break; } CRM().segs.push({ id: DB.uid("sg"), name: B.name.trim().slice(0, 30), rules: B.rules.map((r) => r.slice()), at: Date.now() }); ui.crmB = null; commit("‘" + B.name.trim() + "’ 세그먼트를 저장했어요. 회원 DB 칩에도 생겼어요."); break; }
+      case "crm-b-save": { crmBsync(); const B = ui.crmB; if (!B.name.trim()) { toast("세그먼트 이름을 적어 주세요.", "warn"); break; } CRM().segs.push({ id: DB.uid("sg"), name: B.name.trim().slice(0, 30), rules: B.rules.map((r) => r.slice()), at: Date.now() }); ui.crmB = null; commit("‘" + B.name.trim() + "’ 세그먼트를 저장했어요."); break; }
       case "crm-seg-del": { const s = CRM().segs.find((x) => x.id === d.id); if (!s) break; confirmModal("세그먼트 지우기", "‘" + esc(s.name) + "’ 세그먼트를 지울까요? 회원 정보는 그대로예요.", "지우기", true, () => { CRM().segs = CRM().segs.filter((x) => x.id !== d.id); if (crmF().seg === "sg:" + d.id) crmF().seg = "all"; commit("세그먼트를 지웠어요."); }); break; }
-      case "crm-rules-save": { const f = document.getElementById("crm-rules"); if (!f) break; const R = CRM().rules, nx = {}; let bad = false; ["fanN", "fanAmt", "fanDays", "riskDays", "sleepDays", "newDays"].forEach((k) => { const n = Math.round(Number(f[k].value)); if (!(n >= 1)) bad = true; nx[k] = n; }); if (bad) { toast("기준은 1 이상의 숫자로 적어 주세요.", "warn"); break; } if (nx.riskDays >= nx.sleepDays) { toast("이탈 위험 일수는 휴면 일수보다 작아야 해요.", "warn"); break; } Object.assign(R, nx); commit("단계 기준을 저장했어요. 모든 화면에 바로 반영돼요."); break; }
+      case "crm-rules-save": { const f = document.getElementById("crm-rules"); if (!f) break; const R = CRM().rules, nx = {}; let bad = false; ["fanN", "fanAmt", "fanDays", "riskDays", "sleepDays", "newDays"].forEach((k) => { const n = Math.round(Number(f[k].value)); if (!(n >= 1)) bad = true; nx[k] = n; }); if (bad) { toast("기준은 1 이상의 숫자로 적어 주세요.", "warn"); break; } if (nx.riskDays >= nx.sleepDays) { toast("이탈 위험 일수는 휴면 일수보다 작아야 해요.", "warn"); break; } Object.assign(R, nx); commit("단계 기준을 저장했어요."); break; }
     }
   });
   function crmBsync() { const B = (ui.crmB = ui.crmB || { name: "", rules: [] }), nm = document.getElementById("crm-b-name"); if (nm) B.name = nm.value; document.querySelectorAll("[data-crm-b]").forEach((el) => { const i = Number(el.dataset.i), r = B.rules[i]; if (!r) return; if (el.dataset.crmB === "f") r[0] = el.value; else if (el.dataset.crmB === "op") r[1] = el.value; else r[2] = el.value; }); }
@@ -6740,7 +6740,7 @@
     const at = Date.now(), by = (staffMe() || {}).name || "마스터"; let n = 0;
     res.forEach((x) => { const o = VD().orders.find((y) => y.no === x.no && y.ship && y.status === "paid"); if (!o || ["ready", "prep"].indexOf(VX().shipStOf(o)) < 0) return; Object.assign(o.ship, { st: "ship", carrier: x.car, inv: x.inv, prepAt: o.ship.prepAt || at, shipAt: at, by }); n++; });
     ui.boUp = null; (ui.vsPick || new Set()).clear();
-    commit("종이책 " + n + "건을 발송 처리했어요. 회원 마이페이지에 배송 조회가 열려요.");
+    commit("종이책 " + n + "건을 발송 처리했어요.");
   }
   function pageVodRefund() {
     const v = VD(), X = VX(), r = X.rfSet(), ym = todayStr().slice(0, 7), reqs = vdRefReqs().sort((a, b) => (b.refundReq.at || 0) - (a.refundReq.at || 0));
@@ -6779,7 +6779,7 @@
     const f = document.getElementById("vda-rf-form"); if (!f) return;
     const s = VD().settings, n = (k, lo, hi, dv) => { const x = Math.round(Number(f[k].value)); return x >= lo && x <= hi ? x : dv; };
     s.refund = Object.assign({}, VX().RF_DEF, s.refund || {}, { instant: f.instant.value === "1", days: n("days", 1, 30, 7), maxUsed: n("maxUsed", 0, 10, 0), ebookDays: n("ebookDays", 1, 30, 7), eventDays: n("eventDays", 0, 14, 3), matCounts: f.matCounts.checked, addons: f.addons.checked, restore: f.restore.checked });
-    commit("환불 규정을 저장했어요. 스토어 문구와 회원 바로 취소에 바로 반영돼요.");
+    commit("환불 규정을 저장했어요.");
   }
   document.addEventListener("click", (e) => {
     if (!isActive()) return;
@@ -6860,7 +6860,7 @@
     if (!staffCan("master/vod-inquiries")) root.querySelectorAll('[data-action="vda-iq"]').forEach((el) => { el.removeAttribute("data-action"); el.classList.remove("clickable"); });
     root.querySelectorAll('a[href^="#/center/master/"]').forEach((a) => { const k = "master/" + a.getAttribute("href").replace("#/center/master/", "").split(/[/?]/)[0]; if (!staffCan(k)) { if (a.classList.contains("a-inq-alert")) { if (document.body.dataset.react) { a.hidden = true; a.setAttribute("data-staff-cut", ""); } else a.remove(); } else { a.removeAttribute("href"); a.classList.add("a-noperm"); a.title = "맡은 메뉴가 아니에요"; } } });
   }
-  const staffDeny = (key) => { if (staffCan(key)) return false; toast("맡은 메뉴가 아니라 할 수 없어요. 마스터에게 권한을 요청해 주세요.", "warn"); return true; };
+  const staffDeny = (key) => { if (staffCan(key)) return false; toast("맡은 메뉴가 아니에요. 마스터에게 요청해 주세요.", "warn"); return true; };
   function findStaffLogin(id, pw) {
     const n = (v) => String(v || "").replace(/\s+/g, "").toLowerCase();
     return STAFF().find((x) => n(x.loginId) === n(id) && String(x.pw) === String(pw).trim()) || null;
@@ -6943,7 +6943,7 @@
   function saveSla(f) {
     const r = Number(f.review.value), q = Number(f.request.value);
     if (!(r >= 1 && r <= 336) || !(q >= 1 && q <= 336)) { toast("1~336시간 사이로 적어 주세요.", "warn"); return; }
-    Object.assign(SLA(), { review: r, request: q }); commit("응답 기준 시간을 바꿨어요. (검수 " + r + "시간 · 1:1 요청 " + q + "시간)");
+    Object.assign(SLA(), { review: r, request: q }); commit("응답 기준 시간을 바꿨어요.");
   }
 
   /* ---------- 3) 수료 관리 ---------- */
@@ -7001,7 +7001,7 @@
     const f = document.getElementById("ct-form"), v = (n) => (f && f[n] ? f[n].value.trim() : ""), ins = DB.instructor(iid) || {}, S = DB.siteInfo ? DB.siteInfo() : {};
     const go = () => {
       const G = window.DG_FORMS, F = G && G.FORMS[k];
-      if (!F) { toast("계약서 양식을 불러오지 못했어요. Word 양식을 내려받아 주세요.", "warn"); return; }
+      if (!F) { toast("양식을 못 불러왔어요. Word로 받아 주세요.", "warn"); return; }
       const md = (d) => d ? d.replace(/^(\d{4})-(\d{2})-(\d{2})$/, (m, y, mo, da) => y + "년 " + Number(mo) + "월 " + Number(da) + "일") : "";
       const vals = Object.assign({}, G.COMPANY, { 회사: S.company && /두고/.test(S.company) ? S.company.replace(/^\(주\)/, "주식회사 ") : G.COMPANY.회사, 대표: S.ceo || G.COMPANY.대표, 사업자번호: S.bizNo || G.COMPANY.사업자번호, 주소: S.address || G.COMPANY.주소,
         강사명: ins.displayName || "", 강사성명: ins.name || v("contact"), 시작일: md(v("start")), 종료일: md(v("end")), 이용료: v("feeNote"), 연락처: v("phone"), 이메일: v("email"), 담당자: v("contact") });
@@ -7021,10 +7021,10 @@
       if (w && w.document) { w.document.open(); w.document.write(html); w.document.close(); w.focus(); return; }
       // 새 창이 막힌 곳(미리보기 등): HTML 파일로 내려받기 → 열어서 인쇄
       const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" })); a.download = F.title + " - " + (ins.displayName || "강사") + ".html"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-      toast("새 창이 막혀 계약서 파일로 내려받았어요. 열어서 인쇄 · PDF로 저장해 주세요.");
+      toast("계약서 파일로 내려받았어요.");
     };
     if (window.DG_FORMS) return go();
-    const s = document.createElement("script"); s.src = "contract-forms.js"; s.onload = go; s.onerror = () => toast("계약서 양식을 불러오지 못했어요. Word 양식을 내려받아 주세요.", "warn"); document.head.appendChild(s);
+    const s = document.createElement("script"); s.src = "contract-forms.js"; s.onload = go; s.onerror = () => toast("양식을 못 불러왔어요. Word로 받아 주세요.", "warn"); document.head.appendChild(s);
   }
   function CONTRACTS() {
     const d = DB.data;
@@ -7136,7 +7136,7 @@
     const st = old || { id: DB.uid("st"), createdAt: todayStr(), status: "active" };
     Object.assign(st, { name: v("name"), loginId: v("loginId"), pw: v("pw"), role: v("role"), perms });
     if (!old) STAFF().push(st);
-    commit((old ? "운영자 정보를 고쳤어요: " : "운영자를 추가했어요: ") + st.name + " (" + staffRoleName(st) + ")");
+    commit((old ? "운영자 정보를 고쳤어요: " : "운영자를 추가했어요: ") + st.name);
   }
   /* ================= 파트너센터 (영업 파트너 RS) =================
    * 파트너가 소개한 강사님이 두잉고에 기수 이용료를 입금하면 → 공급가액(부가세 제외) × RS% 가 파트너 수익으로 확정.
@@ -7441,7 +7441,7 @@
     const q = { id: DB.uid("inq"), at: Date.now(), status: "new", memo: "", name: v("name"), phone: v("phone"), email: v("email"), where: v("where"), course: v("course"), link: v("link"), message: "", ref: p.code || p.loginId, affId: p.id, byPartner: true, log: [], thread: [], pSeen: Date.now() };
     if (v("message")) q.thread.push({ by: "partner", name: p.name, text: v("message"), at: Date.now() });
     DB.saveInquiry(q);
-    ROUTE.hash = "#/center/partner/inquiries"; toast(q.name + " 강사님을 추천했어요. 두잉고 담당자가 연락드릴게요.");
+    ROUTE.hash = "#/center/partner/inquiries"; toast(q.name + " 강사님을 추천했어요.");
   }
 
   /* 홍보 자료: 추천 링크 · QR · 문구 · 이미지 */
@@ -7554,7 +7554,7 @@
     const list = AFFN(), old = f.dataset.id ? list.find((x) => x.id === f.dataset.id) : null;
     if (old) Object.assign(old, { title, body, pinned: f.pinned.checked });
     else list.push({ id: DB.uid("an"), title, body, pinned: f.pinned.checked, at: Date.now() });
-    commit(old ? "파트너 공지를 고쳤어요." : "파트너 공지를 올렸어요. 모든 파트너센터에 바로 보여요.");
+    commit(old ? "파트너 공지를 고쳤어요." : "파트너 공지를 올렸어요.");
   }
   const PPAGES = { "": pagePartnerHome, inquiries: pagePartnerInquiries, refer: pagePartnerRefer, kit: pagePartnerKit, notices: pagePartnerNotices, guide: pagePartnerGuide, instructors: pagePartnerInstructors, earnings: pagePartnerEarnings, payouts: pagePartnerPayouts, settings: pagePartnerSettings };
   function saveAffPw(f) {
@@ -7562,7 +7562,7 @@
     if (cur !== String(p.pw)) { err.textContent = "지금 비밀번호가 맞지 않아요."; return; }
     if (nw.length < 4 || nw.length > 40 || /\s/.test(nw)) { err.textContent = "새 비밀번호는 띄어쓰기 없이 4자 이상으로 정해 주세요."; return; }
     if (nw !== f.nw2.value.trim()) { err.textContent = "새 비밀번호 확인이 달라요."; return; }
-    p.pw = nw; p.pwChangedAt = Date.now(); commit("비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 써 주세요.");
+    p.pw = nw; p.pwChangedAt = Date.now(); commit("비밀번호를 바꿨어요.");
   }
   function saveAffBank(f) {
     const p = affMe(); ["phone", "bank", "holder", "account"].forEach((k) => { p[k] = f[k].value.trim(); }); commit("지급 계좌 · 연락처를 저장했어요.");
@@ -7633,7 +7633,7 @@
     Object.assign(p, { name: v("name"), phone: v("phone"), loginId: v("loginId"), pw: v("pw"), code: v("code") || v("loginId").toUpperCase(), rs: rs === "" ? null : Number(rs), bank: v("bank"), account: v("account"), holder: v("holder"), memo: v("memo"), taxType: v("taxType") === "business" ? "business" : "personal",
       instructors: picked.map((iid) => { const r = v("rs-" + iid); return { iid, rs: r === "" ? null : Number(r), since: v("since-" + iid) || todayStr() }; }) });
     if (!old) affList().push(p);
-    commit(old ? "파트너 정보를 저장했어요." : p.name + " 파트너를 만들었어요. 아이디 " + p.loginId + " · 비밀번호 " + p.pw);
+    commit(old ? "파트너 정보를 저장했어요." : "파트너를 만들었어요 · " + p.loginId + " / " + p.pw);
   }
   function saveAffSet(f) {
     const rs = Number(f.rs.value), day = Math.round(Number(f.payDay.value));
@@ -7938,7 +7938,7 @@
     if (pw.length < 4 || pw.length > 40 || /\s/.test(pw)) { err.textContent = "비밀번호는 띄어쓰기 없이 4~40자로 적어 주세요."; return; }
     if (pw !== f.pw2.value.trim()) { err.textContent = "새 비밀번호가 서로 달라요. 다시 확인해 주세요."; return; }
     a.pw = pw; a.pwAt = Date.now();
-    commit(); toast("비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호로 들어와요.");
+    commit(); toast("비밀번호를 바꿨어요.");
   }
 
   /* ---------- 마스터: 온드미디어 계정 · 채널 성과 · 홍보 링크 · RS 정산 ---------- */
@@ -8005,7 +8005,7 @@
     if (pw) { a.pw = pw; a.pwAt = Date.now(); }
     if (!Array.isArray(DB.data.media)) DB.data.media = [];
     if (!old) DB.data.media.push(a);
-    commit(old ? mdName(a) + " 온드미디어 계정을 저장했어요." + (pw ? " (새 비밀번호)" : "") : mdName(a) + " 온드미디어 계정을 만들었어요. 아이디 " + loginId + " · RS " + mdRate(a) + "%");
+    commit(old ? mdName(a) + " 계정을 저장했어요." + (pw ? " (새 비밀번호)" : "") : "계정을 만들었어요 · 아이디 " + loginId);
   }
   function mdLinksModal(id) {
     const a = mdOf(id); if (!a) return;
@@ -8025,7 +8025,7 @@
     if (Object.keys(r).some((k) => r[k] == null)) { err.textContent = "숫자를 확인해 주세요 (RS율 0~100 · 기간 1~365일 · PG 0~30%)."; return; }
     r.days = Math.round(r.days); r.subs = Math.round(r.subs);
     VD().settings.rs = Object.assign({}, VD().settings.rs || {}, r, { at: Date.now(), by: whoAmI() });
-    commit("RS 기준을 저장했어요: 구독자 " + manTxt(r.subs) + " 이상 " + r.hi + "% · 미만 " + r.lo + "% · 링크 " + r.days + "일 · PG " + r.pg + "%");
+    commit("RS 기준을 저장했어요.");
   }
   function pageMasterMediaRs() {
     mdSeed();
@@ -8110,7 +8110,7 @@
     const nm = st.name + " " + vdYMtxt(ym);
     if (kind === "ok") confirmModal("RS 확정", esc(nm) + " 판매분 RS를 확정할까요?<br><b>지급액 " + won(st.pay) + "</b> (" + (st.biz ? "사업자 · 세금계산서" : "개인 · 3.3% 원천징수 뒤") + ")<br><small>확정하면 온드미디어 센터에 명세서가 고정되고, 이후 환불은 다음 달 RS에서 차감돼요.</small>", "RS 확정", false, () => { const snap = Object.assign({}, st); delete snap.rec; delete snap.s; delete snap.a; POS()[key] = { st: "confirmed", snap, at: Date.now(), by: whoAmI() }; commit(nm + " RS를 확정했어요."); });
     else if (kind === "undo") confirmModal("확정 취소", esc(nm) + " RS 확정을 취소할까요? 명세서가 다시 지금 주문 기준으로 바뀌어요.", "확정 취소", true, () => { delete POS()[key]; commit(nm + " RS 확정을 취소했어요."); });
-    else if (kind === "pay" && !((mdOf(id) || {}).account)) toast(st.name + " 계정에 정산 계좌가 없어요. 온드미디어 계정 › 수정에서 계좌를 넣거나, 온드미디어가 ‘내 정보 · 정산 계좌’에 등록한 뒤 지급해 주세요.", "warn");
+    else if (kind === "pay" && !((mdOf(id) || {}).account)) toast(st.name + " 정산 계좌부터 등록해 주세요.", "warn");
     else if (kind === "pay") confirmModal("지급 완료", esc(nm) + " RS <b>" + won(st.pay) + "</b>을 보냈나요?", "지급 완료", false, () => { const r = POS()[key]; if (!r) return; Object.assign(r, { st: "paid", paidAt: todayStr(), amount: st.pay, paidBy: whoAmI() }); commit(nm + " RS를 지급 완료로 바꿨어요."); });
     else if (kind === "unpay") confirmModal("지급 취소", esc(nm) + " RS 지급 완료 표시를 되돌릴까요? (확정 상태로 돌아가요)", "지급 취소", true, () => { const r = POS()[key]; if (!r) return; r.st = "confirmed"; delete r.paidAt; delete r.amount; delete r.paidBy; commit(nm + " RS 지급 완료 표시를 되돌렸어요."); });
   }
@@ -8125,7 +8125,7 @@
     S = { role: "media", mediaId: a.id };
     DB.session.setAdmin(S); DB.store.remove("moonclass:after-login");
     a.lastLoginAt = Date.now(); DB.save();
-    ROUTE.hash = "#/center/media"; toast(mdName(a) + " 님, 온드미디어 센터에 오신 걸 환영해요!");
+    ROUTE.hash = "#/center/media"; toast(mdName(a) + " 님, 환영합니다!");
   }
   document.addEventListener("click", (e) => {
     if (!isActive()) return;
@@ -8329,21 +8329,21 @@
         const p = affOf(d.id); if (!p) break;
         // 정산(RS) 기록이 있는 파트너는 지우면 지급 내역이 사라지므로 ‘중지’만 — 기록이 없을 때만 지움
         const paid = Object.keys(AFF().affPayouts || {}).some((k) => k.indexOf(p.id + ":") === 0), rs = affMonths(p).some((g) => g.total > 0);
-        if (paid || rs) { confirmModal("파트너 삭제", esc(p.name) + " 파트너는 RS 정산 기록이 있어 지울 수 없어요.<br>더 이상 쓰지 않으면 ‘중지’해 주세요. 로그인이 막히고 기록은 그대로 남아요.", p.status === "active" ? "중지하기" : "닫기", false, () => { if (p.status === "active") { p.status = "stopped"; commit(p.name + " 파트너를 중지했어요. 로그인할 수 없게 돼요."); } else closeModal(); }); break; }
+        if (paid || rs) { confirmModal("파트너 삭제", esc(p.name) + " 파트너는 RS 정산 기록이 있어 지울 수 없어요.<br>더 이상 쓰지 않으면 ‘중지’해 주세요. 로그인이 막히고 기록은 그대로 남아요.", p.status === "active" ? "중지하기" : "닫기", false, () => { if (p.status === "active") { p.status = "stopped"; commit(p.name + " 파트너를 중지했어요."); } else closeModal(); }); break; }
         confirmModal("파트너 삭제", esc(p.name) + " 파트너 계정을 지울까요?<br>바로 로그인할 수 없게 되고, 담당 강사 연결도 풀려요.", "삭제", true, () => { const L = affList(), i = L.findIndex((x) => x.id === p.id); if (i >= 0) L.splice(i, 1); commit(p.name + " 파트너를 지웠어요."); });
         break;
       }
-      case "aff-toggle": { const p = affOf(d.id); if (!p) break; const go = () => { p.status = p.status === "active" ? "stopped" : "active"; commit(p.name + (p.status === "active" ? " 파트너를 다시 활성화했어요." : " 파트너를 중지했어요. 로그인할 수 없게 돼요.")); }; if (p.status === "active") confirmModal("파트너 중지", esc(p.name) + " 파트너를 중지할까요? 바로 로그인할 수 없게 되고, 이미 생긴 RS는 그대로 지급해요.", "중지", true, go); else go(); break; }
-      case "aff-pay": { const p = affOf(d.id); if (!p) break; const g = affMonths(p).find((x) => x.month === d.m); const nt = affNet(p, g ? g.total : 0); confirmModal("지급 완료 처리", esc(p.name) + " 파트너 · " + esc(d.m.slice(0, 4) + "년 " + Number(d.m.slice(5, 7)) + "월") + " 확정분<br>RS " + won(g ? g.total : 0) + (nt.tax ? " − 원천징수 3.3% " + won(nt.tax) : "") + " = <b>보낼 금액 " + won(nt.net) + "</b><br>보냈나요? 지급 완료로 기록하면 이 달 금액이 고정되고, 파트너센터에도 ‘지급 완료’로 보여요.", "지급 완료", false, () => { AFF().affPayouts[p.id + ":" + d.m] = { paidAt: todayStr(), by: "master", amount: g ? g.total : 0, net: nt.net, tax: nt.tax, rows: g ? g.rows.map((x) => ({ bid: x.b.id, rate: x.rate, amt: x.amt })) : [] }; commit("지급 완료로 기록했어요. 이 달 RS 금액이 고정됐어요."); }); break; }
+      case "aff-toggle": { const p = affOf(d.id); if (!p) break; const go = () => { p.status = p.status === "active" ? "stopped" : "active"; commit(p.name + (p.status === "active" ? " 파트너를 다시 활성화했어요." : " 파트너를 중지했어요.")); }; if (p.status === "active") confirmModal("파트너 중지", esc(p.name) + " 파트너를 중지할까요? 바로 로그인할 수 없게 되고, 이미 생긴 RS는 그대로 지급해요.", "중지", true, go); else go(); break; }
+      case "aff-pay": { const p = affOf(d.id); if (!p) break; const g = affMonths(p).find((x) => x.month === d.m); const nt = affNet(p, g ? g.total : 0); confirmModal("지급 완료 처리", esc(p.name) + " 파트너 · " + esc(d.m.slice(0, 4) + "년 " + Number(d.m.slice(5, 7)) + "월") + " 확정분<br>RS " + won(g ? g.total : 0) + (nt.tax ? " − 원천징수 3.3% " + won(nt.tax) : "") + " = <b>보낼 금액 " + won(nt.net) + "</b><br>보냈나요? 지급 완료로 기록하면 이 달 금액이 고정되고, 파트너센터에도 ‘지급 완료’로 보여요.", "지급 완료", false, () => { AFF().affPayouts[p.id + ":" + d.m] = { paidAt: todayStr(), by: "master", amount: g ? g.total : 0, net: nt.net, tax: nt.tax, rows: g ? g.rows.map((x) => ({ bid: x.b.id, rate: x.rate, amt: x.amt })) : [] }; commit("지급 완료로 기록했어요."); }); break; }
       case "aff-unpay": { const p = affOf(d.id); if (!p) break; confirmModal("지급 완료 취소", esc(p.name) + " 파트너 " + esc(d.m) + " 지급 완료 기록을 취소할까요? (실제로 보내지 않았을 때)", "취소하기", true, () => { delete AFF().affPayouts[p.id + ":" + d.m]; commit("지급 완료 기록을 취소했어요."); }); break; }
       case "aff-tab": ui.affTab = d.k; render(); break;
       case "aff-stmt": { const p = affMe(); if (p) affStatement(p, d.m); break; }
       case "stmt-print": { const el = document.querySelector(".a-modal-body") || document.querySelector(".a-modal"), tt = ((document.querySelector(".a-modal-head h2, .a-modal h2") || {}).textContent || "정산 명세서").trim(); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, tt.replace(/[\\/:*?"<>|\s]+/g, "-") + ".pdf", { width: 760, title: tt }, (msg) => toast(msg)); break; }
-      case "aff-qr-dl": { const box = document.getElementById("p-qr"); if (!box || !box.dataset.png) { toast("QR을 만드는 중이에요. 잠시 후 다시 눌러 주세요.", "warn"); break; } const l = document.createElement("a"); l.href = box.dataset.png; l.download = "doinggo-qr-" + ((affMe() || {}).code || "partner") + ".gif"; document.body.appendChild(l); l.click(); l.remove(); toast("QR 이미지를 저장했어요."); break; }
+      case "aff-qr-dl": { const box = document.getElementById("p-qr"); if (!box || !box.dataset.png) { toast("QR을 만드는 중이에요.", "warn"); break; } const l = document.createElement("a"); l.href = box.dataset.png; l.download = "doinggo-qr-" + ((affMe() || {}).code || "partner") + ".gif"; document.body.appendChild(l); l.click(); l.remove(); toast("QR 이미지를 저장했어요."); break; }
       case "an-new": affNoticeForm(); break;
       case "an-edit": affNoticeForm(AFFN().find((x) => x.id === d.id)); break;
       case "an-del": { const list = AFFN(), i = list.findIndex((x) => x.id === d.id); if (i < 0) break; confirmModal("파트너 공지 삭제", "‘" + esc(list[i].title) + "’ 공지를 삭제할까요?", "삭제", true, () => { list.splice(i, 1); commit("파트너 공지를 삭제했어요."); }); break; }
-      case "aff-copy": { const ok = () => toast(d.msg || "추천 링크를 복사했어요."), no = () => toast("복사하지 못했어요. 링크를 길게 눌러 복사해 주세요.", "warn"); if (navigator.clipboard) navigator.clipboard.writeText(d.v).then(ok, no); else no(); break; }
+      case "aff-copy": { const ok = () => toast(d.msg || "추천 링크를 복사했어요."), no = () => toast("복사하지 못했어요. 길게 눌러 복사해 주세요.", "warn"); if (navigator.clipboard) navigator.clipboard.writeText(d.v).then(ok, no); else no(); break; }
       case "p-inq-tab": ui.pInqTab = d.k; render(); break;
       case "bell-go": e.preventDefault(); if (masterInqAlerts().msg) ui.inqFilter = "msg"; ROUTE.hash = "#/center/master/partners"; render(); break;
       case "inq-jump": { if (ui.inqOpen !== d.id) { ui.inqOpen = d.id; const xj = findInq(d.id); if (xj) inqMarkSeen(xj); render(); } const el = document.querySelector('.a-inq[data-inq="' + d.id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1600); const ta = el.querySelector("[data-inq-say]"); if (ta) setTimeout(() => { ktInit(el); ta.focus({ preventScroll: true }); }, 500); } break; }
@@ -8395,7 +8395,7 @@
         const k = d.k === "vod" ? "vod" : "live"; ui.track = k; ui.trackKey = trkKey(); try { sessionStorage.setItem(trkKey(), k); } catch (e2) { /* 저장 못 해도 이번 화면에서는 바뀐다 */ }
         const k0 = route().parts[0] || "", off = (k === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (k !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0);
         if (off && !d.stay) ROUTE.hash = "#/center"; else render();
-        toast(k === "vod" ? "DOOGO CLASS 영역이에요. VOD 판매 · 정산 · VOD 수강생 강의실을 관리해요." : "두잉고 영역이에요. 기수 · 수강생 · 과제를 관리해요.");
+        toast(k === "vod" ? "DOOGO CLASS 영역으로 바꿨어요." : "두잉고 영역으로 바꿨어요.");
         break;
       }
       case "vs-f": ui.vsF = d.k; render(); break;
@@ -8457,7 +8457,7 @@
         if (S.role !== "master" || staffDeny("master/plan")) break;
         const co = DB.cohort(d.id); if (!co) break;
         const iid = co.instructorId, ss = DB.studentsOf(iid).filter((x) => x.cohortId === co.id), real = ss.filter((x) => !x.demo);
-        if (real.length) { toast("수강생 " + real.length + "명이 있는 기수는 지울 수 없어요. 수강생을 다른 기수로 옮긴 뒤 지워 주세요.", "warn"); break; }
+        if (real.length) { toast("수강생이 있는 기수는 지울 수 없어요.", "warn"); break; }
         // 체험용 수강생(이수진 등)은 지우지 않고 남은 기수 중 가장 최근 기수로 옮겨요 — 체험 계정은 계속 들어갈 수 있게
         const to = DB.cohortsOf(iid).filter((x) => x.id !== co.id).slice(-1)[0];
         confirmModal(insName(iid) + " " + co.name + "을 지울까요?", "기수와 이 기수 특별 일정이 지워져요." + (ss.length ? (to ? " 체험용 수강생 " + ss.length + "명은 " + esc(to.name) + "로 옮겨요." : " 체험용 수강생 " + ss.length + "명도 함께 지워져요.") : "") + " 되돌릴 수 없어요.", "지우기", true, () => {
@@ -8470,7 +8470,7 @@
         });
         break;
       }
-      case "cohort-delete": { const co = DB.cohort(d.id); confirmModal("기수 삭제", esc(co.name) + "를 삭제할까요?", "삭제", true, () => { DB.data.cohorts = DB.data.cohorts.filter((x) => x.id !== d.id); DB.bills().filter((b) => b.cohortId === d.id).forEach((b) => { delete b.cohortId; b.cohortDeletedAt = todayStr(); DB.saveBill(b); }); commit("기수를 삭제했어요. 연결된 이용료 기록은 ‘기수 열기’를 다시 할 수 있어요."); }); break; }
+      case "cohort-delete": { const co = DB.cohort(d.id); confirmModal("기수 삭제", esc(co.name) + "를 삭제할까요?", "삭제", true, () => { DB.data.cohorts = DB.data.cohorts.filter((x) => x.id !== d.id); DB.bills().filter((b) => b.cohortId === d.id).forEach((b) => { delete b.cohortId; b.cohortDeletedAt = todayStr(); DB.saveBill(b); }); commit("기수를 삭제했어요."); }); break; }
       // 검수 · 문의
       case "rev-tab": ui.revFilter = d.k; ui.revPicked.clear(); render(); break;
       case "review-open": if (e.target.closest(".rev-pick, .w-check")) break; e.stopPropagation(); reviewModal(d.sid, d.mid); break;
@@ -8489,7 +8489,7 @@
       case "rich-ins": richInsert(d.for, d.k); break;
       case "att-link-add": {
         const nm = document.getElementById("att-link-name").value.trim(), url = document.getElementById("att-link-url").value.trim();
-        if (!/^https?:\/\//i.test(url)) { toast("http:// 또는 https:// 로 시작하는 주소를 넣어 주세요.", "warn"); break; }
+        if (!/^https?:\/\//i.test(url)) { toast("http(s):// 주소를 넣어 주세요.", "warn"); break; }
         attDraft.push({ id: DB.uid("a"), name: nm || url.replace(/^https?:\/\//, "").slice(0, 40), url });
         refreshAtt();
         break;
@@ -8568,14 +8568,14 @@
       }
       case "backup-restore": {
         let data;
-        try { data = JSON.parse(document.getElementById("backup-in").value); } catch (err) { toast("백업 내용을 읽지 못했어요. 처음부터 끝까지 그대로 붙여 넣어 주세요.", "warn"); break; }
+        try { data = JSON.parse(document.getElementById("backup-in").value); } catch (err) { toast("백업 내용을 읽지 못했어요. 전부 붙여 넣어 주세요.", "warn"); break; }
         if (!data || !data.db || !Array.isArray(data.db.instructors)) { toast("두잉고 백업 형식이 아니에요.", "warn"); break; }
         confirmModal("백업으로 복원", "지금 데이터를 지우고 " + esc((data.exportedAt || "").slice(0, 16).replace("T", " ")) + " 백업으로 되돌릴까요?", "복원", true, () => {
           if (DB.remote.on) {
             DB.remote.call("admin", { action: "import", db: data.db, progress: data.progress || {}, inquiries: data.inquiries || [], bills: data.bills || [] }).then((r) => {
               if (r.error) { toast("복원하지 못했어요. 백업 내용을 확인해 주세요.", "warn"); return; }
               location.reload();
-            }).catch(() => toast("서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"));
+            }).catch(() => toast("서버에 연결하지 못했어요.", "warn"));
             return;
           }
           DB.store.keys().filter((k) => k.indexOf("moonclass:progress:") === 0).forEach((k) => DB.store.remove(k));
@@ -8594,7 +8594,7 @@
         const was = ui.inqOpen === x.id; ui.inqOpen = was ? null : x.id;
         const seen = !was && inqMarkSeen(x);
         render();
-        if (!was) { const el = document.querySelector('.a-inq[data-inq="' + d.id + '"]'); if (el) { ktInit(el); const r0 = el.getBoundingClientRect(); if (r0.top < 70 || r0.top > innerHeight * 0.6) el.scrollIntoView({ block: "start", behavior: "smooth" }); } if (seen) toast("‘열람’으로 표시했어요. 처리 기록에 남아요."); }
+        if (!was) { const el = document.querySelector('.a-inq[data-inq="' + d.id + '"]'); if (el) { ktInit(el); const r0 = el.getBoundingClientRect(); if (r0.top < 70 || r0.top > innerHeight * 0.6) el.scrollIntoView({ block: "start", behavior: "smooth" }); } if (seen) toast("‘열람’으로 표시했어요."); }
         break;
       }
       case "inq-st": inqApplyStatus(findInq(d.id), d.st); break;
@@ -8628,17 +8628,17 @@
       // 쪽을 넘기면 그 목록 맨 위가 보이게 (다시 그리는 동안 화면이 맨 위로 튀어도 목록으로 돌아와요)
       case "pg": { (ui.pg = ui.pg || {})[d.k] = Number(d.p) || 1; render(); const c = document.querySelector('[data-pg-card="' + d.k + '"]'), t = c ? c.getBoundingClientRect().top : 0; if (c && (t < 70 || t > window.innerHeight / 2)) c.scrollIntoView({ block: "start" }); break; }
       case "server-backup":
-        DB.remote.call("admin", { action: "backup" }).then((r) => { if (r.error) throw new Error(r.error); ui.backups = null; render(); toast("지금 상태를 서버에 백업했어요."); }).catch(() => toast("백업하지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"));
+        DB.remote.call("admin", { action: "backup" }).then((r) => { if (r.error) throw new Error(r.error); ui.backups = null; render(); toast("지금 상태를 서버에 백업했어요."); }).catch(() => toast("백업하지 못했어요. 다시 시도해 주세요.", "warn"));
         break;
       case "server-restore":
         confirmModal("백업 시점으로 되돌리기", fmtStamp(Number(d.at)) + " 백업(#" + esc(d.id) + ")으로 모든 데이터를 되돌릴까요?<br>지금 상태도 먼저 백업해 두니, 필요하면 다시 되돌릴 수 있어요.", "되돌리기", true, () => {
           closeModal(); toast("되돌리는 중이에요…");
-          DB.remote.call("admin", { action: "restore-backup", id: Number(d.id) }).then((r) => { if (r.error) throw new Error(r.error); location.reload(); }).catch(() => toast("되돌리지 못했어요. 잠시 후 다시 시도해 주세요.", "warn"));
+          DB.remote.call("admin", { action: "restore-backup", id: Number(d.id) }).then((r) => { if (r.error) throw new Error(r.error); location.reload(); }).catch(() => toast("되돌리지 못했어요. 다시 시도해 주세요.", "warn"));
         });
         break;
       case "data-reset":
         confirmModal("처음 상태로 초기화", "모든 강사·수강생·제출 기록이 지워지고 체험 데이터로 돌아가요.<br>되돌릴 수 없어요.", "초기화", true, () => {
-          if (DB.remote.on) { closeModal(); toast("초기화하는 중이에요…"); DB.reset().then(() => location.reload(), () => toast("초기화하지 못했어요. 잠시 후 다시 시도해 주세요.", "warn")); return; }
+          if (DB.remote.on) { closeModal(); toast("초기화하는 중이에요…"); DB.reset().then(() => location.reload(), () => toast("초기화하지 못했어요. 다시 시도해 주세요.", "warn")); return; }
           if (staffMe()) { closeModal(); toast("초기화는 최고 관리자만 할 수 있어요.", "warn"); return; }
           DB.reset(); S = { role: "master" }; DB.session.setAdmin(S); closeModal(); render(); toast("처음 상태로 되돌렸어요.");
         });
@@ -8649,12 +8649,12 @@
       case "lp-row-del": { const L = lpDraft(); lpGet(L, d.path).splice(Number(d.i), 1); ui.lpDirty = true; render(); break; }
       case "lp-row-move": { const L = lpDraft(), list = lpGet(L, d.path), i = Number(d.i), j = i + Number(d.dir); if (j < 0) break; [list[i], list[j]] = [list[j], list[i]]; ui.lpDirty = true; render(); break; }
       case "lp-img-del": lpSet(lpDraft(), d.path, ""); ui.lpDirty = true; render(); break;
-      case "lp-faq-import": { const L = lpDraft(); L.faq = L.faq || {}; L.faq.items = C().faqs.slice(0, 6).map((f) => ({ q: f.q, a: f.a })); ui.lpDirty = true; ui.lpOpen.faq = true; render(); toast("자주 묻는 질문 " + L.faq.items.length + "개를 가져왔어요. 저장을 눌러 주세요."); break; }
+      case "lp-faq-import": { const L = lpDraft(); L.faq = L.faq || {}; L.faq.items = C().faqs.slice(0, 6).map((f) => ({ q: f.q, a: f.a })); ui.lpDirty = true; ui.lpOpen.faq = true; render(); toast("FAQ " + L.faq.items.length + "개를 가져왔어요. 저장해 주세요."); break; }
       case "lp-save": {
         const c = C(), field = ui.lpKind === "free" ? "freeClass" : "landing", prev = c[field];
         c[field] = DB.clone(lpDraft());
         if (!DB.save()) { c[field] = prev; toast("저장 공간이 부족해요. 사진 크기를 줄여 주세요.", "warn"); break; }
-        ui.lpDirty = false; render(); toast((ui.lpKind === "free" ? "무료강의 페이지" : "강사 소개 페이지") + "를 저장했어요. ‘페이지 보기’로 확인해 보세요.");
+        ui.lpDirty = false; render(); toast((ui.lpKind === "free" ? "무료강의 페이지" : "강사 소개 페이지") + "를 저장했어요.");
         break;
       }
       case "fc-tab": ui.fcTab = d.k; render(); window.scrollTo(0, 0); break;
@@ -8666,7 +8666,7 @@
       case "cur-rename": curForm("rename"); break;
       case "cur-delete": {
         const cur = CUR(), used = usedBy(cur.id);
-        if (used.length) { toast(used.map((x) => x.name).join(", ") + "가 쓰고 있어서 지울 수 없어요. 기수 관리에서 다른 커리큘럼으로 바꿔 주세요.", "warn"); break; }
+        if (used.length) { toast("쓰는 기수가 있어 지울 수 없어요.", "warn"); break; }
         confirmModal("커리큘럼 삭제", "‘" + esc(cur.name) + "’" + josa(cur.name, "을", "를").slice(String(cur.name).length) + " 삭제할까요?<br>이 커리큘럼의 주차·강의·과제가 모두 지워져요.", "삭제", true, () => { const c = C(); c.curricula = c.curricula.filter((x) => x.id !== cur.id); ui.curId = "main"; commit("커리큘럼을 삭제했어요."); });
         break;
       }
@@ -8720,7 +8720,7 @@
     if (f.id === "gl-bulk-form") {
       e.preventDefault();
       const items = parseGlossaryText(f.text.value);
-      if (!items.length) { toast("‘용어 : 풀이’ 형식의 줄을 찾지 못했어요. 형식을 확인해 주세요.", "warn"); return; }
+      if (!items.length) { toast("‘용어 : 풀이’ 형식의 줄이 없어요.", "warn"); return; }
       const c = C();
       if (f.replace.checked) c.glossary = [];
       c.glossary = c.glossary || [];
@@ -8731,7 +8731,7 @@
     if (f.id === "faq-bulk-form") {
       e.preventDefault();
       const items = parseFaqText(f.text.value);
-      if (!items.length) { toast("Q. 와 A. 로 시작하는 줄을 찾지 못했어요. 형식을 확인해 주세요.", "warn"); return; }
+      if (!items.length) { toast("Q. · A. 로 시작하는 줄이 없어요.", "warn"); return; }
       const c = C();
       if (f.replace.checked) c.faqs = [];
       items.forEach((it) => c.faqs.push(Object.assign({ id: DB.uid("q") }, it)));
@@ -8758,7 +8758,7 @@
       const q = p.questions.find((x) => x.id === f.dataset.qid);
       q.answer = ans; q.answeredAt = Date.now(); const ac = actor(); q.answeredBy = ac.by; q.answeredById = ac.byId;
       DB.saveProgress(f.dataset.sid, p);
-      render(); toast("답변을 등록했어요. 수강생 화면에 바로 보여요.");
+      render(); toast("답변을 등록했어요.");
     }
   });
   document.addEventListener("change", (e) => {
@@ -8769,7 +8769,7 @@
       const vis = VX().railItems(r).map((it) => it.p.id), m = t.value;
       // ‘고른 강의만’으로 바꾸면 지금 보이는 강의를 그대로 고르고, ‘자동’이면 고정만 풀어요 (뺀 강의는 그대로)
       if (m === "only") r.picks = vis.concat(r.picks.filter((id) => vis.indexOf(id) < 0)); else if (m === "auto") r.picks = [];
-      r.mode = m; commit(m === "auto" ? "자동으로 바꿨어요. 규칙대로 보여요." : m === "only" ? "고른 강의만 보여요. 지금 보이던 강의를 그대로 골라 뒀어요." : "고정한 강의 먼저, 나머지는 자동이에요.");
+      r.mode = m; commit(m === "auto" ? "자동으로 바꿨어요." : m === "only" ? "고른 강의만 보여요." : "고정한 강의 먼저, 나머지는 자동이에요.");
       return;
     }
     if (t.id === "vda-price-key") { ui.vdPriceKey = t.value; (ui.pg = ui.pg || {}).vdPrice = 1; render(); return; }
@@ -8786,7 +8786,7 @@
     else if (t.closest && t.closest("#plan-form")) refreshPlanPv();
     else if (t.name === "base" && t.closest("#cur-form")) { const b = document.querySelector("[data-show-blank]"); if (b) b.hidden = t.value !== "blank"; }
     else if (t.id === "m-ins") { ui.mIns = t.value; render(); }
-    else if (t.id === "a-vpid" || t.id === "a-vpid2") { setVpid(t.value); render(); toast("‘" + ((vdP(t.value) || {}).title || "") + "’ 강의실을 꾸며요. 바꾼 내용은 이 VOD 수강생에게만 보여요."); }
+    else if (t.id === "a-vpid" || t.id === "a-vpid2") { setVpid(t.value); render(); toast("고른 VOD 강의실로 바꿨어요."); }
     else if (t.id === "m-menu-ins") { ui.mMenuIns = t.value; if (ROUTE.hash.indexOf("?") > -1) ROUTE.hash = "#/center/master/menus"; else render(); }
     else if (t.id === "m-rep-ins") { ui.mRepIns = t.value; render(); }
     else if (t.classList.contains("a-menu-label")) { const it = DB.menuConfig(ui.mMenuIns).items.find((x) => x.key === t.dataset.key); it.label = t.value.trim(); DB.save(); render(); toast("메뉴 이름을 저장했어요."); }
@@ -8809,7 +8809,7 @@
     else if (t.matches && t.matches("[data-split-sel]")) dgSplit(t.value);
     else if (t.dataset && t.dataset.logWho) { ui.logWho = t.value; (ui.pg = ui.pg || {}).log = 1; render(); }
     else if (t.dataset && t.dataset.stRole) { const p = (STAFF_ROLES[t.value] || {}).perms || []; if (t.value !== "custom") t.form.querySelectorAll('input[name="perm"]').forEach((c) => { c.checked = p.indexOf(c.value) >= 0; }); }
-    else if (t.dataset && t.dataset.inqAff) { const x = findInq(t.dataset.inqAff); if (x) { x.affId = t.value; DB.saveInquiry(x); render(); toast(t.value === "none" ? "소개 파트너를 지웠어요." : "소개 파트너를 지정했어요. 그 파트너센터에 이 문의가 보여요."); } }
+    else if (t.dataset && t.dataset.inqAff) { const x = findInq(t.dataset.inqAff); if (x) { x.affId = t.value; DB.saveInquiry(x); render(); toast(t.value === "none" ? "소개 파트너를 지웠어요." : "소개 파트너를 지정했어요."); } }
     else if (t.id === "brand-photo-file") { const f = t.files && t.files[0]; t.value = ""; if (f) brandPhotoCompress(f, setBrandPhoto); }
     else if (t.dataset && t.dataset.lpImg) { const f = t.files && t.files[0]; const path = t.dataset.lpImg; t.value = ""; if (f) lpCompress(f, (data) => { lpSet(lpDraft(), path, data); ui.lpDirty = true; render(); }); }
     else if (t.dataset && t.dataset.lpRadio) { lpSet(lpDraft(), t.dataset.lpRadio, t.value); lpChanged(); }

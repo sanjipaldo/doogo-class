@@ -19,7 +19,7 @@ function Guide() {
   const G = S.P.guide || {}, done = grp.items.filter((g) => G[g.id]).length, title = grp.wk === 1 ? "처음 오셨나요? 시작 가이드" : grp.wk + "주차 시작 가이드";
   const tog = (id) => { const before = X.guideToggle(id); window.ReactApp.redraw(); X.guideDoneCheck(before); };
   const auto = (id) => { if (G[id]) return; const before = X.guideGroup(); S.P.guide = S.P.guide || {}; S.P.guide[id] = Date.now(); X.saveProgress(); setTimeout(() => X.guideDoneCheck(before), 300); };
-  const close = (wk) => { X.guideClose(wk); window.ReactApp.redraw(); X.toast(Number(wk) === 1 ? "시작 가이드를 완료했어요! 이제 1주차 과제를 시작해 보세요." : wk + "주차 시작 가이드를 완료했어요!"); };
+  const close = (wk) => { X.guideClose(wk); window.ReactApp.redraw(); X.toast(Number(wk) === 1 ? "시작 가이드 완료! 1주차 과제를 시작해요." : wk + "주차 시작 가이드를 완료했어요!"); };
   return (
     <section className={"card start-guide" + (grp.allDone ? " all-done" : "")}><div className="home-video-head"><h2><Icon n="sparkles" />{title}</h2><span className="tiny">{done} / {grp.items.length} 완료</span></div><Progress pct={Math.round(done / grp.items.length * 100)} thin />
       <ul className="guide-list">{grp.items.map((g) => {

@@ -124,7 +124,7 @@ export default function MyPage({ n, moved, keep }) {
     like: onLike, topic: onTopic, redraw, logout: onLogout,
     dg: (pid) => X.enterDg(pid, ""),
     // 내 강의실 ‘환불하기’ (결제 후 N일 이내 · 재생 전) → 결제 취소 · 100% 환불 팝업 (예전 rf-now)
-    rfNow: (o) => { const mm = X.me(); if (!mm || o.mid !== mm.id) return; const q = X.instantOf(o); if (!q.ok) { toast(q.why || "바로 취소할 수 없는 주문이에요. 환불 요청을 남겨 주세요.", "warn"); return; } setRf(o); },
+    rfNow: (o) => { const mm = X.me(); if (!mm || o.mid !== mm.id) return; const q = X.instantOf(o); if (!q.ok) { toast(q.why || "바로 취소가 안 돼요. 환불을 요청해 주세요.", "warn"); return; } setRf(o); },
     plDel: (id) => { const mm = X.me(), v = X.V(), x = v.pledges.find((y) => y.id === id); if (!x || !mm || x.mid !== mm.id) return; v.pledges.splice(v.pledges.indexOf(x), 1); X.save(); redraw(); toast("다짐을 지웠어요."); }
   };
   if (away) return null;

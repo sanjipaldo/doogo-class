@@ -150,7 +150,7 @@ function Library({ r, n }) {
   else body = items.map((it, i) => {
     const action = it.tool === "calculator" ? <a className="btn btn-primary btn-sm" href="#/library/file?tool=calculator"><Icon n="calculator" c="sm" />계산기 열기</a>
       : it.url ? <a className="btn btn-tertiary btn-sm" href={it.url} target="_blank" rel="noopener"><Icon n={cat === "ebook" ? "book" : "download"} c="sm" />{cat === "ebook" ? "열람" : "다운로드"}</a>
-        : <button className="btn btn-secondary btn-sm" data-action="not-ready" onClick={() => X.toast("자료를 준비하고 있어요. 올라오면 공지로 알려 드릴게요.")}>준비 중</button>;
+        : <button className="btn btn-secondary btn-sm" data-action="not-ready" onClick={() => X.toast("자료를 준비 중이에요. 곧 알려 드릴게요.")}>준비 중</button>;
     return <div key={it.id || i} className="res-item"><span className={"res-icon " + c.cls}><Icon n={it.tool ? "calculator" : c.icon} /></span><div style={{ minWidth: "0" }}><div className="m-title">{it.title}</div><div className="m-desc">{[it.meta, it.desc].filter(Boolean).join(" · ")}</div></div>{action}</div>;
   });
   // 계산기는 다시 그릴 때마다(예전 render) 그때 숫자로 새로 — n 이 바뀌면 새로 그려요
