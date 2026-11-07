@@ -2147,15 +2147,15 @@
   }
   function heroHtml(p) {
     const h = heroOf(p), pvs = previewsOf(p);
-    return '<div class="vd-pdt-banner vd-th-' + typeOf(p) + (h ? " has-hero" : "") + '"' + (h ? ' data-hero="' + h.k + '"' : "") + ">" + (h ? '<div class="vd-hero" data-src="' + esc(h.src) + '"></div>' : "") + bannerArt(p) +
-      (h ? '<button type="button" class="vd-hero-snd" data-v="hero-snd" aria-label="소리 켜기 · 끄기"><span class="off">' + icon("volumeX", "sm") + '소리 켜기</span><span class="on">' + icon("volume2", "sm") + "소리 끄기</span></button>" : "") +
+    return '<div class="vd-pdt-banner vd-th-' + typeOf(p) + (h ? " has-hero" : "") + '"' + (h ? ' data-hero="' + h.k + '"' : "") + ">" + (h ? '<div class="vd-pdv" data-src="' + esc(h.src) + '"></div>' : "") + bannerArt(p) +
+      (h ? '<button type="button" class="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기"><span class="off">' + icon("volumeX", "sm") + '소리 켜기</span><span class="on">' + icon("volume2", "sm") + "소리 끄기</span></button>" : "") +
       (pvs.length ? '<button type="button" class="vd-pdt-play" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '"><i>' + icon("play") + "</i><span>미리보기 <b>" + pvs.length + "개</b></span></button>" : "") + "</div>";
   }
   let heroLis = false;
   const HERO_ORIGIN = /^https:\/\/(www\.)?(youtube(-nocookie)?\.com|player\.vimeo\.com)$/;
   const heroPost = (f, o) => { try { f.contentWindow.postMessage(JSON.stringify(o), "*"); } catch (e) { /* 아직 못 받으면 다음에 */ } };
   function heroWire(root) {
-    const box = (root || document).querySelector(".vd-pdt-banner.has-hero"), slot = box && box.querySelector(".vd-hero");
+    const box = (root || document).querySelector(".vd-pdt-banner.has-hero"), slot = box && box.querySelector(".vd-pdv");
     if (!slot || slot.firstChild || !slot.dataset.src) return;
     const mq = (q) => !!(window.matchMedia && window.matchMedia(q).matches);
     if (mq("(prefers-reduced-motion: reduce)") || (navigator.connection && navigator.connection.saveData)) return;
@@ -2173,7 +2173,7 @@
       window.addEventListener("message", (e) => {
         if (!HERO_ORIGIN.test(e.origin)) return;
         let d = e.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (x) { return; } }
-        const sl = document.querySelector(".vd-pdt-banner.has-hero .vd-hero"), f = sl && sl.querySelector("iframe");
+        const sl = document.querySelector(".vd-pdt-banner.has-hero .vd-pdv"), f = sl && sl.querySelector("iframe");
         if (!d || !f || e.source !== f.contentWindow) return;
         f.__heard = true;
         // 비메오: 준비됐다는 신호가 오면 그때 재생 소식을 받겠다고 알려요
@@ -2195,7 +2195,7 @@
   }
   /** 미리보기 창이 열려 있는 동안 위 영상은 멈춰요 (창의 소리와 겹치지 않게) — 닫으면 다시 */
   function heroPause(on) {
-    const slot = document.querySelector(".vd-pdt-banner.has-hero .vd-hero"); if (!slot) return;
+    const slot = document.querySelector(".vd-pdt-banner.has-hero .vd-pdv"); if (!slot) return;
     const f = slot.querySelector("iframe"), v = slot.querySelector("video"), k = slot.parentNode.dataset.hero;
     if (f && k === "yt") heroPost(f, { event: "command", func: on ? "pauseVideo" : "playVideo", args: [], id: 1, channel: "widget" });
     if (f && k === "vm") heroPost(f, { method: on ? "pause" : "play" });
@@ -2203,7 +2203,7 @@
   }
   /** 영상 소리 켜기 · 끄기 (버튼 글자는 CSS 가 is-snd 를 보고 바꿔요) */
   function heroSnd(btn) {
-    const box = btn && btn.closest(".vd-pdt-banner"), slot = box && box.querySelector(".vd-hero"); if (!slot) return;
+    const box = btn && btn.closest(".vd-pdt-banner"), slot = box && box.querySelector(".vd-pdv"); if (!slot) return;
     const on = !slot.classList.contains("is-snd"), k = box.dataset.hero, f = slot.querySelector("iframe"), v = slot.querySelector("video");
     if (f && k === "yt") { const c = (func, args) => heroPost(f, { event: "command", func, args: args || [], id: 1, channel: "widget" }); if (on) { c("unMute"); c("setVolume", [100]); c("playVideo"); } else c("mute"); }
     if (f && k === "vm") { heroPost(f, { method: "setVolume", value: on ? 1 : 0 }); heroPost(f, { method: "setMuted", value: !on }); if (on) heroPost(f, { method: "play" }); }
@@ -3862,7 +3862,7 @@
       return;
     }
     if (v === "pitch-more") { const c = t.closest(".vd-pitch"); if (c) { c.classList.toggle("open"); t.innerHTML = (c.classList.contains("open") ? "접기" : "더보기") + icon("chevDown", "xs"); } return; }
-    if (v === "hero-snd") { heroSnd(t); return; }
+    if (v === "pdv-snd") { heroSnd(t); return; }
     if (v === "cmt-more") { const c = t.closest(".vd-cmt"); if (c) { c.classList.toggle("open"); t.textContent = c.classList.contains("open") ? "접기" : "더보기"; } return; }
     if (v === "pv-open") { e.preventDefault(); e.stopPropagation(); heroPause(true); previewModal(t.dataset.p, t.dataset.l); return; }
     if (v === "pv-pick") { const p = product(t.dataset.p), l = p && lessons(p).find((x) => x.id === t.dataset.l); const box = document.getElementById("vd-pvm-v"); if (!l || !box) return; box.innerHTML = typeOf(p) === "ebook" ? '<div class="vd-pl-ph">' + icon("book") + "<b>" + esc(l.title) + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : videoHtml(l, true, "미리보기 영상을 준비하고 있어요"); const now = document.querySelector(".vd-pvm-now"); if (now) now.innerHTML = "<small>Part " + (chapOf(p, l).ci + 1) + " · " + esc((chapOf(p, l).ch || {}).title || "") + "</small><b>" + esc(l.title) + "</b>" + (l.desc ? "<p>" + esc(l.desc) + "</p>" : ""); document.querySelectorAll(".vd-pvm-l button").forEach((x) => x.classList.toggle("on", x === t)); return; }

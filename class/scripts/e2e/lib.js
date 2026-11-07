@@ -202,7 +202,7 @@ const domShape = (page, id) => page.evaluate((id) => {
   c.querySelectorAll("[data-cd]").forEach((el) => { el.textContent = el.dataset.cd; });
   c.querySelectorAll('img[onerror="this.remove()"]').forEach((el) => el.remove());
   // 클래스 상세 맨 위 영상(2026-11-07): 그린 뒤 붙이는 영상(iframe · video) · 재생 · 소리 표시는 네트워크 · 시각에 따라 달라서 빼요
-  c.querySelectorAll(".vd-hero").forEach((el) => { el.innerHTML = ""; el.classList.remove("is-play", "is-snd"); });
+  c.querySelectorAll(".vd-pdv").forEach((el) => { el.innerHTML = ""; el.classList.remove("is-play", "is-snd"); });
   // 운영자(스태프) 계정: 맡지 않은 메뉴의 버튼 · 알림을 예전 화면은 빼고, React 화면은 숨겨요(data-staff-cut) — 숨긴 칸은 뺀 것과 같게 봐요
   c.querySelectorAll("[data-staff-cut]").forEach((el) => el.remove());
   // 강의실 썸네일도 못 불러오면 예전 코드가 지워요 (app.js error 처리 — 네트워크 · 시각에 따라 다름)

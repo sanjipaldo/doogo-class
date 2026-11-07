@@ -121,8 +121,8 @@ function BuyCard({ p, act }) {
 function Hero({ p, act }) {
   const X = VOD(), h = X.heroOf(p), pvs = X.previewsOf(p);
   return (
-    <div className={"vd-pdt-banner vd-th-" + X.typeOf(p) + (h ? " has-hero" : "")} data-hero={h ? h.k : undefined}>{h ? <div className="vd-hero" data-src={h.src} /> : null}<RawOne html={X.bannerArt(p)} />
-      {h ? <button type="button" className="vd-hero-snd" data-v="hero-snd" aria-label="소리 켜기 · 끄기" onClick={(e) => X.heroSnd(e.currentTarget)}><span className="off"><Icon n="volumeX" c="sm" />소리 켜기</span><span className="on"><Icon n="volume2" c="sm" />소리 끄기</span></button> : null}
+    <div className={"vd-pdt-banner vd-th-" + X.typeOf(p) + (h ? " has-hero" : "")} data-hero={h ? h.k : undefined}>{h ? <div className="vd-pdv" data-src={h.src} /> : null}<RawOne html={X.bannerArt(p)} />
+      {h ? <button type="button" className="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기" onClick={(e) => X.heroSnd(e.currentTarget)}><span className="off"><Icon n="volumeX" c="sm" />소리 켜기</span><span className="on"><Icon n="volume2" c="sm" />소리 끄기</span></button> : null}
       {pvs.length ? <button type="button" className="vd-pdt-play" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><i><Icon n="play" /></i><span>미리보기 <b>{pvs.length}개</b></span></button> : null}</div>
   );
 }
