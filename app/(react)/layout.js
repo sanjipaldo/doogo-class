@@ -7,7 +7,7 @@
  *    구조화 데이터 · 검색용 안내 글을 넣어요 — 3단계 규칙(class/api/_lib/pagemeta.js)을 그대로 써서 예전 화면과 같은 미리보기예요 */
 import fs from "node:fs";
 import path from "node:path";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { legacyLib, repoRoot } from "../../nextlib/legacy-api.js";
 import SCREENS from "../../class/shared/screens.js";
 
@@ -31,7 +31,9 @@ function legacy() {
 }
 
 // 예전 index.html 머리 맨 위 스크립트와 같은 일 + React 화면 표시 (main.js 가 React 화면이 준비되길 기다려요)
-const HEAD_JS = "window.__dcClean=true;window.DC_REACT_PAGE=1;window.DC_REACT_WAIT=new Promise(function(r){window.__dcReactReady=r});";
+// + 휴대폰에서도 PC 화면으로 보기: 주소에 ?pc=1 이면 쿠키 dc_pc=1 (이 브라우저에서 계속) · ?pc=0 이면 지워요 — 화면 폭은 아래 generateViewport 가 정해요
+const HEAD_JS = "window.__dcClean=true;window.DC_REACT_PAGE=1;window.DC_REACT_WAIT=new Promise(function(r){window.__dcReactReady=r});" +
+  "try{var q=location.search;if(/[?&]pc=1(&|$)/.test(q))document.cookie='dc_pc=1; path=/; samesite=lax';else if(/[?&]pc=0(&|$)/.test(q))document.cookie='dc_pc=; path=/; max-age=0; samesite=lax'}catch(e){}";
 
 /** 공개 화면: 예전 index.html 에 서버가 넣던 미리보기 정보 → { title, metas, canonical, ld, style, seo } (못 만들면 null) */
 const META_SKIP = { viewport: 1, "theme-color": 1 };
@@ -54,7 +56,15 @@ async function publicMeta(p) {
   } catch (e) { console.error("[react meta]", p, e && e.message); return null; }
 }
 
-export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#ffffff" };
+/* 화면 폭: 보통은 기기 폭. 휴대폰에서도 PC 화면을 보고 싶을 때 주소 뒤에 ?pc=1 → 1280px 로 그려서 PC 화면 그대로 작게 보여요(손가락으로 확대).
+ * 한 번 켜면 쿠키 dc_pc 로 이 브라우저에서 계속 · ?pc=0 으로 원래대로. 예전 화면(class/index.html 머리 스크립트)도 같은 규칙이에요 */
+const PC_W = 1280;
+export async function generateViewport() {
+  const p = (await headers()).get("x-dc-path") || "", i = p.indexOf("?"), q = i >= 0 ? p.slice(i) : "", c = (await cookies()).get("dc_pc");
+  const on = /[?&]pc=1(&|$)/.test(q) || (!/[?&]pc=0(&|$)/.test(q) && !!c && c.value === "1");
+  // initialScale: null — Next 기본값(initial-scale=1)을 지워야 휴대폰이 PC 화면 전체가 보이게 줄여서 시작해요
+  return on ? { width: PC_W, initialScale: null, viewportFit: "cover", themeColor: "#ffffff" } : { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#ffffff" };
+}
 
 export default async function ReactLayout({ children }) {
   const L = legacy();
