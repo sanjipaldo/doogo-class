@@ -596,6 +596,18 @@ function plans612(get) {
   return { writes: { meta: Object.assign({}, meta, { vod }) }, result: { faq: n, helpFaq: h, rebuyDefault: rb } };
 }
 
+/* 2026-11-08 첫 화면 배너 탈잉형 정사각형 카드: 기본 이미지 배너(vb-img1 · 두잉고 VOD 강의실)에 정사각형 카드 이미지를 넣어요.
+ * 화면(vod.js seedV24)과 같은 일 — 마스터가 이미지를 바꿨거나(PC 이미지가 기본값이 아님) 이미 카드 이미지가 있으면 그대로 */
+const BAN_SQ_SEED = "assets/vod/banner-class-sq.jpg", BAN_PC_SEED = "assets/vod/banner-class-pc.jpg";
+function bannerClassSq(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  const vod = Object.assign({}, meta.vod); let n = 0;
+  if (Array.isArray(vod.banners)) vod.banners = vod.banners.map((b) => { if (isObj(b) && b.id === "vb-img1" && b.kind === "img" && !b.sq && b.pc === BAN_PC_SEED) { n++; return Object.assign({}, b, { sq: BAN_SQ_SEED }); } return b; });
+  vod.v24 = 1;
+  return { writes: { meta: Object.assign({}, meta, { vod }) }, result: { banners: n } };
+}
+
 /* ---------- 문대표 코치: 담당 두잉고를 LIVE 로 (2026-11) ----------
  * 코치 메뉴를 LIVE 두잉고 / VOD 두잉고로 나누면서, 문대표가 만든 코치들은 LIVE 두잉고 코치로 (사용자 요청 · 담당 칸이 비어 있을 때만).
  * 메뉴 체크는 그대로 둬요 — VOD 메뉴가 체크돼 있어도 LIVE 담당이면 열리지 않고, 나중에 ‘둘 다’로 바꾸면 다시 보여요 */
@@ -909,6 +921,7 @@ const OPS = [
   { id: "2026-11-03-moon-cohort-dates", note: "문대표 기수 일정: 1기 1/24~2/21 · 2기 8/29~9/23(5주차 수) · 지금 4기(11/21)를 3기로 + 5주차 보너스 강의 12/15(화) · 챌린지 4회(11/25 · 12/2 · 12/9 · 12/16) · 예시였던 예전 3기(10/1) 지우기", run: moonCohortDates },
   { id: "2026-11-04-moon-cal-v2", note: "문대표 수업 캘린더: 강의 녹화본 업로드를 오프라인 강의 이틀 뒤로 · 일정 종류 ‘온라인 강의’ · 3기 12/15 5주차 보너스 강의 → 5주차 온라인 강의 · 특강(행사) → 초청강사", run: moonCalV2 },
   { id: "2026-11-05-live-lectures", note: "두잉고 LIVE 기수 정리: 문대표 말고 다른 강사 기수 지우기(수강생 · 이용료 기록이 있으면 남김) · 문대표 1~3기만 · 3기 메인 강사 강의(주차마다 날짜 · 시간 · 끝나는 시간 · 장소 · 주제) · 5주차 줌 강의 12/15 19:00~22:00", run: liveLectures },
+  { id: "2026-11-08-banner-class-sq", note: "첫 화면 배너 탈잉형 정사각형 카드: 기본 이미지 배너(두잉고 VOD 강의실)에 정사각형 카드 이미지 넣기 (마스터가 이미지를 바꾼 배너 · 이미 카드 이미지가 있는 배너는 그대로)", run: bannerClassSq },
 ];
 
-module.exports = { OPS, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, bannerClassSq, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

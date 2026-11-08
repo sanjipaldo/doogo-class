@@ -262,7 +262,8 @@
     ["money", "재테크", "#/vod/c/money"], ["career", "커리어·자기계발", "#/vod/c/career"], ["ebook", "전자책", "#/vod/c/all?tab=ebook"], ["live", "LIVE·오프라인", "#/vod/c/all?tab=premium"], ["free", "무료 강의", "#/vod/c/all?tab=free"], ["soon", "오픈 예정", "#/vod/c/soon", "NEW"]];
   const tileImg = (k) => "assets/vod/cat/" + k + ".webp";
   const seedTiles = () => TILES.map((t) => ({ id: "vt-" + t[0], key: t[0], label: t[1], href: t[2], img: tileImg(t[0]), badge: t[3] || "", on: true }));
-  function seedV10(v) { if (!Array.isArray(v.tiles)) v.tiles = seedTiles(); if (!Array.isArray(v.banners) || v.banners.some((b) => b.id === "vb-img1")) return; v.banners.splice(Math.min(1, v.banners.length), 0, { id: "vb-img1", kind: "img", pc: "assets/vod/banner-class-pc.jpg", m: "assets/vod/banner-class-m.jpg", alt: "두잉고 VOD 강의실 — 영상 보면서 적고, 자료는 바로 받기", href: "#/vod/about", pid: "", newTab: false, fit: "cover", bg: "#141418", from: "", to: "", on: true }); }
+  const BAN_SQ_SEED = "assets/vod/banner-class-sq.jpg"; // 기본 이미지 배너의 정사각형 카드 이미지 (v24)
+  function seedV10(v) { if (!Array.isArray(v.tiles)) v.tiles = seedTiles(); if (!Array.isArray(v.banners) || v.banners.some((b) => b.id === "vb-img1")) return; v.banners.splice(Math.min(1, v.banners.length), 0, { id: "vb-img1", kind: "img", sq: BAN_SQ_SEED, pc: "assets/vod/banner-class-pc.jpg", m: "assets/vod/banner-class-m.jpg", alt: "두잉고 VOD 강의실 — 영상 보면서 적고, 자료는 바로 받기", href: "#/vod/about", pid: "", newTab: false, fit: "cover", bg: "#141418", from: "", to: "", on: true }); }
   /* v11: 전자책 · 수강 선물 PDF (비어 있던 파일만 채워요 — 마스터가 올린 파일은 그대로) */
   function seedV11(v) {
     const F = { v10: "assets/files/v10-ebook.pdf", v11: "assets/files/v11-ebook.pdf" };
@@ -528,6 +529,11 @@
     (v.helpFaq || []).forEach((f) => { if (Array.isArray(f) && typeof f[2] === "string") f[2] = planTxt(f[2]); });
     v.settings = v.settings || {}; if (!v.settings.rebuy) v.settings.rebuy = { on: true, pct: 40 };
   }
+  /* v24 (2026-11-08): 첫 화면 배너가 탈잉형 정사각형 카드로 — 기본 이미지 배너(두잉고 VOD 강의실)에 정사각형 카드 이미지를 넣어요.
+   * 마스터가 이미지를 바꾼 배너는 그대로 (운영 데이터는 서버 일회성 작업 2026-11-08-banner-class-sq 가 같은 일을 해요) */
+  function seedV24(v) {
+    (Array.isArray(v.banners) ? v.banners : []).forEach((b) => { if (b && b.id === "vb-img1" && b.kind === "img" && !b.sq && b.pc === "assets/vod/banner-class-pc.jpg") b.sq = BAN_SQ_SEED; });
+  }
   function seedV21(v) {
     if (!v.products.some((p) => p.id === MOON_BOOK.id)) v.products.push(JSON.parse(JSON.stringify(MOON_BOOK)));
     v.settings = v.settings || {}; if (!v.settings.ship) v.settings.ship = Object.assign({}, SHIP_DEF);
@@ -554,7 +560,7 @@
     if (!DB.freeOf) return;
     V().products.forEach((p) => { if (!p.fromFree) return; const f = DB.freeOf(p.fromFree); if (f && f.liveAt && p.eventAt !== f.liveAt) { p.eventAt = f.liveAt; save(); } });
   }
-  function V() { const d = DB.data, fresh = !d.vod || !Array.isArray(d.vod.products), keep = fresh && d.vod && typeof d.vod === "object" ? d.vod : null; if (fresh) { d.vod = seed(); DB.save(); } else if (d.vod.ver !== 4) { migrate(d.vod); DB.save(); } if (!d.vod.v8) { d.vod.v8 = 1; seedV8(d.vod); DB.save(); } if (!d.vod.v9) { d.vod.v9 = 1; seedV9(d.vod); DB.save(); } if (!d.vod.v10) { d.vod.v10 = 1; seedV10(d.vod); DB.save(); } if (!d.vod.v11) { d.vod.v11 = 1; seedV11(d.vod); DB.save(); } if (!d.vod.v12) { d.vod.v12 = 1; seedV12(d.vod); DB.save(); } if (!d.vod.v13) { d.vod.v13 = 1; seedV13(d.vod); DB.save(); } if (!d.vod.v14) { d.vod.v14 = 1; seedV14(d.vod); DB.save(); } if (!d.vod.v15) { d.vod.v15 = 1; seedV15(d.vod); DB.save(); } if (!d.vod.v16) { d.vod.v16 = 1; seedV16(d.vod); DB.save(); } if (!d.vod.v17) { d.vod.v17 = 1; seedV17(d.vod); DB.save(); } if (!d.vod.v18) { d.vod.v18 = 1; seedV18(d.vod); DB.save(); } if (!d.vod.v19) { d.vod.v19 = 1; seedV19(d.vod); DB.save(); } if (!d.vod.v20) { d.vod.v20 = 1; seedV20(d.vod); DB.save(); } if (!d.vod.v21) { d.vod.v21 = 1; seedV21(d.vod); DB.save(); } if (!d.vod.v22) { d.vod.v22 = 1; seedV22(d.vod); DB.save(); } if (!d.vod.v23) { d.vod.v23 = 1; seedV23(d.vod); DB.save(); } if (fresh && SRV()) srvClean(d.vod, keep); if (SRV()) srvShape(d.vod); return d.vod; }
+  function V() { const d = DB.data, fresh = !d.vod || !Array.isArray(d.vod.products), keep = fresh && d.vod && typeof d.vod === "object" ? d.vod : null; if (fresh) { d.vod = seed(); DB.save(); } else if (d.vod.ver !== 4) { migrate(d.vod); DB.save(); } if (!d.vod.v8) { d.vod.v8 = 1; seedV8(d.vod); DB.save(); } if (!d.vod.v9) { d.vod.v9 = 1; seedV9(d.vod); DB.save(); } if (!d.vod.v10) { d.vod.v10 = 1; seedV10(d.vod); DB.save(); } if (!d.vod.v11) { d.vod.v11 = 1; seedV11(d.vod); DB.save(); } if (!d.vod.v12) { d.vod.v12 = 1; seedV12(d.vod); DB.save(); } if (!d.vod.v13) { d.vod.v13 = 1; seedV13(d.vod); DB.save(); } if (!d.vod.v14) { d.vod.v14 = 1; seedV14(d.vod); DB.save(); } if (!d.vod.v15) { d.vod.v15 = 1; seedV15(d.vod); DB.save(); } if (!d.vod.v16) { d.vod.v16 = 1; seedV16(d.vod); DB.save(); } if (!d.vod.v17) { d.vod.v17 = 1; seedV17(d.vod); DB.save(); } if (!d.vod.v18) { d.vod.v18 = 1; seedV18(d.vod); DB.save(); } if (!d.vod.v19) { d.vod.v19 = 1; seedV19(d.vod); DB.save(); } if (!d.vod.v20) { d.vod.v20 = 1; seedV20(d.vod); DB.save(); } if (!d.vod.v21) { d.vod.v21 = 1; seedV21(d.vod); DB.save(); } if (!d.vod.v22) { d.vod.v22 = 1; seedV22(d.vod); DB.save(); } if (!d.vod.v23) { d.vod.v23 = 1; seedV23(d.vod); DB.save(); } if (!d.vod.v24) { d.vod.v24 = 1; seedV24(d.vod); DB.save(); } if (fresh && SRV()) srvClean(d.vod, keep); if (SRV()) srvShape(d.vod); return d.vod; }
   /** 정식 서버: 회원 · 주문 · 후기 등은 따로 와서(볼 수 있는 것만) 비어 있을 수 있어요 → 빈 목록으로 */
   function srvShape(v) {
     if (!Array.isArray(v.members)) v.members = []; if (!Array.isArray(v.orders)) v.orders = []; if (!Array.isArray(v.reviews)) v.reviews = []; if (!Array.isArray(v.pledges)) v.pledges = []; if (!Array.isArray(v.inquiries)) v.inquiries = []; if (!Array.isArray(v.payouts)) v.payouts = [];
@@ -1152,7 +1158,7 @@
     });
   }
   /* 첫 화면 배너: 켜져 있고 노출 기간 안에 있는 것만 (이미지 배너는 이미지가 있어야) */
-  const banLive = (b) => b.on !== false && (!b.from || today() >= b.from) && (!b.to || today() <= b.to) && (b.kind !== "img" || !!(b.pc || b.m));
+  const banLive = (b) => b.on !== false && (!b.from || today() >= b.from) && (!b.to || today() <= b.to) && (b.kind !== "img" || !!(b.sq || b.pc || b.m));
   // 첫 화면 배너: 꺼진 판매 영역(LIVE · 오프라인 / 무료 강의)으로 이어지는 배너는 쉬어요
   const hrefPid = (h) => { const m = String(h || "").match(/^#\/vod\/(?:p|checkout)\/([^/?#]+)/); return m ? decodeURIComponent(m[1]) : ""; };
   const liveBanners = () => V().banners.filter((b) => banLive(b) && (!b.pid || bizShow(product(b.pid))) && (!hrefPid(b.href) || bizShow(product(hrefPid(b.href)))) && tileBiz({ href: b.href }));
@@ -1479,12 +1485,18 @@
       '<div class="vd-sec-r">' + (more ? '<a class="vd-more" href="' + more + '">전체보기' + icon("chevRight", "xs") + "</a>" : "") + pager(id) + "</div></div>" +
       '<div class="vd-row" id="' + id + '" data-rv-kids>' + items.map((it, i) => anyCard(it, o && o.rank && i < 3 ? { rank: i + 1 } : null)).join("") + "</div></section>";
   }
-  // 이미지 배너: 마스터가 올린 PC · 모바일 이미지를 그대로 보여요 (모바일 이미지가 없으면 PC 이미지를 가운데 맞춰 잘라요)
+  /* 이미지 배너 (탈잉형 정사각형 카드): 마스터가 올린 ‘카드 이미지(정사각형)’를 PC · 휴대폰 같이 써요.
+   * 카드 이미지가 없는 예전 배너는 모바일(없으면 PC) 이미지를 자르지 않고 다 보이게 넣고, 남는 곳은 배경색으로 채워요 (글자가 든 이미지라 잘리면 안 돼요) */
+  const banImg = (b) => ({ src: b.sq || b.m || b.pc || "", fit: !b.sq || b.fit === "contain" });
   function imgSlide(b, i, clone, href) {
-    const pc = b.pc || b.m, m = b.m || "";
-    return '<a class="vd-slide img' + (b.fit === "contain" ? " fit" : "") + (i === ui.slide ? " on" : "") + '" href="' + esc(href) + '"' + (b.newTab ? ' target="_blank" rel="noopener"' : "") + ' style="--a:' + esc(b.bg || (b.color || [])[0] || "#111") + '" data-i="' + (clone ? "" : i) + '" tabindex="' + (i === ui.slide ? 0 : -1) + '"' + (clone ? ' aria-hidden="true"' : "") + "><picture>" +
-      (m && m !== pc ? '<source media="(max-width: 639px)" ' + imgAttr(m, "srcset") + ">" : "") + "<img " + imgAttr(pc, "src") + (!clone && i === ui.slide ? ' fetchpriority="high"' : "") + ' alt="' + (clone ? "" : esc(b.alt || String(b.title || "").replace(/\n/g, " "))) + '" draggable="false"></picture></a>';
+    const g = banImg(b);
+    return '<a class="vd-slide img' + (g.fit ? " fit" : "") + (i === ui.slide ? " on" : "") + '" href="' + esc(href) + '"' + (b.newTab ? ' target="_blank" rel="noopener"' : "") + ' style="--a:' + esc(b.bg || (b.color || [])[0] || "#111") + '" data-i="' + (clone ? "" : i) + '" tabindex="' + (i === ui.slide ? 0 : -1) + '"' + (clone ? ' aria-hidden="true"' : "") + "><picture>" +
+      "<img " + imgAttr(g.src, "src") + (!clone && i === ui.slide ? ' fetchpriority="high"' : "") + ' alt="' + (clone ? "" : esc(b.alt || String(b.title || "").replace(/\n/g, " "))) + '" draggable="false"></picture></a>';
   }
+  /* 배너 줄 양 끝 복제 (끝에서 처음으로 같은 방향으로 이어지게): 앞 2장 · 뒤 3장 — 넓은 화면은 카드 세 장이 한 번에 보여서
+   * 마지막 → 처음으로 넘어가는 동안에도 오른쪽 두 칸이 비지 않게, 휴대폰은 양옆 살짝 보이는 카드가 비지 않게 */
+  const HERO_PRE = 2, HERO_POST = 3;
+  const heroLoop = (bs) => { const n = bs.length, at = (k) => bs[((k % n) + n) % n]; if (n < 2) return bs.slice(); const a = []; for (let k = -HERO_PRE; k < n + HERO_POST; k++) a.push(at(k)); return a; };
   /* 홈 화면 섹션 (마스터 › VOD 전시 · 쿠폰 · 설정 › 홈 화면 섹션에서 고쳐요)
    * mode: auto = 기본 규칙(판매순 · 날짜순) · pin = 고른 강의를 맨 앞에 + 나머지 자동 · only = 고른 강의만 */
   const RAIL_DEF = [
@@ -1545,7 +1557,7 @@
   function pageHome() {
     const bs = liveBanners();
     ui.slide = Math.min(ui.slide, Math.max(0, bs.length - 1));
-    const loop = bs.length > 1 ? [bs[bs.length - 1]].concat(bs, [bs[0]]) : bs, off = bs.length > 1 ? 1 : 0;
+    const loop = heroLoop(bs), off = bs.length > 1 ? HERO_PRE : 0;
     const hero = bs.length ? '<section class="vd-hero"><div class="vd-hero-vp"><div class="vd-hero-track" id="vd-hero" style="--i:' + (ui.slide + off) + '">' +
       loop.map((b, j) => { const i = j - off, clone = i < 0 || i >= bs.length; const p = b.pid ? product(b.pid) : null, ph = b.img || (p ? phOf(p) : ""), href = b.href || (p ? "#/vod/p/" + p.id : "#/vod/c/all");
         if (b.kind === "img") return imgSlide(b, i, clone, href);
@@ -3630,7 +3642,7 @@
     const raw = to != null ? to : ui.slide + d;
     ui.slide = (raw + n) % n;
     const t = document.getElementById("vd-hero"); if (!t) return;
-    const off = n > 1 ? 1 : 0;
+    const off = n > 1 ? HERO_PRE : 0;
     clearTimeout(ui.jump); t.classList.add("anim"); t.style.setProperty("--i", raw + off);
     ui.jump = setTimeout(() => { t.classList.remove("anim"); if (raw !== ui.slide) t.style.setProperty("--i", ui.slide + off); }, 640);
     t.querySelectorAll(".vd-slide").forEach((x) => { const on = x.dataset.i !== "" && Number(x.dataset.i) === ui.slide; x.classList.toggle("on", on); x.tabIndex = on ? 0 : -1; });
@@ -4299,7 +4311,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroWire, heroSnd, heroPause, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroWire, heroSnd, heroPause, heroLoop, HERO_PRE, banImg, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),
