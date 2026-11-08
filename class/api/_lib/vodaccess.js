@@ -10,8 +10,10 @@
  *  vstat                 찜 수 · 수강생 수 · 관심 부업 표 (서버가 세요 · 누구나 보기)
  * vme · vmk · vpay · vp · vcat 은 여기 없어서 /api/vod-* 로만 다뤄요. */
 "use strict";
+const crypto = require("crypto");
 const store = require("./store");
 const COACH = require("../../coach-perms");
+const PR = require("../../shared/price"); // 다짐 쿠폰 규칙 (화면과 같은 공용 모듈 · 2026-11-08)
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const mask = (n) => { n = String(n || ""); return n ? n.slice(0, 1) + "OO" : "회원"; };
@@ -232,8 +234,9 @@ function writer(K, ids, creating, ctx) {
     case "vpl":
       if (!me) return null;
       return { fix: (o, n) => {
-        if (!o) return n == null ? null : { id: K.id, pid: str(n.pid, 40), mid: me, nick: str(n.nick, 20), text: str(n.text, 500), at: Date.now(), up: 0, upBy: [] };
-        if (o.mid === me) { if (n == null) return null; const out = clone(o); out.text = str(n.text, 500); return out; }
+        // 다짐은 20자 이상만 (2026-11-08 · 다짐 쿠폰) — 짧으면 새로 쓰기는 받지 않고, 고칠 때는 예전 글 그대로
+        if (!o) return n == null || PR.pledgeLen(n.text) < PR.PLEDGE.min ? null : { id: K.id, pid: str(n.pid, 40), mid: me, nick: str(n.nick, 20), text: str(n.text, 500), at: Date.now(), up: 0, upBy: [] };
+        if (o.mid === me) { if (n == null) return null; const out = clone(o); if (PR.pledgeLen(n.text) >= PR.PLEDGE.min) out.text = str(n.text, 500); return out; }
         // 남의 다짐: 공감(나 한 명)만 넣거나 빼요
         const out = clone(o), had = (o.upBy || []).indexOf(me) >= 0, want = !!(n && (n.upBy || []).indexOf(me) >= 0);
         const base = (Number(o.up) || 0) - (o.upBy || []).length;
@@ -359,6 +362,18 @@ async function after(K, prev, next, ids) {
       m.rvPts = (m.rvPts || []).concat(next.pid);
       m.points = (Number(m.points) || 0) + rp;
       (m.pointLog = m.pointLog || []).push({ at: Date.now(), amt: rp, why: "후기 작성 적립" });
+      return m;
+    });
+  }
+  // 다짐 쿠폰 (2026-11-08): 20자 이상 다짐을 처음 남기면 그 강의에만 쓰는 5,000원 할인 쿠폰 — 클래스마다 한 번 (지우고 다시 써도 한 번)
+  //   판매 중인 유료 강의만 · 이미 산 강의 · 종이책은 빼요 · 받은 날부터 30일
+  if (K.type === "vpl" && !prev && next && ids.vod && next.mid === ids.vod.mid && PR.pledgeLen(next.text) >= PR.PLEDGE.min && (ids.vod.owns || []).indexOf(String(next.pid)) < 0) {
+    const cat = ((await store.getDoc("vcat")) || {}).v, p = ((cat && cat.products) || []).find((x) => x && x.id === next.pid);
+    if (PR.pledgeable(p)) await updateDoc("vm:" + next.mid, (m) => {
+      if (!m || (m.plCps || []).indexOf(next.pid) >= 0) return undefined;
+      const now = Date.now();
+      m.plCps = (m.plCps || []).concat(next.pid);
+      (m.coupons = m.coupons || []).push({ id: "mc" + now.toString(36) + crypto.randomBytes(4).toString("hex"), cid: PR.PLEDGE.id, pid: next.pid, value: PR.PLEDGE.value, at: now, exp: PR.KST.addDays(PR.KST.day(now), PR.PLEDGE.days), usedAt: null, orderNo: "" });
       return m;
     });
   }

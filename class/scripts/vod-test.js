@@ -436,7 +436,37 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
   r = await sync([{ k: "vq:" + mB + ":q1", base: 0, put: { id: "q1", mid: mB, cat: "결제", title: "문의", text: "입금했어요 확인 부탁", answer: "셀프 답변" } }]);
   j = await boot();
   ok(docOf(j, "vq:" + mB + ":q1") && docOf(j, "vq:" + mB + ":q1").answer === "", "1:1 문의 남기기 (답변 칸은 비움)", docOf(j, "vq:" + mB + ":q1"));
-  r = await sync([{ k: "vpl:p1", base: 0, put: { id: "p1", pid: "v5", nick: "나OO", text: "매일 1편!" } }]);
+  r = await sync([{ k: "vpl:p1", base: 0, put: { id: "p1", pid: "v5", nick: "나OO", text: "매일 1편씩 꼭 보고 바로 따라 해 볼게요!" } }]);
+  // 다짐 쿠폰 (2026-11-08): 20자 이상 다짐 → 그 강의에만 쓰는 5,000원 쿠폰 — 클래스마다 한 번 · 이미 산 강의 · 판매 전 강의 · 종이책 · 무료는 빼요 (서버가 줘요)
+  {
+    const PRS = require(path.join(ROOT, "shared/price.js"));
+    ok(PRS.pledgeLen("  매일   30분씩 ") === 7 && PRS.pledgeable({ status: "on", type: "vod", price: 49000 }) && !PRS.pledgeable({ status: "soon", type: "vod", price: 49000 }) && !PRS.pledgeable({ status: "on", type: "book", price: 15900 }) && !PRS.pledgeable({ status: "on", type: "vod", price: 0 }) && !PRS.pledgeable(null),
+      "다짐 규칙: 글자 수(띄어쓰기 한 칸 · 앞뒤 빈칸 빼고) · 쿠폰 주는 강의 = 판매 중 · 유료 · 종이책 아님");
+    const plCp = (jj) => (docOf(jj, "vm:" + mB).coupons || []).filter((c) => c.cid === "cp-pledge");
+    j = await boot();
+    ok(docOf(j, "vpl:p1") && !plCp(j).length, "이미 산 강의(v5) 다짐은 저장 · 쿠폰은 없음", plCp(j));
+    r = await sync([{ k: "vpl:p2", base: 0, put: { id: "p2", pid: "v6", nick: "나OO", text: "짧은 다짐이에요" } }]);
+    j = await boot();
+    ok(!docOf(j, "vpl:p2") && !plCp(j).length, "20자보다 짧은 다짐은 저장 안 됨 · 쿠폰도 없음", r.results);
+    r = await sync([{ k: "vpl:p3", base: 0, put: { id: "p3", pid: "v6", nick: "나OO", text: "매일 30분씩 강의를 듣고 꼭 끝까지 따라 해 볼게요!" } }]);
+    j = await boot();
+    const pc1 = plCp(j), plDay = PRS.KST.addDays(PRS.KST.day(Date.now()), 30);
+    ok(docOf(j, "vpl:p3") && pc1.length === 1 && pc1[0].pid === "v6" && pc1[0].value === 5000 && pc1[0].exp === plDay && !pc1[0].usedAt && (docOf(j, "vm:" + mB).plCps || []).indexOf("v6") >= 0, "20자 이상 다짐 → 그 강의 전용 5,000원 쿠폰 (받은 날부터 30일)", pc1);
+    r = await sync([{ k: "vpl:p3", base: verOf(j, "vpl:p3"), del: true }]);
+    r = await sync([{ k: "vpl:p4", base: 0, put: { id: "p4", pid: "v6", nick: "나OO", text: "다시 다짐해요. 이번에는 진짜 끝까지 해 볼게요!" } }]);
+    j = await boot();
+    ok(!docOf(j, "vpl:p3") && docOf(j, "vpl:p4") && plCp(j).length === 1, "지우고 다시 다짐해도 같은 강의 쿠폰은 한 번만", plCp(j));
+    r = await sync([{ k: "vpl:p4", base: verOf(j, "vpl:p4"), ops: [{ p: ["text"], v: "짧게" }] }]);
+    j = await boot();
+    ok(docOf(j, "vpl:p4") && /이번에는 진짜/.test(docOf(j, "vpl:p4").text), "다짐을 20자보다 짧게 고치면 예전 글 그대로", docOf(j, "vpl:p4"));
+    const VQ = require(path.join(TMP, "class/api/_lib/vod.js")), vmNow = docOf(j, "vm:" + mB);
+    const q0 = await VQ.quote(vmNow, { pid: "v6", kind: "course", plan: 180 }, []), q1 = await VQ.quote(vmNow, { pid: "v6", kind: "course", plan: 180, mcid: pc1[0].id }, []), q2 = await VQ.quote(vmNow, { pid: "v5", kind: "course", plan: 365, mcid: pc1[0].id }, []);
+    ok(q0.ok && q1.ok && q1.items[0].couponOff === 5000 && q1.total === q0.total - 5000 && q1.items[0].mcid === pc1[0].id && q2.ok && q2.items[0].couponOff === 0 && !q2.items[0].mcid, "다짐 쿠폰은 그 강의 결제에서만 5,000원 (다른 강의엔 안 깎여요)", { q0: q0.total, q1: q1.total, q2: q2.items && q2.items[0] });
+    r = await sync([{ k: "vm:" + mB, base: verOf(j, "vm:" + mB), ops: [{ p: ["plCps"], v: [] }, { p: ["coupons"], v: [] }] }]);
+    j = await boot();
+    ok(plCp(j).length === 1 && (docOf(j, "vm:" + mB).plCps || []).indexOf("v6") >= 0, "회원이 다짐 쿠폰 · 받은 표시를 지우거나 넣을 수 없음", docOf(j, "vm:" + mB).plCps);
+  }
+
 
   console.log("11) 무통장 주문 취소 · 두잉고 강의실");
   r = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 365, method: "bank" } });

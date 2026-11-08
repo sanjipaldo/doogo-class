@@ -479,15 +479,23 @@ module.exports = {
         cp = { toast: await L.toasts(pg), got: await pg.$$eval("#modal-root .vd-cpm-b.done", (x) => x.length), srv: await pg.evaluate(() => fetch("/api/bootstrap", { credentials: "same-origin" }).then((r) => r.json()).then((j) => { const d = (j.docs || []).find((x) => /^vm:/.test(x[0])); return d ? (d[1].coupons || []).length : -1; })) };
         await pg.click("#modal-root .vd-modal-h button").catch(() => {});
       }
-      await pg.fill("[data-vd-pledge] textarea[name=text]", "리액트 상세에서 다짐해요");
-      const plN = await L.text(pg, "[data-pl-n]");
-      await pg.click("[data-vd-pledge] button[type=submit]"); await pg.waitForTimeout(500);
+      // 다짐 쿠폰 (2026-11-08): 20자보다 짧으면 버튼이 꺼져 있고 · 20자 이상 남기면 그 강의 5,000원 쿠폰이 서버에 들어오고 · ‘받았어요’ 띠로 바뀌어요
+      const PLT = "리액트 상세에서 다짐해요. 매일 30분씩 끝까지 따라 해 볼게요!";
+      const plGive = !!(await pg.$(".vd-plcp:not(.got)"));
+      await pg.fill("[data-vd-pledge] textarea[name=text]", "짧은 다짐");
+      const plShortOff = await pg.$eval("[data-pl-go]", (b) => b.disabled);
+      await pg.fill("[data-vd-pledge] textarea[name=text]", PLT);
+      const plN = await L.text(pg, "[data-pl-n]"), plOn = await pg.$eval("[data-pl-go]", (b) => !b.disabled);
+      await pg.click("[data-vd-pledge] button[type=submit]"); await pg.waitForTimeout(1800);
+      const plToast = await L.toasts(pg), plGot = !!(await pg.$(".vd-plcp.got"));
+      const plCp = await pg.evaluate(() => fetch("/api/bootstrap", { credentials: "same-origin" }).then((r) => r.json()).then((j) => { const d = (j.docs || []).find((x) => /^vm:/.test(x[0])); return d ? (d[1].coupons || []).filter((c) => c.cid === "cp-pledge" && c.pid === "v8").length : -1; }));
       const pl1 = await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); return li ? { up: li.querySelector("[data-v='pl-up']").textContent.trim(), del: !!li.querySelector("[data-v='pl-del']") } : null; });
       if (pl1) { await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); li.querySelector("[data-v='pl-up']").click(); }); await pg.waitForTimeout(400); }
       const pl2 = await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); return li ? li.querySelector("[data-v='pl-up']").className + "|" + li.querySelector("[data-v='pl-up']").textContent.trim() : null; });
       if (pl1) { await pg.evaluate(() => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => /리액트 상세에서 다짐해요/.test(x.textContent)); li.querySelector("[data-v='pl-del']").click(); }); await pg.waitForTimeout(400); }
       const pl3 = await pg.evaluate(() => !Array.from(document.querySelectorAll(".vd-pls li")).some((x) => /리액트 상세에서 다짐해요/.test(x.textContent)));
-      await run.check(plN === String("리액트 상세에서 다짐해요".length) && pl1 && pl1.del && pl2 === "on|공감 1" && pl3 && (!cp || (cp.got >= 1 && /쿠폰 \d장을 받았어요/.test(cp.toast) && cp.srv > 0)), "클래스 상세(React): " + (cp ? "쿠폰 받기(서버에 저장) · " : "") + "다짐 남기기(글자 수) · 공감 · 지우기", { cp, plN, pl1, pl2, pl3 }, pg);
+      await run.check(plN === String(PLT.length) && plShortOff && plOn && pl1 && pl1.del && pl2 === "on|공감 1" && pl3 && (!cp || (cp.got >= 1 && /쿠폰 \d장을 받았어요/.test(cp.toast) && cp.srv > 0)), "클래스 상세(React): " + (cp ? "쿠폰 받기(서버에 저장) · " : "") + "다짐 남기기(20자 · 글자 수) · 공감 · 지우기", { cp, plN, plShortOff, plOn, pl1, pl2, pl3 }, pg);
+      await run.check(!plGive || (plCp === 1 && plGot && /쿠폰이 들어왔어요/.test(plToast)), "클래스 상세(React): 20자 이상 다짐 → 그 강의 5,000원 다짐 쿠폰이 서버에 들어오고 ‘받았어요’ 띠 · 알림" + (plGive ? "" : " (이 회원은 받을 수 없는 강의라 건너뜀)"), { plGive, plCp, plGot, plToast }, pg);
       const a3 = await more("off"), b3 = await more("all");
       const d3 = a3.out.map((x, i) => L.shapeDiff(x, b3.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
       await run.check(!d3.length && a3.out.length === b3.out.length, "소개 · 두고 파트너스 · 지원서(React): 슬라이드 · 흐르는 줄 · 자주 묻는 질문 · 섹션 확인 · 다시 불러도 그대로 · 보내기 — 누를 때마다 예전 화면과 같은 모양 (" + b3.out.length + "번)", d3.slice(0, 1), pg);

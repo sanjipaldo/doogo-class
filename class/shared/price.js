@@ -92,9 +92,10 @@
     const rebuyPct = () => { const r = rebuySet(); return r.on ? r.pct : 0; };
     /** 종이책 배송비 (주문마다 한 번) */
     const shipOf = (p) => (isBook(p) ? Math.max(0, Math.round(Number(p.shipFee) || 0)) : 0);
-    /** 쿠폰 할인 금액 — 종이책은 도서정가제로 쿠폰을 쓰지 않아요 */
+    /** 쿠폰 할인 금액 — 종이책은 도서정가제로 쿠폰을 쓰지 않아요 · 한 강의 전용 쿠폰(pid · 다짐 쿠폰)은 그 강의에만 */
     function couponOff(c, p, amount) {
       if (!c || amount <= 0 || isBook(p)) return 0;
+      if (c.pid && (!p || p.id !== c.pid)) return 0;
       if ((c.types || []).length && c.types.indexOf(typeOf(p)) < 0) return 0;
       if (c.min && amount < c.min) return 0;
       const off = c.kind === "pct" ? Math.floor(amount * c.value / 100 / 10) * 10 : Number(c.value) || 0;
@@ -102,5 +103,15 @@
     }
     return { bizOn, evEnd, funnelOf, funnelTo, basePrice, ebOf, priceOf, plansOf, defPlan, planOf, y365, coachOf, teaOf, extendPct, extendOf, rebuySet, rebuyPct, shipOf, couponOff };
   }
-  return { make, TYPES, BIZ_DEF, PLAN_DAYS, PLAN_OLD, r1k, perMonth, rbPrice, typeOf, isEvent, isBook, isFreeEv, KST };
+  /* 다짐 쿠폰 (2026-11-08): 클래스 상세 ‘나의 다짐 한마디’를 20자 이상 남기면 그 강의에만 쓰는 5,000원 할인 쿠폰
+   *  · 서버가 클래스마다 한 번 회원 쿠폰으로 넣어요 (api/_lib/vodaccess.js after) — { cid: "cp-pledge", pid, value, exp … }
+   *  · 쿠폰 정의는 마스터 쿠폰 목록에 없고 여기서 만들어요 (화면 · 서버 같은 규칙) — 판매 중인 유료 강의 · 아직 안 산 강의 · 종이책 빼고 */
+  const PLEDGE = { id: "cp-pledge", value: 5000, days: 30, min: 20 };
+  /** 다짐 글자 수: 띄어쓰기를 여러 번 넣어도 한 칸으로 · 앞뒤 빈칸 빼고 */
+  const pledgeLen = (t) => String(t == null ? "" : t).replace(/\s+/g, " ").trim().length;
+  /** 회원 쿠폰(다짐 쿠폰) → 쿠폰 정의 (금액은 받을 때 금액 그대로) */
+  const pledgeDef = (mc) => ({ id: PLEDGE.id, name: "다짐 쿠폰", kind: "amt", value: Number(mc && mc.value) || PLEDGE.value, pid: String((mc && mc.pid) || ""), pledge: true, on: true });
+  /** 이 강의가 다짐 쿠폰을 주는 강의인지 (판매 중 · 유료 · 종이책 아님) */
+  const pledgeable = (p) => !!p && p.status === "on" && !isBook(p) && (Number(p.sale != null && p.sale !== "" ? p.sale : p.price) || 0) > 0;
+  return { make, TYPES, BIZ_DEF, PLAN_DAYS, PLAN_OLD, r1k, perMonth, rbPrice, typeOf, isEvent, isBook, isFreeEv, KST, PLEDGE, pledgeLen, pledgeDef, pledgeable };
 });

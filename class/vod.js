@@ -1156,12 +1156,14 @@
   // 첫 화면 배너: 꺼진 판매 영역(LIVE · 오프라인 / 무료 강의)으로 이어지는 배너는 쉬어요
   const hrefPid = (h) => { const m = String(h || "").match(/^#\/vod\/(?:p|checkout)\/([^/?#]+)/); return m ? decodeURIComponent(m[1]) : ""; };
   const liveBanners = () => V().banners.filter((b) => banLive(b) && (!b.pid || bizShow(product(b.pid))) && (!hrefPid(b.href) || bizShow(product(hrefPid(b.href)))) && tileBiz({ href: b.href }));
-  const couponOf = (cid) => (V().coupons || []).find((c) => c.id === cid) || null;
+  // 다짐 쿠폰(2026-11-08)은 마스터 쿠폰 목록에 없어요 — 받은 쿠폰(x)으로 공용 규칙(shared/price.js pledgeDef)에서 정의를 만들어요 (그 강의 전용)
+  const PLG = () => window.DCS.price;
+  const couponOf = (cid, x) => (cid === PLG().PLEDGE.id ? PLG().pledgeDef(x) : (V().coupons || []).find((c) => c.id === cid) || null);
   function myCoupons(mid) {
-    return ((V().memberCoupons || {})[mid] || []).map((x) => { const c = couponOf(x.cid); if (!c) return null; const st = x.usedAt ? "used" : x.exp && x.exp < today() ? "exp" : c.on === false ? "off" : "ok"; return { x, c, st }; }).filter(Boolean).sort((a, b) => (a.st === "ok" ? 0 : 1) - (b.st === "ok" ? 0 : 1) || b.x.at - a.x.at);
+    return ((V().memberCoupons || {})[mid] || []).map((x) => { const c = couponOf(x.cid, x); if (!c) return null; const st = x.usedAt ? "used" : x.exp && x.exp < today() ? "exp" : c.on === false ? "off" : "ok"; return { x, c, st }; }).filter(Boolean).sort((a, b) => (a.st === "ok" ? 0 : 1) - (b.st === "ok" ? 0 : 1) || b.x.at - a.x.at);
   }
   const couponTxt = (c) => (c.kind === "pct" ? c.value + "% 할인" + (c.max ? " (최대 " + won(c.max) + ")" : "") : won(c.value) + " 할인");
-  const couponCond = (c) => [c.min ? won(c.min) + " 이상 결제 시" : "금액 제한 없음", (c.types || []).length ? c.types.map((t) => TYPE[t] ? TYPE[t][0] : t).join(" · ") + "만" : "모든 클래스"].join(" · ");
+  const couponCond = (c) => (c.pid ? "‘" + ((product(c.pid) || {}).title || "이 강의") + "’ 전용" : [c.min ? won(c.min) + " 이상 결제 시" : "금액 제한 없음", (c.types || []).length ? c.types.map((t) => TYPE[t] ? TYPE[t][0] : t).join(" · ") + "만" : "모든 클래스"].join(" · "));
   function couponOff(c, p, amount) { return PRC().couponOff(c, p, amount); }
   const couponsFor = (mid, p, amt) => myCoupons(mid).filter((y) => y.st === "ok").map((y) => Object.assign(y, { off: couponOff(y.c, p, amt) })).filter((y) => y.off > 0).sort((a, b) => b.off - a.off);
   const usableCoupons = (mid, p) => couponsFor(mid, p, (defPlan(p) || {}).sale || priceOf(p));
@@ -2116,8 +2118,7 @@
         sec("reviews", bk ? "독자 후기" : "수강 후기", (rs.length ? '<div class="vd-rv-sum"><div class="vd-rv-big"><b>' + rt.avg.toFixed(1) + '</b><span class="vd-stars">' + stars(rt.avg) + "</span><small>후기 " + rs.length + "개</small></div><ul>" + dist.map((n, i) => "<li><span>" + (5 - i) + "점</span><i><u style=\"width:" + Math.round(n / rs.length * 100) + '%"></u></i><small>' + n + "</small></li>").join("") + "</ul></div>" : "") +
           (canReview ? '<form class="vd-rv-form" data-vd-review="' + esc(p.id) + '"><b>후기를 남겨 주세요 <small>후기를 쓰면 ' + (Number(V().settings.reviewPoint) || 0).toLocaleString() + "P를 드려요</small></b><div class=\"vd-rate\" role=\"radiogroup\" aria-label=\"별점\">" + [5, 4, 3, 2, 1].map((s) => '<label><input type="radio" name="rating" value="' + s + '"' + (s === 5 ? " checked" : "") + ">" + icon("star", "sm") + "</label>").join("") + '</div><textarea name="text" rows="3" maxlength="500" placeholder="강의를 듣고 좋았던 점을 적어 주세요 (10자 이상)"></textarea><button class="vd-btn vd-btn-p" type="submit">후기 등록</button></form>' : "") +
           (rs.length ? '<ul class="vd-rv-list">' + rs.map((r) => '<li><div class="vd-rv-h">' + av(r.name) + "<b>" + esc(r.name) + '</b><span class="vd-stars sm">' + stars(r.rating) + "</span><time>" + DB.date.fmtFull(DB.date.toStr(new Date(r.at))) + "</time></div><p>" + esc(r.text) + "</p></li>").join("") + "</ul>" : '<p class="vd-muted">아직 후기가 없어요. ' + (bk ? "구매한" : "수강한") + ' 분만 남길 수 있어요.</p>')) +
-        sec("pledge", "나의 다짐 한마디", '<form class="vd-plform" data-vd-pledge="' + esc(p.id) + '"><label><span>' + esc(myNick) + ' · 나의 다짐 한마디</span><textarea name="text" rows="2" maxlength="500" placeholder="첫 단계부터 미루지 않고 따라가 볼게요."></textarea></label><div class="vd-plform-f"><small><b data-pl-n>0</b>/500 · 익명</small><button type="submit" class="vd-btn vd-btn-p vd-btn-sm">다짐 남기기</button></div></form>' +
-          (pls.length ? '<ul class="vd-pls">' + pls.map((x) => "<li>" + av(x.nick, "lg") + "<div><b>" + esc(x.nick) + "</b><small>한마디 · " + esc(DB.date.toStr(new Date(x.at))) + "</small><p>" + esc(x.text) + '</p><div class="vd-pl-a"><button type="button" data-v="pl-up" data-id="' + esc(x.id) + '" class="' + (m && (x.upBy || []).indexOf(m.id) >= 0 ? "on" : "") + '">' + icon("heart", "xs") + "공감 " + (x.up || 0) + "</button>" + (m && x.mid === m.id ? '<button type="button" data-v="pl-del" data-id="' + esc(x.id) + '">삭제</button>' : "") + "</div></div></li>").join("") + "</ul>" : '<p class="vd-muted">아직 다짐이 없어요. 첫 다짐을 남겨 주세요.</p>')) +
+        sec("pledge", "나의 다짐 한마디", plSecBody(p, myNick, pls, m)) +
         sec("creator", bk ? "저자 소개" : "강사 소개", '<div class="vd-crd vd-crd2" data-rv><div class="vd-crd-ph' + (phOf(p) ? "" : " no") + '">' + (phOf(p) ? '<img src="' + esc(phOf(p)) + '" alt="' + esc(p.creator) + ' 강사">' : "<i>" + esc((p.creator || "?").slice(0, 1)) + "</i>") + '<span class="vd-crd-cap"><small>CREATOR</small><b>' + esc(p.creator) + "</b></span></div><div class=\"vd-crd-body\"><small>" + esc(p.tagline || insB.field || "크리에이터") + "</small><div class=\"vd-crd-nm\"><b>" + esc(p.creator) + " <em>강사</em></b>" + crdStats(p) + "</div><p>" + esc(p.creatorBio || (p.creator + "님은 두잉고에서 기수를 운영하며 수강생과 함께 결과를 만들고 있어요. 이 클래스는 기수 강의의 핵심만 골라 언제든 볼 수 있게 만든 " + TYPE[t][0] + "예요.")) + "</p>" +
           (career.length ? '<ul class="vd-crd-car">' + career.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" : "") + '<a class="vd-tl-btn" href="' + (p.iid ? tHref(p.iid) : "#/vod/search?q=" + encodeURIComponent(p.creator || "")) + '">' + esc(p.creator) + " 강사 페이지 · 다른 클래스" + icon("chevRight", "xs") + "</a></div></div>" + cmtHtml(p)) +
         sec("info", bk ? "도서 정보" : "강의 정보", '<table class="vd-info-t"><tbody>' + info.map((r) => "<tr><th>" + esc(r[0]) + "</th><td>" + esc(r[1]) + "</td></tr>").join("") + "</tbody></table>") +
@@ -2178,6 +2179,13 @@
         f.__heard = true;
         // 비메오: 준비됐다는 신호가 오면 그때 재생 소식을 받겠다고 알려요
         if (d.event === "ready" && /vimeo/.test(e.origin)) { heroPost(f, { method: "addEventListener", value: "play" }); heroPost(f, { method: "addEventListener", value: "playProgress" }); return; }
+        // 유튜브: 준비되면(첫 소식) 상태 · 오류 소식을 받겠다고 알리고, 소리 끈 채로 재생을 한 번 더 눌러요 (휴대폰에서 autoplay 칸만으로는 안 도는 경우)
+        if ((d.event === "onReady" || d.event === "initialDelivery") && !f.__ready) {
+          f.__ready = true;
+          ["onStateChange", "onError"].forEach((ev) => heroPost(f, { event: "addEventListener", args: [ev], id: 1, channel: "widget" }));
+          ["mute", "playVideo"].forEach((fn) => heroPost(f, { event: "command", func: fn, args: [], id: 1, channel: "widget" }));
+        }
+        if (d.event === "onError") { f.__err = true; sl.classList.remove("is-play", "is-tap"); return; }
         const st = d.event === "onStateChange" ? d.info : d.event === "infoDelivery" && d.info ? d.info.playerState : d.event === "play" || d.event === "playProgress" ? 1 : null;
         if (st === 1) sl.classList.add("is-play");
       });
@@ -2186,10 +2194,13 @@
     f.title = "미리보기 영상"; f.tabIndex = -1; f.setAttribute("aria-hidden", "true"); f.setAttribute("frameborder", "0");
     f.allow = "autoplay; encrypted-media; picture-in-picture"; f.referrerPolicy = "strict-origin-when-cross-origin";
     f.addEventListener("load", () => {
-      if (k === "vm") { heroPost(f, { method: "addEventListener", value: "play" }); heroPost(f, { method: "addEventListener", value: "playProgress" }); return; }
-      // 유튜브: 듣기 시작 신호를 받을 때까지 몇 번 보내요 (재생 상태가 오면 배너를 걷어요)
-      let n = 0; const hi = () => { if (f.__heard || n++ > 12 || !f.isConnected) return; heroPost(f, { event: "listening", id: 1, channel: "widget" }); heroPost(f, { event: "command", func: "addEventListener", args: ["onStateChange"], id: 1, channel: "widget" }); setTimeout(hi, 400); };
+      if (k === "vm") { heroPost(f, { method: "addEventListener", value: "play" }); heroPost(f, { method: "addEventListener", value: "playProgress" }); }
+      // 유튜브: 듣기 시작 신호를 플레이어가 대답할 때까지 보내요 (휴대폰은 플레이어가 늦게 떠요 — 30초까지 · 2026-11-08 고침: 예전엔 5초만 기다려서 배너가 계속 덮였어요)
+      let n = 0; const hi = () => { if (k !== "yt" || f.__heard || n++ > 60 || !f.isConnected) return; heroPost(f, { event: "listening", id: 1, channel: "widget" }); setTimeout(hi, 500); };
       hi();
+      // ‘재생 중’ 소식을 못 받아도 오류가 아니면 영상을 보여 줘요 — 눌러서 재생할 수 있게(is-tap): 플레이어가 대답했으면 7초 뒤(소리 없는 자동 재생이 막힌 휴대폰 · 느린 망), 대답이 없어도 12초 뒤
+      const fb = (ms, needHeard) => setTimeout(() => { if (f.isConnected && !f.__err && !slot.classList.contains("is-play") && (!needHeard || f.__heard)) slot.classList.add("is-play", "is-tap"); }, ms);
+      fb(7000, true); fb(12000, false);
     });
     f.src = src + (k === "yt" ? "&origin=" + encodeURIComponent(location.origin) : ""); slot.appendChild(f);
   }
@@ -2384,7 +2395,7 @@
       : own ? "" : best ? '<dl class="vd-pc-rows"><div><dt>쿠폰 적용가</dt><dd><b>' + won(pr - best.off) + "</b></dd></div></dl>" : signup;
     return '<div class="vd-pc vd-pc8' + (ps.length ? " vd-pc-plans" : "") + '" id="vd-pdt-info">' + pcHead(p) + flNote(p) + price +
       (isEvent(p) && left != null ? '<div class="vd-seat"><div><span>신청 현황</span><b>' + (p.seats - left) + " / " + p.seats + "명</b></div><i><u style=\"width:" + Math.round((p.seats - left) / p.seats * 100) + '%"></u></i>' + (left && left <= 5 ? "<small>마감까지 " + left + "자리 남았어요</small>" : "") + "</div>" : "") +
-      cpDlBtn(p, m) +
+      cpDlBtn(p, m) + plNudge(p) +
       '<div class="vd-pc-btns">' + ctaHtml(p, ctaOf(p, m), "vd-btn-xl") + (own ? addonBtns(p, m) : "") + (pvs.length && !own ? '<button type="button" class="vd-btn vd-btn-o vd-btn-xl" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '">' + icon("play", "sm") + "무료 미리보기 " + pvs.length + "개</button>" : "") + "</div>" +
       '<div class="vd-pc-sub"><button type="button" class="vd-pc-like' + (isLiked ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '">' + icon("heart", "sm") + "찜 " + likeTxt(likeCount(p)) + '</button><button type="button" class="vd-pc-like" data-v="share">' + icon("link", "sm") + "공유하기</button></div>" +
       '<p class="vd-buy-note">' + icon("shieldCheck", "xs") + (refundKey(p) === "vod" ? "결제 후 " + rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : refundKey(p) === "ebook" ? "내려받기 전 7일 이내 전액 환불" : refundKey(p) === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : refundKey(p) === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강") + ' <button type="button" class="vd-link" data-v="jump" data-to="vd-s-refund">환불 규정</button></p></div>';
@@ -3909,6 +3920,7 @@
     if (v === "share") { const u = location.href; if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("주소를 복사했어요."), () => toast("주소: " + u)); else toast("주소: " + u); return; }
     if (v === "refund") { modal("환불 규정", '<div class="vd-modal-b">' + refundHtml() + "</div>"); return; }
     if (v === "legal") { const lg = legalDoc(t.dataset.k); if (lg.href) { window.open(lg.href, "_blank", "noopener"); return; } modal(lg.title, '<div class="vd-modal-b vd-legal">' + lg.html + "</div>"); return; }
+    if (v === "pl-ex") { const f = t.closest("[data-vd-pledge]"); if (f && f.text) { f.text.value = t.dataset.t || ""; plPaint(f); f.text.focus(); } return; }
     if (v === "pl-up") { if (!m) { toast("로그인하면 공감할 수 있어요.", "warn"); return; } if (plUp(t.dataset.id)) keepScroll(); return; }
     if (v === "pl-del") { if (plDel(t.dataset.id)) { keepScroll(); toast("다짐을 지웠어요."); } return; }
     if (v === "pw-eye") { const inp = t.parentNode.querySelector("input"); if (!inp) return; const show = inp.type === "password"; inp.type = show ? "text" : "password"; t.innerHTML = icon(show ? "eyeOff" : "eye", "sm"); t.setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기"); return; }
@@ -3989,7 +4001,7 @@
     window.addEventListener("resize", () => { if (ui.mega && window.innerWidth < 1024) megaSet(false); }); }
   document.addEventListener("input", (e) => {
     if (!isActive()) return;
-    const f = e.target.closest && e.target.closest("[data-vd-pledge]"); if (f) { const n = f.querySelector("[data-pl-n]"); if (n) n.textContent = e.target.value.length; return; }
+    const f = e.target.closest && e.target.closest("[data-vd-pledge]"); if (f) { plPaint(f); return; }
     const a = e.target.closest && e.target.closest("[data-vd-auth]"); if (a) { authReady(a); return; }
     const co = e.target.closest && e.target.closest("[data-vd-pay]"); if (co && (e.target.name === "points" || e.target.name === "qty")) coPaint(co);
     if (e.target.matches && e.target.matches("[data-tpg-q]")) { tpgQ = e.target.value; tpgApply(); }
@@ -4190,13 +4202,66 @@
     const m = me(), x = V().pledges.find((y) => y.id === id); if (!x || !m || x.mid !== m.id) return false;
     V().pledges.splice(V().pledges.indexOf(x), 1); save(); return true;
   }
+  /* ---------- 나의 다짐 한마디 + 다짐 쿠폰 (2026-11-08) ----------
+   * 20자 이상 다짐을 처음 남기면 그 강의에만 쓰는 5,000원 할인 쿠폰 — 서버가 클래스마다 한 번 줘요 (api/_lib/vodaccess.js after · 규칙 shared/price.js PLEDGE)
+   * 다짐을 쓰게 하는 장치: 위 쿠폰 띠 · 예시 문장(누르면 바로 채워져요) · 몇 자 더 쓰면 되는지 · 버튼 ‘다짐 남기고 쿠폰 받기’ · 가격 카드의 안내 버튼
+   *  · 로그인하러 가도 쓰던 글은 이 탭에 남아요(sessionStorage dc:pl:<강의>) · 예전 화면 · React 화면(ui/store/ProductPage.jsx)이 같이 써요 */
+  const PL_EX = ["매일 30분씩 강의를 듣고 배운 걸 바로 따라 해 볼게요!", "4주 안에 끝까지 완강하고 첫 결과를 후기로 남길게요!", "이번 달 안에 첫 판매까지 꼭 해 볼게요. 미루지 않을게요!"];
+  const PL_DRAFT = "dc:pl:";
+  const plDraft = (pid) => { try { return sessionStorage.getItem(PL_DRAFT + pid) || ""; } catch (e) { return ""; } };
+  const plKeep = (pid, t) => { try { if (String(t || "").trim()) sessionStorage.setItem(PL_DRAFT + pid, String(t)); else sessionStorage.removeItem(PL_DRAFT + pid); } catch (e) { /* 저장소를 못 쓰면 남기지 않아요 */ } };
+  /** 다짐 쿠폰 상태 { give: 지금 다짐하면 쿠폰을 받는지, got: 이미 받았는지, mc: 받은 쿠폰, own: 이미 산 강의 … } */
+  function plgView(p) {
+    const P = PLG(), m = me(), own = !!(m && p && owns(m.id, p.id));
+    const mc = m && p ? ((V().memberCoupons || {})[m.id] || []).find((x) => x.cid === P.PLEDGE.id && x.pid === p.id) || null : null;
+    const got = !!mc || !!(m && p && (m.plCps || []).indexOf(p.id) >= 0), on = P.pledgeable(p) && !own;
+    return { m, own, on, got, mc, give: on && !got, amt: P.PLEDGE.value, days: P.PLEDGE.days, min: P.PLEDGE.min, ex: PL_EX, draft: p ? plDraft(p.id) : "" };
+  }
+  const plPct = (len, g) => Math.min(100, Math.round(len / g.min * 100));
+  const plHint = (len, g) => (len < g.min ? " · " + (g.min - len) + "자 더 쓰면 " + (g.give ? "쿠폰을 받아요" : "남길 수 있어요") : g.give ? " · 지금 남기면 " + won(g.amt) + " 쿠폰을 받아요" : " · 좋아요!");
+  /** 상세 ‘나의 다짐 한마디’ 칸 안쪽 (쿠폰 띠 · 쓰는 칸 · 예시 · 글자 수 · 버튼 · 다짐 목록) */
+  function plSecBody(p, myNick, pls, m) {
+    const g = plgView(p), len = PLG().pledgeLen(g.draft), ok = len >= g.min;
+    return (g.give ? '<div class="vd-plcp"><span class="vd-plcp-tk"><b>' + Number(g.amt).toLocaleString() + '<small>원</small></b><em>할인 쿠폰</em></span><div class="vd-plcp-t"><b>다짐 한마디 남기면 <em>' + won(g.amt) + " 할인 쿠폰</em>을 바로 드려요</b><small>" + g.min + "자 이상 · 이 강의 결제에 바로 사용 · 받은 날부터 " + g.days + "일</small></div></div>"
+        : g.mc && !g.mc.usedAt ? '<div class="vd-plcp got">' + icon("check", "sm") + '<div class="vd-plcp-t"><b>다짐 쿠폰 ' + won(Number(g.mc.value) || g.amt) + "을 받았어요</b><small>" + (g.mc.exp ? DB.date.fmtFull(g.mc.exp) + "까지 · " : "") + "결제할 때 바로 쓸 수 있어요</small></div></div>" : "") +
+      '<form class="vd-plform" data-vd-pledge="' + esc(p.id) + '"><label><span>' + esc(myNick) + ' · 나의 다짐 한마디</span><textarea name="text" rows="3" maxlength="500" placeholder="예) 매일 30분씩 강의를 듣고 4주 안에 첫 결과를 만들어 볼게요!">' + esc(g.draft) + "</textarea></label>" +
+        '<div class="vd-plex"><small>예시를 누르면 바로 채워져요</small>' + g.ex.map((x) => '<button type="button" data-v="pl-ex" data-t="' + esc(x) + '">' + esc(x) + "</button>").join("") + "</div>" +
+        '<i class="vd-pl-bar"><u style="width:' + plPct(len, g) + '%"></u></i>' +
+        '<div class="vd-plform-f"><small class="vd-pl-cnt' + (ok ? " ok" : "") + '"><b data-pl-n>' + len + "</b>자<span data-pl-hint>" + plHint(len, g) + "</span></small>" +
+        '<button type="submit" class="vd-btn vd-btn-p vd-btn-sm" data-pl-go' + (ok ? "" : " disabled") + ">" + (g.give ? "다짐 남기고 쿠폰 받기" : "다짐 남기기") + "</button></div></form>" +
+      (pls.length ? '<ul class="vd-pls">' + pls.map((x) => "<li>" + av(x.nick, "lg") + "<div><b>" + esc(x.nick) + "</b><small>한마디 · " + esc(DB.date.toStr(new Date(x.at))) + "</small><p>" + esc(x.text) + '</p><div class="vd-pl-a"><button type="button" data-v="pl-up" data-id="' + esc(x.id) + '" class="' + (m && (x.upBy || []).indexOf(m.id) >= 0 ? "on" : "") + '">' + icon("heart", "xs") + "공감 " + (x.up || 0) + "</button>" + (m && x.mid === m.id ? '<button type="button" data-v="pl-del" data-id="' + esc(x.id) + '">삭제</button>' : "") + "</div></div></li>").join("") + "</ul>" : '<p class="vd-muted">아직 다짐이 없어요. 첫 다짐을 남겨 주세요.</p>');
+  }
+  /** 가격 카드 안내 버튼: 누르면 다짐 칸으로 */
+  const plNudge = (p) => (plgView(p).give ? '<button type="button" class="vd-plnudge" data-v="jump" data-to="vd-s-pledge">' + icon("pen", "sm") + "<span><b>다짐 한마디 쓰고 " + won(PLG().PLEDGE.value) + " 쿠폰 받기</b><small>" + PLG().PLEDGE.min + "자 이상 · 이 강의 전용 쿠폰</small></span>" + icon("chevRight", "xs") + "</button>" : "");
+  /** 쓰는 중: 글자 수 · 남은 글자 · 버튼 켜기 · 막대 (예전 화면 — React 는 상태로 같은 값을 그려요) */
+  function plPaint(f) {
+    const p = product(f.dataset.vdPledge); if (!p || !f.text) return;
+    const g = plgView(p), len = PLG().pledgeLen(f.text.value), ok = len >= g.min, q = (sel) => f.querySelector(sel);
+    if (q("[data-pl-n]")) q("[data-pl-n]").textContent = len;
+    if (q("[data-pl-hint]")) q("[data-pl-hint]").textContent = plHint(len, g);
+    if (q("[data-pl-go]")) q("[data-pl-go]").disabled = !ok;
+    if (q(".vd-pl-cnt")) q(".vd-pl-cnt").classList.toggle("ok", ok);
+    if (q(".vd-pl-bar u")) q(".vd-pl-bar u").style.width = plPct(len, g) + "%";
+    plKeep(p.id, f.text.value);
+  }
+  /** 다짐 남기기 → Promise<{ ok, cp }> — 서버면 저장한 뒤 다짐 쿠폰이 들어왔는지 다시 읽어 와요 (쿠폰은 서버가 줘요) */
   function doPledge(f) {
-    const m = me(), text = f.text.value.trim();
-    if (!m) { toast("로그인하면 다짐을 남길 수 있어요.", "warn"); ROUTE.hash = "#/vod/login?next=" + encodeURIComponent(ROUTE.hash); return; }
-    if (text.length < 2) { toast("다짐을 한 줄 적어 주세요.", "warn"); f.text.focus(); return; }
-    V().pledges.push({ id: DB.uid("vp"), pid: f.dataset.vdPledge, mid: m.id, nick: nickOf(m.id), text: text.slice(0, 500), at: now(), up: 0, upBy: [] });
-    save(); render(); toast("다짐을 남겼어요. 끝까지 응원할게요!");
-    setTimeout(() => { const s = document.getElementById("vd-s-pledge"); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 130 }); }, 30);
+    const m = me(), text = f.text.value.trim(), pid = f.dataset.vdPledge, P = PLG(), len = P.pledgeLen(text);
+    if (!m) { plKeep(pid, f.text.value); toast("로그인하고 다짐을 남기면 쿠폰을 드려요.", "warn"); ROUTE.hash = "#/vod/login?next=" + encodeURIComponent(ROUTE.hash); return Promise.resolve({ ok: false }); }
+    if (len < P.PLEDGE.min) { toast("다짐은 " + P.PLEDGE.min + "자 이상 적어 주세요 (지금 " + len + "자)", "warn"); f.text.focus(); return Promise.resolve({ ok: false }); }
+    const p = product(pid), want = !!p && plgView(p).give;
+    V().pledges.push({ id: DB.uid("vp"), pid, mid: m.id, nick: nickOf(m.id), text: text.slice(0, 500), at: now(), up: 0, upBy: [] });
+    // 서버가 없는 시안 화면: 쿠폰도 화면에서 바로 (서버가 있으면 서버만 줘요)
+    if (!SRV() && want) { ((V().memberCoupons = V().memberCoupons || {})[m.id] = V().memberCoupons[m.id] || []).push({ id: DB.uid("mc"), cid: P.PLEDGE.id, pid, value: P.PLEDGE.value, at: now(), exp: DB.date.addDays(today(), P.PLEDGE.days), usedAt: null, orderNo: "" }); m.plCps = (m.plCps || []).concat(pid); }
+    plKeep(pid, ""); f.reset(); save(); render();
+    const done = () => {
+      const cp = want && plgView(p).got;
+      toast(cp ? "다짐 완료! " + won(P.PLEDGE.value) + " 쿠폰이 들어왔어요" : "다짐을 남겼어요. 끝까지 응원할게요!");
+      setTimeout(() => { const s = document.getElementById("vd-s-pledge"); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 130 }); }, 30);
+      return { ok: true, cp };
+    };
+    if (!SRV() || !want) return Promise.resolve(done());
+    return Promise.resolve(DB.remote.flush && DB.remote.flush()).catch(() => {}).then(() => DB.remote.refresh()).catch(() => {}).then(() => { render(); return done(); });
   }
   function doAcct(f) {
     const m = me(), err = document.getElementById("vd-acct-err"); if (!m) return;
@@ -4234,7 +4299,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroWire, heroSnd, heroPause, headView, cmtHtml, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroWire, heroSnd, heroPause, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),

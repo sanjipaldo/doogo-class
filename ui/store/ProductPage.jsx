@@ -7,7 +7,7 @@
  *  · 무엇을 보여 줄지(가격 · 수강권 · 쿠폰 · 버튼 · 탭 · 함께 보는 클래스 …)는 예전 계산 그대로 (VOD.productView · buyView · planView · fbarView · ctaOf …)
  *  · 쿠폰 받기 · 후기 · 다짐 · 공감은 예전 함수 그대로 (VOD.cpGet · doReview · doPledge · plUp · plDel)
  *  · 배너 그림 · 썸네일 · 상세 이미지 · 환불 표처럼 예전 HTML 로 만드는 조각은 그대로 넣어요 (ui/lib/Raw.jsx) */
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Shell from "./Shell.jsx";
 import Card, { Av } from "./Card.jsx";
 import { EmptyBox } from "./TeachersPage.jsx";
@@ -111,6 +111,7 @@ function BuyCard({ p, act }) {
     <div className={"vd-pc vd-pc8" + (ps.length ? " vd-pc-plans" : "")} id="vd-pdt-info"><PcHead p={p} />{fl ? <RawOne html={fl} /> : null}{price}
       {X.isEvent(p) && left != null ? <div className="vd-seat"><div><span>신청 현황</span><b>{p.seats - left} / {p.seats}명</b></div><i><u style={{ width: Math.round((p.seats - left) / p.seats * 100) + "%" }} /></i>{left && left <= 5 ? <small>마감까지 {left}자리 남았어요</small> : null}</div> : null}
       <CpBtn p={p} m={m} onOpen={act.cpOpen} />
+      {X.plgView(p).give ? <button type="button" className="vd-plnudge" data-v="jump" data-to="vd-s-pledge" onClick={() => jump("vd-s-pledge")}><Icon n="pen" c="sm" /><span><b>다짐 한마디 쓰고 {won(window.DCS.price.PLEDGE.value)} 쿠폰 받기</b><small>{window.DCS.price.PLEDGE.min}자 이상 · 이 강의 전용 쿠폰</small></span><Icon n="chevRight" c="xs" /></button> : null}
       <div className="vd-pc-btns"><Cta p={p} c={X.ctaOf(p, m)} cls="vd-btn-xl" onLike={act.like} />{own ? <AddonBtns p={p} m={m} /> : null}{pvs.length && !own ? <button type="button" className="vd-btn vd-btn-o vd-btn-xl" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><Icon n="play" c="sm" />무료 미리보기 {pvs.length}개</button> : null}</div>
       <div className="vd-pc-sub"><button type="button" className={"vd-pc-like" + (isLiked ? " on" : "")} data-v="like" data-id={p.id} onClick={() => act.like(p.id)}><Icon n="heart" c="sm" />찜 {X.likeTxt(X.likeCount(p))}</button><button type="button" className="vd-pc-like" data-v="share" onClick={act.share}><Icon n="link" c="sm" />공유하기</button></div>
       <p className="vd-buy-note"><Icon n="shieldCheck" c="xs" />{rk === "vod" ? "결제 후 " + X.rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : rk === "ebook" ? "내려받기 전 7일 이내 전액 환불" : rk === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : rk === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강"} <button type="button" className="vd-link" data-v="jump" data-to="vd-s-refund" onClick={() => jump("vd-s-refund")}>환불 규정</button></p></div>
@@ -201,13 +202,23 @@ function Reviews({ p, v }) {
     </Sec>
   );
 }
+/** 나의 다짐 한마디 + 다짐 쿠폰 (예전 plSecBody · plPaint · doPledge — 쿠폰은 서버가 줘요) */
 function Pledges({ p, v, act }) {
-  const X = VOD(), m = v.m, pls = v.pls;
-  const [len, setLen] = useState(0);
-  const send = (e) => { e.preventDefault(); X.doPledge(e.currentTarget); };
+  const X = VOD(), m = v.m, pls = v.pls, g = X.plgView(p), P = window.DCS.price;
+  const ref = useRef(null);
+  const [len, setLen] = useState(() => P.pledgeLen(g.draft));
+  const ok = len >= g.min;
+  const paint = (el) => { setLen(P.pledgeLen(el.value)); X.plKeep(p.id, el.value); };
+  const send = (e) => { e.preventDefault(); X.doPledge(e.currentTarget).then((r) => { if (r && r.ok) { if (ref.current) ref.current.value = ""; setLen(0); } act.redraw(); }); };
+  const ex = (t) => { const ta = ref.current; if (!ta) return; ta.value = t; paint(ta); ta.focus(); };
   return (
     <Sec k="pledge" ttl="나의 다짐 한마디">
-      <form className="vd-plform" data-vd-pledge={p.id} onSubmit={send}><label><span>{v.myNick} · 나의 다짐 한마디</span><textarea name="text" rows="2" maxLength="500" placeholder="첫 단계부터 미루지 않고 따라가 볼게요." onInput={(e) => setLen(e.currentTarget.value.length)} /></label><div className="vd-plform-f"><small><b data-pl-n="">{len}</b>/500 · 익명</small><button type="submit" className="vd-btn vd-btn-p vd-btn-sm">다짐 남기기</button></div></form>
+      {g.give ? <div className="vd-plcp"><span className="vd-plcp-tk"><b>{Number(g.amt).toLocaleString()}<small>원</small></b><em>할인 쿠폰</em></span><div className="vd-plcp-t"><b>다짐 한마디 남기면 <em>{won(g.amt)} 할인 쿠폰</em>을 바로 드려요</b><small>{g.min}자 이상 · 이 강의 결제에 바로 사용 · 받은 날부터 {g.days}일</small></div></div>
+        : g.mc && !g.mc.usedAt ? <div className="vd-plcp got"><Icon n="check" c="sm" /><div className="vd-plcp-t"><b>다짐 쿠폰 {won(Number(g.mc.value) || g.amt)}을 받았어요</b><small>{(g.mc.exp ? DB().date.fmtFull(g.mc.exp) + "까지 · " : "") + "결제할 때 바로 쓸 수 있어요"}</small></div></div> : null}
+      <form className="vd-plform" data-vd-pledge={p.id} onSubmit={send}><label><span>{v.myNick} · 나의 다짐 한마디</span><textarea ref={ref} name="text" rows="3" maxLength="500" placeholder="예) 매일 30분씩 강의를 듣고 4주 안에 첫 결과를 만들어 볼게요!" defaultValue={g.draft} onInput={(e) => paint(e.currentTarget)} /></label>
+        <div className="vd-plex"><small>예시를 누르면 바로 채워져요</small>{g.ex.map((x) => <button key={x} type="button" data-v="pl-ex" data-t={x} onClick={() => ex(x)}>{x}</button>)}</div>
+        <i className="vd-pl-bar"><u style={{ width: X.plPct(len, g) + "%" }} /></i>
+        <div className="vd-plform-f"><small className={"vd-pl-cnt" + (ok ? " ok" : "")}><b data-pl-n="">{len}</b>자<span data-pl-hint="">{X.plHint(len, g)}</span></small><button type="submit" className="vd-btn vd-btn-p vd-btn-sm" data-pl-go="" disabled={!ok}>{g.give ? "다짐 남기고 쿠폰 받기" : "다짐 남기기"}</button></div></form>
       {pls.length ? <ul className="vd-pls">{pls.map((x) => <li key={x.id}><Av nick={x.nick} cls="lg" /><div><b>{x.nick}</b><small>한마디 · {DB().date.toStr(new Date(x.at))}</small><p>{x.text}</p><div className="vd-pl-a"><button type="button" data-v="pl-up" data-id={x.id} className={m && (x.upBy || []).indexOf(m.id) >= 0 ? "on" : ""} onClick={() => act.plUp(x.id)}><Icon n="heart" c="xs" />공감 {x.up || 0}</button>{m && x.mid === m.id ? <button type="button" data-v="pl-del" data-id={x.id} onClick={() => act.plDel(x.id)}>삭제</button> : null}</div></div></li>)}</ul> : <p className="vd-muted">아직 다짐이 없어요. 첫 다짐을 남겨 주세요.</p>}
     </Sec>
   );
@@ -296,7 +307,7 @@ function Product({ p, n }) {
     bump((x) => x + 1);
   };
   const act = {
-    like: onLike, plan,
+    like: onLike, plan, redraw,
     pv: (l) => setPop({ k: "pv", l }),
     cpOpen: () => setPop({ k: "cp" }),
     share: () => { const u = location.href; if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("주소를 복사했어요."), () => toast("주소: " + u)); else toast("주소: " + u); },

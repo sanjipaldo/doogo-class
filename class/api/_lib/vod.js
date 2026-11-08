@@ -13,6 +13,7 @@ const crypto = require("crypto");
 const store = require("./store");
 const auth = require("./auth");
 const { pricer, kstDay, addDays, BOOK_MAX, planLabel, rbPrice } = require("./vodprice");
+const PR = require("../../shared/price"); // 다짐 쿠폰 정의 (2026-11-08)
 
 const K = { member: (id) => "vm:" + id, email: (e) => "vme:" + String(e).toLowerCase(), kakao: (k) => "vmk:" + k, order: (no) => "vo:" + no, pay: (p) => "vpay:" + p, prog: (mid) => "vp:" + mid, cat: "vcat" };
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -118,7 +119,8 @@ async function quote(m, req, orders) {
   let cp = 0, mc = null;
   if (kind === "course" && req.mcid && !rb) { // 재수강 할인은 쿠폰과 함께 쓰지 않아요
     mc = (m.coupons || []).find((x) => x.id === req.mcid && !x.usedAt && (!x.exp || x.exp >= X.today));
-    const def = mc && ((cat.coupons || []).find((y) => y.id === mc.cid && y.on !== false));
+    // 다짐 쿠폰(2026-11-08)은 마스터 쿠폰 목록에 없어요 — 공용 규칙으로 만든 정의(그 강의 전용)로 계산해요
+    const def = mc && (mc.cid === PR.PLEDGE.id ? PR.pledgeDef(mc) : (cat.coupons || []).find((y) => y.id === mc.cid && y.on !== false));
     cp = def ? X.couponOff(def, p, pr) : 0;
     if (!cp) mc = null;
   }

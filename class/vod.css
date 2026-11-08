@@ -4141,48 +4141,29 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-pl-gate-a .vd-btn-o { background: transparent; color: #fff !important; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45); }
 @media (max-width: 640px) { .vd-pl-gate { position: relative; inset: auto; min-height: 260px; } .vd-pl-gate b { font-size: 16px; } .vd-pl-gate p { font-size: 12.5px; } }
 
-/* ===== 전체 메뉴 v2 (2026-11-07): 휴대폰은 화면 전체를 덮어요 · 3D 카테고리 그림 + 색 아이콘 칩 · 굵은 검정 글자 (프레스런 · 탈잉처럼) =====
- *  내용 · 순서: vod.js drawerSecs (예전 화면 · React 화면 같이) */
-.vd-modal-drawer .vd-modal { width: min(400px, 100%); display: flex; flex-direction: column; overflow: hidden; background: #fff; }
-.vd-modal-drawer .vd-modal-h { flex: none; height: 58px; padding: 0 10px 0 20px; border-bottom: 1px solid #f0f0f3; }
-.vd-modal-drawer .vd-modal-h b { font-size: 18px; font-weight: 800; color: #111; letter-spacing: -0.03em; }
-.vd-modal-drawer .vd-modal-h button { width: 42px; height: 42px; border-radius: 50%; color: #111; }
-.vd-modal-drawer .vd-modal-h button .icon { width: 24px; height: 24px; stroke-width: 2; }
-.vd-drawer { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: block; padding: 14px 0 calc(28px + env(safe-area-inset-bottom)); }
-.vd-drawer .vd-dr-search { max-width: none; margin: 0 16px 10px; height: 48px; border-radius: 12px; box-shadow: none; background: #f3f4f6; }
+/* ===== 전체 메뉴 v3 (2026-11-08): 열리는 모양은 예전 그대로(옆에서 나오는 판 · 뒤는 어둡게) · 아이콘 · 글자는 프레스런 정도로 깔끔하게 =====
+ *  3D 카테고리 그림(26px · 바탕 없음) + 그림이 없는 메뉴는 색 선 아이콘 · 글자 16px · 보통 굵기(500) 검정 — 내용 · 순서: vod.js drawerSecs (예전 화면 · React 같이) */
+.vd-modal-drawer .vd-modal { display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+.vd-modal-drawer .vd-modal-h { flex: none; }
+.vd-drawer { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: block; padding: 12px 0 calc(24px + env(safe-area-inset-bottom)); }
+.vd-drawer .vd-dr-search { max-width: none; margin: 0 14px 10px; height: 44px; border-radius: 10px; box-shadow: none; background: #f3f4f6; }
 .vd-drawer .vd-dr-search input { font-size: 15px; }
-.vd-drawer > .vd-btn { display: flex; width: auto; margin: 0 16px 6px; border-radius: 12px; height: 52px; font-size: 16px; font-weight: 800; }
-.vd-drawer > a.vd-dr-me { display: flex; align-items: center; gap: 12px; margin: 0 16px 6px; border-radius: 14px; }
-.vd-dr-sec { padding: 8px 8px 6px; }
-.vd-dr-sec + .vd-dr-sec { margin-top: 6px; border-top: 8px solid #f4f5f7; }
-.vd-dr-sec > p { margin: 0; padding: 14px 12px 6px; font-size: 13px; font-weight: 700; color: #8a8d96; letter-spacing: -0.01em; }
-.vd-dr-it { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 8px 12px; border-radius: 14px; font-size: 16.5px; font-weight: 700; line-height: 1.3; color: #111 !important; letter-spacing: -0.03em; text-align: left; text-decoration: none; transition: background .15s ease; }
+.vd-drawer > .vd-btn { display: flex; width: auto; margin: 0 14px 4px; border-radius: 10px; }
+.vd-drawer > a.vd-dr-me { display: flex; align-items: center; gap: 12px; margin: 0 14px 4px; border-radius: 12px; }
+.vd-dr-sec { padding: 6px 6px 4px; }
+.vd-dr-sec + .vd-dr-sec { margin-top: 4px; border-top: 1px solid #f0f1f4; }
+.vd-dr-sec > p { margin: 0; padding: 12px 12px 4px; font-size: 13px; font-weight: 500; color: #8b8f99; letter-spacing: -0.01em; }
+.vd-dr-it { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 6px 12px; border-radius: 10px; font-size: 16px; font-weight: 500; line-height: 1.35; color: #1d1e22 !important; letter-spacing: -0.02em; text-align: left; text-decoration: none; transition: background .15s ease; }
 .vd-dr-it > span { min-width: 0; }
 .vd-dr-it:hover, .vd-dr-it:focus-visible { background: #f5f6f8; }
-.vd-dr-it:active { background: #eceef2; }
-.vd-dr-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 13px; color: #fff; background: #eef0f3; }
-.vd-modal-bg .vd-dr-ic .icon { width: 21px; height: 21px; stroke: currentColor; stroke-width: 2.2; }
-.vd-dr-ic.is-3d { background: #f2f3f7; }
-.vd-dr-ic.is-3d img { display: block; width: 32px; height: 32px; object-fit: contain; }
-.vd-dr-ic.t-red { background: linear-gradient(145deg, #ff6f8c, #f0144a); box-shadow: 0 6px 14px -8px rgba(240, 20, 74, .9); }
-.vd-dr-ic.t-violet { background: linear-gradient(145deg, #a78bfa, #7c3aed); box-shadow: 0 6px 14px -8px rgba(124, 58, 237, .9); }
-.vd-dr-ic.t-blue { background: linear-gradient(145deg, #60a5fa, #2563eb); box-shadow: 0 6px 14px -8px rgba(37, 99, 235, .9); }
-.vd-dr-ic.t-pink { background: linear-gradient(145deg, #fb7185, #e11d48); box-shadow: 0 6px 14px -8px rgba(225, 29, 72, .9); }
-.vd-dr-ic.t-amber { background: linear-gradient(145deg, #fcd34d, #f59e0b); box-shadow: 0 6px 14px -8px rgba(245, 158, 11, .9); }
-.vd-dr-ic.t-green { background: linear-gradient(145deg, #4ade80, #16a34a); box-shadow: 0 6px 14px -8px rgba(22, 163, 74, .9); }
-.vd-dr-ic.t-sky { background: linear-gradient(145deg, #38bdf8, #0284c7); box-shadow: 0 6px 14px -8px rgba(2, 132, 199, .9); }
-.vd-dr-ic.t-orange { background: linear-gradient(145deg, #fdba74, #f97316); box-shadow: 0 6px 14px -8px rgba(249, 115, 22, .9); }
-.vd-dr-ic.t-teal { background: linear-gradient(145deg, #5eead4, #0d9488); box-shadow: 0 6px 14px -8px rgba(13, 148, 136, .9); }
-.vd-dr-ic.t-dg { background: linear-gradient(145deg, #6ea8ff, #2f6bff); box-shadow: 0 6px 14px -8px rgba(47, 107, 255, .9); }
-.vd-dr-ic.t-slate { background: linear-gradient(145deg, #64748b, #1f2937); box-shadow: 0 6px 14px -8px rgba(31, 41, 55, .9); }
-.vd-dr-ic.t-kakao { background: #fee500; color: #191919; }
-.vd-dr-ic.t-gray { background: #eef0f3; color: #6b7280; }
-@media (max-width: 760px) {
-  .vd-modal-bg.vd-modal-drawer { background: #fff; }
-  .vd-modal-drawer .vd-modal { width: 100%; height: 100%; height: 100dvh; animation: vd-dr-in .24s cubic-bezier(.2, .8, .2, 1); }
-}
-@keyframes vd-dr-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .vd-modal-drawer .vd-modal { animation: none; } }
+.vd-dr-it:active { background: #eef0f3; }
+.vd-dr-ic { flex: none; display: grid; place-items: center; width: 26px; height: 26px; color: #8b8f99; }
+.vd-modal-bg .vd-dr-ic .icon { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.9; }
+.vd-dr-ic.is-3d img { display: block; width: 26px; height: 26px; object-fit: contain; }
+.vd-dr-ic.t-red { color: #f0144a; } .vd-dr-ic.t-violet { color: #7c3aed; } .vd-dr-ic.t-blue { color: #2563eb; } .vd-dr-ic.t-pink { color: #e11d48; }
+.vd-dr-ic.t-amber { color: #f59e0b; } .vd-dr-ic.t-green { color: #16a34a; } .vd-dr-ic.t-sky { color: #0284c7; } .vd-dr-ic.t-orange { color: #f97316; }
+.vd-dr-ic.t-teal { color: #0d9488; } .vd-dr-ic.t-dg { color: #2f6bff; } .vd-dr-ic.t-slate { color: #475569; } .vd-dr-ic.t-gray { color: #8b8f99; }
+.vd-modal-bg .vd-dr-ic.t-kakao .icon { fill: #fee500; stroke: #3b1e1e; }
 
 /* ===== 클래스 상세 v8 (2026-11-07): 탈잉형 =====
  *  [PC] 왼쪽 영상(16:9 · 소리 끈 채로 저절로 반복) → 탭 → 본문 | 오른쪽 따라오는 카드(뱃지 · 제목 · 별점 → 가격 → 한눈에 정보 → 수강권 · 버튼)
@@ -4206,6 +4187,9 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-pdv.is-snd ~ .vd-pdv-snd .on { display: inline-flex; }
 .vd-pdv.is-play ~ .vd-pdv-snd { display: inline-flex; }
 .vd-pdv-snd:hover { background: #fff; }
+/* 재생 소식을 못 받고 보여 준 영상(is-tap)은 눌러서 재생할 수 있게 · 영상이 돌면 위 ‘미리보기’ 알약은 숨겨요 (탈잉처럼 영상만 — 미리보기는 카드 · 아래 막대 · 커리큘럼에) */
+.vd-pdv.is-tap iframe { pointer-events: auto; }
+.vd-pdv.is-play:not(.is-tap) ~ .vd-pdt-play { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility .4s; }
 /* 오른쪽 카드 */
 .vd-pd8 .vd-pc { position: static; top: auto; gap: 14px; padding: 24px; border-radius: 16px; box-shadow: 0 18px 40px -30px rgba(0, 0, 0, .4); }
 .vd-pd8 .vd-pc .vd-badges { margin: 0 0 -4px; }
@@ -4292,3 +4276,44 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .vd-pd8 .vd-pd-tabs button { font-size: 14.5px; padding: 0 6px !important; }
 }
 @media (prefers-reduced-motion: reduce) { .vd-pdt-banner.has-hero .vd-bn { transition: none; } }
+
+/* ===== 나의 다짐 한마디 + 다짐 쿠폰 (2026-11-08) =====
+ *  20자 이상 다짐 → 그 강의 5,000원 쿠폰 (서버가 클래스마다 한 번) · 쿠폰 띠 · 예시 문장 · 글자 수 막대 · 가격 카드 안내 — vod.js plSecBody · plNudge */
+.vd-plcp { display: flex; align-items: center; gap: 14px; margin: 0 0 12px; padding: 14px 16px; border-radius: 14px; background: linear-gradient(135deg, #fff1f4, #fff7ed); box-shadow: inset 0 0 0 1px #ffd2dc; }
+.vd-plcp-tk { position: relative; flex: none; display: grid; place-items: center; align-content: center; width: 78px; height: 58px; border-radius: 10px; background: var(--vd-pri, #fc1c49); color: #fff; text-align: center; box-shadow: 0 8px 18px -12px rgba(252, 28, 73, .9); }
+.vd-plcp-tk::before, .vd-plcp-tk::after { content: ""; position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff4f1; }
+.vd-plcp-tk::before { left: -6px; } .vd-plcp-tk::after { right: -6px; }
+.vd-plcp-tk b { font-size: 18px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
+.vd-plcp-tk b small { font-size: 12px; font-weight: 800; margin-left: 1px; }
+.vd-plcp-tk em { font-style: normal; font-size: 11px; font-weight: 700; opacity: .9; }
+.vd-plcp-t { display: grid; gap: 3px; min-width: 0; }
+.vd-plcp-t b { font-size: 15px; font-weight: 700; line-height: 1.45; color: #111; letter-spacing: -0.03em; word-break: keep-all; }
+.vd-plcp-t b em { font-style: normal; color: var(--vd-pri, #fc1c49); }
+.vd-plcp-t small { font-size: 12.5px; color: #6b7280; }
+.vd-plcp.got { background: #f0fbf5; box-shadow: inset 0 0 0 1px #bfe9d1; }
+.vd-plcp.got > .icon { flex: none; width: 34px !important; height: 34px !important; padding: 7px; border-radius: 50%; background: #16a34a; color: #fff; stroke-width: 2.6; }
+.vd-plform textarea { min-height: 76px; }
+.vd-plex { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.vd-plex small { flex-basis: 100%; font-size: 12px; color: #8b8f99; }
+.vd-plex button { max-width: 100%; padding: 7px 11px; border-radius: 999px; background: #f4f5f7; color: #374151; font-size: 13px; font-weight: 500; line-height: 1.35; text-align: left; letter-spacing: -0.02em; }
+.vd-plex button:hover { background: #ffe9ee; color: var(--vd-pri, #fc1c49); }
+.vd-pl-bar { display: block; height: 4px; border-radius: 4px; background: #eef0f3; overflow: hidden; }
+.vd-pl-bar u { display: block; height: 100%; border-radius: 4px; background: #f59e0b; transition: width .2s ease, background .2s ease; }
+.vd-plform:has(.vd-pl-cnt.ok) .vd-pl-bar u { background: #16a34a; }
+.vd-pl-cnt b { color: #111; }
+.vd-pl-cnt.ok, .vd-pl-cnt.ok b { color: #16a34a; }
+.vd-plform-f .vd-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.vd-plnudge { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 12px; background: #fff7ed; box-shadow: inset 0 0 0 1px #fed7aa; text-align: left; color: #111; }
+.vd-plnudge > .icon { flex: none; width: 30px !important; height: 30px !important; padding: 6px; border-radius: 50%; background: #f97316; color: #fff; stroke-width: 2.2; }
+.vd-plnudge > span { flex: 1; display: grid; gap: 1px; min-width: 0; }
+.vd-plnudge b { font-size: 14px; font-weight: 700; letter-spacing: -0.03em; }
+.vd-plnudge small { font-size: 12px; color: #9a6a3a; }
+.vd-plnudge > .icon:last-child { width: 16px !important; height: 16px !important; padding: 0; background: none; color: #c2410c; }
+.vd-plnudge:hover { background: #ffedd5; }
+@media (max-width: 640px) {
+  .vd-plcp { gap: 12px; padding: 12px 14px; }
+  .vd-plcp-tk { width: 70px; height: 54px; }
+  .vd-plcp-tk b { font-size: 16px; }
+  .vd-plcp-t b { font-size: 14px; }
+}
+.vd-plform + .vd-muted, .vd-plform + .vd-pls { margin-top: 14px; }

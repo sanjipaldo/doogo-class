@@ -4146,7 +4146,7 @@
   function vdMemberModal(mid) {
     const v = VD(), m = vdMember(mid); if (!m) return;
     const os = v.orders.filter((o) => o.mid === mid).sort((a, b) => b.at - a.at), mcs = (v.memberCoupons || {})[mid] || [], cps = v.coupons || [], log = (m.pointLog || []).slice().sort((a, b) => b.at - a.at).slice(0, 8), dev = Array.isArray(m.devices) ? m.devices : [];
-    const cpName = (cid) => (cps.find((c) => c.id === cid) || {}).name || "삭제된 쿠폰";
+    const cpName = (cid) => (cid === "cp-pledge" ? "다짐 쿠폰" : null) || (cps.find((c) => c.id === cid) || {}).name || "삭제된 쿠폰";
     openModal(m.name + " 님 회원 상세",
       '<dl class="vda-mem-dl"><div><dt>이메일</dt><dd>' + esc(m.email) + "</dd></div><div><dt>휴대폰</dt><dd>" + esc(m.phone || "-") + "</dd></div><div><dt>가입일</dt><dd>" + esc(DB.date.toStr(new Date(m.createdAt))) + "</dd></div><div><dt>마케팅</dt><dd>" + (m.marketing ? "동의" : "안 함") + "</dd></div></dl>" +
       '<h4 class="vda-mem-h">주문 ' + os.length + "건 · 결제 " + won(vdSum(os.filter((o) => o.status === "paid"))) + "</h4>" + (os.length ? '<ul class="vda-mem-list">' + os.slice(0, 8).map((o) => "<li><span>" + esc(DB.date.toStr(new Date(o.at))) + "</span><b>" + esc(o.title) + "</b>" + pill((VD_OST[o.status] || VD_OST.paid)[0], (VD_OST[o.status] || VD_OST.paid)[1]) + "<em>" + won(o.amount) + "</em></li>").join("") + "</ul>" : '<p class="a-muted p-small">주문이 없어요.</p>') +
@@ -6169,7 +6169,7 @@
     const m = vdMember(id);
     if (!m) return crmSubTitle + emptyBox("userX", "회원을 찾을 수 없어요. 탈퇴했거나 잘못된 주소예요.");
     const v = VD(), X = VX(), pf = crmProf(m), st = crmStage(pf.stage), c = m.consent || VX().consentOf(m.marketing, m.createdAt), cps = v.coupons || [];
-    const cpName = (cid) => (cps.find((x) => x.id === cid) || {}).name || "삭제된 쿠폰";
+    const cpName = (cid) => (cid === "cp-pledge" ? "다짐 쿠폰" : null) || (cps.find((x) => x.id === cid) || {}).name || "삭제된 쿠폰";
     const fan = Object.keys(pf.ins).filter((i) => pf.ins[i] >= 2).map((i) => vdName(i) + " 팬").filter((t) => (m.tags || []).indexOf(t) < 0);
     const card = (t, body, extra) => '<section class="a-card crm-card"><div class="a-card-head"><h2>' + t + "</h2>" + (extra || "") + "</div>" + body + "</section>";
     const classes = pf.pids.map((pid) => { const p = vdP(pid) || {}, end = X.accessEnd ? X.accessEnd(m.id, pid) : 0, pc = pf.pct[pid], tp = X.typeOf(p); return '<li class="crm-cls"><span class="crm-cls-t"><b>' + esc(p.title || "삭제된 클래스") + "</b><small>" + esc(p.creator || "") + " · " + esc((X.TYPE[tp] || [tp])[0]) + (end && end < 4e12 ? " · " + (end > Date.now() ? "~" + crmDate(end) : "수강 끝") : "") + "</small></span>" + (pc != null ? '<span class="crm-cls-p"><span class="a-bar"><span style="width:' + pc + '%"></span></span><small class="num">' + pc + "%</small></span>" : '<span class="a-muted p-small">' + (X.isEvent(p) ? esc(X.fmtEvent ? X.fmtEvent(p.eventAt) : p.eventAt || "") : "-") + "</span>") + "</li>"; }).join("");

@@ -187,7 +187,7 @@ export function CrmMember({ r, n }) {
   const A = ADM(), DB = window.DB, X = A.VX(), ui = A.ui, won = A.won, id = decodeURIComponent((r && r.parts && r.parts[2]) || ""), m = A.vdMember(id);
   if (!m) return <><CrmBack /><Empty ic="userX">회원을 찾을 수 없어요. 탈퇴했거나 잘못된 주소예요.</Empty></>;
   const v = A.VD(), pf = A.crmProf(m), st = A.crmStage(pf.stage), c = m.consent || X.consentOf(m.marketing, m.createdAt), cps = v.coupons || [], today = DB.date.todayStr(), D = A.crmDate, P = (pid) => A.vdP(pid);
-  const cpName = (cid) => (cps.find((x) => x.id === cid) || {}).name || "삭제된 쿠폰";
+  const cpName = (cid) => (cid === "cp-pledge" ? "다짐 쿠폰" : null) || (cps.find((x) => x.id === cid) || {}).name || "삭제된 쿠폰";
   const fan = Object.keys(pf.ins).filter((i) => pf.ins[i] >= 2).map((i) => A.vdName(i) + " 팬").filter((t) => (m.tags || []).indexOf(t) < 0);
   const ords = pf.os.slice().sort((a, b) => b.at - a.at);
   // 활동 기록: 가입 · 로그인 · 주문 · 환불 · 후기 · 문의 · 쿠폰 · 포인트 · 메시지 · 동의 변경 · 메모
