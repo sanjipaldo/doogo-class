@@ -24,6 +24,7 @@
     arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
     arrowUpRight: '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
     play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+    pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',

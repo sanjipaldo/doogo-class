@@ -2176,9 +2176,11 @@
   const heroPh = (h) => (h.id ? '<span class="vd-pdv-ph"><img src="https://img.youtube.com/vi/' + esc(h.id) + '/maxresdefault.jpg" alt="" onerror="this.remove()"></span>' : "");
   /** 대표 영상 칸 (영상이 있을 때 · 탈잉 배치의 왼쪽 위) — 영상(iframe · video)은 그린 뒤 heroWire 가 붙여요 */
   function heroVid(p, h) {
-    return '<div class="vd-pd8-media"><div class="vd-pdv" data-hero="' + h.k + '" data-src="' + esc(h.src) + '"' + (h.st ? ' data-st="' + h.st + '"' : "") + ">" +
+    return '<div class="vd-pd8-media"><div class="vd-pdv" data-v="pdv-tog" data-hero="' + h.k + '" data-src="' + esc(h.src) + '"' + (h.st ? ' data-st="' + h.st + '"' : "") + ">" +
       heroPh(h) +
-      '<div class="vd-pdv-slot"></div><button type="button" class="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기"><span class="off">' + icon("volumeX", "sm") + '소리 켜기</span><span class="on">' + icon("volume2", "sm") + "소리 끄기</span></button></div></div>";
+      '<div class="vd-pdv-slot"></div><i class="vd-pdv-big" aria-hidden="true">' + icon("play") + "</i>" +
+      '<div class="vd-pdv-ctl"><button type="button" class="vd-pdv-pp" data-v="pdv-tog" aria-label="영상 멈추기 · 다시 재생"><span class="off">' + icon("pause", "sm") + '</span><span class="on">' + icon("play", "sm") + "</span></button>" +
+      '<button type="button" class="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기"><span class="off">' + icon("volumeX", "sm") + '소리 켜기</span><span class="on">' + icon("volume2", "sm") + "소리 끄기</span></button></div></div></div>";
   }
   let heroLis = false;
   const HERO_ORIGIN = /^https:\/\/(www\.)?(youtube(-nocookie)?\.com|player\.vimeo\.com)$/;
@@ -2204,7 +2206,7 @@
     // 데이터 절약만 저절로 틀지 않고 눌러서 재생 (소리 켠 채) — 2026-11-08: 윈도우 ‘애니메이션 효과’를 끈 PC(동작 줄이기)에서도 탈잉처럼 소리 없이 저절로 재생해요
     const calm = !!(navigator.connection && navigator.connection.saveData);
     const k = box.dataset.hero, st = Number(box.dataset.st) || 0, src = calm ? box.dataset.src.replace("autoplay=1&mute=1", "autoplay=0&mute=0").replace("autoplay=1&muted=1", "autoplay=0&muted=0") : box.dataset.src;
-    const playing = () => { box.__st = 1; box.classList.add("is-play", "is-run"); heroApply(box); };
+    const playing = () => { box.__st = 1; box.classList.remove("is-pause"); box.classList.add("is-play", "is-run"); heroApply(box); };
     if (calm) box.classList.add("is-play", "is-tap", "is-snd", "is-calm");
     if ("IntersectionObserver" in window && !box.__io) {
       box.__io = new IntersectionObserver((es) => { if (!box.isConnected) { box.__io.disconnect(); return; } heroPause(!es[es.length - 1].isIntersecting, "view"); }, { threshold: 0.15 });
@@ -2215,7 +2217,7 @@
       v.playsInline = true; v.setAttribute("playsinline", ""); v.preload = calm ? "metadata" : "auto";
       if (calm) v.controls = true; else { v.muted = true; v.defaultMuted = true; v.autoplay = true; ["muted", "autoplay"].forEach((a) => v.setAttribute(a, "")); }
       if (st) { v.addEventListener("loadedmetadata", () => { try { v.currentTime = st; } catch (e) { /* 처음부터 */ } }, { once: true }); v.addEventListener("ended", () => { v.currentTime = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }); } else { v.loop = true; v.setAttribute("loop", ""); }
-      v.addEventListener("playing", playing); v.addEventListener("pause", () => { box.__st = 2; });
+      v.addEventListener("playing", playing); v.addEventListener("pause", () => { box.__st = 2; if (!v.ended) box.classList.add("is-pause"); });
       v.src = src; slot.appendChild(v);
       if (!calm) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => { box.classList.add("is-play", "is-tap"); v.controls = true; }); }
       return;
@@ -2239,7 +2241,7 @@
         // 오류(퍼가기 막힌 영상 · 지운 영상): 영상 대표 그림만 남겨요
         if (d.event === "onError") { f.__err = true; bx.classList.remove("is-play", "is-tap", "is-run"); return; }
         const s = d.event === "onStateChange" ? d.info : d.event === "infoDelivery" && d.info ? d.info.playerState : d.event === "play" || d.event === "playProgress" ? 1 : d.event === "pause" ? 2 : null;
-        if (s === 1 && bx.__st !== 1) { bx.__st = 1; bx.classList.add("is-play", "is-run"); heroApply(bx); } else if (s === 2) bx.__st = 2;
+        if (s === 1) { bx.classList.remove("is-pause"); if (bx.__st !== 1) { bx.__st = 1; bx.classList.add("is-play", "is-run"); heroApply(bx); } } else if (s === 2) { bx.__st = 2; bx.classList.add("is-pause"); }
         // 끝나면 시작 시각으로 (유튜브 반복은 0초부터라서)
         if (s === 0) { bx.__st = 0; const s0 = Number(bx.dataset.st) || 0; if (s0) { ytCmd(f, "seekTo", [s0, true]); ytCmd(f, "playVideo"); } }
       });
@@ -2267,6 +2269,15 @@
     if (f && k === "vm") { heroPost(f, { method: "setVolume", value: on ? 1 : 0 }); heroPost(f, { method: "setMuted", value: !on }); if (on) heroPost(f, { method: "play" }); }
     if (v) { v.muted = !on; if (on) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } }
     box.classList.toggle("is-snd", on);
+  }
+  /** 영상 멈추기 · 다시 재생 (영상을 누르거나 ⏸ 버튼 · 2026-11-08) — 사람이 멈춘 영상은 화면 밖 · 미리보기 창에서 돌아와도 저절로 다시 틀지 않아요
+   *  멈추면 가운데 큰 ▶ (유튜브는 대표 그림을 다시 덮어서 멈춘 화면의 유튜브 제목 · 다른 영상 안내가 안 보이게) */
+  function heroToggle(box) {
+    if (!box || !box.classList.contains("is-run")) return;
+    const play = box.classList.contains("is-pause");
+    box.__held = false; box.__st = play ? 1 : 2;
+    box.classList.toggle("is-pause", !play);
+    heroCmd(box, play);
   }
   /** 카드 맨 위 줄: 뱃지(NEW · 추천 · 온라인 …) + 오른쪽 ‘미리보기 N개’ 버튼 (2026-11-08 — 썸네일 · 영상 위에서 이 자리로) */
   function pcTag(p, bs) {
@@ -3948,6 +3959,7 @@
     }
     if (v === "pitch-more") { const c = t.closest(".vd-pitch"); if (c) { c.classList.toggle("open"); t.innerHTML = (c.classList.contains("open") ? "접기" : "더보기") + icon("chevDown", "xs"); } return; }
     if (v === "pdv-snd") { heroSnd(t); return; }
+    if (v === "pdv-tog") { e.preventDefault(); heroToggle(t.closest(".vd-pdv")); return; }
     if (v === "cmt-more") { const c = t.closest(".vd-cmt"); if (c) { c.classList.toggle("open"); t.textContent = c.classList.contains("open") ? "접기" : "더보기"; } return; }
     if (v === "pv-open") { e.preventDefault(); e.stopPropagation(); heroPause(true); previewModal(t.dataset.p, t.dataset.l); return; }
     if (v === "pv-pick") { const p = product(t.dataset.p), l = p && lessons(p).find((x) => x.id === t.dataset.l); const box = document.getElementById("vd-pvm-v"); if (!l || !box) return; box.innerHTML = typeOf(p) === "ebook" ? '<div class="vd-pl-ph">' + icon("book") + "<b>" + esc(l.title) + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : videoHtml(l, true, "미리보기 영상을 준비하고 있어요"); const now = document.querySelector(".vd-pvm-now"); if (now) now.innerHTML = "<small>Part " + (chapOf(p, l).ci + 1) + " · " + esc((chapOf(p, l).ch || {}).title || "") + "</small><b>" + esc(l.title) + "</b>" + (l.desc ? "<p>" + esc(l.desc) + "</p>" : ""); document.querySelectorAll(".vd-pvm-l button").forEach((x) => x.classList.toggle("on", x === t)); return; }
@@ -4372,7 +4384,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroPh, heroWire, heroSnd, heroPause, tStart, bestOf, rvPlN, likeNum, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroPh, heroWire, heroSnd, heroPause, heroToggle, tStart, bestOf, rvPlN, likeNum, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),

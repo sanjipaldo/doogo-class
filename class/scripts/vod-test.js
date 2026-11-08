@@ -2644,6 +2644,12 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "카드: 별점 · 후기 수 · 찜 수 줄을 빼고 찜 수는 썸네일 위 ‘N ♡’ 알약 (0이면 하트만 · 10 이상은 10단위 +)");
     ok(/key=\{cps\.map\(\(y\) => y\.x\.id\)\.join\(","\) \|\| "none"\}/.test(coj) && /const calm = !!\(navigator\.connection && navigator\.connection\.saveData\);/.test(vj) && !/prefers-reduced-motion: reduce\)"\) \|\| /.test(vj),
       "결제(React): 쿠폰이 뒤늦게 들어와도(다짐 쿠폰) 가장 많이 깎이는 쿠폰을 골라 둬요 · 상단 영상은 데이터 절약일 때만 눌러서 재생");
+    // 2026-11-08 (3): 상단 영상 멈추기 · 다시 재생 — 영상을 누르거나 ⏸ 버튼 (예전 화면 · React) · 사람이 멈춘 영상은 화면 밖 · 미리보기 창에서 돌아와도 저절로 다시 틀지 않아요
+    const ij = fs.readFileSync(path.join(ROOT, "icons.js"), "utf8"), vc = fs.readFileSync(path.join(ROOT, "vod.css"), "utf8"), hv = vj.slice(vj.indexOf("function heroVid("), vj.indexOf("function heroVid(") + 1200);
+    ok((hv.match(/data-v="pdv-tog"/g) || []).length === 2 && /class="vd-pdv-big"/.test(hv) && /class="vd-pdv-pp"/.test(hv) && /function heroToggle\(box\) \{\s*if \(!box \|\| !box\.classList\.contains\("is-run"\)\) return;/.test(vj) && /box\.__held = false; box\.__st = play \? 1 : 2;/.test(vj) &&
+      /if \(v === "pdv-tog"\) \{ e\.preventDefault\(\); heroToggle\(t\.closest\("\.vd-pdv"\)\); return; \}/.test(vj) && /if \(off && !box\.__held && box\.classList\.contains\("is-play"\) && box\.__st === 1\)/.test(vj) && /\} else if \(s === 2\) \{ bx\.__st = 2; bx\.classList\.add\("is-pause"\); \}/.test(vj) &&
+      /if \(!e\.target\.closest\("button"\)\) X\.heroToggle\(e\.currentTarget\);/.test(pj) && /className="vd-pdv-pp" data-v="pdv-tog"[^>]*onClick=\{\(e\) => X\.heroToggle\(e\.currentTarget\.closest\("\.vd-pdv"\)\)\}/.test(pj) && /^\s*pause: '/m.test(ij) && /\.vd-pdv\.is-run\.is-pause \.vd-pdv-big \{ display: grid; \}/.test(vc) && /\.vd-pdv\.is-run\.is-pause \.vd-pdv-ph \{/.test(vc) && !/\.vd-pdv\.is-play\.is-pause/.test(vc) && /\.vd-pdv\.is-run \.vd-pdv-ctl \{ display: flex; \}/.test(vc),
+      "상단 영상: 영상을 누르거나 ⏸ 버튼으로 멈추기 · 다시 재생 · 멈추면 가운데 큰 ▶ · 사람이 멈춘 건 저절로 다시 안 틀어요 (예전 화면 · React)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

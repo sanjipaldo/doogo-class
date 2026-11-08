@@ -4195,13 +4195,29 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-pdv.is-play .vd-pdv-ph { opacity: 0; visibility: hidden; }
 /* 자동 재생이 막힌 휴대폰(is-tap) · 움직임 줄이기 · 데이터 절약: 영상을 눌러서 재생 */
 .vd-pdv.is-tap .vd-pdv-slot iframe, .vd-pdv.is-tap .vd-pdv-slot video { pointer-events: auto; }
-/* 소리 켜기 · 끄기 (탈잉 ‘음소거 해제’처럼 오른쪽 위 · 재생이 시작되면 보여요) */
-.vd-pdv-snd { position: absolute; z-index: 6; top: 14px; right: 14px; display: none; align-items: center; height: 36px; padding: 0 14px 0 11px; border-radius: 999px; background: rgba(255, 255, 255, .94) !important; color: #111 !important; font-size: 13px; font-weight: 700; letter-spacing: -0.02em; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .45); }
+/* 오른쪽 위 조작 (실제로 돌 때만): ⏸ 멈추기 · 다시 재생 + 소리 켜기 · 끄기 (탈잉 ‘음소거 해제’ 자리) — 영상을 눌러도 멈추고 다시 돌아요 (2026-11-08) */
+.vd-pdv.is-run { cursor: pointer; }
+.vd-pdv-ctl { position: absolute; z-index: 6; top: 14px; right: 14px; display: none; align-items: center; gap: 8px; cursor: default; }
+.vd-pdv.is-run .vd-pdv-ctl { display: flex; }
+.vd-pdv-pp { display: grid; place-items: center; width: 36px; height: 36px; padding: 0 !important; border-radius: 50%; background: rgba(255, 255, 255, .94) !important; color: #111 !important; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .45); }
+.vd-pdv-pp:hover { background: #fff !important; }
+.vd-pdv-pp > span { display: grid; place-items: center; }
+.vd-pdv-pp .icon { width: 15px !important; height: 15px !important; fill: currentColor; stroke-width: 1.6; }
+.vd-pdv-pp .on, .vd-pdv.is-pause .vd-pdv-pp .off { display: none; }
+.vd-pdv.is-pause .vd-pdv-pp .on { display: grid; }
+.vd-pdv.is-pause .vd-pdv-pp .on .icon { margin-left: 2px; }
+/* 멈추면: 가운데 큰 ▶ · 유튜브는 대표 그림을 다시 덮어요 (멈춘 화면에 뜨는 유튜브 제목 · 다른 영상 안내가 안 보이게) · 대표 그림이 없으면 살짝 어둡게
+   — 실제로 한 번 돈 뒤(is-run)에만: 자동 재생이 막혀 눌러서 재생하는 휴대폰(is-tap)에서 플레이어가 ‘멈춤’ 소식을 먼저 보내도 재생 버튼을 덮지 않게 */
+.vd-pdv-big { position: absolute; z-index: 4; left: 50%; top: 50%; display: none; place-items: center; width: 68px; height: 68px; margin: -34px 0 0 -34px; border-radius: 50%; background: rgba(12, 12, 12, .58); color: #fff; pointer-events: none; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.vd-pdv-big .icon { width: 26px !important; height: 26px !important; fill: currentColor; stroke: none; margin-left: 4px; }
+.vd-pdv.is-run.is-pause .vd-pdv-big { display: grid; }
+.vd-pdv.is-run.is-pause .vd-pdv-ph { opacity: 1; visibility: visible; transition: none; }
+.vd-pdv.is-run.is-pause .vd-pdv-slot::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .28); }
+.vd-pdv-snd { display: inline-flex; align-items: center; height: 36px; padding: 0 14px 0 11px; border-radius: 999px; background: rgba(255, 255, 255, .94) !important; color: #111 !important; font-size: 13px; font-weight: 700; letter-spacing: -0.02em; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .45); }
 .vd-pdv-snd > span { display: inline-flex; align-items: center; gap: 6px; }
 .vd-pdv-snd .icon { width: 17px !important; height: 17px !important; stroke-width: 2.2; }
 .vd-pdv-snd .on, .vd-pdv.is-snd .vd-pdv-snd .off { display: none; }
 .vd-pdv.is-snd .vd-pdv-snd .on { display: inline-flex; }
-.vd-pdv.is-run .vd-pdv-snd { display: inline-flex; }
 .vd-pdv-snd:hover { background: #fff !important; }
 @media (prefers-reduced-motion: reduce) { .vd-pdv-ph { transition: none; } }
 /* 오른쪽 카드 */
@@ -4309,7 +4325,11 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .vd-pd8-g.has-vid { grid-template-areas: "media" "side" "body"; }
   .vd-pd8-media { margin: 0 -24px; }
   .vd-pdv { border-radius: 0; }
-  .vd-pdv-snd { top: 10px; right: 10px; height: 32px; padding: 0 12px 0 9px; font-size: 12.5px; }
+  .vd-pdv-ctl { top: 10px; right: 10px; gap: 6px; }
+  .vd-pdv-snd { height: 32px; padding: 0 12px 0 9px; font-size: 12.5px; }
+  .vd-pdv-pp { width: 32px; height: 32px; }
+  .vd-pdv-big { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
+  .vd-pdv-big .icon { width: 22px !important; height: 22px !important; }
   /* 베스트 후기: 카드 아래 · 탭 위 · 밀어서 넘겨요 (화살표 없음 · 화면 끝까지) */
   .vd-best { margin: 26px 0 0; }
   .vd-best-arr { display: none; }

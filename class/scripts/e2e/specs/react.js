@@ -515,7 +515,9 @@ module.exports = {
     //    — 예전 화면 = React (PC · 휴대폰) · 끝나면 베스트 · 영상을 되돌려요. 유튜브는 시험 환경에서 막혀 있어 가짜 플레이어 주소로 (영상 칸 안쪽은 비교에서 빼요)
     {
       const PID = "v2", TXT = "베스트로 고를 다짐이에요. 매일 30분씩 끝까지 따라 해 볼게요!", URL = "https://www.youtube.com/watch?v=j7TDQ-D1M1s&t=1558s";
-      const fake = (p) => p.route(/youtube-nocookie\.com\/embed\//, (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><body style='background:#000'></body>" }));
+      // 가짜 유튜브 플레이어: ‘듣기’에 준비 소식 · 재생 · 멈춤 명령에 상태 소식으로 대답해요 (멈추기 · 다시 재생 확인용 · 받은 명령은 echo 로 알려요)
+      const FAKE = "<!doctype html><body style='margin:0;background:#000'><script>var s=function(o){parent.postMessage(JSON.stringify(o),'*')};addEventListener('message',function(e){var d;try{d=JSON.parse(e.data)}catch(x){return}if(d.event==='listening'){s({event:'initialDelivery',info:{playerState:-1}});s({event:'onReady',info:null})}if(d.event==='command'&&(d.func==='playVideo'||d.func==='pauseVideo')){s({event:'echo',got:d.func});s({event:'onStateChange',info:d.func==='playVideo'?1:2})}})</script></body>";
+      const fake = (p) => p.route(/youtube-nocookie\.com\/embed\//, (r) => r.fulfill({ status: 200, contentType: "text/html", body: FAKE }));
       const mp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
       run.watch(mp, "베스트 후기 · 상단 영상");
       await F.member(mp, base, em, pw); await fake(mp);
@@ -537,13 +539,26 @@ module.exports = {
         return { toast: await L.toasts(ap), val: await ap.$eval('#vda-form input[name="teaser"]', (x) => x.value).catch(() => null) };
       };
       const b1 = await best(true), t1 = await teaser(URL);
+      // 상단 영상 멈추기 · 다시 재생 (2026-11-08): 영상을 누르면 멈춤 · 가운데 큰 ▶ → 화면 밖에 다녀와도 멈춘 그대로 → ▶ 버튼으로 다시 재생
+      const pause = async (pg, touch) => {
+        await pg.waitForFunction(() => { const b = document.querySelector(".vd-pdv"); return !!b && b.classList.contains("is-run"); }, null, { timeout: 8000 }).catch(() => {});
+        const st = () => pg.evaluate(() => { const b = document.querySelector(".vd-pdv"), y = window.__yt.splice(0); return { run: b.classList.contains("is-run"), pause: b.classList.contains("is-pause"), big: getComputedStyle(b.querySelector(".vd-pdv-big")).display !== "none", yt: y.filter((x) => /Video$/.test(x)).join(",") }; });
+        const s0 = await st();
+        if (touch) await pg.tap(".vd-pdv"); else await pg.click(".vd-pdv");
+        await pg.waitForTimeout(400); const s1 = await st();
+        await pg.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await pg.waitForTimeout(700); await pg.evaluate(() => window.scrollTo(0, 0)); await pg.waitForTimeout(700); const s2 = await st();
+        if (touch) await pg.tap(".vd-pdv-pp"); else await pg.click(".vd-pdv-pp");
+        await pg.waitForTimeout(400); const s3 = await st();
+        return { s0, s1, s2, s3, ok: s0.run && !s0.pause && s1.pause && s1.big && s1.yt === "pauseVideo" && s2.pause && s2.yt === "" && !s3.pause && !s3.big && s3.yt === "playVideo" };
+      };
       // 상세: 예전 화면 · React 같은 모양 (PC · 휴대폰) + 영상 칸 · 베스트 카드 · 탭 숫자 · 미리보기 자리
       const look = async (vp) => {
         const pg = await L.newPage(browser, { viewport: vp, isMobile: vp.width < 600, hasTouch: vp.width < 600 }); await fake(pg);
+        await pg.addInitScript(() => { window.__yt = []; window.addEventListener("message", (e) => { try { const d = JSON.parse(e.data); if (d.event === "echo") window.__yt.push(d.got); } catch (x) { /* 다른 소식 */ } }); });
         const out = {};
         for (const mode of ["off", "all"]) {
           await L.reactCookie(pg, base, mode); await L.open(pg, base, "/vod/p/" + PID); await pg.waitForTimeout(900);
-          out[mode] = { shape: await L.domShape(pg), info: await pg.evaluate((t) => { const v = document.querySelector(".vd-pd8-g.has-vid > .vd-pd8-media .vd-pdv"), c = Array.from(document.querySelectorAll(".vd-best-c")); const tab = Array.from(document.querySelectorAll(".vd-pd-tabs button")).map((b) => b.textContent.trim()).find((x) => /^다짐 · 후기/.test(x)) || ""; return { vid: !!v && v.dataset.hero === "yt" && v.dataset.st === "1558" && /start=1558/.test(v.dataset.src) && !document.querySelector(".vd-pdt-banner"), best: c.length, mine: c.some((x) => x.classList.contains("is-pl") && x.textContent.indexOf(t) >= 0), tab, nRv: document.querySelectorAll(".vd-rv-list > li").length, nPl: document.querySelectorAll(".vd-pls > li").length, pv: !!document.querySelector(".vd-pc-tag .vd-pc-pv"), iframe: !!document.querySelector(".vd-pdv-slot iframe") }; }, TXT) };
+          out[mode] = { shape: await L.domShape(pg), pz: await pause(pg, vp.width < 600), info: await pg.evaluate((t) => { const v = document.querySelector(".vd-pd8-g.has-vid > .vd-pd8-media .vd-pdv"), c = Array.from(document.querySelectorAll(".vd-best-c")); const tab = Array.from(document.querySelectorAll(".vd-pd-tabs button")).map((b) => b.textContent.trim()).find((x) => /^다짐 · 후기/.test(x)) || ""; return { vid: !!v && v.dataset.hero === "yt" && v.dataset.st === "1558" && /start=1558/.test(v.dataset.src) && !document.querySelector(".vd-pdt-banner"), best: c.length, mine: c.some((x) => x.classList.contains("is-pl") && x.textContent.indexOf(t) >= 0), tab, nRv: document.querySelectorAll(".vd-rv-list > li").length, nPl: document.querySelectorAll(".vd-pls > li").length, pv: !!document.querySelector(".vd-pc-tag .vd-pc-pv"), iframe: !!document.querySelector(".vd-pdv-slot iframe") }; }, TXT) };
         }
         await pg.context().close();
         return out;
@@ -554,6 +569,7 @@ module.exports = {
       await run.check(I.vid && I.best >= 1 && I.mine && I.tab === "다짐 · 후기 " + (I.nRv + I.nPl) && I.pv && I.iframe && JSON.stringify(pcL.off.info) === JSON.stringify(I) && JSON.stringify(mbL.off.info) === JSON.stringify(mbL.all.info),
         "클래스 상세: 영상이 있으면 왼쪽 위 16:9 영상(25분 58초부터 · 붙임) · 탭 위 ‘베스트 후기’ 카드 · 탭 ‘" + I.tab + "’(후기 + 다짐) · 미리보기는 뱃지 줄 오른쪽 (예전 화면 = React)", { pc: pcL, mb: { off: mbL.off.info, all: mbL.all.info } }, mp);
       await run.check(!dPc && !dMb, "클래스 상세(영상 · 베스트 후기): 예전 화면과 React 화면이 같은 모양 (PC · 휴대폰)", [dPc, dMb]);
+      await run.check([pcL, mbL].every((x) => x.off.pz.ok && x.all.pz.ok), "상단 영상 멈추기 · 다시 재생: 영상을 누르면 멈춤(가운데 큰 ▶) · 화면 밖에 다녀와도 멈춘 그대로 · ▶ 버튼으로 다시 재생 (예전 화면 · React · PC · 휴대폰)", { pc: [pcL.off.pz, pcL.all.pz], mb: [mbL.off.pz, mbL.all.pz] });
       // 되돌리기: 베스트 빼기 · 영상 지우기 → 넓은 썸네일 · 베스트 줄 없음
       const b2 = await best(false), t2 = await teaser("");
       await L.reactCookie(mp, base, "all"); await L.open(mp, base, "/vod/p/" + PID); await mp.waitForTimeout(700);

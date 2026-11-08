@@ -133,8 +133,10 @@ function Hero({ p }) {
 function HeroVid({ h }) {
   const X = VOD();
   return (
-    <div className="vd-pd8-media"><div className="vd-pdv" data-hero={h.k} data-src={h.src} data-st={h.st ? String(h.st) : undefined}>{h.id ? <RawOne html={X.heroPh(h)} /> : null}<div className="vd-pdv-slot" />
-      <button type="button" className="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기" onClick={(e) => X.heroSnd(e.currentTarget)}><span className="off"><Icon n="volumeX" c="sm" />소리 켜기</span><span className="on"><Icon n="volume2" c="sm" />소리 끄기</span></button></div></div>
+    // 영상을 누르면 멈추기 · 다시 재생 (안쪽 버튼은 제 일만 — 예전 heroToggle 그대로)
+    <div className="vd-pd8-media"><div className="vd-pdv" data-v="pdv-tog" data-hero={h.k} data-src={h.src} data-st={h.st ? String(h.st) : undefined} onClick={(e) => { if (!e.target.closest("button")) X.heroToggle(e.currentTarget); }}>{h.id ? <RawOne html={X.heroPh(h)} /> : null}<div className="vd-pdv-slot" /><i className="vd-pdv-big" aria-hidden="true"><Icon n="play" /></i>
+      <div className="vd-pdv-ctl"><button type="button" className="vd-pdv-pp" data-v="pdv-tog" aria-label="영상 멈추기 · 다시 재생" onClick={(e) => X.heroToggle(e.currentTarget.closest(".vd-pdv"))}><span className="off"><Icon n="pause" c="sm" /></span><span className="on"><Icon n="play" c="sm" /></span></button>
+        <button type="button" className="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기" onClick={(e) => X.heroSnd(e.currentTarget)}><span className="off"><Icon n="volumeX" c="sm" />소리 켜기</span><span className="on"><Icon n="volume2" c="sm" />소리 끄기</span></button></div></div></div>
   );
 }
 /* ---------- 베스트 후기 (예전 bestHtml · 2026-11-08 탈잉 ‘베스트 리뷰’처럼) — 마스터가 고른 후기 · 다짐 · 고른 게 없으면 안 보여요 ---------- */
