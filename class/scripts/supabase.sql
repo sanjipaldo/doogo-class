@@ -67,6 +67,12 @@ CREATE INDEX IF NOT EXISTS members_email ON app.members (email);
 
 CREATE INDEX IF NOT EXISTS members_created_at ON app.members (created_at);
 
+CREATE TABLE IF NOT EXISTS app.member_coupons (k text NOT NULL, i integer NOT NULL, id text, mid text, cid text, pid text, value integer, exp text, at timestamp, used_at timestamp, order_no text, PRIMARY KEY (k, i));
+
+CREATE INDEX IF NOT EXISTS member_coupons_mid ON app.member_coupons (mid);
+
+CREATE INDEX IF NOT EXISTS member_coupons_cid ON app.member_coupons (cid);
+
 CREATE TABLE IF NOT EXISTS app.member_logins (k text PRIMARY KEY, method text, value text, mid text, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS member_logins_updated ON app.member_logins (updated);
@@ -149,7 +155,7 @@ CREATE INDEX IF NOT EXISTS reviews_pid ON app.reviews (pid);
 
 CREATE INDEX IF NOT EXISTS reviews_mid ON app.reviews (mid);
 
-CREATE TABLE IF NOT EXISTS app.pledges (k text PRIMARY KEY, id text, pid text, mid text, nick text, up integer, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
+CREATE TABLE IF NOT EXISTS app.pledges (k text PRIMARY KEY, id text, pid text, mid text, nick text, text text, up integer, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS pledges_updated ON app.pledges (updated);
 
@@ -174,6 +180,8 @@ CREATE INDEX IF NOT EXISTS products_id ON app.products (id);
 CREATE TABLE IF NOT EXISTS app.coupons (k text NOT NULL, i integer NOT NULL, id text, code text, name text, kind text, value integer, days integer, "on" boolean, PRIMARY KEY (k, i));
 
 CREATE INDEX IF NOT EXISTS coupons_code ON app.coupons (code);
+
+CREATE TABLE IF NOT EXISTS app.banners (k text NOT NULL, i integer NOT NULL, pos integer, id text, kind text, title text, eyebrow text, pid text, href text, "on" boolean, date_from text, date_to text, PRIMARY KEY (k, i));
 
 CREATE TABLE IF NOT EXISTS app.staff (k text NOT NULL, i integer NOT NULL, kind text, id text, name text, login_id text, status text, PRIMARY KEY (k, i));
 
@@ -203,7 +211,7 @@ REVOKE ALL ON ALL FUNCTIONS IN SCHEMA app FROM PUBLIC;
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['docs', 'files', 'file_scopes', 'rl', 'backups', 'oplog', 'area_state', 'orders', 'payments', 'bank_log', 'members', 'member_logins', 'vod_progress', 'instructors', 'cohort_lists', 'students', 'progress', 'contents', 'bills', 'partner_inquiries', 'member_inquiries', 'reviews', 'pledges', 'payout_lists', 'settings', 'payment_orders', 'bank_deposits', 'vod_progress_items', 'coaches', 'cohorts', 'payouts', 'products', 'coupons', 'staff', 'partner_payouts'] LOOP
+  FOREACH t IN ARRAY ARRAY['docs', 'files', 'file_scopes', 'rl', 'backups', 'oplog', 'area_state', 'orders', 'payments', 'bank_log', 'members', 'member_logins', 'vod_progress', 'instructors', 'cohort_lists', 'students', 'progress', 'contents', 'bills', 'partner_inquiries', 'member_inquiries', 'reviews', 'pledges', 'payout_lists', 'settings', 'payment_orders', 'bank_deposits', 'member_coupons', 'vod_progress_items', 'coaches', 'cohorts', 'payouts', 'products', 'coupons', 'banners', 'staff', 'partner_payouts'] LOOP
     IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = ('app.' || t)::regclass) THEN
       EXECUTE format('ALTER TABLE app.%I ENABLE ROW LEVEL SECURITY', t);
     END IF;
@@ -595,6 +603,8 @@ COMMENT ON COLUMN app.pledges.mid IS '회원 id';
 
 COMMENT ON COLUMN app.pledges.nick IS '닉네임';
 
+COMMENT ON COLUMN app.pledges.text IS '다짐 글';
+
 COMMENT ON COLUMN app.pledges.up IS '응원 수';
 
 COMMENT ON COLUMN app.pledges.at IS '시각(한국 시간)';
@@ -640,6 +650,26 @@ COMMENT ON COLUMN app.bank_deposits.bank IS '은행';
 COMMENT ON COLUMN app.bank_deposits.st IS '맞춘 상태 (ok · many · none · linked · fail)';
 
 COMMENT ON COLUMN app.bank_deposits.order_no IS '주문번호';
+
+COMMENT ON TABLE app.member_coupons IS '2부 · 회원이 받은 쿠폰 (한 장 = 한 줄 · cp-pledge = 다짐 쿠폰) — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)';
+
+COMMENT ON COLUMN app.member_coupons.id IS '받은 쿠폰 id';
+
+COMMENT ON COLUMN app.member_coupons.mid IS '회원 id';
+
+COMMENT ON COLUMN app.member_coupons.cid IS '쿠폰 id (cp-pledge = 다짐 쿠폰)';
+
+COMMENT ON COLUMN app.member_coupons.pid IS '쓸 수 있는 클래스 (비면 모든 클래스)';
+
+COMMENT ON COLUMN app.member_coupons.value IS '할인 금액 (다짐 쿠폰 · 쿠폰 표의 값이 따로 있으면 비어요)';
+
+COMMENT ON COLUMN app.member_coupons.exp IS '쓸 수 있는 마지막 날';
+
+COMMENT ON COLUMN app.member_coupons.at IS '받은 시각(한국 시간)';
+
+COMMENT ON COLUMN app.member_coupons.used_at IS '쓴 시각(한국 시간)';
+
+COMMENT ON COLUMN app.member_coupons.order_no IS '쓴 주문번호';
 
 COMMENT ON TABLE app.vod_progress_items IS '2부 · 상품별 VOD 진도 — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)';
 
@@ -736,6 +766,28 @@ COMMENT ON COLUMN app.coupons.value IS '할인 값';
 COMMENT ON COLUMN app.coupons.days IS '쓸 수 있는 날';
 
 COMMENT ON COLUMN app.coupons."on" IS '켜짐';
+
+COMMENT ON TABLE app.banners IS '2부 · 스토어 첫 화면 배너 (배너 하나 = 한 줄 · pos = 화면 순서) — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)';
+
+COMMENT ON COLUMN app.banners.pos IS '화면 순서';
+
+COMMENT ON COLUMN app.banners.id IS '배너 id';
+
+COMMENT ON COLUMN app.banners.kind IS '종류 (img = 이미지 배너 · art = 디자인 배너)';
+
+COMMENT ON COLUMN app.banners.title IS '제목 · 이미지 배너는 대체 문구';
+
+COMMENT ON COLUMN app.banners.eyebrow IS '작은 글씨';
+
+COMMENT ON COLUMN app.banners.pid IS '누르면 갈 클래스';
+
+COMMENT ON COLUMN app.banners.href IS '누르면 갈 링크';
+
+COMMENT ON COLUMN app.banners."on" IS '켜짐';
+
+COMMENT ON COLUMN app.banners.date_from IS '노출 시작일';
+
+COMMENT ON COLUMN app.banners.date_to IS '노출 종료일';
 
 COMMENT ON TABLE app.staff IS '2부 · 운영자 · 파트너 계정 (비밀번호는 빼고) — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)';
 

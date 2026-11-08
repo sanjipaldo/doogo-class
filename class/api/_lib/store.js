@@ -154,7 +154,9 @@ async function close() { const c = client; client = null; ready = null; if (c &&
 async function pgSetup() {
   const c = await db();
   if (c.kind !== "postgres") return false;
-  await c.sql.unsafe(require("./pgsetup").setupSql()).catch((e) => { e.message = scrub(e.message); throw e; });
+  // 지금 있는 열만 설명을 달아요 — 새 열을 더한 배포에서 예전 모양 표는 이 다음 단계(areasync.rebuild)가 다시 만들어요 (2026-11-08)
+  const cols = new Set((await c.sql.unsafe("SELECT table_name || '.' || column_name AS c FROM information_schema.columns WHERE table_schema = 'app'")).map((r) => r.c));
+  await c.sql.unsafe(require("./pgsetup").setupSql(cols)).catch((e) => { e.message = scrub(e.message); throw e; });
   return true;
 }
 /** 따로 여는 연결 — 옮기기 도구(scripts/db-move.js)가 두 DB 를 한꺼번에 열 때 (지금 저장소 · 쓰기 멈춤과 상관없이)

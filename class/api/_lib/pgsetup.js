@@ -102,8 +102,12 @@ AR.CHILDREN.forEach((c) => {
 });
 COMMENTS.push("COMMENT ON TABLE app.area_state IS " + lit("2부 영역 스위치를 마지막 배포에서 어느 칸(off · dual · table · only)으로 맞췄는지"));
 
-/** 배포 때 돌리는 SQL (표는 store.js 가 먼저 만들어요) */
-const setupSql = () => SECURE.concat(FUNCS, VIEWS, COMMENTS).filter((s) => !/^--/.test(s)).join(";\n") + ";";
+/** 배포 때 돌리는 SQL (표는 store.js 가 먼저 만들어요)
+ *  cols(있으면): 지금 DB 에 있는 열 Set("표.열") — 아직 없는 열의 설명은 건너뛰어요. 새 열을 더한 배포에서는 예전 모양 표를
+ *  배포 빌드(areasync.rebuild)가 이 단계 다음에 다시 만들고, 다시 만든 뒤 이 SQL 을 한 번 더 돌려 그때 설명을 달아요 (2026-11-08) */
+const COL_RE = /^COMMENT ON COLUMN app\.(\w+)\.("?)(\w+)\2 IS /;
+const colOk = (cols) => (s) => { const m = COL_RE.exec(s); return !cols || !m || cols.has(m[1] + "." + m[3]); };
+const setupSql = (cols) => SECURE.concat(FUNCS, VIEWS, COMMENTS.filter(colOk(cols))).filter((s) => !/^--/.test(s)).join(";\n") + ";";
 /** class/scripts/supabase.sql — 표 · 보안 · 보기 전부 (Supabase › SQL Editor 에 붙여도 같은 결과) */
 function fullSql(pgSchema) {
   const head = "-- 두고클래스 Supabase(Postgres) — DB 전환 1부 (class/api/_lib/store.js PG_SCHEMA + api/_lib/pgsetup.js)\n-- 이 파일은 node class/scripts/pg-sql.js 로 만들어요 (손으로 고치지 마세요 · 시험이 같은지 확인해요)\n-- 여러 번 돌려도 같아요. 배포(DB_DRIVER=supabase)가 같은 SQL 을 자동으로 돌려요.\n\n";

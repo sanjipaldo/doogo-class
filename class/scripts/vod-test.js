@@ -2284,7 +2284,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const st37 = require(path.join(TMP, "class/api/_lib/store.js")), MV = require(path.join(ROOT, "scripts/db-move.js")), PS = require(path.join(ROOT, "api/_lib/pgsetup.js")), pgRun = process.env.TEST_DB === "pg";
     const sqlFile = fs.readFileSync(path.join(ROOT, "scripts/supabase.sql"), "utf8");
     ok(sqlFile === PS.fullSql(st37.PG_SCHEMA) && /security_invoker = true/.test(sqlFile) && !/pwHash|phone4/.test(sqlFile) && PS.VIEW_NAMES.length === 6,
-      "class/scripts/supabase.sql = 코드(표 35개 · 보안 · 보기 6개 · 2부 표 설명) 그대로 (Supabase › SQL Editor 에 붙여도 같은 결과) · 보기에 비밀번호 해시 · 전화 뒷자리 없음 · 공개 사이트로는 안 나가요(scripts/)");
+      "class/scripts/supabase.sql = 코드(표 37개 · 보안 · 보기 6개 · 2부 표 설명) 그대로 (Supabase › SQL Editor 에 붙여도 같은 결과) · 보기에 비밀번호 해시 · 전화 뒷자리 없음 · 공개 사이트로는 안 나가요(scripts/)");
     // 지금 시험 DB(서버 시험 500여 개가 쓴 주문 · 회원 · 사진 · 백업 · 작업 기록) → 새 DB 로 복사 → 문서마다 확인
     const live = pgRun ? st37.openClient({ kind: "postgres", url: process.env.SUPABASE_DB_URL }) : st37.openClient({ kind: "sqlite", file: process.env.CLASS_SQLITE });
     const pgB = pgRun ? await require(path.join(ROOT, "scripts/pg/server.js")).start() : null;
@@ -2321,7 +2321,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       await sq.unsafe(PS.setupSql()); await sq.unsafe(PS.setupSql());
       const after37 = { docs: await asAnon("app.docs"), files: await asAnon("app.files"), orders: await asAnon("app.v_orders"), members: await asAnon("app.v_members"), ordersTab: await asAnon("app.orders"), membersTab: await asAnon("app.members"), staffTab: await asAnon("app.staff") };
       const rls = (await sq.unsafe("SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'app'::regnamespace AND relkind = 'r' AND relrowsecurity"))[0].n;
-      ok(/보임/.test(before37) && Object.values(after37).every((x) => x === "막힘") && Number(rls) === PS.TABLES.length && PS.TABLES.length === 35, "Supabase 보안(배포마다 · 두 번 돌려도 같음): 공개 API 역할 anon · authenticated 는 표 · 보기 · 2부 영역 표(orders · members · staff …) 모두 막힘 · 표 " + PS.TABLES.length + "개 모두 RLS — 우리 서버는 그대로", { before37, after37, rls });
+      ok(/보임/.test(before37) && Object.values(after37).every((x) => x === "막힘") && Number(rls) === PS.TABLES.length && PS.TABLES.length === 37, "Supabase 보안(배포마다 · 두 번 돌려도 같음): 공개 API 역할 anon · authenticated 는 표 · 보기 · 2부 영역 표(orders · members · staff …) 모두 막힘 · 표 " + PS.TABLES.length + "개 모두 RLS — 우리 서버는 그대로", { before37, after37, rls });
       const cnt = async (sql) => Number((await sq.unsafe(sql))[0].n);
       // 2부: 문서는 docs 또는 영역 표(orders · members · students)에 — 스위치 칸에 따라 (같은 키는 한 번만)
       const both = (kind, tab) => cnt("SELECT count(DISTINCT k) AS n FROM (SELECT k FROM app.docs WHERE kind = '" + kind + "' AND v IS NOT NULL UNION ALL SELECT k FROM app." + tab + " WHERE v IS NOT NULL) x");
@@ -2592,7 +2592,7 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     if (pg) {
       const vi = Number((await st40.exec("SELECT count(*) AS n FROM app.v_inquiries")).rows[0].n), vo = Number((await st40.exec("SELECT count(*) AS n FROM app.v_orders")).rows[0].n);
       const rls = Number((await st40.exec("SELECT count(*) AS n FROM pg_class WHERE relnamespace = 'app'::regnamespace AND relkind = 'r' AND relrowsecurity")).rows[0].n);
-      ok(vi >= 0 && vo > 0 && rls === 35, "Postgres: 다시 만든 표를 쓰는 보기(v_orders · v_inquiries)도 다시 · 표 35개 모두 RLS 그대로", { vi, vo, rls });
+      ok(vi >= 0 && vo > 0 && rls === 37, "Postgres: 다시 만든 표를 쓰는 보기(v_orders · v_inquiries)도 다시 · 표 37개 모두 RLS 그대로", { vi, vo, rls });
     }
   }
 

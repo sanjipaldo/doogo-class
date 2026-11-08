@@ -151,10 +151,10 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
   | 영역 | 문서 → 표 (한 건씩 표) |
   |---|---|
   | B2 주문 · 결제 | `vo:` → `orders` · `vpay:` → `payments` (`payment_orders`) · `vbank` → `bank_log` (`bank_deposits`) |
-  | B3 DOOGO CLASS 회원 | `vm:` → `members` · `vme:` · `vmk:` → `member_logins` · `vp:` → `vod_progress` (`vod_progress_items`) |
+  | B3 DOOGO CLASS 회원 | `vm:` → `members` (`member_coupons` · 2026-11-08) · `vme:` · `vmk:` → `member_logins` · `vp:` → `vod_progress` (`vod_progress_items`) |
   | B4 두잉고 강의실 | `ins:` → `instructors` (`coaches`) · `cohorts:` → `cohort_lists` (`cohorts`) · `stu:` → `students` · `prog:` → `progress` · `content:` → `contents` |
   | B5 이용료 · 문의 · 후기 · 지급 | `bill:` → `bills` · `inq:` → `partner_inquiries` · `vq:` → `member_inquiries` · `vr:` → `reviews` · `vpl:` → `pledges` · `vpo:` → `payout_lists` (`payouts`) |
-  | B6 설정 · 상품 · 쿠폰 · 운영자 | `meta` · `vcat` · `vdur` · `vstat` · `vmsg` · `vupd` → `settings` (`products` · `coupons` · `staff` · `partner_payouts`) |
+  | B6 설정 · 상품 · 쿠폰 · 운영자 | `meta` · `vcat` · `vdur` · `vstat` · `vmsg` · `vupd` → `settings` (`products` · `coupons` · `banners` · 2026-11-08 · `staff` · `partner_payouts`) |
 
   표 한 줄 = 문서 하나: `v` 는 예전 문서 글자 **그대로**(화면 · API 가 받는 모양이 한 글자도 안 바뀌어요) + 사람이 읽고 찾고 더하는 값은 열(금액 · 상태 · 회원 · 시각 …). 열과 한 건씩 표는 저장할 때마다 같은 트랜잭션에서 `v` 로 다시 만들어 어긋나지 않아요. 비밀번호 · 해시 · 로그인 숫자(전화 뒷자리)는 열로 꺼내지 않아요. Supabase › Table Editor 에서 표 · 열 이름 옆에 한국어 설명이 보여요. `docs` 에는 `sys` 처럼 영역이 없는 문서만 남아요.
 - **바꾼 곳은 저장소 하나**: `store.js` 의 함수들(getDocs · listDocs · writeDoc · insertDocs · backup · restore …)이 키를 보고 docs 또는 제 표로 보내요(문서 ↔ 표 어댑터). 화면 · API · 일회성 작업 코드는 그대로.
@@ -167,6 +167,13 @@ vercel deploy --prod                      # 운영 주소에 배포 (보통은 �
 - **미리보기 기록 (2026-11-05 · next `996ea98` · 시험용 DB doogo-staging)**: Preview 환경 변수 `DB_AREAS` 를 `all:dual` → `all:table` → `all:only` 로 한 칸씩 바꿔 세 번 배포 — 칸마다 `[db] 2부 B2 … 맞음` (orders 9 · payments 3 · members 2 · member_logins 2 · vod_progress 1 · instructors 4 · cohort_lists 4(기수 3줄) · students 8 · progress 4 · contents 4 · settings 4(상품 · 쿠폰 · 운영자 50줄)) · only 에서 docs 의 그 문서 45개 정리 · 배포 전 백업은 칸마다 문서 46개 그대로 · 공개 데이터(`/api/bootstrap` 14개 문서)가 dual · table · only 에서 글자 하나 안 다름 · 서버 오류 0. 미국 빌드 서버 ↔ 서울 DB 왕복(약 180ms) 때문에 표 채우기가 배포마다 30~60초 더 걸려요.
 - **운영 1단계 (2026-11-06 · main `4bd0697`)**: 코드만 운영에 (영역 스위치 꺼짐 · 예전과 같게) — `[db] 저장된 문서 57개` · 표 35개 RLS · 배포 전 백업 문서 90개 · 사진 · 첨부 0개 · 공개 데이터(`/api/bootstrap`) 16개 문서. 운영 환경 변수 `DB_AREAS=all:dual` 은 넣어 두었고, 다음 운영 배포 때 dual(같이 쓰기 · 표 채움)로 맞춰요 → table → only.
 - **운영 2~4단계 끝 (2026-11-06 · main `afcedf3` · 세 번 배포)**: ① dual — 표 18개를 새 모양으로(비어 있어 바로) → docs 의 문서 89개를 제 표로(orders 9 · payments 3 · members 6 · member_logins 11 · vod_progress 1 · instructors 5 · cohort_lists 4 · students 20 · progress 12 · contents 5 · bills 4 · partner_inquiries 4 · member_inquiries 1 · settings 4(한 건씩 51줄)) · 모두 맞음 ② table — 제 표에서 읽기 · 모두 맞음 ③ only — docs 의 그 문서 89개 정리(docs 에는 `sys` 만) · 모두 맞음. 배포마다 배포 전 백업 문서 90개 · 공개 데이터(`/api/bootstrap` 16개 문서)가 칸마다 글자 하나 안 다름 · 서버 오류 0. **운영 DB 는 이제 문서 종류마다 제 표**(Supabase › Table Editor › `app` › orders · members · students …, 왼쪽에 읽는 값 · 한국 시간, 맨 오른쪽에 문서 JSON). 되돌리기는 `DB_AREAS` 를 한 칸씩 거꾸로(only → table → dual → off).
+
+#### 2026-11-08 점검 — 오늘 만든 데이터도 한 건씩 (다짐 · 다짐 쿠폰 · 첫 화면 배너)
+
+- **확인한 방법**: 운영과 같은 설정(Postgres · `DB_AREAS=all:only`)을 로컬에 띄워 화면에서 다짐을 실제로 남기고 표를 직접 읽었어요 — 다짐은 `pledges` 에 한 줄(k · id · pid · mid · nick · 응원 · 한국 시간 + 맨 오른쪽 `v`), 그 회원 문서는 `members` 한 줄, `docs` 에는 `sys` 만(같은 문서가 두 곳에 남지 않음).
+- **JSON 안에만 있던 것 → 한 건씩 표 더함**: ① 다짐으로 받은 **쿠폰**은 회원 문서(`members.v`)의 `coupons` 안에만 있었어요 → `member_coupons` (받은 쿠폰 한 장 = 한 줄 · 회원 · 쿠폰 종류(`cp-pledge` = 다짐 쿠폰) · 클래스 · 금액 · 마지막 날 · 받은/쓴 시각 · 쓴 주문번호). 가입 쿠폰 · 코드 등록 · 상세에서 받은 쿠폰도 같이 보여요. ② **첫 화면 배너**는 마스터 설정 문서(`settings` 의 `meta` 줄 · 약 41KB)의 `vod.banners` 안에만 있었어요 → `banners` (배너 하나 = 한 줄 · 화면 순서 · 종류(img/art) · 제목 · 갈 곳 · 켜짐 · 노출 기간). ③ `pledges` 에 **다짐 글**(`text`) 열.
+- 원본은 그대로 문서(`v`)예요 — 화면 · API 가 받는 모양은 한 글자도 안 바뀌고, 새 표는 저장할 때마다 같은 트랜잭션에서 `v` 로 다시 만들어요(상품 · 쿠폰 표와 같은 방식). 배포 빌드가 표 모양이 바뀐 것을 알아보고 `members` · `pledges` · `settings` 를 한 번 다시 만들며(문서 · 버전 · 시각 그대로) 새 표를 채워요. 표는 35개 → **37개**(모두 RLS · 공개 API 역할 막힘), `scripts/supabase.sql` 도 다시 만들었어요.
+- 아직 JSON 문서로 두는 것(일부러): 마스터 설정 문서 안의 다른 설정들(카테고리 아이콘 · 홈 섹션 · 판매 영역 · 정산 비율 같은 화면 설정)과 각 표 맨 오른쪽 `v`(원본) — 기록이 아니라 ‘설정 화면 하나’라서 한 덩어리가 맞아요.
 
 #### 2부 표 모양 — Supabase 에서 데이터가 JSON 으로만 보이던 것 (2026-11-06)
 

@@ -107,6 +107,19 @@ const TABLES = [
     ["login_n", "int", (v) => num(v.loginN), "로그인 수"],
     ["orders", "int", (v) => cnt(v.orderNos), "주문 수"],
     ["demo", "bool", (v) => !!v.demo, "체험 계정"]
+  ], children: [
+    // 2026-11-08: 회원이 받은 쿠폰도 한 장씩 (가입 쿠폰 · 코드 등록 · 상세에서 받기 · 다짐 쿠폰 cp-pledge) — 원본은 회원 문서(v)의 coupons
+    { table: "member_coupons", label: "회원이 받은 쿠폰 (한 장 = 한 줄 · cp-pledge = 다짐 쿠폰)", index: ["mid", "cid"], rows: (v, k) => arr(isObj(v) && v.coupons).map((x) => (isObj(x) ? Object.assign({ mid: after(k, "vm:") }, x) : null)), cols: [
+      ["id", "text", (x) => txt(x.id), "받은 쿠폰 id"],
+      ["mid", "text", (x) => txt(x.mid), "회원 id"],
+      ["cid", "text", (x) => txt(x.cid), "쿠폰 id (cp-pledge = 다짐 쿠폰)"],
+      ["pid", "text", (x) => txt(x.pid), "쓸 수 있는 클래스 (비면 모든 클래스)"],
+      ["value", "int", (x) => num(x.value), "할인 금액 (다짐 쿠폰 · 쿠폰 표의 값이 따로 있으면 비어요)"],
+      ["exp", "text", (x) => txt(x.exp, 10), "쓸 수 있는 마지막 날"],
+      ["at", "time", (x) => num(x.at), "받은 시각(한국 시간)"],
+      ["used_at", "time", (x) => num(x.usedAt), "쓴 시각(한국 시간)"],
+      ["order_no", "text", (x) => txt(x.orderNo, 40), "쓴 주문번호"]
+    ] }
   ] },
   { area: "B3", table: "member_logins", label: "회원 로그인 방법", prefixes: ["vme:", "vmk:"], index: ["mid"], cols: [
     ["method", "text", (v, k) => (/^vme:/.test(k) ? "email" : "kakao"), "방식 (email · kakao)"],
@@ -245,6 +258,7 @@ const TABLES = [
     ["pid", "text", (v) => txt(v.pid), "상품 id"],
     ["mid", "text", (v) => txt(v.mid), "회원 id"],
     ["nick", "text", (v) => txt(v.nick), "닉네임"],
+    ["text", "text", (v) => txt(v.text, 500), "다짐 글"],
     ["up", "int", (v) => num(v.up), "응원 수"],
     ["at", "time", (v) => num(v.at), "시각(한국 시간)"]
   ] },
@@ -284,6 +298,19 @@ const TABLES = [
       ["value", "int", (x) => num(x.value), "할인 값"],
       ["days", "int", (x) => num(x.days), "쓸 수 있는 날"],
       ["on", "bool", (x) => yes(x.on), "켜짐"]
+    ] },
+    // 2026-11-08: 스토어 첫 화면 배너도 한 건씩 (마스터 › VOD 전시 › 첫 화면 배너 · 화면에 나오는 순서 그대로)
+    { table: "banners", label: "스토어 첫 화면 배너 (배너 하나 = 한 줄 · pos = 화면 순서)", rows: (v, k) => (k === "meta" && isObj(v.vod) ? arr(v.vod.banners).map((x, i) => (isObj(x) ? Object.assign({ pos: i + 1 }, x) : null)) : []), cols: [
+      ["pos", "int", (x) => num(x.pos), "화면 순서"],
+      ["id", "text", (x) => txt(x.id), "배너 id"],
+      ["kind", "text", (x) => (x.kind === "img" ? "img" : "art"), "종류 (img = 이미지 배너 · art = 디자인 배너)"],
+      ["title", "text", (x) => txt(x.kind === "img" ? x.alt || x.title : String(x.title || "").replace(/\n/g, " ")), "제목 · 이미지 배너는 대체 문구"],
+      ["eyebrow", "text", (x) => txt(x.eyebrow), "작은 글씨"],
+      ["pid", "text", (x) => txt(x.pid), "누르면 갈 클래스"],
+      ["href", "text", (x) => txt(x.href), "누르면 갈 링크"],
+      ["on", "bool", (x) => x.on !== false, "켜짐"],
+      ["date_from", "text", (x) => txt(x.from, 10), "노출 시작일"],
+      ["date_to", "text", (x) => txt(x.to, 10), "노출 종료일"]
     ] },
     { table: "staff", label: "운영자 · 파트너 계정 (비밀번호는 빼고)", rows: (v, k) => (k === "meta" ? arr(v.staff).map((s) => Object.assign({ kind: "staff" }, s)).concat(arr(v.affiliates).map((s) => Object.assign({ kind: "partner" }, s))) : []), cols: [
       ["kind", "text", (x) => x.kind, "구분 (staff · partner)"],
