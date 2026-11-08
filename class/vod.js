@@ -1432,16 +1432,20 @@
       : [y365(p) ? "12개월 수강권" : accessTxt(p).replace(" 시청", ""), aboutTxt(totalMin(p)), String(p.level || "입문").split(/\s*·\s*/)[0]];
     return { chip, parts };
   }
-  const likeBtn = (p, m) => '<button type="button" class="vd-like' + (liked(m && m.id, p.id) ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '" aria-label="' + (p.status === "soon" ? "오픈 알림 받기" : "찜하기") + '">' + icon("heart", "sm") + "</button>";
-  // 둥근 썸네일(찜) → 제목 → 강사 | ♡ 찜 | ★ 후기 → 월 가격 → 종류 · 기간 → ‘OO님이 찜했어요’
+  /** 썸네일 위 찜 수 글자: 0이면 비워요(하트만) · 10 이상은 10단위 + (패스트캠퍼스 ‘250+’ 처럼) */
+  const likeNum = (n) => (n > 0 ? likeTxt(n) : "");
+  // 썸네일 오른쪽 위 찜 버튼 = 패스트캠퍼스처럼 ‘찜 수 ♡’ 알약 (2026-11-08) — 누르면 찜 · 찜하면 빨간 하트
+  const likeBtn = (p, m) => '<button type="button" class="vd-like' + (liked(m && m.id, p.id) ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '" aria-label="' + (p.status === "soon" ? "오픈 알림 받기" : "찜하기") + '"><small>' + likeNum(likeCount(p)) + "</small>" + icon("heart", "sm") + "</button>";
+  // 둥근 썸네일(찜 수 ♡ 알약) → 제목 → 강사 → 월 가격 → 종류 · 기간 → ‘OO님이 찜했어요’
+  //  2026-11-08: 찜 수는 패스트캠퍼스처럼 썸네일 위로 · 별점 · 후기 수는 카드에서 뺐어요 (막 시작한 스토어라 ‘후기 0’ 이 오히려 망설이게 해서 — 후기 · 다짐은 클래스 상세에서)
   function card(p, o) {
-    o = o || {}; const m = me(), rt = ratingOf(p.id), pr = priceOf(p), mo = cardMonth(p), pct = pctOf(p), lk = likersOf(p), left = seatsLeft(p);
+    o = o || {}; const m = me(), pr = priceOf(p), mo = cardMonth(p), pct = pctOf(p), lk = likersOf(p), left = seatsLeft(p);
     const se = saleEndOf(p), eb = ebOf(p), dleft = se ? DB.date.diffDays(se.slice(0, 10), today()) : null;
     const ov = o.rank ? '<span class="vd-rank">BEST ' + o.rank + "</span>" : left === 0 ? '<span class="vd-ov">마감</span>' : stockLeft(p) === 0 ? '<span class="vd-ov">품절</span>' : eb ? '<span class="vd-ov vd-ov-eb">얼리버드 ' + (dleft ? "D-" + dleft : "오늘 마감") + "</span>" : dleft != null && dleft >= 0 && dleft <= 7 ? '<span class="vd-ov vd-ov-dd">할인 ' + (dleft ? "D-" + dleft : "오늘 마감") + "</span>" : "";
     const cnt = o.rank && soldOf(p) >= 100 ? '<span class="vd-cnt">' + icon("users", "xs") + '<b><i data-count="' + soldOf(p) + '" data-cid="' + esc(p.id) + '">' + soldOf(p).toLocaleString() + "</i>+</b></span>" : "";
     return '<a class="vd-card" href="#/vod/p/' + esc(p.id) + '"><div class="vd-thumb vd-th-' + typeOf(p) + (ov ? " has-ov" : "") + '">' + thumbArt(p) + (ov || cnt ? '<span class="vd-ovs">' + ov + cnt + "</span>" : "") + likeBtn(p, m) + "</div>" +
       '<div class="vd-card-b"><b class="vd-title">' + esc(p.title) + "</b>" +
-        '<span class="vd-cr">' + crName(p) + '<i></i><span class="vd-hc" data-hc="' + esc(p.id) + '">' + icon("heart", "xs") + likeCount(p) + "</span>" + (rt.n ? '<i></i><span class="vd-rvc" title="수강후기 ' + rt.n + "개 · 평균 " + rt.avg.toFixed(1) + '점">' + icon("star", "xs") + rt.avg.toFixed(1) + "<small>후기 " + rt.n + "</small></span>" : "") + "</span>" +
+        '<span class="vd-cr">' + crName(p) + "</span>" +
         '<div class="vd-price">' + (p.status === "soon" ? "<strong>오픈 예정</strong>" + (pr ? "<s>" + won(pr) + "</s>" : "") : pr === 0 ? "<strong>무료</strong>" : "<strong>" + won(y365(p) ? y365(p).sale : pr) + "</strong>" + (pct ? "<em>" + pct + "%</em>" : "")) + "</div>" +
         cardMetaHtml(p) +
         (lk.length ? '<span class="vd-social"><span class="vd-avs">' + lk.map((n) => av(n)).join("") + "</span><span><b>" + esc(lk[0]) + "</b>님이 " + (p.status === "soon" ? "알림 신청했어요" : "찜했어요") + "</span></span>" : "") +
@@ -2053,7 +2057,7 @@
         (plansOf(p).length ? "" : '<div class="vd-fbp-tot"><span>총 상품 금액</span>' + (pct ? "<em>" + pct + "%</em>" : "") + "<strong>" + won(pr) + "</strong></div>") + '<div class="vd-fbp-btns"><button type="button" class="vd-btn vd-btn-o vd-btn-xl" data-v="fbar">닫기</button><a class="vd-btn vd-btn-p vd-btn-xl" href="' + c.href + '"' + (c.co ? ' data-co-link="' + esc(p.id) + '"' : "") + ">" + (pr === 0 ? (isEvent(p) ? "무료 LIVE 신청하기" : "무료로 수강 시작") : "결제하기") + "</a></div></div></div>" : "") +
       '<div class="vd-wrap vd-fbar-in"><span class="vd-fbar-th">' + thumbArt(p) + '</span><div class="vd-fbar-t"><b>' + esc(p.title) + "</b><small>" + esc(TYPE[typeOf(p)][0] + " · " + accessTxt(p)) + "</small></div>" +
         '<div class="vd-fbar-p">' + (p.status === "soon" ? "<strong>오픈 예정</strong>" : pr === 0 ? '<strong class="free">무료</strong>' : fy ? '<small class="vd-fbar-from">' + (fy.rb ? "재수강 " + fy.rb + "% · " : "") + fy.label + " · 총 " + won(fy.sale) + "</small><strong>월 " + won(fy.month) + "</strong>" : (pct ? "<em>" + pct + "%</em>" : "") + "<strong>" + won(pr) + "</strong>") + (end ? '<small>' + icon("clock", "xs") + '<b data-cd="' + esc(end) + '">' + cdTxt(end) + "</b> 남음</small>" : "") + "</div>" +
-        '<button type="button" class="vd-likebtn' + (liked(m && m.id, p.id) ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '" aria-label="찜하기">' + icon("heart", "sm") + "<small>" + likeTxt(likeCount(p)) + "</small></button>" +
+        '<button type="button" class="vd-likebtn' + (liked(m && m.id, p.id) ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '" aria-label="찜하기">' + icon("heart", "sm") + "<small>" + likeNum(likeCount(p)) + "</small></button>" +
         (pvs.length && !own ? '<button type="button" class="vd-btn vd-btn-o vd-fbar-pv" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '">' + icon("play", "sm") + "<span>미리보기</span></button>" : "") +
         (toCheckout ? '<button type="button" class="vd-btn vd-btn-p vd-fbar-cta" data-v="fbar">' + c.txt + icon("chevDown", "xs") + "</button>" : ctaHtml(p, c, "vd-fbar-cta")) + "</div></div>";
   }
@@ -2143,7 +2147,7 @@
    *      [PC] 탈잉 배치 — 왼쪽 위 16:9 영상 → 베스트 후기 → 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 화면 끝까지 16:9 영상 → 카드 → 베스트 후기 → 탭
    *      소리 끈 채로 저절로 반복 재생 · 오른쪽 위 ‘소리 켜기’ · 미리보기 창이 열려 있거나 화면 밖으로 지나가면 잠깐 멈춰요
    *      주소에 시작 시각(…&t=1558s · start=)이 있으면 그때부터 재생하고, 끝나면 그 시각으로 돌아가 다시 돌아요
-   *      재생이 시작되기 전(불러오는 중)에는 영상 대표 그림 · 자동 재생이 막힌 휴대폰 · 움직임 줄이기 · 데이터 절약이면 눌러서 재생
+   *      재생이 시작되기 전(불러오는 중)에는 영상 대표 그림 · 자동 재생이 막힌 휴대폰(저전력 모드) · 데이터 절약이면 눌러서 재생 · ‘소리 켜기’는 실제로 돌 때만
    *  · 영상이 없거나 ‘영상 끄기’(p.teaserOff): 예전 v7 넓은 썸네일(대표 배너) 그대로 — 2026-11-07 처럼 미리보기 강의 영상을 대신 틀지 않아요
    *  · ‘미리보기 N개’ 버튼은 썸네일 · 영상 위가 아니라 카드 뱃지 줄 오른쪽(pcTag) — 미리보기 창은 그대로
    *  화면에 붙이기(heroWire) · 소리(heroSnd) · 멈춤(heroPause)은 예전 화면 · React 화면(ui/store/ProductPage.jsx)이 같이 써요 */
@@ -2197,11 +2201,10 @@
   function heroWire(root) {
     const box = (root || document).querySelector(".vd-pdv"), slot = box && box.querySelector(".vd-pdv-slot");
     if (!slot || slot.firstChild || !box.dataset.src) return;
-    const mq = (q) => !!(window.matchMedia && window.matchMedia(q).matches);
-    // 움직임 줄이기 · 데이터 절약: 저절로 틀지 않고 눌러서 재생 (소리 켠 채)
-    const calm = mq("(prefers-reduced-motion: reduce)") || !!(navigator.connection && navigator.connection.saveData);
+    // 데이터 절약만 저절로 틀지 않고 눌러서 재생 (소리 켠 채) — 2026-11-08: 윈도우 ‘애니메이션 효과’를 끈 PC(동작 줄이기)에서도 탈잉처럼 소리 없이 저절로 재생해요
+    const calm = !!(navigator.connection && navigator.connection.saveData);
     const k = box.dataset.hero, st = Number(box.dataset.st) || 0, src = calm ? box.dataset.src.replace("autoplay=1&mute=1", "autoplay=0&mute=0").replace("autoplay=1&muted=1", "autoplay=0&muted=0") : box.dataset.src;
-    const playing = () => { box.__st = 1; box.classList.add("is-play"); heroApply(box); };
+    const playing = () => { box.__st = 1; box.classList.add("is-play", "is-run"); heroApply(box); };
     if (calm) box.classList.add("is-play", "is-tap", "is-snd", "is-calm");
     if ("IntersectionObserver" in window && !box.__io) {
       box.__io = new IntersectionObserver((es) => { if (!box.isConnected) { box.__io.disconnect(); return; } heroPause(!es[es.length - 1].isIntersecting, "view"); }, { threshold: 0.15 });
@@ -2234,9 +2237,9 @@
           if (!bx.classList.contains("is-calm")) ["mute", "playVideo"].forEach((fn) => ytCmd(f, fn));
         }
         // 오류(퍼가기 막힌 영상 · 지운 영상): 영상 대표 그림만 남겨요
-        if (d.event === "onError") { f.__err = true; bx.classList.remove("is-play", "is-tap"); return; }
+        if (d.event === "onError") { f.__err = true; bx.classList.remove("is-play", "is-tap", "is-run"); return; }
         const s = d.event === "onStateChange" ? d.info : d.event === "infoDelivery" && d.info ? d.info.playerState : d.event === "play" || d.event === "playProgress" ? 1 : d.event === "pause" ? 2 : null;
-        if (s === 1 && bx.__st !== 1) { bx.__st = 1; bx.classList.add("is-play"); heroApply(bx); } else if (s === 2) bx.__st = 2;
+        if (s === 1 && bx.__st !== 1) { bx.__st = 1; bx.classList.add("is-play", "is-run"); heroApply(bx); } else if (s === 2) bx.__st = 2;
         // 끝나면 시작 시각으로 (유튜브 반복은 0초부터라서)
         if (s === 0) { bx.__st = 0; const s0 = Number(bx.dataset.st) || 0; if (s0) { ytCmd(f, "seekTo", [s0, true]); ytCmd(f, "playVideo"); } }
       });
@@ -2438,10 +2441,14 @@
     const rb = !own && !!m && plansOf(p).length > 0 && p.status === "on" ? rebuyOf(m.id, p) : 0, cdOn = !!end && !own && p.status !== "soon" && pr > 0 && !rb;
     return { m, own, rt, lk, hp, end, eb, cdOn, bs: badgesOf(p), rows: headInfo(p) };
   }
+  /** 후기 + 다짐 한마디 수 (‘다짐 · 후기’ 탭 · 제목 아래 줄) */
+  const rvPlN = (p) => reviewsOf(p.id).length + pledgesOf(p.id).length;
+  // 제목 아래 줄 (2026-11-08): ♥ 찜 수 | 다짐 · 후기 N(누르면 그 칸으로) — 수강생 · 판매 수와 찜한 사람 얼굴은 보여 주지 않아요 (막 시작한 스토어라 ‘수강생 0명’ 이 망설이게 해서) · 별점은 ‘다짐 · 후기’ 칸에
   function pcHead(p) {
-    const { rt, lk, hp, end, eb, cdOn, bs, rows } = headView(p);
+    const { hp, end, eb, cdOn, bs, rows } = headView(p), nt = rvPlN(p), lc = likeCount(p);
+    // 0 인 숫자는 보여 주지 않아요 (찜 0 · 다짐 · 후기 0) — 둘 다 0 이면 이 줄이 없어요
     return pcTag(p, bs) + '<h1 class="vd-pdt-h1">' + esc(p.title) + "</h1>" +
-      '<div class="vd-pdt-rate">' + (rt.n ? '<button type="button" data-v="jump" data-to="vd-s-reviews"><span class="vd-stars sm">' + stars(rt.avg) + "</span><b>" + rt.avg.toFixed(1) + "</b><small>(" + rt.n + ")</small></button><i></i>" : "") + (isBook(p) ? (soldOf(p) ? "<span>판매 <b>" + soldOf(p).toLocaleString() + "권+</b></span><i></i>" : "") : "<span>수강생 <b>" + soldOf(p).toLocaleString() + "명+</b></span><i></i>") + "<span>" + icon("heart", "xs") + likeCount(p) + "</span>" + (lk.length ? '<i></i><span class="vd-avs">' + lk.map((n) => av(n)).join("") + "</span>" : "") + "</div>" +
+      (lc || nt ? '<div class="vd-pdt-rate">' + (lc ? "<span>" + icon("heart", "xs") + lc + "</span>" : "") + (nt ? (lc ? "<i></i>" : "") + '<button type="button" data-v="jump" data-to="vd-s-reviews">' + icon("message", "xs") + (isBook(p) ? "다짐 · 독자 후기" : "다짐 · 후기") + " <b>" + nt + "</b></button>" : "") + "</div>" : "") +
       (hp ? '<div class="vd-hp">' + (hp.was ? '<s class="vd-hp-was">' + hp.was + "</s>" : "") + '<div class="vd-hp-row">' + (hp.pct ? "<em>" + hp.pct + "%</em>" : "") + (hp.lab ? '<span class="vd-hp-lab">' + hp.lab + "</span>" : "") + "<strong" + (hp.free ? ' class="free"' : "") + ">" + hp.main + "</strong></div>" + (hp.note ? '<small class="vd-hp-note">' + esc(hp.note) + "</small>" : "") + "</div>" : "") +
       (cdOn ? '<div class="vd-cd' + (eb ? " vd-cd-eb" : "") + '">' + icon("clock", "xs") + "<span>" + (eb ? "얼리버드 마감까지" : "할인 마감까지") + '</span><b data-cd="' + esc(end) + '">' + cdTxt(end) + "</b><span>남음</span></div>" : "") +
       '<ul class="vd-hi">' + rows.map((r) => "<li" + (r[2] ? ' class="dg"' : "") + ">" + icon(r[0], "sm") + "<span>" + esc(r[1]) + "</span></li>").join("") + "</ul>" +
@@ -2461,7 +2468,7 @@
       (isEvent(p) && left != null ? '<div class="vd-seat"><div><span>신청 현황</span><b>' + (p.seats - left) + " / " + p.seats + "명</b></div><i><u style=\"width:" + Math.round((p.seats - left) / p.seats * 100) + '%"></u></i>' + (left && left <= 5 ? "<small>마감까지 " + left + "자리 남았어요</small>" : "") + "</div>" : "") +
       cpDlBtn(p, m) + plNudge(p) +
       '<div class="vd-pc-btns">' + ctaHtml(p, ctaOf(p, m), "vd-btn-xl") + (own ? addonBtns(p, m) : "") + (pvs.length && !own ? '<button type="button" class="vd-btn vd-btn-o vd-btn-xl" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '">' + icon("play", "sm") + "무료 미리보기 " + pvs.length + "개</button>" : "") + "</div>" +
-      '<div class="vd-pc-sub"><button type="button" class="vd-pc-like' + (isLiked ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '">' + icon("heart", "sm") + "찜 " + likeTxt(likeCount(p)) + '</button><button type="button" class="vd-pc-like" data-v="share">' + icon("link", "sm") + "공유하기</button></div>" +
+      '<div class="vd-pc-sub"><button type="button" class="vd-pc-like' + (isLiked ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '">' + icon("heart", "sm") + "찜" + (likeNum(likeCount(p)) ? " " + likeNum(likeCount(p)) : "") + '</button><button type="button" class="vd-pc-like" data-v="share">' + icon("link", "sm") + "공유하기</button></div>" +
       '<p class="vd-buy-note">' + icon("shieldCheck", "xs") + (refundKey(p) === "vod" ? "결제 후 " + rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : refundKey(p) === "ebook" ? "내려받기 전 7일 이내 전액 환불" : refundKey(p) === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : refundKey(p) === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강") + ' <button type="button" class="vd-link" data-v="jump" data-to="vd-s-refund">환불 규정</button></p></div>';
   }
   /** 이미 수강 중일 때 가격 자리: 남은 기간 · 진도 · 남은 코칭 */
@@ -3952,8 +3959,7 @@
       if (i < 0) document.querySelectorAll('[data-v="like"][data-id="' + t.dataset.id + '"]').forEach((x) => { x.classList.remove("pop"); void x.offsetWidth; x.classList.add("pop"); });
       if (/^#\/vod\/(p|my)\b/.test(ROUTE.hash)) keepScroll();
       else {
-        document.querySelectorAll('[data-v="like"][data-id="' + t.dataset.id + '"]').forEach((x) => { x.classList.toggle("on", i < 0); const n = x.querySelector("span, small"); if (n && p) n.textContent = likeTxt(likeCount(p)); });
-        if (p) document.querySelectorAll('[data-hc="' + t.dataset.id + '"]').forEach((x) => { x.innerHTML = icon("heart", "xs") + likeCount(p); });
+        document.querySelectorAll('[data-v="like"][data-id="' + t.dataset.id + '"]').forEach((x) => { x.classList.toggle("on", i < 0); const n = x.querySelector("span, small"); if (n && p) n.textContent = likeNum(likeCount(p)); });
       }
       toast(i >= 0 ? (soon ? "오픈 알림을 껐어요." : "찜을 풀었어요.") : soon ? "오픈하면 가장 먼저 알려 드릴게요." : "찜한 강의에 담았어요.");
       return;
@@ -4366,7 +4372,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroPh, heroWire, heroSnd, heroPause, tStart, bestOf, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroPh, heroWire, heroSnd, heroPause, tStart, bestOf, rvPlN, likeNum, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),

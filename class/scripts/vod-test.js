@@ -2636,7 +2636,14 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/if \(!p \|\| p\.teaserOff\) return null;/.test(vj) && /String\(p\.teaser \|\| ""\)\.trim\(\)/.test(vj) && !/previewsOf\(p\)\.find\(\(l\) => l\.video\)/.test(vj) && /st = tStart\(u\)/.test(vj) && /\(st \? "&start=" \+ st : ""\)/.test(vj),
       "맨 위 대표 영상: 마스터가 넣은 영상만 (미리보기 강의 영상으로 대신하지 않아요) · 주소의 시작 시각부터 · 없으면 예전 넓은 썸네일");
     ok(/class="vd-pc-tag"/.test(vj) && /className="vd-pc-tag"/.test(pj) && !/vd-pdt-play/.test(vj) && !/vd-pdt-play/.test(pj) && /r\.best/.test(vj) && /x\.best/.test(vj) && /<Best p=\{p\} \/>/.test(pj),
-      "‘미리보기 N개’는 카드 뱃지 줄 오른쪽(썸네일 위에서 뺌) · 베스트 후기 줄은 탭 위 (예전 화면 · React)");
+      "‘미리보기 N개’는 카드 뱃지 줄 오른쪽(썸네일 위에서 뺌) · 베스트 후기 줄은 탭 위 (예전 화면 · React)");    // 2026-11-08 (2): 수강생 수 · 찜한 사람 얼굴은 안 보여요 · 카드 별점 · 후기 수 뺌 · 찜 수는 썸네일 위 알약 · 결제 쿠폰 자동 고르기 · 동작 줄이기 PC 도 자동 재생
+    const cj = fs.readFileSync(path.join(ROOT, "../ui/store/Card.jsx"), "utf8"), coj = fs.readFileSync(path.join(ROOT, "../ui/store/CheckoutPage.jsx"), "utf8");
+    ok(!/수강생 <b>/.test(vj) && !/수강생 <b>/.test(pj) && !/명\+<\/b>/.test(vj) && !/className="vd-avs">\{lk\.map/.test(pj) && /data-to="vd-s-reviews">' \+ icon\("message", "xs"\)/.test(vj) && /X\.rvPlN\(p\)/.test(pj),
+      "상세 제목 아래: 수강생 · 판매 수와 찜한 사람 얼굴은 빼고 ♥ 찜 수 | 다짐 · 후기 N (예전 화면 · React)");
+    ok(!/vd-rvc/.test(vj.slice(vj.indexOf("function card("), vj.indexOf("function card(") + 3000)) && !/vd-rvc|vd-hc/.test(cj) && /<small>' \+ likeNum\(likeCount\(p\)\) \+ "<\/small>"/.test(vj) && /<small>\{X\.likeNum\(X\.likeCount\(p\)\)\}<\/small>/.test(cj),
+      "카드: 별점 · 후기 수 · 찜 수 줄을 빼고 찜 수는 썸네일 위 ‘N ♡’ 알약 (0이면 하트만 · 10 이상은 10단위 +)");
+    ok(/key=\{cps\.map\(\(y\) => y\.x\.id\)\.join\(","\) \|\| "none"\}/.test(coj) && /const calm = !!\(navigator\.connection && navigator\.connection\.saveData\);/.test(vj) && !/prefers-reduced-motion: reduce\)"\) \|\| /.test(vj),
+      "결제(React): 쿠폰이 뒤늦게 들어와도(다짐 쿠폰) 가장 많이 깎이는 쿠폰을 골라 둬요 · 상단 영상은 데이터 절약일 때만 눌러서 재생");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

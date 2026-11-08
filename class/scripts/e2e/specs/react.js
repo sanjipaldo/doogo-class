@@ -368,11 +368,13 @@ module.exports = {
       await run.check(b2.stay && /^\/vod\/search\?q=zzqq$/.test(b2.path), "클래스 목록(React): 탭 · 정렬 · 분야 · 검색을 옮겨도 새로 불러오지 않아요 · 주소는 /vod/search?q=zzqq", { stay: b2.stay, path: b2.path }, pg);
       // 찜 (React · 카드 하트): 담으면 하트 켜짐 · 찜 수 +1 · 알림 → 다시 누르면 풀려요
       await L.open(pg, base, "/vod/c/all?tab=vod");
-      const lk = await pg.evaluate(() => { const b = document.querySelector(".vd-grid .vd-card .vd-like:not(.on)"); if (!b) return null; const id = b.dataset.id; return { id, n: Number((document.querySelector('[data-hc="' + id + '"]') || {}).textContent) || 0 }; });
+      // 2026-11-08: 찜 수는 썸네일 위 알약(패스트캠퍼스처럼 · 0이면 숫자 없음 · 10 이상은 ‘10+’) — 숫자는 계산값으로 보고 알약 글자가 그 값과 같은지
+      const pill = (id) => { const b = document.querySelector('.vd-grid .vd-like[data-id="' + id + '"]'), n = window.VOD.likeCount(window.VOD.product(id)); return { n, txt: (b.querySelector("small") || {}).textContent, want: window.VOD.likeNum(n) }; };
+      const lk = await pg.evaluate((pillSrc) => { const pill = new Function("return " + pillSrc)(); const b = document.querySelector(".vd-grid .vd-card .vd-like:not(.on)"); if (!b) return null; const id = b.dataset.id; return Object.assign({ id }, pill(id)); }, pill.toString());
       let lk1 = null, lk2 = null;
       if (lk) {
         await pg.click('.vd-grid .vd-like[data-id="' + lk.id + '"]'); await pg.waitForTimeout(400);
-        lk1 = await pg.evaluate((id) => ({ on: document.querySelector('.vd-like[data-id="' + id + '"]').classList.contains("on"), n: Number(document.querySelector('[data-hc="' + id + '"]').textContent) || 0, liked: window.VOD.liked(window.VOD.me().id, id) }), lk.id);
+        lk1 = await pg.evaluate(([id, pillSrc]) => { const pill = new Function("return " + pillSrc)(); return Object.assign({ on: document.querySelector('.vd-like[data-id="' + id + '"]').classList.contains("on"), liked: window.VOD.liked(window.VOD.me().id, id) }, pill(id)); }, [lk.id, pill.toString()]);
         const t1 = await L.toasts(pg);
         await pg.click('.vd-grid .vd-like[data-id="' + lk.id + '"]'); await pg.waitForTimeout(400);
         lk2 = await pg.evaluate((id) => ({ on: document.querySelector('.vd-like[data-id="' + id + '"]').classList.contains("on"), liked: window.VOD.liked(window.VOD.me().id, id) }), lk.id);
@@ -506,7 +508,7 @@ module.exports = {
       const d3 = a3.out.map((x, i) => L.shapeDiff(x, b3.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
       await run.check(!d3.length && a3.out.length === b3.out.length, "소개 · 두고 파트너스 · 지원서(React): 슬라이드 · 흐르는 줄 · 자주 묻는 질문 · 섹션 확인 · 다시 불러도 그대로 · 보내기 — 누를 때마다 예전 화면과 같은 모양 (" + b3.out.length + "번)", d3.slice(0, 1), pg);
       await run.check(b3.done && !b3.draft && a3.done, "지원서(React): 다 채워 보내면(서버가 받으면) 완료 카드 · 쓰던 내용은 지워요", { done: b3.done, draft: b3.draft }, pg);
-      await run.check(lk && lk1.on && lk1.liked && lk1.n === lk.n + 1 && /찜한 강의에 담았어요|오픈하면/.test(String(lk1.toast)) && !lk2.on && !lk2.liked, "목록 찜(React): 하트 켜짐 · 찜 수 +1 · 알림 → 다시 누르면 풀려요", { lk, lk1, lk2 }, pg);
+      await run.check(lk && lk1.on && lk1.liked && lk1.n === lk.n + 1 && lk.txt === lk.want && lk1.txt === lk1.want && /찜한 강의에 담았어요|오픈하면/.test(String(lk1.toast)) && !lk2.on && !lk2.liked, "목록 찜(React): 썸네일 위 ‘찜 수 ♡’ 알약 — 누르면 빨간 하트 · 찜 수 +1(알약 글자도) · 알림 → 다시 누르면 풀려요", { lk, lk1, lk2 }, pg);
       await pg.context().close();
     }
     // 3) 클래스 상세 (2026-11-08 · 탈잉처럼): 회원 다짐 → 마스터 ‘베스트로’ · 클래스 편집 ‘상세 맨 위 영상’ → 상세: 왼쪽 위 영상 · 탭 위 베스트 후기 · ‘다짐 · 후기 N’ · 뱃지 줄 미리보기

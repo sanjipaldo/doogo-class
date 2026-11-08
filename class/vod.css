@@ -566,6 +566,7 @@ body[data-mode="vod"] {
 .vd-likebtn { display: grid; place-items: center; align-content: center; gap: 0; width: 52px; height: 52px; border-radius: 4px !important; box-shadow: inset 0 0 0 1px var(--lnb); color: var(--on1) !important; background: #fff !important; }
 .vd-likebtn .icon { width: 22px !important; height: 22px !important; }
 .vd-likebtn small { font-size: 10px; font-weight: 600; color: var(--on3); line-height: 1.1; }
+.vd-likebtn small:empty { display: none; } /* 찜 0 이면 숫자 없이 하트만 (2026-11-08) */
 .vd-likebtn.on { color: var(--vd-pri) !important; box-shadow: inset 0 0 0 1px var(--vd-pri-line); }
 .vd-likebtn.on .icon { fill: currentColor; }
 .vd-buy-note { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--on3); }
@@ -1495,11 +1496,14 @@ body[data-mode="vod"]:has(.vd-player) { background: #0c0c0c; }
 .vd-card:hover .vd-thumb { transform: translateY(-4px); box-shadow: 0 20px 32px -22px rgba(0, 0, 0, .5); }
 .vd-card:hover .vd-art { transform: scale(1.045); }
 .vd-art { transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
-.vd-like { right: 10px; top: 10px; display: grid; place-items: center; width: 38px; height: 38px; padding: 0 !important; border-radius: 50%; background: #fff !important; color: #171b1f !important; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
-.vd-like:hover { background: #fff !important; transform: scale(1.06); }
-.vd-like .icon { width: 20px !important; height: 20px !important; stroke-width: 1.8 !important; }
-.vd-like.on { color: var(--vd-pri) !important; }
-.vd-like.on .icon { fill: currentColor; stroke: currentColor; }
+/* 찜 = 패스트캠퍼스처럼 썸네일 오른쪽 위 ‘찜 수 ♡’ 알약 (2026-11-08 · 0이면 하트만 동그랗게 · 10 이상은 ‘120+’ · 찜하면 빨간 하트) */
+.vd-like { right: 10px; top: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 32px; height: 32px; padding: 0 8px !important; border-radius: 999px; background: rgba(17, 17, 19, .42) !important; color: #fff !important; font-size: 13px !important; font-weight: 700 !important; letter-spacing: -0.01em !important; line-height: 1; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: none; }
+.vd-like:hover { background: rgba(17, 17, 19, .62) !important; }
+.vd-like small { font: inherit; color: inherit; }
+.vd-like small:empty { display: none; }
+.vd-like .icon { width: 17px !important; height: 17px !important; stroke-width: 2 !important; }
+.vd-like.on { color: #fff !important; }
+.vd-like.on .icon { fill: var(--vd-pri); stroke: var(--vd-pri); }
 .vd-like.pop, .vd-likebtn.pop { animation: vd-heart .5s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes vd-heart { 35% { transform: scale(1.32); } }
 .vd-ovs { left: 10px; top: 10px; gap: 6px; }
@@ -1668,6 +1672,7 @@ body[data-mode="vod"]:has(.vd-player) { background: #0c0c0c; }
 .vd-pdt-rate button { display: inline-flex; align-items: center; gap: 4px; font-size: 13px !important; color: var(--on3) !important; }
 .vd-pdt-rate span { display: inline-flex; align-items: center; gap: 3px; }
 .vd-pdt-rate .icon { color: var(--vd-pri); }
+.vd-pdt-rate button:hover b { text-decoration: underline; text-underline-offset: 2px; }
 .vd-pdt-rate > span > .icon { fill: currentColor; } /* 상세 제목 아래 ‘♡ 찜 수’도 카드처럼 채운 빨간 하트 (별점 별은 그대로) */
 .vd-pdt-btns { display: flex; gap: 8px; }
 .vd-pdt-btns .vd-likebtn { flex: none; }
@@ -1873,7 +1878,8 @@ body[data-mode="vod"]:has(.vd-player) { background: #0c0c0c; }
   .vd-title { font-size: 17px; }
   .vd-price strong { font-size: 19px; }
   .vd-meta, .vd-cr { font-size: 13px; }
-  .vd-like { width: 34px; height: 34px; right: 8px; top: 8px; }
+  .vd-like { min-width: 28px; height: 28px; padding: 0 7px !important; right: 8px; top: 8px; font-size: 12px !important; gap: 3px; }
+  .vd-like .icon { width: 15px !important; height: 15px !important; }
   .vd-thumb { border-radius: 14px; }
   .vd-teach-g { gap: 18px 12px; }
   .vd-tc b { font-size: 17px; }
@@ -4195,7 +4201,7 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-pdv-snd .icon { width: 17px !important; height: 17px !important; stroke-width: 2.2; }
 .vd-pdv-snd .on, .vd-pdv.is-snd .vd-pdv-snd .off { display: none; }
 .vd-pdv.is-snd .vd-pdv-snd .on { display: inline-flex; }
-.vd-pdv.is-play .vd-pdv-snd { display: inline-flex; }
+.vd-pdv.is-run .vd-pdv-snd { display: inline-flex; }
 .vd-pdv-snd:hover { background: #fff !important; }
 @media (prefers-reduced-motion: reduce) { .vd-pdv-ph { transition: none; } }
 /* 오른쪽 카드 */

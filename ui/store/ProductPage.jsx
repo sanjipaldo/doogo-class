@@ -91,13 +91,12 @@ function PcTag({ p, bs, act }) {
     {pvs.length ? <button type="button" className="vd-pc-pv" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><i><Icon n="play" /></i><span>미리보기 <b>{pvs.length}개</b></span></button> : null}</div>;
 }
 function PcHead({ p, act }) {
-  const X = VOD(), { rt, lk, hp, end, eb, cdOn, bs, rows } = X.headView(p), fb = X.freshBand(p);
+  const X = VOD(), { hp, end, eb, cdOn, bs, rows } = X.headView(p), fb = X.freshBand(p), nt = X.rvPlN(p), lc = X.likeCount(p);
   return <>
     <PcTag p={p} bs={bs} act={act} />
     <h1 className="vd-pdt-h1">{p.title}</h1>
-    <div className="vd-pdt-rate">{rt.n ? <><button type="button" data-v="jump" data-to="vd-s-reviews" onClick={() => jump("vd-s-reviews")}><span className="vd-stars sm"><Stars v={rt.avg} /></span><b>{rt.avg.toFixed(1)}</b><small>({rt.n})</small></button><i /></> : null}
-      {X.isBook(p) ? (X.soldOf(p) ? <><span>판매 <b>{X.soldOf(p).toLocaleString()}권+</b></span><i /></> : null) : <><span>수강생 <b>{X.soldOf(p).toLocaleString()}명+</b></span><i /></>}
-      <span><Icon n="heart" c="xs" />{X.likeCount(p)}</span>{lk.length ? <><i /><span className="vd-avs">{lk.map((n, i) => <Av key={i} nick={n} />)}</span></> : null}</div>
+    {/* 제목 아래 줄 (예전 pcHead · 2026-11-08): ♥ 찜 수 | 다짐 · 후기 N — 수강생 · 판매 수 · 찜한 사람 얼굴은 보여 주지 않아요 · 0 인 숫자도 빼요 (둘 다 0 이면 줄 없음) */}
+    {lc || nt ? <div className="vd-pdt-rate">{lc ? <span><Icon n="heart" c="xs" />{lc}</span> : null}{nt ? <>{lc ? <i /> : null}<button type="button" data-v="jump" data-to="vd-s-reviews" onClick={() => jump("vd-s-reviews")}><Icon n="message" c="xs" />{(X.isBook(p) ? "다짐 · 독자 후기" : "다짐 · 후기") + " "}<b>{nt}</b></button></> : null}</div> : null}
     {hp ? <div className="vd-hp">{hp.was ? <s className="vd-hp-was">{hp.was}</s> : null}<div className="vd-hp-row">{hp.pct ? <em>{hp.pct}%</em> : null}{hp.lab ? <span className="vd-hp-lab">{hp.lab}</span> : null}<strong className={hp.free ? "free" : undefined}>{hp.main}</strong></div>{hp.note ? <small className="vd-hp-note">{hp.note}</small> : null}</div> : null}
     {cdOn ? <div className={"vd-cd" + (eb ? " vd-cd-eb" : "")}><Icon n="clock" c="xs" /><span>{eb ? "얼리버드 마감까지" : "할인 마감까지"}</span><Cd end={end} /><span>남음</span></div> : null}
     <ul className="vd-hi">{rows.map((r, i) => <li key={i} className={r[2] ? "dg" : undefined}><Icon n={r[0]} c="sm" /><span>{r[1]}</span></li>)}</ul>
@@ -121,7 +120,7 @@ function BuyCard({ p, act }) {
       <CpBtn p={p} m={m} onOpen={act.cpOpen} />
       {X.plgView(p).give ? <button type="button" className="vd-plnudge" data-v="jump" data-to="vd-s-pledge" onClick={() => jump("vd-s-pledge")}><Icon n="pen" c="sm" /><span><b>다짐 한마디 쓰고 {won(window.DCS.price.PLEDGE.value)} 쿠폰 받기</b><small>{window.DCS.price.PLEDGE.min}자 이상 · 이 강의 전용 쿠폰</small></span><Icon n="chevRight" c="xs" /></button> : null}
       <div className="vd-pc-btns"><Cta p={p} c={X.ctaOf(p, m)} cls="vd-btn-xl" onLike={act.like} />{own ? <AddonBtns p={p} m={m} /> : null}{pvs.length && !own ? <button type="button" className="vd-btn vd-btn-o vd-btn-xl" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><Icon n="play" c="sm" />무료 미리보기 {pvs.length}개</button> : null}</div>
-      <div className="vd-pc-sub"><button type="button" className={"vd-pc-like" + (isLiked ? " on" : "")} data-v="like" data-id={p.id} onClick={() => act.like(p.id)}><Icon n="heart" c="sm" />찜 {X.likeTxt(X.likeCount(p))}</button><button type="button" className="vd-pc-like" data-v="share" onClick={act.share}><Icon n="link" c="sm" />공유하기</button></div>
+      <div className="vd-pc-sub"><button type="button" className={"vd-pc-like" + (isLiked ? " on" : "")} data-v="like" data-id={p.id} onClick={() => act.like(p.id)}><Icon n="heart" c="sm" />{"찜" + (X.likeNum(X.likeCount(p)) ? " " + X.likeNum(X.likeCount(p)) : "")}</button><button type="button" className="vd-pc-like" data-v="share" onClick={act.share}><Icon n="link" c="sm" />공유하기</button></div>
       <p className="vd-buy-note"><Icon n="shieldCheck" c="xs" />{rk === "vod" ? "결제 후 " + X.rfSet().days + "일 이내 · 강의를 듣기 전이면 100% 환불" : rk === "ebook" ? "내려받기 전 7일 이내 전액 환불" : rk === "book" ? "보내기 전이면 바로 취소 · 받은 날부터 7일 안 반품" : rk === "event" ? "강의 3일 전까지 전액 환불" : "무료 강의 · 신청 즉시 수강"} <button type="button" className="vd-link" data-v="jump" data-to="vd-s-refund" onClick={() => jump("vd-s-refund")}>환불 규정</button></p></div>
   );
 }
@@ -288,7 +287,7 @@ function Fbar({ p, st, setSt, act }) {
         <div className="vd-fbp-btns"><button type="button" className="vd-btn vd-btn-o vd-btn-xl" data-v="fbar" onClick={tog}>닫기</button><a className="vd-btn vd-btn-p vd-btn-xl" href={c.href} data-co-link={c.co ? p.id : undefined}>{pr === 0 ? (X.isEvent(p) ? "무료 LIVE 신청하기" : "무료로 수강 시작") : "결제하기"}</a></div></div></div> : null}
       <div className="vd-wrap vd-fbar-in"><span className="vd-fbar-th"><RawOne html={X.thumbArt(p)} /></span><div className="vd-fbar-t"><b>{p.title}</b><small>{X.TYPE[X.typeOf(p)][0] + " · " + X.accessTxt(p)}</small></div>
         <div className="vd-fbar-p">{p.status === "soon" ? <strong>오픈 예정</strong> : pr === 0 ? <strong className="free">무료</strong> : fy ? <><small className="vd-fbar-from">{(fy.rb ? "재수강 " + fy.rb + "% · " : "") + fy.label + " · 총 " + won(fy.sale)}</small><strong>월 {won(fy.month)}</strong></> : <>{pct ? <em>{pct}%</em> : null}<strong>{won(pr)}</strong></>}{end ? <small><Icon n="clock" c="xs" /><Cd end={end} /> 남음</small> : null}</div>
-        <button type="button" className={"vd-likebtn" + (X.liked(m && m.id, p.id) ? " on" : "")} data-v="like" data-id={p.id} aria-label="찜하기" onClick={() => act.like(p.id)}><Icon n="heart" c="sm" /><small>{X.likeTxt(X.likeCount(p))}</small></button>
+        <button type="button" className={"vd-likebtn" + (X.liked(m && m.id, p.id) ? " on" : "")} data-v="like" data-id={p.id} aria-label="찜하기" onClick={() => act.like(p.id)}><Icon n="heart" c="sm" /><small>{X.likeNum(X.likeCount(p))}</small></button>
         {pvs.length && !own ? <button type="button" className="vd-btn vd-btn-o vd-fbar-pv" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><Icon n="play" c="sm" /><span>미리보기</span></button> : null}
         {toCheckout ? <button type="button" className="vd-btn vd-btn-p vd-fbar-cta" data-v="fbar" onClick={tog}>{c.txt}<Icon n="chevDown" c="xs" /></button> : <Cta p={p} c={c} cls="vd-fbar-cta" onLike={act.like} />}</div>
     </div>
