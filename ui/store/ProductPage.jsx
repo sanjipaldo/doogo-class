@@ -1,13 +1,14 @@
 "use client";
 /* 클래스 상세 (/vod/p/<클래스>) — 예전 vod.js pageProduct 를 React 로 (Next.js 전환 · 스토어 공개 화면)
- *  [PC] 맨 위 넓은 썸네일(예전 v7 그대로 · 2026-11-08 되돌림) → 아래 왼쪽 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 썸네일 → 카드 → 탭 → 본문
+ *  대표 영상이 있으면(2026-11-08 · 탈잉 배치) [PC] 왼쪽 위 16:9 영상(소리 끈 채로 저절로 재생) → 베스트 후기 → 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 영상 → 카드 → 베스트 후기 → 탭 → 본문
+ *  영상이 없으면 [PC] 맨 위 넓은 썸네일(예전 v7 그대로) → 아래 왼쪽 베스트 후기 → 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 썸네일 → 카드 → 베스트 후기 → 탭 → 본문
  *  카드: 뱃지 · 제목 · 별점 → 가격(제목 바로 아래) → 한눈에 보는 정보 → 수강권 · 쿠폰 · 수강신청 · 찜 · 공유
- *  탭(클래스 소개 · 커리큘럼 · 후기 · 강사 소개 · 이용 안내) → 소개 · 커리큘럼(미리보기) · 후기 · 다짐 · 강사(코멘트) · 강의 정보 · 수강권 · FAQ · 환불 · 함께 보는 클래스
+ *  탭(클래스 소개 · 커리큘럼 · 다짐 · 후기(후기 + 다짐 한 숫자) · 강사 소개 · 이용 안내) → 소개 · 커리큘럼(미리보기) · 후기 · 다짐 · 강사(코멘트) · 강의 정보 · 수강권 · FAQ · 환불 · 함께 보는 클래스
  *  아래: 휴대폰 결제 막대(위 가격 카드가 지나가면 올라와요 · 수강 옵션 창)
  *  · 무엇을 보여 줄지(가격 · 수강권 · 쿠폰 · 버튼 · 탭 · 함께 보는 클래스 …)는 예전 계산 그대로 (VOD.productView · buyView · planView · fbarView · ctaOf …)
  *  · 쿠폰 받기 · 후기 · 다짐 · 공감은 예전 함수 그대로 (VOD.cpGet · doReview · doPledge · plUp · plDel)
  *  · 배너 그림 · 썸네일 · 상세 이미지 · 환불 표처럼 예전 HTML 로 만드는 조각은 그대로 넣어요 (ui/lib/Raw.jsx) */
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Shell from "./Shell.jsx";
 import Card, { Av } from "./Card.jsx";
 import { EmptyBox } from "./TeachersPage.jsx";
@@ -82,10 +83,17 @@ function CpBtn({ p, m, onOpen }) {
   return <button type="button" className={"vd-cpdl" + (left ? "" : " got")} data-v="cp-open" data-p={p.id} onClick={onOpen}><Icon n={left ? "download" : "check"} c="xs" />{left ? "사용 가능한 쿠폰이 있어요!" : "받은 쿠폰 " + cs.length + "장 · 결제할 때 적용돼요"}</button>;
 }
 /* ---------- 카드 위쪽: 뱃지 · 제목 · 별점 → 가격 → 한눈에 보는 정보 (예전 pcHead · headView) ---------- */
-function PcHead({ p }) {
+/** 카드 맨 위 줄: 뱃지 + 오른쪽 ‘미리보기 N개’ 버튼 (예전 pcTag · 2026-11-08 — 썸네일 · 영상 위에서 이 자리로) */
+function PcTag({ p, bs, act }) {
+  const pvs = VOD().previewsOf(p);
+  if (!bs.length && !pvs.length) return null;
+  return <div className="vd-pc-tag">{bs.length ? <div className="vd-badges">{bs.map((b, i) => <span key={i} className={"vd-badge vd-b-" + b[1]}>{b[0]}</span>)}</div> : null}
+    {pvs.length ? <button type="button" className="vd-pc-pv" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><i><Icon n="play" /></i><span>미리보기 <b>{pvs.length}개</b></span></button> : null}</div>;
+}
+function PcHead({ p, act }) {
   const X = VOD(), { rt, lk, hp, end, eb, cdOn, bs, rows } = X.headView(p), fb = X.freshBand(p);
   return <>
-    {bs.length ? <div className="vd-badges">{bs.map((b, i) => <span key={i} className={"vd-badge vd-b-" + b[1]}>{b[0]}</span>)}</div> : null}
+    <PcTag p={p} bs={bs} act={act} />
     <h1 className="vd-pdt-h1">{p.title}</h1>
     <div className="vd-pdt-rate">{rt.n ? <><button type="button" data-v="jump" data-to="vd-s-reviews" onClick={() => jump("vd-s-reviews")}><span className="vd-stars sm"><Stars v={rt.avg} /></span><b>{rt.avg.toFixed(1)}</b><small>({rt.n})</small></button><i /></> : null}
       {X.isBook(p) ? (X.soldOf(p) ? <><span>판매 <b>{X.soldOf(p).toLocaleString()}권+</b></span><i /></> : null) : <><span>수강생 <b>{X.soldOf(p).toLocaleString()}명+</b></span><i /></>}
@@ -108,7 +116,7 @@ function BuyCard({ p, act }) {
   else price = own ? null : best ? <dl className="vd-pc-rows"><div><dt>쿠폰 적용가</dt><dd><b>{won(pr - best.off)}</b></dd></div></dl> : signup;
   const fl = X.flNote(p), rk = X.refundKey(p);
   return (
-    <div className={"vd-pc vd-pc8" + (ps.length ? " vd-pc-plans" : "")} id="vd-pdt-info"><PcHead p={p} />{fl ? <RawOne html={fl} /> : null}{price}
+    <div className={"vd-pc vd-pc8" + (ps.length ? " vd-pc-plans" : "")} id="vd-pdt-info"><PcHead p={p} act={act} />{fl ? <RawOne html={fl} /> : null}{price}
       {X.isEvent(p) && left != null ? <div className="vd-seat"><div><span>신청 현황</span><b>{p.seats - left} / {p.seats}명</b></div><i><u style={{ width: Math.round((p.seats - left) / p.seats * 100) + "%" }} /></i>{left && left <= 5 ? <small>마감까지 {left}자리 남았어요</small> : null}</div> : null}
       <CpBtn p={p} m={m} onOpen={act.cpOpen} />
       {X.plgView(p).give ? <button type="button" className="vd-plnudge" data-v="jump" data-to="vd-s-pledge" onClick={() => jump("vd-s-pledge")}><Icon n="pen" c="sm" /><span><b>다짐 한마디 쓰고 {won(window.DCS.price.PLEDGE.value)} 쿠폰 받기</b><small>{window.DCS.price.PLEDGE.min}자 이상 · 이 강의 전용 쿠폰</small></span><Icon n="chevRight" c="xs" /></button> : null}
@@ -118,12 +126,43 @@ function BuyCard({ p, act }) {
   );
 }
 
-/* ---------- 맨 위 썸네일 (예전 heroHtml — 대표 배너 + ‘미리보기 N개’ 버튼 · 2026-11-08 예전 v7 썸네일로 되돌림, 영상 자동 재생 없음) ---------- */
-function Hero({ p, act }) {
-  const X = VOD(), pvs = X.previewsOf(p);
+/* ---------- 맨 위: 넓은 썸네일(영상이 없을 때 · 예전 heroHtml) · 대표 영상(예전 heroVid — 붙이기 heroWire · 소리 heroSnd · 멈춤 heroPause 는 예전 함수 그대로) ---------- */
+function Hero({ p }) {
+  const X = VOD();
+  return <div className={"vd-pdt-banner vd-th-" + X.typeOf(p)}><RawOne html={X.bannerArt(p)} /></div>;
+}
+function HeroVid({ h }) {
+  const X = VOD();
   return (
-    <div className={"vd-pdt-banner vd-th-" + X.typeOf(p)}><RawOne html={X.bannerArt(p)} />
-      {pvs.length ? <button type="button" className="vd-pdt-play" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><i><Icon n="play" /></i><span>미리보기 <b>{pvs.length}개</b></span></button> : null}</div>
+    <div className="vd-pd8-media"><div className="vd-pdv" data-hero={h.k} data-src={h.src} data-st={h.st ? String(h.st) : undefined}>{h.id ? <RawOne html={X.heroPh(h)} /> : null}<div className="vd-pdv-slot" />
+      <button type="button" className="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기" onClick={(e) => X.heroSnd(e.currentTarget)}><span className="off"><Icon n="volumeX" c="sm" />소리 켜기</span><span className="on"><Icon n="volume2" c="sm" />소리 끄기</span></button></div></div>
+  );
+}
+/* ---------- 베스트 후기 (예전 bestHtml · 2026-11-08 탈잉 ‘베스트 리뷰’처럼) — 마스터가 고른 후기 · 다짐 · 고른 게 없으면 안 보여요 ---------- */
+/** 좌우 화살표 (예전 railArr + wireRails 의 data-arr) — 처음 · 끝에서는 그쪽 화살표가 꺼져요 · 마우스로 끌어 넘기기도 같이 */
+function RailArrows({ id, what }) {
+  const [st, setSt] = useState({ start: true, end: true });
+  useLayoutEffect(() => {
+    const el = document.getElementById(id); if (!el) return undefined;
+    const upd = () => { const e = VOD().railEnds(el); setSt((s) => (s.start === e.start && s.end === e.end ? s : { start: e.start, end: e.end })); };
+    let t = 0; const onSc = () => { clearTimeout(t); t = setTimeout(upd, 60); };
+    el.addEventListener("scroll", onSc, { passive: true }); upd();
+    const ro = "ResizeObserver" in window ? new ResizeObserver(upd) : null; if (ro) ro.observe(el);
+    VOD().dragWire(el);
+    return () => { el.removeEventListener("scroll", onSc); clearTimeout(t); if (ro) ro.disconnect(); };
+  }, [id]);
+  const move = (d) => { const el = document.getElementById(id); if (el) { const r = VOD().railStep(el); el.scrollBy({ left: d * r.step * r.per, behavior: "smooth" }); } };
+  return <span className="vd-best-arr">
+    <button type="button" className="vd-best-ab prev" data-v="rail" data-r={id} data-d="-1" data-arr={id} aria-label={"이전 " + what} disabled={st.start} onClick={() => move(-1)}><Icon n="chevLeft" c="sm" /></button>
+    <button type="button" className="vd-best-ab next" data-v="rail" data-r={id} data-d="1" data-arr={id} aria-label={"다음 " + what} disabled={st.end} onClick={() => move(1)}><Icon n="chevRight" c="sm" /></button></span>;
+}
+function Best({ p }) {
+  const bs = VOD().bestOf(p);
+  if (!bs.length) return null;
+  return (
+    <section className="vd-best" aria-label="베스트 후기"><div className="vd-best-h"><h2>베스트 후기</h2><RailArrows id="vd-r-best" what="후기" /></div>
+      <div className="vd-best-rail" id="vd-r-best" data-drag="">{bs.map((x) => { const to = "vd-s-" + (x.k === "pl" ? "pledge" : "reviews"); return (
+        <button key={x.k + x.id} type="button" className={"vd-best-c" + (x.k === "pl" ? " is-pl" : "")} data-v="jump" data-to={to} onClick={() => jump(to)}><span className="vd-best-ch">{x.k === "pl" ? <em className="vd-best-tag">다짐 한마디</em> : <span className="vd-stars sm"><Stars v={x.rating} /></span>}<b>{x.name}</b></span><span className="vd-best-t">{x.text}</span></button>); })}</div></section>
   );
 }
 /** 강사 코멘트 (강사 소개 칸 아래 — 예전 cmtHtml) */
@@ -260,6 +299,8 @@ function Fbar({ p, st, setSt, act }) {
 function PvModal({ p, lid, onClose }) {
   const X = VOD(), pvs = X.previewsOf(p), lz = X.lessons(p), ebook = X.typeOf(p) === "ebook";
   const [cur, setCur] = useState(() => pvs.find((l) => l.id === lid) || pvs[0] || lz.find((l) => l.id === lid));
+  // 창이 열려 있는 동안 맨 위 영상은 멈춰요 (예전 화면과 같은 heroPause — 닫으면 우리가 멈춘 것만 다시)
+  useEffect(() => { X.heroPause(true); return () => X.heroPause(false); }, [X]);
   if (!cur) return null;
   const vid = (l) => (ebook ? '<div class="vd-pl-ph">' + window.icon("book") + "<b>" + DB().esc(l.title) + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : X.videoHtml(l, true, "미리보기 영상을 준비하고 있어요"));
   const ch = X.chapOf(p, cur), c = X.ctaOf(p, X.me());
@@ -329,12 +370,15 @@ function Product({ p, n }) {
   // LIVE 이어지는 혜택 안내(예전 HTML) 안의 남은 시간
   useEffect(() => { const i = setInterval(() => document.querySelectorAll("#root .vd-fln [data-cd]").forEach((x) => { x.textContent = X.cdTxt(x.dataset.cd); }), 1000); return () => clearInterval(i); }, [X]);
   useEffect(() => { const root = document.getElementById("root"); if (root && X.hydrate) X.hydrate(root); }, [n, X]);
+  const hv = X.heroOf(p), hvSrc = hv ? hv.src : "";
+  // 맨 위 대표 영상: 그린 뒤 붙이기 (예전 화면과 같은 heroWire — 재생이 시작되면 대표 그림을 걷어요)
+  useEffect(() => { const root = document.getElementById("root"); if (root && hvSrc) X.heroWire(root); }, [p.id, n, X, hvSrc]);
   const t = v.t, bk = v.bk, info = v.info, faq = v.faq;
   return (
     <>
       <div className="vd-pd5 vd-pd8"><div className="vd-wrap"><nav className="vd-crumbs"><a href="#/vod">홈</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/" + p.cat}>{v.cat.label}</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/all?tab=" + (v.ev ? "premium" : bk ? "ebook" : t)}>{X.TYPE[t][0]}</a></nav>
-        <Hero p={p} act={act} /><div className="vd-pd8-g"><aside className="vd-pd8-side"><BuyCard p={p} act={act} /></aside>
-          <div className="vd-pd8-body"><nav className="vd-pd-tabs"><div className="vd-pd-tabs-in">{v.tabs.map((x, i) => <button key={x[0]} type="button" data-v="jump" data-to={"vd-s-" + x[0]} className={i === tab ? "on" : ""} onClick={() => jump("vd-s-" + x[0])}>{x[1]}</button>)}</div></nav>
+        {hv ? null : <Hero p={p} />}<div className={"vd-pd8-g" + (hv ? " has-vid" : "")}>{hv ? <HeroVid h={hv} /> : null}<aside className="vd-pd8-side"><BuyCard p={p} act={act} /></aside>
+          <div className="vd-pd8-body"><Best p={p} /><nav className="vd-pd-tabs"><div className="vd-pd-tabs-in">{v.tabs.map((x, i) => <button key={x[0]} type="button" data-v="jump" data-to={"vd-s-" + x[0]} className={i === tab ? "on" : ""} onClick={() => jump("vd-s-" + x[0])}>{x[1]}{x[2] ? <>{" "}<em>{x[2]}</em></> : null}</button>)}</div></nav>
             <Intro p={p} v={v} />
             {v.noCur ? null : <Curri p={p} v={v} act={act} />}
             <Reviews p={p} v={v} />

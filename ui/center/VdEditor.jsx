@@ -153,6 +153,8 @@ export function VdEditor({ r, n }) {
           <div className="vda-accs" role="group" aria-label="포인트 색 고르기">{X.ACC.map((c) => <button key={c} type="button" className="vda-acc" style={{ "--c": c }} data-action="vda-acc" data-c={c} aria-label={"포인트 색 " + c}></button>)}</div>
           <Row><Fd n="hook" label="강조 띠 문구" val={d.hook} at={{ maxLength: 20, placeholder: "예) 재고 0원 · 사업자 없이 시작" }} /><Fd n="tagline" label="강사 한 줄 소개" val={d.tagline} at={{ maxLength: 24, placeholder: "예) 뉴질랜드 건기식 브랜드 대표" }} /></Row>
           <Ta n="thumbText" label={<>썸네일 큰 제목 <small>(두 줄 · 둘째 줄은 포인트 색)</small></>} val={d.thumbText} rows={2} ph={"예) 건기식 브랜드\n0원 런칭"} />
+          <Fd n="teaser" label={<>상세 맨 위 영상 <small>(유튜브 · 비메오 · mp4 주소 · 비우면 이 썸네일)</small></>} val={d.teaser || ""} at={{ maxLength: 300, inputMode: "url", placeholder: "https://www.youtube.com/watch?v=…" }} help="넣으면 상세 맨 위에 이 영상이 소리 끈 채로 저절로 반복 재생돼요 (탈잉처럼 · PC는 왼쪽 위 · 휴대폰은 맨 위). 주소에 시작 시각(&t=1558s)이 있으면 그때부터 재생해요." />
+          <label className="a-check"><input type="checkbox" name="teaserOff" defaultChecked={!!d.teaserOff} /><span>상세 맨 위 영상 잠깐 끄기 <small className="a-muted">주소는 두고 썸네일만 보여요</small></span></label>
         </div></div>
       </Sec>
       <Sec no={4} t="상세페이지 · 클래스 소개" sub="상세페이지 이미지(JPG)를 올리면 ‘강의 소개’에 크게 이어 붙여 보여요. 이미지 없이 쓰면 이 순서로 보여요: 큰 제목 → 고민 말풍선 → POINT(배워요) → 강의 전/후 → 추천 대상 → 상세 소개. ‘미리보기’를 켠 강의는 상세 ‘미리보기’ 칸에 모여요.">

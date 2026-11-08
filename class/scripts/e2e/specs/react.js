@@ -458,8 +458,8 @@ module.exports = {
         const out = [], has = async (sel) => !!(await pg.$(sel));
         if (await has("#vd-pdt-info [data-plan][value='180']")) await step(out, () => pg.check("#vd-pdt-info [data-plan][value='180']", { force: true }));
         if (await has("#vd-pdt-info [data-plan-coach]")) await step(out, () => pg.check("#vd-pdt-info [data-plan-coach]", { force: true }));
-        if (await has(".vd-pdt-play")) {
-          await step(out, () => pg.click(".vd-pdt-play"), 500);
+        if (await has(".vd-pc-pv")) {
+          await step(out, () => pg.click(".vd-pc-pv"), 500);
           if (await has(".vd-pvm-l button:nth-of-type(2)")) await step(out, () => pg.click(".vd-pvm-l button:nth-of-type(2)"), 500);
           await step(out, () => pg.click("#modal-root .vd-modal-h button"), 300);
         }
@@ -508,6 +508,58 @@ module.exports = {
       await run.check(b3.done && !b3.draft && a3.done, "지원서(React): 다 채워 보내면(서버가 받으면) 완료 카드 · 쓰던 내용은 지워요", { done: b3.done, draft: b3.draft }, pg);
       await run.check(lk && lk1.on && lk1.liked && lk1.n === lk.n + 1 && /찜한 강의에 담았어요|오픈하면/.test(String(lk1.toast)) && !lk2.on && !lk2.liked, "목록 찜(React): 하트 켜짐 · 찜 수 +1 · 알림 → 다시 누르면 풀려요", { lk, lk1, lk2 }, pg);
       await pg.context().close();
+    }
+    // 3) 클래스 상세 (2026-11-08 · 탈잉처럼): 회원 다짐 → 마스터 ‘베스트로’ · 클래스 편집 ‘상세 맨 위 영상’ → 상세: 왼쪽 위 영상 · 탭 위 베스트 후기 · ‘다짐 · 후기 N’ · 뱃지 줄 미리보기
+    //    — 예전 화면 = React (PC · 휴대폰) · 끝나면 베스트 · 영상을 되돌려요. 유튜브는 시험 환경에서 막혀 있어 가짜 플레이어 주소로 (영상 칸 안쪽은 비교에서 빼요)
+    {
+      const PID = "v2", TXT = "베스트로 고를 다짐이에요. 매일 30분씩 끝까지 따라 해 볼게요!", URL = "https://www.youtube.com/watch?v=j7TDQ-D1M1s&t=1558s";
+      const fake = (p) => p.route(/youtube-nocookie\.com\/embed\//, (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><body style='background:#000'></body>" }));
+      const mp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(mp, "베스트 후기 · 상단 영상");
+      await F.member(mp, base, em, pw); await fake(mp);
+      await L.open(mp, base, "/vod/p/" + PID);
+      await mp.fill("[data-vd-pledge] textarea[name=text]", TXT); await mp.click("[data-vd-pledge] button[type=submit]"); await mp.waitForTimeout(1500); await L.flushed(mp);
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "마스터 베스트 · 영상");
+      await F.master(ap, base, info); await L.reactCookie(ap, base, "all");
+      const best = async (on) => {
+        await L.open(ap, base, "/center/master/vod-members"); await ap.click('[data-action="vda-mt"][data-k="pledges"]'); await ap.waitForTimeout(400);
+        const b = await ap.evaluateHandle((t) => { const tr = Array.from(document.querySelectorAll(".vda-table tbody tr")).find((x) => x.textContent.indexOf(t) >= 0); return tr ? tr.querySelector('[data-action="vda-pl-best"]') : null; }, TXT);
+        const el = b.asElement(); if (!el) return null;
+        const label = (await el.textContent()).trim(); await el.click(); await ap.waitForTimeout(700); await L.flushed(ap);
+        return { label, toast: await L.toasts(ap), pill: await ap.evaluate((t) => { const tr = Array.from(document.querySelectorAll(".vda-table tbody tr")).find((x) => x.textContent.indexOf(t) >= 0); return tr ? Array.from(tr.querySelectorAll(".a-pill")).map((x) => x.textContent).join(",") : null; }, TXT) };
+      };
+      const teaser = async (u) => {
+        await L.open(ap, base, "/center/master/vod-classes/" + PID); await ap.waitForTimeout(500);
+        await ap.fill('#vda-form input[name="teaser"]', u); await ap.click('button[type="submit"][form="vda-form"]'); await ap.waitForTimeout(900); await L.flushed(ap);
+        return { toast: await L.toasts(ap), val: await ap.$eval('#vda-form input[name="teaser"]', (x) => x.value).catch(() => null) };
+      };
+      const b1 = await best(true), t1 = await teaser(URL);
+      // 상세: 예전 화면 · React 같은 모양 (PC · 휴대폰) + 영상 칸 · 베스트 카드 · 탭 숫자 · 미리보기 자리
+      const look = async (vp) => {
+        const pg = await L.newPage(browser, { viewport: vp, isMobile: vp.width < 600, hasTouch: vp.width < 600 }); await fake(pg);
+        const out = {};
+        for (const mode of ["off", "all"]) {
+          await L.reactCookie(pg, base, mode); await L.open(pg, base, "/vod/p/" + PID); await pg.waitForTimeout(900);
+          out[mode] = { shape: await L.domShape(pg), info: await pg.evaluate((t) => { const v = document.querySelector(".vd-pd8-g.has-vid > .vd-pd8-media .vd-pdv"), c = Array.from(document.querySelectorAll(".vd-best-c")); const tab = Array.from(document.querySelectorAll(".vd-pd-tabs button")).map((b) => b.textContent.trim()).find((x) => /^다짐 · 후기/.test(x)) || ""; return { vid: !!v && v.dataset.hero === "yt" && v.dataset.st === "1558" && /start=1558/.test(v.dataset.src) && !document.querySelector(".vd-pdt-banner"), best: c.length, mine: c.some((x) => x.classList.contains("is-pl") && x.textContent.indexOf(t) >= 0), tab, nRv: document.querySelectorAll(".vd-rv-list > li").length, nPl: document.querySelectorAll(".vd-pls > li").length, pv: !!document.querySelector(".vd-pc-tag .vd-pc-pv"), iframe: !!document.querySelector(".vd-pdv-slot iframe") }; }, TXT) };
+        }
+        await pg.context().close();
+        return out;
+      };
+      const pcL = await look({ width: 1280, height: 900 }), mbL = await look({ width: 390, height: 844 });
+      const dPc = L.shapeDiff(pcL.off.shape, pcL.all.shape), dMb = L.shapeDiff(mbL.off.shape, mbL.all.shape), I = pcL.all.info;
+      await run.check(!!b1 && b1.label === "베스트로" && /베스트/.test(String(b1.pill)) && /베스트 후기로 골랐어요/.test(b1.toast) && t1.val === URL, "마스터: 다짐 한마디 ‘베스트로’ → 베스트 표시 · 클래스 편집 ‘상세 맨 위 영상’에 유튜브 주소 저장", { b1, t1 }, ap);
+      await run.check(I.vid && I.best >= 1 && I.mine && I.tab === "다짐 · 후기 " + (I.nRv + I.nPl) && I.pv && I.iframe && JSON.stringify(pcL.off.info) === JSON.stringify(I) && JSON.stringify(mbL.off.info) === JSON.stringify(mbL.all.info),
+        "클래스 상세: 영상이 있으면 왼쪽 위 16:9 영상(25분 58초부터 · 붙임) · 탭 위 ‘베스트 후기’ 카드 · 탭 ‘" + I.tab + "’(후기 + 다짐) · 미리보기는 뱃지 줄 오른쪽 (예전 화면 = React)", { pc: pcL, mb: { off: mbL.off.info, all: mbL.all.info } }, mp);
+      await run.check(!dPc && !dMb, "클래스 상세(영상 · 베스트 후기): 예전 화면과 React 화면이 같은 모양 (PC · 휴대폰)", [dPc, dMb]);
+      // 되돌리기: 베스트 빼기 · 영상 지우기 → 넓은 썸네일 · 베스트 줄 없음
+      const b2 = await best(false), t2 = await teaser("");
+      await L.reactCookie(mp, base, "all"); await L.open(mp, base, "/vod/p/" + PID); await mp.waitForTimeout(700);
+      const back = await mp.evaluate(() => ({ banner: !!document.querySelector(".vd-pdt-banner"), vid: !!document.querySelector(".vd-pdv"), best: !!document.querySelector(".vd-best") }));
+      await run.check(!!b2 && b2.label === "베스트 빼기" && /베스트 후기에서 뺐어요/.test(b2.toast) && t2.val === "" && back.banner && !back.vid && !back.best, "되돌리기: ‘베스트 빼기’ · 영상 주소를 비우면 예전 넓은 썸네일 · 베스트 후기 줄 없음", { b2, t2, back }, mp);
+      const del = await mp.evaluate((t) => { const li = Array.from(document.querySelectorAll(".vd-pls li")).find((x) => x.textContent.indexOf(t) >= 0); const b = li && li.querySelector("[data-v='pl-del']"); if (b) b.click(); return !!b; }, TXT);
+      if (del) { await mp.waitForTimeout(500); await L.flushed(mp); }
+      await ap.context().close(); await mp.context().close();
     }
   }
 };

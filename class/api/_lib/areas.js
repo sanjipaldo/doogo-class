@@ -250,7 +250,9 @@ const TABLES = [
     ["mid", "text", (v) => txt(v.mid), "회원 id"],
     ["name", "text", (v) => txt(v.name), "이름"],
     ["rating", "int", (v) => num(v.rating), "별점"],
+    ["text", "text", (v) => txt(v.text, 500), "후기 글 (앞 500자)"],
     ["hidden", "bool", (v) => !!(v.hidden || v.hide), "숨김"],
+    ["best", "bool", (v) => !!v.best, "베스트 후기 (클래스 상세 탭 위 카드 줄 · 마스터가 골라요)"],
     ["at", "time", (v) => num(v.at), "시각(한국 시간)"]
   ] },
   { area: "B5", table: "pledges", label: "수강 다짐", prefix: "vpl:", index: ["pid"], cols: [
@@ -260,6 +262,8 @@ const TABLES = [
     ["nick", "text", (v) => txt(v.nick), "닉네임"],
     ["text", "text", (v) => txt(v.text, 500), "다짐 글"],
     ["up", "int", (v) => num(v.up), "응원 수"],
+    ["hidden", "bool", (v) => !!v.hidden, "숨김"],
+    ["best", "bool", (v) => !!v.best, "베스트 후기 (클래스 상세 탭 위 카드 줄 · 마스터가 골라요)"],
     ["at", "time", (v) => num(v.at), "시각(한국 시간)"]
   ] },
   { area: "B5", table: "payout_lists", label: "강사 정산 지급 목록", prefix: "vpo:", cols: [
@@ -288,7 +292,8 @@ const TABLES = [
       ["status", "text", (x) => txt(x.status), "상태"],
       ["price", "int", (x) => num(x.price), "정가"],
       ["sale", "int", (x) => num(x.sale), "할인가"],
-      ["cat", "text", (x) => txt(x.cat), "분류"]
+      ["cat", "text", (x) => txt(x.cat), "분류"],
+      ["teaser", "text", (x) => txt(x.teaser), "상세 맨 위 영상 주소 (유튜브 · 비메오 · mp4 — 없으면 썸네일)"]
     ] },
     { table: "coupons", label: "쿠폰 (meta · vcat)", index: ["code"], rows: (v, k) => arr(k === "meta" ? isObj(v.vod) && v.vod.coupons : k === "vcat" ? v.coupons : null), cols: [
       ["id", "text", (x) => txt(x.id), "쿠폰 id"],

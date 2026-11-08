@@ -147,7 +147,7 @@ CREATE INDEX IF NOT EXISTS member_inquiries_mid ON app.member_inquiries (mid);
 
 CREATE INDEX IF NOT EXISTS member_inquiries_at ON app.member_inquiries (at);
 
-CREATE TABLE IF NOT EXISTS app.reviews (k text PRIMARY KEY, id text, pid text, mid text, name text, rating integer, hidden boolean, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
+CREATE TABLE IF NOT EXISTS app.reviews (k text PRIMARY KEY, id text, pid text, mid text, name text, rating integer, text text, hidden boolean, best boolean, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS reviews_updated ON app.reviews (updated);
 
@@ -155,7 +155,7 @@ CREATE INDEX IF NOT EXISTS reviews_pid ON app.reviews (pid);
 
 CREATE INDEX IF NOT EXISTS reviews_mid ON app.reviews (mid);
 
-CREATE TABLE IF NOT EXISTS app.pledges (k text PRIMARY KEY, id text, pid text, mid text, nick text, text text, up integer, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
+CREATE TABLE IF NOT EXISTS app.pledges (k text PRIMARY KEY, id text, pid text, mid text, nick text, text text, up integer, hidden boolean, best boolean, at timestamp, v text, ver integer NOT NULL DEFAULT 1, updated bigint NOT NULL, created bigint NOT NULL);
 
 CREATE INDEX IF NOT EXISTS pledges_updated ON app.pledges (updated);
 
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS app.settings (k text PRIMARY KEY, name text, items in
 
 CREATE INDEX IF NOT EXISTS settings_updated ON app.settings (updated);
 
-CREATE TABLE IF NOT EXISTS app.products (k text NOT NULL, i integer NOT NULL, id text, type text, iid text, title text, status text, price integer, sale integer, cat text, PRIMARY KEY (k, i));
+CREATE TABLE IF NOT EXISTS app.products (k text NOT NULL, i integer NOT NULL, id text, type text, iid text, title text, status text, price integer, sale integer, cat text, teaser text, PRIMARY KEY (k, i));
 
 CREATE INDEX IF NOT EXISTS products_id ON app.products (id);
 
@@ -585,7 +585,11 @@ COMMENT ON COLUMN app.reviews.name IS '이름';
 
 COMMENT ON COLUMN app.reviews.rating IS '별점';
 
+COMMENT ON COLUMN app.reviews.text IS '후기 글 (앞 500자)';
+
 COMMENT ON COLUMN app.reviews.hidden IS '숨김';
+
+COMMENT ON COLUMN app.reviews.best IS '베스트 후기 (클래스 상세 탭 위 카드 줄 · 마스터가 골라요)';
 
 COMMENT ON COLUMN app.reviews.at IS '시각(한국 시간)';
 
@@ -606,6 +610,10 @@ COMMENT ON COLUMN app.pledges.nick IS '닉네임';
 COMMENT ON COLUMN app.pledges.text IS '다짐 글';
 
 COMMENT ON COLUMN app.pledges.up IS '응원 수';
+
+COMMENT ON COLUMN app.pledges.hidden IS '숨김';
+
+COMMENT ON COLUMN app.pledges.best IS '베스트 후기 (클래스 상세 탭 위 카드 줄 · 마스터가 골라요)';
 
 COMMENT ON COLUMN app.pledges.at IS '시각(한국 시간)';
 
@@ -750,6 +758,8 @@ COMMENT ON COLUMN app.products.price IS '정가';
 COMMENT ON COLUMN app.products.sale IS '할인가';
 
 COMMENT ON COLUMN app.products.cat IS '분류';
+
+COMMENT ON COLUMN app.products.teaser IS '상세 맨 위 영상 주소 (유튜브 · 비메오 · mp4 — 없으면 썸네일)';
 
 COMMENT ON TABLE app.coupons IS '2부 · 쿠폰 (meta · vcat) — 한 줄 = 한 건 (k = 어느 문서에서 나왔는지 · i = 문서 안 순서)';
 

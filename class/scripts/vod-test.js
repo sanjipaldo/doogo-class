@@ -2596,6 +2596,49 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     }
   }
 
+  {
+    console.log("41) 클래스 상세 (2026-11-08): 다짐 · 후기 탭 한 숫자 · 베스트 후기(마스터만 골라요) · 맨 위 대표 영상(탈잉처럼) · 한 건씩 표 열");
+    const AC = require(path.join(TMP, "class/api/_lib/access.js")), OO = require(path.join(TMP, "class/api/_lib/oneoff.js")), AR = require(path.join(TMP, "class/api/_lib/areas.js"));
+    const cl = (x) => JSON.parse(JSON.stringify(x));
+    const mine = { vod: { mid: "m1", owns: ["v2"], nos: [] } }, other = { vod: { mid: "m2", owns: [], nos: [] } }, master = { admin: { role: "master" } };
+    // 베스트 후기: 마스터만 켜고 끄고 · 회원이 자기 후기를 고쳐도 그대로 · 회원은 못 켜요
+    const r0 = { id: "r1", pid: "v2", mid: "m1", name: "홍OO", rating: 5, text: "강의가 정말 좋았어요. 바로 따라 했어요.", at: 1 };
+    const r1 = AC.writer("vr:r1", master, false).fix(cl(r0), Object.assign(cl(r0), { best: true }));
+    const r2 = AC.writer("vr:r1", mine, false).fix(cl(r1), Object.assign(cl(r1), { text: "고친 후기예요. 정말 좋았어요.", best: false }));
+    const rN = AC.writer("vr:r2", mine, true).fix(null, { id: "r2", pid: "v2", mid: "m1", name: "홍OO", rating: 5, text: "새 후기예요. 정말 좋아요!", best: true, at: 2 });
+    const rOff = AC.writer("vr:r1", master, false).fix(cl(r2), (() => { const x = cl(r2); delete x.best; return x; })());
+    ok(r1.best === true && r2.best === true && r2.text === "고친 후기예요. 정말 좋았어요." && rN && !rN.best && !rOff.best, "베스트 후기: 마스터가 켜고 끄고 · 회원이 자기 후기를 고쳐도 그대로 · 새 후기에 회원이 켤 수 없어요", { r2: r2.best, rN, rOff: rOff.best });
+    // 베스트 다짐: 마스터가 켜고 · 남이 공감하거나 본인이 고쳐도 그대로 · 새 다짐에 회원이 못 켜요
+    const p0 = { id: "p1", pid: "v2", mid: "m1", nick: "웃는 망고", text: "매일 30분씩 강의를 듣고 배운 걸 바로 따라 해 볼게요!", at: 1, up: 0, upBy: [] };
+    const p1 = AC.writer("vpl:p1", master, false).fix(cl(p0), Object.assign(cl(p0), { best: true }));
+    const p2 = AC.writer("vpl:p1", other, false).fix(cl(p1), Object.assign(cl(p1), { upBy: ["m2"], best: false }));
+    const p3 = AC.writer("vpl:p1", mine, false).fix(cl(p2), Object.assign(cl(p2), { text: "매일 1시간씩 꼭 들으면서 끝까지 따라 해 볼게요!", best: false }));
+    const pN = AC.writer("vpl:p9", mine, true).fix(null, { id: "p9", pid: "v2", nick: "웃는 망고", text: "새로 쓰는 다짐이에요. 끝까지 꼭 해 볼게요!", best: true });
+    ok(p1.best === true && p2.best === true && p2.up === 1 && p3.best === true && /1시간/.test(p3.text) && pN && !pN.best, "베스트 다짐: 마스터가 켜고 · 남이 공감하거나 본인이 고쳐도 그대로 · 새 다짐에 회원이 켤 수 없어요", { p2: [p2.best, p2.up], p3: p3.best, pN });
+    // 한 건씩 표: 후기 · 다짐 · 상품 열
+    const T = (n) => AR.TABLES.find((t) => t.table === n), C = (n) => AR.CHILDREN.find((c) => c.table === n);
+    const col = (t, name) => t.cols.find((x) => x[0] === name), rv = T("reviews"), pl = T("pledges"), pt = col(C("products"), "teaser");
+    ok(col(rv, "best")[2](r1, "vr:r1") === true && col(rv, "best")[2](r0, "vr:r1") === false && col(rv, "text")[2](r1, "vr:r1") === r1.text && col(pl, "best")[2](p1, "vpl:p1") === true && col(pl, "hidden")[2](Object.assign(cl(p0), { hidden: true }), "vpl:p1") === true && col(pl, "hidden")[2](p0, "vpl:p1") === false && !!pt && pt[2]({ teaser: "https://youtu.be/x" }) === "https://youtu.be/x" && pt[2]({}) === null,
+      "DB 한 건씩 표: 후기(reviews)에 후기 글 · 베스트 열 · 다짐(pledges)에 숨김 · 베스트 열 · 상품(products)에 상세 맨 위 영상 주소 열");
+    // 일회성: AI 굿즈 클래스(v2) 상세 맨 위 영상
+    const m0 = { vod: { products: [{ id: "v2", title: "AI로 그림 그리고 굿즈로 파는 법", teaserOff: true, price: 1 }, { id: "v3", title: "귤" }] }, other: 1 };
+    const w = OO.v2Teaser((k) => (k === "meta" ? cl(m0) : null)), vp = w.writes.meta.vod.products;
+    ok(vp[0].teaser === "https://www.youtube.com/watch?v=j7TDQ-D1M1s&t=1558s" && !("teaserOff" in vp[0]) && vp[0].price === 1 && vp[1].title === "귤" && !("teaser" in vp[1]) && w.writes.meta.other === 1 && m0.vod.products[0].teaserOff === true,
+      "일회성(AI 굿즈 영상): v2 상세 맨 위 영상에 대표님 유튜브 주소(25분 58초부터) · 잠깐 끄기는 풀어요 · 다른 칸 · 다른 클래스는 그대로", vp[0]);
+    const m1 = cl(m0); m1.vod.products[0].teaser = "https://youtu.be/other";
+    const w2 = OO.v2Teaser((k) => (k === "meta" ? w.writes.meta : null)), w3 = OO.v2Teaser((k) => (k === "meta" ? m1 : null)), w4 = OO.v2Teaser(() => null), w5 = OO.v2Teaser((k) => (k === "meta" ? { vod: { products: [{ id: "v2", title: "다른 클래스" }] } } : null));
+    ok([w2, w3, w4, w5].every((x) => !Object.keys(x.writes).length) && OO.OPS.some((x) => x.id === "2026-11-08-v2-teaser" && x.run === OO.v2Teaser) && OO.OPS.findIndex((x) => x.id === "2026-11-08-v2-teaser") > OO.OPS.findIndex((x) => x.id === "2026-11-05-live-lectures"),
+      "일회성(AI 굿즈 영상): 다시 돌려도 · 마스터가 이미 넣은 영상이 있으면 · 클래스가 없거나 이름이 다르면 그대로 · 작업 목록 맨 뒤", { w3: w3.result, w5: w5.result });
+    // 화면 코드: 탭 숫자 · 영상은 마스터가 넣은 것만 · 미리보기 버튼 자리 · 베스트 후기 (예전 화면 · React 같은 모양)
+    const vj = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), pj = fs.readFileSync(path.join(ROOT, "../ui/store/ProductPage.jsx"), "utf8");
+    ok(/\["reviews", bk \? "다짐 · 독자 후기" : "다짐 · 후기", rs\.length \+ pls\.length\]/.test(vj) && /x\[2\] \? " <em>" \+ x\[2\] \+ "<\/em>" : ""/.test(vj) && /x\[2\] \? <>\{" "\}<em>\{x\[2\]\}<\/em><\/> : null/.test(pj),
+      "탭 ‘다짐 · 후기 N’: 후기 + 다짐 한마디를 한 숫자로 · 숫자는 빨간 글씨 (예전 화면 · React)");
+    ok(/if \(!p \|\| p\.teaserOff\) return null;/.test(vj) && /String\(p\.teaser \|\| ""\)\.trim\(\)/.test(vj) && !/previewsOf\(p\)\.find\(\(l\) => l\.video\)/.test(vj) && /st = tStart\(u\)/.test(vj) && /\(st \? "&start=" \+ st : ""\)/.test(vj),
+      "맨 위 대표 영상: 마스터가 넣은 영상만 (미리보기 강의 영상으로 대신하지 않아요) · 주소의 시작 시각부터 · 없으면 예전 넓은 썸네일");
+    ok(/class="vd-pc-tag"/.test(vj) && /className="vd-pc-tag"/.test(pj) && !/vd-pdt-play/.test(vj) && !/vd-pdt-play/.test(pj) && /r\.best/.test(vj) && /x\.best/.test(vj) && /<Best p=\{p\} \/>/.test(pj),
+      "‘미리보기 N개’는 카드 뱃지 줄 오른쪽(썸네일 위에서 뺌) · 베스트 후기 줄은 탭 위 (예전 화면 · React)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

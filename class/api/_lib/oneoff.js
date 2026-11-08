@@ -877,6 +877,22 @@ function liveLectures(get, keys) {
   return { writes, result };
 }
 
+/* ---------- AI 굿즈 클래스 상세 맨 위 영상 (대표님 요청 2026-11-08 · 탈잉처럼 저절로 도는 영상) ----------
+ * ‘AI로 그림 그리고 굿즈로 파는 법’(v2) 상세 맨 위에 대표님이 준 유튜브 주소 그대로 (주소의 25분 58초부터 재생)
+ * 영상 칸이 비어 있을 때만 넣고(마스터가 이미 다른 영상을 넣었으면 그대로), ‘영상 잠깐 끄기’가 켜져 있으면 끕니다 — 클래스가 없거나 이름이 다르면 건너뛰어요 */
+const V2_TEASER = "https://www.youtube.com/watch?v=j7TDQ-D1M1s&t=1558s";
+function v2Teaser(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod) || !Array.isArray(meta.vod.products)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  const i = meta.vod.products.findIndex((p) => isObj(p) && p.id === "v2" && /굿즈/.test(String(p.title || "")));
+  if (i < 0) return { writes: {}, result: { skipped: "AI 굿즈 클래스(v2) 없음" } };
+  if (String(meta.vod.products[i].teaser || "").trim()) return { writes: {}, result: { teaser: "이미 있음 (그대로)" } };
+  const v = clone(meta.vod), p = Object.assign({}, v.products[i], { teaser: V2_TEASER });
+  delete p.teaserOff;
+  v.products[i] = p;
+  return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result: { teaser: "넣음", start: "25:58" } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -909,6 +925,7 @@ const OPS = [
   { id: "2026-11-03-moon-cohort-dates", note: "문대표 기수 일정: 1기 1/24~2/21 · 2기 8/29~9/23(5주차 수) · 지금 4기(11/21)를 3기로 + 5주차 보너스 강의 12/15(화) · 챌린지 4회(11/25 · 12/2 · 12/9 · 12/16) · 예시였던 예전 3기(10/1) 지우기", run: moonCohortDates },
   { id: "2026-11-04-moon-cal-v2", note: "문대표 수업 캘린더: 강의 녹화본 업로드를 오프라인 강의 이틀 뒤로 · 일정 종류 ‘온라인 강의’ · 3기 12/15 5주차 보너스 강의 → 5주차 온라인 강의 · 특강(행사) → 초청강사", run: moonCalV2 },
   { id: "2026-11-05-live-lectures", note: "두잉고 LIVE 기수 정리: 문대표 말고 다른 강사 기수 지우기(수강생 · 이용료 기록이 있으면 남김) · 문대표 1~3기만 · 3기 메인 강사 강의(주차마다 날짜 · 시간 · 끝나는 시간 · 장소 · 주제) · 5주차 줌 강의 12/15 19:00~22:00", run: liveLectures },
+  { id: "2026-11-08-v2-teaser", note: "AI 굿즈 클래스(v2) 상세 맨 위 영상: 유튜브 주소(25분 58초부터) — 영상 칸이 비어 있을 때만", run: v2Teaser },
 ];
 
-module.exports = { OPS, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

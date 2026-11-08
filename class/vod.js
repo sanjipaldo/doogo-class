@@ -2091,8 +2091,9 @@
     const bk = t === "book", noCur = bk && !(p.curriculum || []).length;
     const curName = t === "ebook" || bk ? "목차" : ev ? "진행 순서" : "커리큘럼", unit = (l) => (t === "ebook" || bk ? (Number(l.min) || 0) + "쪽" : lLen(l));
     const faq = ((p.faq || []).length ? p.faq : bk ? [["언제 받을 수 있나요?", "결제 후 " + (Number(shipSet().outDays) || 2) + "일 안에(주말 · 공휴일 빼고) 보내 드리고, 보통 보낸 다음 날 도착해요. 송장 번호는 마이페이지 › 종이책 · 배송 조회에 올라가요."], ["배송지를 바꿀 수 있나요?", "책을 보내기 전(결제 완료)이면 마이페이지에서 바로 바꿀 수 있어요."], ["여러 권을 살 수 있나요?", "한 번에 " + BOOK_MAX + "권까지 살 수 있어요. 배송비는 주문마다 한 번만 내요."], ["쿠폰을 쓸 수 있나요?", "도서정가제에 따라 종이책에는 쿠폰을 쓸 수 없어요. 포인트는 쓸 수 있어요."]] : t === "ebook" ? [["전자책은 어떻게 받나요?", "결제하면 마이페이지 › 전자책에서 바로 내려받을 수 있어요."], ["휴대폰에서도 볼 수 있나요?", "PDF라서 휴대폰 · 태블릿 · PC 어디서든 볼 수 있어요."]] : ev ? [["입장 링크 · 주소는 언제 오나요?", "신청하면 마이페이지 › LIVE · 오프라인에서 바로 확인할 수 있고, 강의 하루 전에 문자로도 보내 드려요."], ["못 가게 되면 어떻게 하나요?", "강의 3일 전까지 취소하면 전액 환불해 드려요."]] : [["처음 시작하는 사람도 들을 수 있나요?", "처음 접하는 분이 전체 흐름을 이해하도록 구성했어요."], ["수업은 어떻게 듣나요?", "구매하면 바로 ‘내 강의실’에서 볼 수 있어요. " + accessTxt(p) + "이에요."]]);
-    // 탭 5개 (2026-11-07 · 탈잉 · 프레스런처럼): 클래스 소개 · 커리큘럼(미리보기 포함) · 후기(다짐 포함) · 강사 소개 · 이용 안내(강의 정보 · 수강권 · FAQ · 환불) — 화면 순서도 탭 순서 그대로
-    const tabs = [["intro", bk ? "책 소개" : "클래스 소개"]].concat(noCur ? [] : [["curri", curName]]).concat([["reviews", (bk ? "독자 후기" : "후기") + (rs.length ? " " + rs.length : "")], ["creator", bk ? "저자 소개" : "강사 소개"], ["info", bk ? "도서 · 배송 안내" : "이용 안내"]]);
+    // 탭 5개 (2026-11-07 · 탈잉 · 프레스런처럼): 클래스 소개 · 커리큘럼(미리보기 포함) · 다짐 · 후기 · 강사 소개 · 이용 안내(강의 정보 · 수강권 · FAQ · 환불) — 화면 순서도 탭 순서 그대로
+    //  [키, 이름, 숫자] — 2026-11-08: ‘다짐 · 후기’ 탭은 후기 + 다짐 한마디를 한 숫자로 (탈잉 ‘리뷰 613’처럼 숫자는 빨간 글씨 · 0이면 숫자 없음)
+    const tabs = [["intro", bk ? "책 소개" : "클래스 소개"]].concat(noCur ? [] : [["curri", curName]]).concat([["reviews", bk ? "다짐 · 독자 후기" : "다짐 · 후기", rs.length + pls.length], ["creator", bk ? "저자 소개" : "강사 소개"], ["info", bk ? "도서 · 배송 안내" : "이용 안내"]]);
     const pains = pdText(p, "pains"), before = pdText(p, "before"), after = pdText(p, "after"), dm = detailModeOf(p), dimg = detailImgsHtml(p);
     const info = bk ? [["도서명", p.title], ["종류", "종이책 (택배 배송)"]].concat(bookRows(p)).concat([["교환 · 반품", "받은 날부터 7일 이내 (파손 · 파본은 3개월 이내)"]]) : [["강의명", p.title], ["크리에이터", p.creator + (p.tagline ? " · " + p.tagline : "")], ["강의 종류", TYPE[t][0] + " (" + TYPE[t][2] + ")"]].concat(infoRows(p)).concat([["강의 자료", lz.some((l) => (l.files || []).length) ? "강의 노트 · 첨부 자료 제공" : t === "ebook" ? "PDF 파일" : "강의 노트 제공"], ["수강 기기", "PC · 모바일 · 태블릿 (스트리밍 · 기기 4대)"]].concat(t === "vod" ? [["수강 기간", periodTxt(p)]] : []).concat(dgOpen(p) ? [["강의실", p.creator + " 강사 두잉고 강의실 (강의 영상 · 교재 · 업데이트 소식)"]] : []).concat([["환불", refundTbl()[refundKey(p)][0][0] + " " + refundTbl()[refundKey(p)][0][1]]]));
     return { m, own, rt, rs, lz, cat, pls, t, ev, pvs, ins, insB, lp, career, pool, related, usedIns, mine, dist, canReview, hl, myNick, sec, bk, noCur, curName, unit, faq, tabs, pains, before, after, dm, dimg, info };
@@ -2100,11 +2101,12 @@
   function pageProduct(id) {
     const p = product(id); if (!p || p.status === "hidden" || !insShown(p)) return shell("", '<div class="vd-wrap">' + emptyBox("alert", "판매 중인 클래스가 아니에요", "", '<a class="vd-btn vd-btn-o" href="#/vod">홈으로</a>') + "</div>");
     const { m, own, rt, rs, lz, cat, pls, t, ev, pvs, ins, insB, lp, career, related, dist, canReview, hl, myNick, sec, bk, noCur, curName, unit, faq, tabs, pains, before, after, dm, dimg, info } = productView(p);
-    // [PC] 맨 위 넓은 썸네일(예전 v7 그대로 · 2026-11-08 되돌림) → 아래 왼쪽 탭 · 본문 | 오른쪽 따라오는 카드(제목 · 별점 · 가격 · 정보 · 수강권 · 버튼)
-    // [휴대폰] 썸네일(화면 끝까지) → 카드 → 탭 → 본문
+    // 대표 영상이 있으면(2026-11-08 · 탈잉 배치) [PC] 왼쪽 위 16:9 영상 → 베스트 후기 → 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 영상(화면 끝까지) → 카드 → 베스트 후기 → 탭 → 본문
+    // 영상이 없으면 예전 v7 그대로 [PC] 맨 위 넓은 썸네일 → 아래 왼쪽 베스트 후기 → 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 썸네일(화면 끝까지) → 카드 → 베스트 후기 → 탭 → 본문
+    const hv = heroOf(p);
     return shell("", '<div class="vd-pd5 vd-pd8"><div class="vd-wrap"><nav class="vd-crumbs"><a href="#/vod">홈</a>' + icon("chevRight", "xs") + '<a href="#/vod/c/' + esc(p.cat) + '">' + esc(cat.label) + "</a>" + icon("chevRight", "xs") + '<a href="#/vod/c/all?tab=' + (ev ? "premium" : bk ? "ebook" : t) + '">' + esc(TYPE[t][0]) + "</a></nav>" +
-      heroHtml(p) + '<div class="vd-pd8-g"><aside class="vd-pd8-side">' + buyCard(p) + "</aside>" +
-      '<div class="vd-pd8-body"><nav class="vd-pd-tabs"><div class="vd-pd-tabs-in">' + tabs.map((x, i) => '<button type="button" data-v="jump" data-to="vd-s-' + x[0] + '" class="' + (i === 0 ? "on" : "") + '">' + x[1] + "</button>").join("") + "</div></nav>" +
+      (hv ? "" : heroHtml(p)) + '<div class="vd-pd8-g' + (hv ? " has-vid" : "") + '">' + (hv ? heroVid(p, hv) : "") + '<aside class="vd-pd8-side">' + buyCard(p) + "</aside>" +
+      '<div class="vd-pd8-body">' + bestHtml(p) + '<nav class="vd-pd-tabs"><div class="vd-pd-tabs-in">' + tabs.map((x, i) => '<button type="button" data-v="jump" data-to="vd-s-' + x[0] + '" class="' + (i === 0 ? "on" : "") + '">' + x[1] + (x[2] ? " <em>" + x[2] + "</em>" : "") + "</button>").join("") + "</div></nav>" +
         '<section class="vd-pd-sec vd-pd-intro" id="vd-s-intro">' + (dm === "img-text" || dm === "img" ? dimg : "") + (dm === "img" ? "" : ('<div class="vd-hl" style="--acc:' + esc(accOf(p)) + '" data-rv><small>' + esc(cat.label) + " · " + esc(TYPE[t][0]) + "</small><h2>" + esc(hl[0]) + (hl[1] ? "<br><em>" + esc(hl[1]) + "</em>" : "") + "</h2>" + (p.sub ? "<p>" + esc(p.sub) + "</p>" : "") + "</div>" +
           '<div class="vd-pain"><p class="vd-k" data-rv="fade">이런 고민, 있으셨죠?</p><ul data-rv-kids>' + pains.map((x, i) => '<li class="' + (i % 2 ? "r" : "") + '"><i>' + icon("message", "sm") + "</i><span>" + esc(x) + "</span></li>").join("") + '</ul>' + (p.pitch ? '<div class="vd-pain-a vd-pain-pitch" data-rv><small>그런 여러분을 위해</small><p>' + esc(p.pitch) + "</p></div></div>" : '<div class="vd-pain-a" data-rv><b>그래서 ' + esc(p.creator || "크리에이터") + "님이 직접 해 본 방법을<br><em>처음부터 순서대로</em> 정리했어요.</b></div></div>") +
           ((p.learn || []).length ? '<div class="vd-points" data-rv-kids>' + p.learn.slice(0, 4).map((x, i) => '<div class="vd-point"><small>POINT ' + String(i + 1).padStart(2, "0") + "</small><b>" + esc(x) + "</b></div>").join("") + "</div>" : "") +
@@ -2136,13 +2138,152 @@
       (related.length ? '<section class="vd-pd-sec vd-pd-rel"><h2 data-eg>함께 많이 보는 <span data-accent>클래스</span></h2><div class="vd-grid vd-grid-3" data-rv-kids>' + related.map((x) => card(x)).join("") + "</div></section>" : "") +
       "</div></div>" + fbarHtml(p), "", "vd-has-mbuy");
   }
-  /* ---------- 상세 맨 위 썸네일 (예전 v7 그대로) ----------
-   * 대표 배너(bannerArt) + 왼쪽 아래 ‘미리보기 N개’ 버튼. 2026-11-07 에 소리 끈 영상 자동 재생 · 16:9 로 바꿨다가 2026-11-08 사용자 요청으로 예전 썸네일로 되돌렸어요
-   * (영상 붙이기 코드는 git 61605ed · a496c8f 에 있어요) */
+  /* ---------- 상세 맨 위: 대표 영상이 있으면 영상 · 없으면 넓은 썸네일 (2026-11-08 · 탈잉처럼) ----------
+   *  · 영상: 마스터 › 클래스 편집 › 썸네일의 ‘상세 맨 위 영상’(p.teaser — 유튜브 · 비메오 · mp4 주소)
+   *      [PC] 탈잉 배치 — 왼쪽 위 16:9 영상 → 베스트 후기 → 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 화면 끝까지 16:9 영상 → 카드 → 베스트 후기 → 탭
+   *      소리 끈 채로 저절로 반복 재생 · 오른쪽 위 ‘소리 켜기’ · 미리보기 창이 열려 있거나 화면 밖으로 지나가면 잠깐 멈춰요
+   *      주소에 시작 시각(…&t=1558s · start=)이 있으면 그때부터 재생하고, 끝나면 그 시각으로 돌아가 다시 돌아요
+   *      재생이 시작되기 전(불러오는 중)에는 영상 대표 그림 · 자동 재생이 막힌 휴대폰 · 움직임 줄이기 · 데이터 절약이면 눌러서 재생
+   *  · 영상이 없거나 ‘영상 끄기’(p.teaserOff): 예전 v7 넓은 썸네일(대표 배너) 그대로 — 2026-11-07 처럼 미리보기 강의 영상을 대신 틀지 않아요
+   *  · ‘미리보기 N개’ 버튼은 썸네일 · 영상 위가 아니라 카드 뱃지 줄 오른쪽(pcTag) — 미리보기 창은 그대로
+   *  화면에 붙이기(heroWire) · 소리(heroSnd) · 멈춤(heroPause)은 예전 화면 · React 화면(ui/store/ProductPage.jsx)이 같이 써요 */
+  /** 주소의 시작 시각 → 초 (t=1558s · t=1558 · t=25m58s · start=1558) */
+  function tStart(u) {
+    const m = /[?&#](?:t|start)=([0-9hms]+)/i.exec(String(u || "")); if (!m) return 0;
+    const v = m[1].toLowerCase(); if (/^\d+s?$/.test(v)) return Math.min(359999, parseInt(v, 10));
+    let s = 0; v.replace(/(\d+)([hms])/g, (x, n, k) => { s += Number(n) * (k === "h" ? 3600 : k === "m" ? 60 : 1); return x; });
+    return Math.min(359999, s);
+  }
+  /** 대표 영상 { k: yt · vm · mp4, id(유튜브), st(시작 초), src } · 없으면 null */
+  function heroOf(p) {
+    if (!p || p.teaserOff) return null;
+    const u = String(p.teaser || "").trim(); if (!u) return null;
+    const yid = DB.youtubeId ? DB.youtubeId(u) : "", vm = vimeoSrc(u), st = tStart(u);
+    if (yid) return { k: "yt", id: yid, st, src: "https://www.youtube-nocookie.com/embed/" + yid + "?autoplay=1&mute=1&loop=1&playlist=" + yid + (st ? "&start=" + st : "") + "&playsinline=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1" };
+    if (vm) return { k: "vm", id: "", st, src: vm + "&autoplay=1&muted=1&loop=1&controls=0&autopause=0&playsinline=1" + (st ? "#t=" + st + "s" : "") };
+    if (/\.(mp4|webm)(\?|#|$)/i.test(u) && /^(https?:\/\/|\/|assets\/)/i.test(u)) return { k: "mp4", id: "", st, src: u.replace(/#.*$/, "") };
+    return null;
+  }
+  /** 넓은 썸네일 (예전 v7 그대로 · 영상이 없을 때) */
   function heroHtml(p) {
+    return '<div class="vd-pdt-banner vd-th-' + typeOf(p) + '">' + bannerArt(p) + "</div>";
+  }
+  /** 재생 전에 보이는 영상 대표 그림 (유튜브 큰 썸네일 1280×720 · 못 불러오면 스스로 지워요 — 재생이 시작되면 걷혀요) */
+  const heroPh = (h) => (h.id ? '<span class="vd-pdv-ph"><img src="https://img.youtube.com/vi/' + esc(h.id) + '/maxresdefault.jpg" alt="" onerror="this.remove()"></span>' : "");
+  /** 대표 영상 칸 (영상이 있을 때 · 탈잉 배치의 왼쪽 위) — 영상(iframe · video)은 그린 뒤 heroWire 가 붙여요 */
+  function heroVid(p, h) {
+    return '<div class="vd-pd8-media"><div class="vd-pdv" data-hero="' + h.k + '" data-src="' + esc(h.src) + '"' + (h.st ? ' data-st="' + h.st + '"' : "") + ">" +
+      heroPh(h) +
+      '<div class="vd-pdv-slot"></div><button type="button" class="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기"><span class="off">' + icon("volumeX", "sm") + '소리 켜기</span><span class="on">' + icon("volume2", "sm") + "소리 끄기</span></button></div></div>";
+  }
+  let heroLis = false;
+  const HERO_ORIGIN = /^https:\/\/(www\.)?(youtube(-nocookie)?\.com|player\.vimeo\.com)$/;
+  const heroPost = (f, o) => { try { f.contentWindow.postMessage(JSON.stringify(o), "*"); } catch (e) { /* 아직 못 받으면 다음에 */ } };
+  const ytCmd = (f, func, args) => heroPost(f, { event: "command", func, args: args || [], id: 1, channel: "widget" });
+  /** 재생 · 멈춤 명령 (유튜브 · 비메오 · mp4) */
+  function heroCmd(box, on) {
+    const k = box.dataset.hero, f = box.querySelector(".vd-pdv-slot iframe"), v = box.querySelector(".vd-pdv-slot video");
+    if (f && k === "yt") ytCmd(f, on ? "playVideo" : "pauseVideo");
+    if (f && k === "vm") heroPost(f, { method: on ? "play" : "pause" });
+    if (v) { if (on) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } else v.pause(); }
+  }
+  /** 멈출 까닭(미리보기 창 pv · 화면 밖 view)이 하나라도 있으면 멈추고, 다 없어지면 — 우리가 멈춘 것만 — 다시 틀어요 */
+  function heroApply(box) {
+    const w = box.__why || {}, off = Object.keys(w).some((x) => w[x]);
+    if (off && !box.__held && box.classList.contains("is-play") && box.__st === 1) { box.__held = true; heroCmd(box, false); }
+    else if (!off && box.__held) { box.__held = false; heroCmd(box, true); }
+  }
+  function heroPause(on, why) { const box = document.querySelector(".vd-pdv"); if (!box) return; (box.__why = box.__why || {})[why || "pv"] = !!on; heroApply(box); }
+  function heroWire(root) {
+    const box = (root || document).querySelector(".vd-pdv"), slot = box && box.querySelector(".vd-pdv-slot");
+    if (!slot || slot.firstChild || !box.dataset.src) return;
+    const mq = (q) => !!(window.matchMedia && window.matchMedia(q).matches);
+    // 움직임 줄이기 · 데이터 절약: 저절로 틀지 않고 눌러서 재생 (소리 켠 채)
+    const calm = mq("(prefers-reduced-motion: reduce)") || !!(navigator.connection && navigator.connection.saveData);
+    const k = box.dataset.hero, st = Number(box.dataset.st) || 0, src = calm ? box.dataset.src.replace("autoplay=1&mute=1", "autoplay=0&mute=0").replace("autoplay=1&muted=1", "autoplay=0&muted=0") : box.dataset.src;
+    const playing = () => { box.__st = 1; box.classList.add("is-play"); heroApply(box); };
+    if (calm) box.classList.add("is-play", "is-tap", "is-snd", "is-calm");
+    if ("IntersectionObserver" in window && !box.__io) {
+      box.__io = new IntersectionObserver((es) => { if (!box.isConnected) { box.__io.disconnect(); return; } heroPause(!es[es.length - 1].isIntersecting, "view"); }, { threshold: 0.15 });
+      box.__io.observe(box);
+    }
+    if (k === "mp4") {
+      const v = document.createElement("video");
+      v.playsInline = true; v.setAttribute("playsinline", ""); v.preload = calm ? "metadata" : "auto";
+      if (calm) v.controls = true; else { v.muted = true; v.defaultMuted = true; v.autoplay = true; ["muted", "autoplay"].forEach((a) => v.setAttribute(a, "")); }
+      if (st) { v.addEventListener("loadedmetadata", () => { try { v.currentTime = st; } catch (e) { /* 처음부터 */ } }, { once: true }); v.addEventListener("ended", () => { v.currentTime = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }); } else { v.loop = true; v.setAttribute("loop", ""); }
+      v.addEventListener("playing", playing); v.addEventListener("pause", () => { box.__st = 2; });
+      v.src = src; slot.appendChild(v);
+      if (!calm) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => { box.classList.add("is-play", "is-tap"); v.controls = true; }); }
+      return;
+    }
+    if (!heroLis) {
+      heroLis = true;
+      window.addEventListener("message", (e) => {
+        if (!HERO_ORIGIN.test(e.origin)) return;
+        let d = e.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (x) { return; } }
+        const bx = document.querySelector(".vd-pdv"), f = bx && bx.querySelector(".vd-pdv-slot iframe");
+        if (!d || !f || e.source !== f.contentWindow) return;
+        f.__heard = true;
+        // 비메오: 준비됐다는 신호가 오면 그때 재생 · 멈춤 소식을 받겠다고 알려요
+        if (d.event === "ready" && /vimeo/.test(e.origin)) { ["play", "playProgress", "pause"].forEach((x) => heroPost(f, { method: "addEventListener", value: x })); return; }
+        // 유튜브: 준비되면(첫 소식) 상태 · 오류 소식을 받겠다고 알리고, 소리 끈 채로 재생을 한 번 더 눌러요 (휴대폰에서 autoplay 칸만으로는 안 도는 경우)
+        if ((d.event === "onReady" || d.event === "initialDelivery") && !f.__ready) {
+          f.__ready = true;
+          ["onStateChange", "onError"].forEach((ev) => heroPost(f, { event: "addEventListener", args: [ev], id: 1, channel: "widget" }));
+          if (!bx.classList.contains("is-calm")) ["mute", "playVideo"].forEach((fn) => ytCmd(f, fn));
+        }
+        // 오류(퍼가기 막힌 영상 · 지운 영상): 영상 대표 그림만 남겨요
+        if (d.event === "onError") { f.__err = true; bx.classList.remove("is-play", "is-tap"); return; }
+        const s = d.event === "onStateChange" ? d.info : d.event === "infoDelivery" && d.info ? d.info.playerState : d.event === "play" || d.event === "playProgress" ? 1 : d.event === "pause" ? 2 : null;
+        if (s === 1 && bx.__st !== 1) { bx.__st = 1; bx.classList.add("is-play"); heroApply(bx); } else if (s === 2) bx.__st = 2;
+        // 끝나면 시작 시각으로 (유튜브 반복은 0초부터라서)
+        if (s === 0) { bx.__st = 0; const s0 = Number(bx.dataset.st) || 0; if (s0) { ytCmd(f, "seekTo", [s0, true]); ytCmd(f, "playVideo"); } }
+      });
+    }
+    const f = document.createElement("iframe");
+    f.title = "클래스 소개 영상"; f.setAttribute("frameborder", "0");
+    if (!calm) { f.tabIndex = -1; f.setAttribute("aria-hidden", "true"); }
+    f.allow = "autoplay; encrypted-media; picture-in-picture"; f.referrerPolicy = "strict-origin-when-cross-origin";
+    f.addEventListener("load", () => {
+      if (k === "vm") ["play", "playProgress", "pause"].forEach((x) => heroPost(f, { method: "addEventListener", value: x }));
+      // 유튜브: 듣기 시작 신호를 플레이어가 대답할 때까지 보내요 (휴대폰은 플레이어가 늦게 떠요 — 30초까지)
+      let n = 0; const hi = () => { if (k !== "yt" || f.__heard || n++ > 60 || !f.isConnected) return; heroPost(f, { event: "listening", id: 1, channel: "widget" }); setTimeout(hi, 500); };
+      hi();
+      // ‘재생 중’ 소식을 못 받아도 오류가 아니면 영상을 보여 줘요 — 눌러서 재생할 수 있게(is-tap): 플레이어가 대답했으면 7초 뒤(소리 없는 자동 재생이 막힌 휴대폰 · 느린 망), 대답이 없어도 12초 뒤
+      const fb = (ms, needHeard) => setTimeout(() => { if (f.isConnected && !f.__err && !box.classList.contains("is-play") && (!needHeard || f.__heard)) box.classList.add("is-play", "is-tap"); }, ms);
+      if (!calm) { fb(7000, true); fb(12000, false); }
+    });
+    f.src = src + (k === "yt" ? "&origin=" + encodeURIComponent(location.origin) : ""); slot.appendChild(f);
+  }
+  /** 영상 소리 켜기 · 끄기 (버튼 글자는 CSS 가 is-snd 를 보고 바꿔요) */
+  function heroSnd(btn) {
+    const box = btn && btn.closest(".vd-pdv"); if (!box) return;
+    const on = !box.classList.contains("is-snd"), k = box.dataset.hero, f = box.querySelector(".vd-pdv-slot iframe"), v = box.querySelector(".vd-pdv-slot video");
+    if (f && k === "yt") { if (on) { ytCmd(f, "unMute"); ytCmd(f, "setVolume", [100]); ytCmd(f, "playVideo"); } else ytCmd(f, "mute"); }
+    if (f && k === "vm") { heroPost(f, { method: "setVolume", value: on ? 1 : 0 }); heroPost(f, { method: "setMuted", value: !on }); if (on) heroPost(f, { method: "play" }); }
+    if (v) { v.muted = !on; if (on) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } }
+    box.classList.toggle("is-snd", on);
+  }
+  /** 카드 맨 위 줄: 뱃지(NEW · 추천 · 온라인 …) + 오른쪽 ‘미리보기 N개’ 버튼 (2026-11-08 — 썸네일 · 영상 위에서 이 자리로) */
+  function pcTag(p, bs) {
     const pvs = previewsOf(p);
-    return '<div class="vd-pdt-banner vd-th-' + typeOf(p) + '">' + bannerArt(p) +
-      (pvs.length ? '<button type="button" class="vd-pdt-play" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '"><i>' + icon("play") + "</i><span>미리보기 <b>" + pvs.length + "개</b></span></button>" : "") + "</div>";
+    if (!bs.length && !pvs.length) return "";
+    return '<div class="vd-pc-tag">' + badgeHtml(bs) + (pvs.length ? '<button type="button" class="vd-pc-pv" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '"><i>' + icon("play") + "</i><span>미리보기 <b>" + pvs.length + "개</b></span></button>" : "") + "</div>";
+  }
+  /* ---------- 베스트 후기 (2026-11-08 · 탈잉 ‘베스트 리뷰’처럼) ----------
+   *  마스터 › DOOGO CLASS › 후기 · 다짐 · 문의 에서 ‘베스트’로 고른 후기 → 다짐 한마디(숨긴 것 빼고 · 최근 쓴 순)를 탭 바로 위 가로 카드 줄로 — 고른 게 없으면 이 칸은 없어요
+   *  넘기기: PC 좌우 화살표 · 마우스로 끌기 · 휴대폰은 밀기 (홈 강사진 줄과 같은 장치 data-v="rail" · data-arr · data-drag) · 카드를 누르면 아래 그 칸(후기 · 다짐)으로 */
+  function bestOf(p) {
+    const rs = reviewsOf(p.id).filter((r) => r.best).map((r) => ({ k: "rv", id: r.id, name: r.name, rating: r.rating, text: r.text }));
+    const pl = pledgesOf(p.id).filter((x) => x.best).map((x) => ({ k: "pl", id: x.id, name: x.nick, rating: 0, text: x.text }));
+    return rs.concat(pl).slice(0, 20);
+  }
+  const railArr = (id, what) => '<span class="vd-best-arr"><button type="button" class="vd-best-ab prev" data-v="rail" data-r="' + id + '" data-d="-1" data-arr="' + id + '" aria-label="이전 ' + what + '">' + icon("chevLeft", "sm") + '</button><button type="button" class="vd-best-ab next" data-v="rail" data-r="' + id + '" data-d="1" data-arr="' + id + '" aria-label="다음 ' + what + '">' + icon("chevRight", "sm") + "</button></span>";
+  function bestHtml(p) {
+    const bs = bestOf(p); if (!bs.length) return "";
+    return '<section class="vd-best" aria-label="베스트 후기"><div class="vd-best-h"><h2>베스트 후기</h2>' + railArr("vd-r-best", "후기") + "</div>" +
+      '<div class="vd-best-rail" id="vd-r-best" data-drag>' + bs.map((x) => '<button type="button" class="vd-best-c' + (x.k === "pl" ? " is-pl" : "") + '" data-v="jump" data-to="vd-s-' + (x.k === "pl" ? "pledge" : "reviews") + '"><span class="vd-best-ch">' + (x.k === "pl" ? '<em class="vd-best-tag">다짐 한마디</em>' : '<span class="vd-stars sm">' + stars(x.rating) + "</span>") + "<b>" + esc(x.name) + '</b></span><span class="vd-best-t">' + esc(x.text) + "</span></button>").join("") + "</div></section>";
   }
   /* ---------- 상세 상단 v7: 패스트캠퍼스 강의 페이지 구성 ----------
    * 맨 위 가로로 넓은 대표 배너 → 아래 왼쪽: 분류 · 제목 · 설명 · 강의 정보 박스 / 오른쪽: 가격 · 수강신청 카드 */
@@ -2299,7 +2440,7 @@
   }
   function pcHead(p) {
     const { rt, lk, hp, end, eb, cdOn, bs, rows } = headView(p);
-    return badgeHtml(bs) + '<h1 class="vd-pdt-h1">' + esc(p.title) + "</h1>" +
+    return pcTag(p, bs) + '<h1 class="vd-pdt-h1">' + esc(p.title) + "</h1>" +
       '<div class="vd-pdt-rate">' + (rt.n ? '<button type="button" data-v="jump" data-to="vd-s-reviews"><span class="vd-stars sm">' + stars(rt.avg) + "</span><b>" + rt.avg.toFixed(1) + "</b><small>(" + rt.n + ")</small></button><i></i>" : "") + (isBook(p) ? (soldOf(p) ? "<span>판매 <b>" + soldOf(p).toLocaleString() + "권+</b></span><i></i>" : "") : "<span>수강생 <b>" + soldOf(p).toLocaleString() + "명+</b></span><i></i>") + "<span>" + icon("heart", "xs") + likeCount(p) + "</span>" + (lk.length ? '<i></i><span class="vd-avs">' + lk.map((n) => av(n)).join("") + "</span>" : "") + "</div>" +
       (hp ? '<div class="vd-hp">' + (hp.was ? '<s class="vd-hp-was">' + hp.was + "</s>" : "") + '<div class="vd-hp-row">' + (hp.pct ? "<em>" + hp.pct + "%</em>" : "") + (hp.lab ? '<span class="vd-hp-lab">' + hp.lab + "</span>" : "") + "<strong" + (hp.free ? ' class="free"' : "") + ">" + hp.main + "</strong></div>" + (hp.note ? '<small class="vd-hp-note">' + esc(hp.note) + "</small>" : "") + "</div>" : "") +
       (cdOn ? '<div class="vd-cd' + (eb ? " vd-cd-eb" : "") + '">' + icon("clock", "xs") + "<span>" + (eb ? "얼리버드 마감까지" : "할인 마감까지") + '</span><b data-cd="' + esc(end) + '">' + cdTxt(end) + "</b><span>남음</span></div>" : "") +
@@ -3537,7 +3678,7 @@
     if (document.querySelector("[data-cd]")) ui.cd = setInterval(() => document.querySelectorAll("[data-cd]").forEach((x) => { x.textContent = cdTxt(x.dataset.cd); }), 1000);
     const co = document.querySelector("[data-vd-pay]"); if (co) coPaint(co);
     document.querySelectorAll("[data-vd-auth]").forEach(authReady);
-    syncTabs(); wireRails(); motion(); wireCounts(); wireFbar(); wirePt(); hydrate(root); wireSwipe();
+    syncTabs(); wireRails(); motion(); wireCounts(); wireFbar(); heroWire(root); wirePt(); hydrate(root); wireSwipe();
     if (ui.mega) { if (ui.mega === ROUTE.hash && window.innerWidth >= 1024) megaSet(true); else ui.mega = ""; }
   }
   function wireSwipe() {
@@ -3622,7 +3763,7 @@
   }
   // React 화면(Next.js 전환 4-4 · <body data-react>)에서는 이 파일은 계산(로직)만 빌려 주고, 화면 · 이벤트는 React 가 맡아요
   const isActive = () => document.body.dataset.mode === "vod" && !document.body.dataset.react;
-  const closeModal = () => { if (document.body.dataset.react && window.ReactApp && window.ReactApp.closeModal) { window.ReactApp.closeModal(); return; } document.getElementById("modal-root").innerHTML = ""; if (pgWait) pgWait(false, true); };
+  const closeModal = () => { if (document.body.dataset.react && window.ReactApp && window.ReactApp.closeModal) { window.ReactApp.closeModal(); return; } document.getElementById("modal-root").innerHTML = ""; if (pgWait) pgWait(false, true); heroPause(false); };
   // 팝업은 X(또는 취소 · 닫기 버튼)를 눌러야만 닫혀요 — 바깥을 누르거나 ESC 로는 닫히지 않아요 (2026-11)
   // 예외: 전체 메뉴 · 내 계정 메뉴는 펼침 메뉴라 바깥을 누르거나 ESC 로 닫혀요
   const MENU_MODAL = ["vd-modal-drawer", "vd-modal-acct"];
@@ -3799,8 +3940,9 @@
       return;
     }
     if (v === "pitch-more") { const c = t.closest(".vd-pitch"); if (c) { c.classList.toggle("open"); t.innerHTML = (c.classList.contains("open") ? "접기" : "더보기") + icon("chevDown", "xs"); } return; }
+    if (v === "pdv-snd") { heroSnd(t); return; }
     if (v === "cmt-more") { const c = t.closest(".vd-cmt"); if (c) { c.classList.toggle("open"); t.textContent = c.classList.contains("open") ? "접기" : "더보기"; } return; }
-    if (v === "pv-open") { e.preventDefault(); e.stopPropagation(); previewModal(t.dataset.p, t.dataset.l); return; }
+    if (v === "pv-open") { e.preventDefault(); e.stopPropagation(); heroPause(true); previewModal(t.dataset.p, t.dataset.l); return; }
     if (v === "pv-pick") { const p = product(t.dataset.p), l = p && lessons(p).find((x) => x.id === t.dataset.l); const box = document.getElementById("vd-pvm-v"); if (!l || !box) return; box.innerHTML = typeOf(p) === "ebook" ? '<div class="vd-pl-ph">' + icon("book") + "<b>" + esc(l.title) + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : videoHtml(l, true, "미리보기 영상을 준비하고 있어요"); const now = document.querySelector(".vd-pvm-now"); if (now) now.innerHTML = "<small>Part " + (chapOf(p, l).ci + 1) + " · " + esc((chapOf(p, l).ch || {}).title || "") + "</small><b>" + esc(l.title) + "</b>" + (l.desc ? "<p>" + esc(l.desc) + "</p>" : ""); document.querySelectorAll(".vd-pvm-l button").forEach((x) => x.classList.toggle("on", x === t)); return; }
     if (v === "fbar") { const fb = document.getElementById("vd-fbar"); if (fb) { fb.classList.add("on"); fb.classList.toggle("open"); } return; }
     if (v === "like") {
@@ -4224,7 +4366,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroPh, heroWire, heroSnd, heroPause, tStart, bestOf, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),
