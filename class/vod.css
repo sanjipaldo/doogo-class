@@ -4170,26 +4170,11 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
  *  [휴대폰] 영상 → 카드(가격이 제목 바로 아래) → 탭 → 본문 · 아래 결제 막대  — 구조: vod.js pageProduct · ui/store/ProductPage.jsx */
 .vd-pd8 { padding: 14px 0 40px; background: #fff; }
 .vd-pd8 .vd-crumbs { margin-bottom: 14px; }
-.vd-pd8-g { display: grid; grid-template-columns: minmax(0, 1fr) 388px; grid-template-areas: "media side" "body side"; column-gap: 44px; align-items: start; }
-.vd-pd8-media { grid-area: media; min-width: 0; }
+.vd-pd8-g { display: grid; grid-template-columns: minmax(0, 1fr) 388px; grid-template-areas: "body side"; column-gap: 44px; align-items: start; }
 .vd-pd8-side { grid-area: side; align-self: start; position: sticky; top: calc(var(--vd-top) + 14px); max-height: calc(100vh - var(--vd-top) - 28px); overflow-y: auto; scrollbar-width: thin; border-radius: 16px; }
 .vd-pd8-body { grid-area: body; min-width: 0; }
-.vd-pd8 .vd-pdt-banner { aspect-ratio: 16 / 9; border-radius: 16px; box-shadow: none; }
-/* 영상: 재생이 시작되면(is-play) 대표 배너가 걷혀요 · 누르지 않게(영상 위 글자 · 유튜브 메뉴가 안 열리게) */
-.vd-pdv { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #0b0b0c; }
-.vd-pdv iframe, .vd-pdv video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; pointer-events: none; }
-.vd-pdt-banner.has-hero .vd-bn { z-index: 1; transition: opacity .6s ease, visibility .6s; }
-.vd-pdv.is-play + .vd-bn { opacity: 0; visibility: hidden; }
-.vd-pdv-snd { position: absolute; z-index: 6; top: 14px; right: 14px; display: none; align-items: center; height: 38px; padding: 0 14px 0 11px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #111; font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .45); }
-.vd-pdv-snd > span { display: inline-flex; align-items: center; gap: 6px; }
-.vd-pdv-snd .icon { width: 18px !important; height: 18px !important; stroke-width: 2.2; }
-.vd-pdv-snd .on, .vd-pdv.is-snd ~ .vd-pdv-snd .off { display: none; }
-.vd-pdv.is-snd ~ .vd-pdv-snd .on { display: inline-flex; }
-.vd-pdv.is-play ~ .vd-pdv-snd { display: inline-flex; }
-.vd-pdv-snd:hover { background: #fff; }
-/* 재생 소식을 못 받고 보여 준 영상(is-tap)은 눌러서 재생할 수 있게 · 영상이 돌면 위 ‘미리보기’ 알약은 숨겨요 (탈잉처럼 영상만 — 미리보기는 카드 · 아래 막대 · 커리큘럼에) */
-.vd-pdv.is-tap iframe { pointer-events: auto; }
-.vd-pdv.is-play:not(.is-tap) ~ .vd-pdt-play { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility .4s; }
+/* 맨 위 썸네일: 예전 v7 그대로 (넓은 배너 1200:420 · 휴대폰은 화면 끝까지 16:10 — 위 .vd-pdt-banner 규칙) · 2026-11-08 영상 자동 재생 · 16:9 왼쪽 칸에서 되돌림 */
+.vd-pd8 .vd-pdt-banner + .vd-pd8-g { margin-top: 28px; }
 /* 오른쪽 카드 */
 .vd-pd8 .vd-pc { position: static; top: auto; gap: 14px; padding: 24px; border-radius: 16px; box-shadow: 0 18px 40px -30px rgba(0, 0, 0, .4); }
 .vd-pd8 .vd-pc .vd-badges { margin: 0 0 -4px; }
@@ -4212,7 +4197,7 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-pd8 .vd-pc .vd-fresh-band { margin: 0; }
 .vd-pd8 .vd-pc .vd-plans { margin-top: 2px; padding-top: 16px; border-top: 1px solid #eeeff2; }
 /* 탭: 본문 위에 붙어서 따라와요 (탈잉처럼 고르게 · 고른 탭은 빨간 밑줄) */
-.vd-pd8 .vd-pd-tabs { position: sticky; top: var(--vd-top); z-index: 20; margin: 36px 0 0; background: rgba(255, 255, 255, .97); box-shadow: inset 0 -1px 0 #e9eaee; }
+.vd-pd8 .vd-pd-tabs { position: sticky; top: var(--vd-top); z-index: 20; margin: 0; background: rgba(255, 255, 255, .97); box-shadow: inset 0 -1px 0 #e9eaee; }
 .vd-pd8 .vd-pd-tabs-in { display: flex; justify-content: stretch; margin: 0; padding: 0; overflow-x: auto; scrollbar-width: none; }
 .vd-pd8 .vd-pd-tabs button { flex: 1 0 auto; height: 54px; padding: 0 12px !important; font-size: 15.5px; font-weight: 600; color: #8b8f99; letter-spacing: -0.03em; }
 .vd-pd8 .vd-pd-tabs button:hover { color: #111; }
@@ -4253,16 +4238,15 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 /* 태블릿 · 휴대폰: 한 줄로 (영상 → 카드 → 탭 → 본문) · 영상은 화면 끝까지 */
 @media (max-width: 1023px) {
   .vd-pd8 { padding-top: 0; }
-  .vd-pd8-g { grid-template-columns: minmax(0, 1fr); grid-template-areas: "media" "side" "body"; }
+  .vd-pd8-g { grid-template-columns: minmax(0, 1fr); grid-template-areas: "side" "body"; }
+  .vd-pd8 .vd-pdt-banner + .vd-pd8-g { margin-top: 0; }
   .vd-pd8-side { position: static; max-height: none; overflow: visible; border-radius: 0; }
-  .vd-pd8 .vd-pdt-banner { margin: 0 -16px; border-radius: 0; }
   .vd-pd8 .vd-pc { padding: 18px 0 6px; border: 0; border-radius: 0; box-shadow: none; }
   .vd-pd8 .vd-pdt-h1 { font-size: 22px; }
   .vd-pd8 .vd-pd-tabs { margin: 22px -16px 0; }
   .vd-pd8 .vd-pd-tabs-in { padding: 0 6px; }
   .vd-pd8 .vd-pd-tabs button { padding: 0 8px !important; font-size: 15px; height: 50px; }
   .vd-pd8 .vd-pd-tabs button.on::after { left: 6px; right: 6px; }
-  .vd-pdv-snd { top: 10px; right: 10px; height: 34px; font-size: 12.5px; padding: 0 12px 0 9px; }
 }
 @media (max-width: 640px) {
   .vd-pd8 .vd-pdt-h1 { font-size: 21px; }
@@ -4275,7 +4259,6 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .vd-pd8 .vd-points { grid-template-columns: minmax(0, 1fr); }
   .vd-pd8 .vd-pd-tabs button { font-size: 14.5px; padding: 0 6px !important; }
 }
-@media (prefers-reduced-motion: reduce) { .vd-pdt-banner.has-hero .vd-bn { transition: none; } }
 
 /* ===== 나의 다짐 한마디 + 다짐 쿠폰 (2026-11-08) =====
  *  20자 이상 다짐 → 그 강의 5,000원 쿠폰 (서버가 클래스마다 한 번) · 쿠폰 띠 · 예시 문장 · 글자 수 막대 · 가격 카드 안내 — vod.js plSecBody · plNudge */

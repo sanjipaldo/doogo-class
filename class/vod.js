@@ -2100,9 +2100,10 @@
   function pageProduct(id) {
     const p = product(id); if (!p || p.status === "hidden" || !insShown(p)) return shell("", '<div class="vd-wrap">' + emptyBox("alert", "판매 중인 클래스가 아니에요", "", '<a class="vd-btn vd-btn-o" href="#/vod">홈으로</a>') + "</div>");
     const { m, own, rt, rs, lz, cat, pls, t, ev, pvs, ins, insB, lp, career, related, dist, canReview, hl, myNick, sec, bk, noCur, curName, unit, faq, tabs, pains, before, after, dm, dimg, info } = productView(p);
-    // 2026-11-07 탈잉형: [PC] 왼쪽 영상 · 탭 · 본문 | 오른쪽 따라오는 카드(제목 · 별점 · 가격 · 정보 · 수강권 · 버튼)  [휴대폰] 영상 → 카드 → 탭 → 본문
+    // [PC] 맨 위 넓은 썸네일(예전 v7 그대로 · 2026-11-08 되돌림) → 아래 왼쪽 탭 · 본문 | 오른쪽 따라오는 카드(제목 · 별점 · 가격 · 정보 · 수강권 · 버튼)
+    // [휴대폰] 썸네일(화면 끝까지) → 카드 → 탭 → 본문
     return shell("", '<div class="vd-pd5 vd-pd8"><div class="vd-wrap"><nav class="vd-crumbs"><a href="#/vod">홈</a>' + icon("chevRight", "xs") + '<a href="#/vod/c/' + esc(p.cat) + '">' + esc(cat.label) + "</a>" + icon("chevRight", "xs") + '<a href="#/vod/c/all?tab=' + (ev ? "premium" : bk ? "ebook" : t) + '">' + esc(TYPE[t][0]) + "</a></nav>" +
-      '<div class="vd-pd8-g"><div class="vd-pd8-media">' + heroHtml(p) + '</div><aside class="vd-pd8-side">' + buyCard(p) + "</aside>" +
+      heroHtml(p) + '<div class="vd-pd8-g"><aside class="vd-pd8-side">' + buyCard(p) + "</aside>" +
       '<div class="vd-pd8-body"><nav class="vd-pd-tabs"><div class="vd-pd-tabs-in">' + tabs.map((x, i) => '<button type="button" data-v="jump" data-to="vd-s-' + x[0] + '" class="' + (i === 0 ? "on" : "") + '">' + x[1] + "</button>").join("") + "</div></nav>" +
         '<section class="vd-pd-sec vd-pd-intro" id="vd-s-intro">' + (dm === "img-text" || dm === "img" ? dimg : "") + (dm === "img" ? "" : ('<div class="vd-hl" style="--acc:' + esc(accOf(p)) + '" data-rv><small>' + esc(cat.label) + " · " + esc(TYPE[t][0]) + "</small><h2>" + esc(hl[0]) + (hl[1] ? "<br><em>" + esc(hl[1]) + "</em>" : "") + "</h2>" + (p.sub ? "<p>" + esc(p.sub) + "</p>" : "") + "</div>" +
           '<div class="vd-pain"><p class="vd-k" data-rv="fade">이런 고민, 있으셨죠?</p><ul data-rv-kids>' + pains.map((x, i) => '<li class="' + (i % 2 ? "r" : "") + '"><i>' + icon("message", "sm") + "</i><span>" + esc(x) + "</span></li>").join("") + '</ul>' + (p.pitch ? '<div class="vd-pain-a vd-pain-pitch" data-rv><small>그런 여러분을 위해</small><p>' + esc(p.pitch) + "</p></div></div>" : '<div class="vd-pain-a" data-rv><b>그래서 ' + esc(p.creator || "크리에이터") + "님이 직접 해 본 방법을<br><em>처음부터 순서대로</em> 정리했어요.</b></div></div>") +
@@ -2135,93 +2136,13 @@
       (related.length ? '<section class="vd-pd-sec vd-pd-rel"><h2 data-eg>함께 많이 보는 <span data-accent>클래스</span></h2><div class="vd-grid vd-grid-3" data-rv-kids>' + related.map((x) => card(x)).join("") + "</div></section>" : "") +
       "</div></div>" + fbarHtml(p), "", "vd-has-mbuy");
   }
-  /* ---------- 상세 맨 위 영상 (2026-11-07 · 프레스런 · 탈잉처럼 소리 끈 채로 저절로 반복 재생) ----------
-   * 영상: 마스터가 넣은 대표 영상(p.teaser · 유튜브 · 비메오 · mp4) → 없으면 첫 미리보기 강의 영상 · p.teaserOff 면 끔
-   * 재생이 시작되기 전(불러오는 중 · 막힘 · 움직임 줄이기 · 데이터 절약)에는 대표 배너가 그대로 보여요. 오른쪽 위 ‘소리 켜기’로 소리를 켜요
-   * 화면에 붙이는 일(heroWire)과 소리 켜기(heroSnd)는 예전 화면 · React 화면이 같이 써요 */
-  function heroOf(p) {
-    if (!p || p.teaserOff) return null;
-    const u = String(p.teaser || (previewsOf(p).find((l) => l.video) || {}).video || "").trim(); if (!u) return null;
-    const yid = DB.youtubeId ? DB.youtubeId(u) : "", vm = vimeoSrc(u);
-    if (yid) return { k: "yt", src: "https://www.youtube-nocookie.com/embed/" + yid + "?autoplay=1&mute=1&loop=1&playlist=" + yid + "&playsinline=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1" };
-    if (vm) return { k: "vm", src: vm + "&autoplay=1&muted=1&loop=1&controls=0&autopause=0&playsinline=1" };
-    if (/\.(mp4|webm)(\?|$)/i.test(u) && /^(https?:\/\/|\/|assets\/)/i.test(u)) return { k: "mp4", src: u };
-    return null;
-  }
+  /* ---------- 상세 맨 위 썸네일 (예전 v7 그대로) ----------
+   * 대표 배너(bannerArt) + 왼쪽 아래 ‘미리보기 N개’ 버튼. 2026-11-07 에 소리 끈 영상 자동 재생 · 16:9 로 바꿨다가 2026-11-08 사용자 요청으로 예전 썸네일로 되돌렸어요
+   * (영상 붙이기 코드는 git 61605ed · a496c8f 에 있어요) */
   function heroHtml(p) {
-    const h = heroOf(p), pvs = previewsOf(p);
-    return '<div class="vd-pdt-banner vd-th-' + typeOf(p) + (h ? " has-hero" : "") + '"' + (h ? ' data-hero="' + h.k + '"' : "") + ">" + (h ? '<div class="vd-pdv" data-src="' + esc(h.src) + '"></div>' : "") + bannerArt(p) +
-      (h ? '<button type="button" class="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기"><span class="off">' + icon("volumeX", "sm") + '소리 켜기</span><span class="on">' + icon("volume2", "sm") + "소리 끄기</span></button>" : "") +
+    const pvs = previewsOf(p);
+    return '<div class="vd-pdt-banner vd-th-' + typeOf(p) + '">' + bannerArt(p) +
       (pvs.length ? '<button type="button" class="vd-pdt-play" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(pvs[0].id) + '"><i>' + icon("play") + "</i><span>미리보기 <b>" + pvs.length + "개</b></span></button>" : "") + "</div>";
-  }
-  let heroLis = false;
-  const HERO_ORIGIN = /^https:\/\/(www\.)?(youtube(-nocookie)?\.com|player\.vimeo\.com)$/;
-  const heroPost = (f, o) => { try { f.contentWindow.postMessage(JSON.stringify(o), "*"); } catch (e) { /* 아직 못 받으면 다음에 */ } };
-  function heroWire(root) {
-    const box = (root || document).querySelector(".vd-pdt-banner.has-hero"), slot = box && box.querySelector(".vd-pdv");
-    if (!slot || slot.firstChild || !slot.dataset.src) return;
-    const mq = (q) => !!(window.matchMedia && window.matchMedia(q).matches);
-    if (mq("(prefers-reduced-motion: reduce)") || (navigator.connection && navigator.connection.saveData)) return;
-    const k = box.dataset.hero, src = slot.dataset.src, play = () => slot.classList.add("is-play");
-    if (k === "mp4") {
-      const v = document.createElement("video");
-      v.muted = true; v.defaultMuted = true; v.loop = true; v.autoplay = true; v.playsInline = true; v.preload = "auto";
-      ["muted", "playsinline", "loop", "autoplay"].forEach((a) => v.setAttribute(a, ""));
-      v.addEventListener("playing", play, { once: true }); v.src = src; slot.appendChild(v);
-      const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
-      return;
-    }
-    if (!heroLis) {
-      heroLis = true;
-      window.addEventListener("message", (e) => {
-        if (!HERO_ORIGIN.test(e.origin)) return;
-        let d = e.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (x) { return; } }
-        const sl = document.querySelector(".vd-pdt-banner.has-hero .vd-pdv"), f = sl && sl.querySelector("iframe");
-        if (!d || !f || e.source !== f.contentWindow) return;
-        f.__heard = true;
-        // 비메오: 준비됐다는 신호가 오면 그때 재생 소식을 받겠다고 알려요
-        if (d.event === "ready" && /vimeo/.test(e.origin)) { heroPost(f, { method: "addEventListener", value: "play" }); heroPost(f, { method: "addEventListener", value: "playProgress" }); return; }
-        // 유튜브: 준비되면(첫 소식) 상태 · 오류 소식을 받겠다고 알리고, 소리 끈 채로 재생을 한 번 더 눌러요 (휴대폰에서 autoplay 칸만으로는 안 도는 경우)
-        if ((d.event === "onReady" || d.event === "initialDelivery") && !f.__ready) {
-          f.__ready = true;
-          ["onStateChange", "onError"].forEach((ev) => heroPost(f, { event: "addEventListener", args: [ev], id: 1, channel: "widget" }));
-          ["mute", "playVideo"].forEach((fn) => heroPost(f, { event: "command", func: fn, args: [], id: 1, channel: "widget" }));
-        }
-        if (d.event === "onError") { f.__err = true; sl.classList.remove("is-play", "is-tap"); return; }
-        const st = d.event === "onStateChange" ? d.info : d.event === "infoDelivery" && d.info ? d.info.playerState : d.event === "play" || d.event === "playProgress" ? 1 : null;
-        if (st === 1) sl.classList.add("is-play");
-      });
-    }
-    const f = document.createElement("iframe");
-    f.title = "미리보기 영상"; f.tabIndex = -1; f.setAttribute("aria-hidden", "true"); f.setAttribute("frameborder", "0");
-    f.allow = "autoplay; encrypted-media; picture-in-picture"; f.referrerPolicy = "strict-origin-when-cross-origin";
-    f.addEventListener("load", () => {
-      if (k === "vm") { heroPost(f, { method: "addEventListener", value: "play" }); heroPost(f, { method: "addEventListener", value: "playProgress" }); }
-      // 유튜브: 듣기 시작 신호를 플레이어가 대답할 때까지 보내요 (휴대폰은 플레이어가 늦게 떠요 — 30초까지 · 2026-11-08 고침: 예전엔 5초만 기다려서 배너가 계속 덮였어요)
-      let n = 0; const hi = () => { if (k !== "yt" || f.__heard || n++ > 60 || !f.isConnected) return; heroPost(f, { event: "listening", id: 1, channel: "widget" }); setTimeout(hi, 500); };
-      hi();
-      // ‘재생 중’ 소식을 못 받아도 오류가 아니면 영상을 보여 줘요 — 눌러서 재생할 수 있게(is-tap): 플레이어가 대답했으면 7초 뒤(소리 없는 자동 재생이 막힌 휴대폰 · 느린 망), 대답이 없어도 12초 뒤
-      const fb = (ms, needHeard) => setTimeout(() => { if (f.isConnected && !f.__err && !slot.classList.contains("is-play") && (!needHeard || f.__heard)) slot.classList.add("is-play", "is-tap"); }, ms);
-      fb(7000, true); fb(12000, false);
-    });
-    f.src = src + (k === "yt" ? "&origin=" + encodeURIComponent(location.origin) : ""); slot.appendChild(f);
-  }
-  /** 미리보기 창이 열려 있는 동안 위 영상은 멈춰요 (창의 소리와 겹치지 않게) — 닫으면 다시 */
-  function heroPause(on) {
-    const slot = document.querySelector(".vd-pdt-banner.has-hero .vd-pdv"); if (!slot) return;
-    const f = slot.querySelector("iframe"), v = slot.querySelector("video"), k = slot.parentNode.dataset.hero;
-    if (f && k === "yt") heroPost(f, { event: "command", func: on ? "pauseVideo" : "playVideo", args: [], id: 1, channel: "widget" });
-    if (f && k === "vm") heroPost(f, { method: on ? "pause" : "play" });
-    if (v) { if (on) v.pause(); else { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } }
-  }
-  /** 영상 소리 켜기 · 끄기 (버튼 글자는 CSS 가 is-snd 를 보고 바꿔요) */
-  function heroSnd(btn) {
-    const box = btn && btn.closest(".vd-pdt-banner"), slot = box && box.querySelector(".vd-pdv"); if (!slot) return;
-    const on = !slot.classList.contains("is-snd"), k = box.dataset.hero, f = slot.querySelector("iframe"), v = slot.querySelector("video");
-    if (f && k === "yt") { const c = (func, args) => heroPost(f, { event: "command", func, args: args || [], id: 1, channel: "widget" }); if (on) { c("unMute"); c("setVolume", [100]); c("playVideo"); } else c("mute"); }
-    if (f && k === "vm") { heroPost(f, { method: "setVolume", value: on ? 1 : 0 }); heroPost(f, { method: "setMuted", value: !on }); if (on) heroPost(f, { method: "play" }); }
-    if (v) { v.muted = !on; if (on) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } }
-    slot.classList.toggle("is-snd", on);
   }
   /* ---------- 상세 상단 v7: 패스트캠퍼스 강의 페이지 구성 ----------
    * 맨 위 가로로 넓은 대표 배너 → 아래 왼쪽: 분류 · 제목 · 설명 · 강의 정보 박스 / 오른쪽: 가격 · 수강신청 카드 */
@@ -3616,7 +3537,7 @@
     if (document.querySelector("[data-cd]")) ui.cd = setInterval(() => document.querySelectorAll("[data-cd]").forEach((x) => { x.textContent = cdTxt(x.dataset.cd); }), 1000);
     const co = document.querySelector("[data-vd-pay]"); if (co) coPaint(co);
     document.querySelectorAll("[data-vd-auth]").forEach(authReady);
-    syncTabs(); wireRails(); motion(); wireCounts(); wireFbar(); heroWire(root); wirePt(); hydrate(root); wireSwipe();
+    syncTabs(); wireRails(); motion(); wireCounts(); wireFbar(); wirePt(); hydrate(root); wireSwipe();
     if (ui.mega) { if (ui.mega === ROUTE.hash && window.innerWidth >= 1024) megaSet(true); else ui.mega = ""; }
   }
   function wireSwipe() {
@@ -3701,7 +3622,7 @@
   }
   // React 화면(Next.js 전환 4-4 · <body data-react>)에서는 이 파일은 계산(로직)만 빌려 주고, 화면 · 이벤트는 React 가 맡아요
   const isActive = () => document.body.dataset.mode === "vod" && !document.body.dataset.react;
-  const closeModal = () => { if (document.body.dataset.react && window.ReactApp && window.ReactApp.closeModal) { window.ReactApp.closeModal(); return; } document.getElementById("modal-root").innerHTML = ""; if (pgWait) pgWait(false, true); heroPause(false); };
+  const closeModal = () => { if (document.body.dataset.react && window.ReactApp && window.ReactApp.closeModal) { window.ReactApp.closeModal(); return; } document.getElementById("modal-root").innerHTML = ""; if (pgWait) pgWait(false, true); };
   // 팝업은 X(또는 취소 · 닫기 버튼)를 눌러야만 닫혀요 — 바깥을 누르거나 ESC 로는 닫히지 않아요 (2026-11)
   // 예외: 전체 메뉴 · 내 계정 메뉴는 펼침 메뉴라 바깥을 누르거나 ESC 로 닫혀요
   const MENU_MODAL = ["vd-modal-drawer", "vd-modal-acct"];
@@ -3878,9 +3799,8 @@
       return;
     }
     if (v === "pitch-more") { const c = t.closest(".vd-pitch"); if (c) { c.classList.toggle("open"); t.innerHTML = (c.classList.contains("open") ? "접기" : "더보기") + icon("chevDown", "xs"); } return; }
-    if (v === "pdv-snd") { heroSnd(t); return; }
     if (v === "cmt-more") { const c = t.closest(".vd-cmt"); if (c) { c.classList.toggle("open"); t.textContent = c.classList.contains("open") ? "접기" : "더보기"; } return; }
-    if (v === "pv-open") { e.preventDefault(); e.stopPropagation(); heroPause(true); previewModal(t.dataset.p, t.dataset.l); return; }
+    if (v === "pv-open") { e.preventDefault(); e.stopPropagation(); previewModal(t.dataset.p, t.dataset.l); return; }
     if (v === "pv-pick") { const p = product(t.dataset.p), l = p && lessons(p).find((x) => x.id === t.dataset.l); const box = document.getElementById("vd-pvm-v"); if (!l || !box) return; box.innerHTML = typeOf(p) === "ebook" ? '<div class="vd-pl-ph">' + icon("book") + "<b>" + esc(l.title) + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : videoHtml(l, true, "미리보기 영상을 준비하고 있어요"); const now = document.querySelector(".vd-pvm-now"); if (now) now.innerHTML = "<small>Part " + (chapOf(p, l).ci + 1) + " · " + esc((chapOf(p, l).ch || {}).title || "") + "</small><b>" + esc(l.title) + "</b>" + (l.desc ? "<p>" + esc(l.desc) + "</p>" : ""); document.querySelectorAll(".vd-pvm-l button").forEach((x) => x.classList.toggle("on", x === t)); return; }
     if (v === "fbar") { const fb = document.getElementById("vd-fbar"); if (fb) { fb.classList.add("on"); fb.classList.toggle("open"); } return; }
     if (v === "like") {
@@ -4304,7 +4224,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroWire, heroSnd, heroPause, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),

@@ -1,6 +1,6 @@
 "use client";
 /* 클래스 상세 (/vod/p/<클래스>) — 예전 vod.js pageProduct 를 React 로 (Next.js 전환 · 스토어 공개 화면)
- *  2026-11-07 탈잉형: [PC] 왼쪽 영상(소리 끈 채로 저절로 재생) · 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 영상 → 카드 → 탭 → 본문
+ *  [PC] 맨 위 넓은 썸네일(예전 v7 그대로 · 2026-11-08 되돌림) → 아래 왼쪽 탭 · 본문 | 오른쪽 따라오는 카드  [휴대폰] 썸네일 → 카드 → 탭 → 본문
  *  카드: 뱃지 · 제목 · 별점 → 가격(제목 바로 아래) → 한눈에 보는 정보 → 수강권 · 쿠폰 · 수강신청 · 찜 · 공유
  *  탭(클래스 소개 · 커리큘럼 · 후기 · 강사 소개 · 이용 안내) → 소개 · 커리큘럼(미리보기) · 후기 · 다짐 · 강사(코멘트) · 강의 정보 · 수강권 · FAQ · 환불 · 함께 보는 클래스
  *  아래: 휴대폰 결제 막대(위 가격 카드가 지나가면 올라와요 · 수강 옵션 창)
@@ -118,12 +118,11 @@ function BuyCard({ p, act }) {
   );
 }
 
-/* ---------- 맨 위 영상 (예전 heroHtml · 붙이기 heroWire · 소리 heroSnd 는 예전 함수 그대로) ---------- */
+/* ---------- 맨 위 썸네일 (예전 heroHtml — 대표 배너 + ‘미리보기 N개’ 버튼 · 2026-11-08 예전 v7 썸네일로 되돌림, 영상 자동 재생 없음) ---------- */
 function Hero({ p, act }) {
-  const X = VOD(), h = X.heroOf(p), pvs = X.previewsOf(p);
+  const X = VOD(), pvs = X.previewsOf(p);
   return (
-    <div className={"vd-pdt-banner vd-th-" + X.typeOf(p) + (h ? " has-hero" : "")} data-hero={h ? h.k : undefined}>{h ? <div className="vd-pdv" data-src={h.src} /> : null}<RawOne html={X.bannerArt(p)} />
-      {h ? <button type="button" className="vd-pdv-snd" data-v="pdv-snd" aria-label="소리 켜기 · 끄기" onClick={(e) => X.heroSnd(e.currentTarget)}><span className="off"><Icon n="volumeX" c="sm" />소리 켜기</span><span className="on"><Icon n="volume2" c="sm" />소리 끄기</span></button> : null}
+    <div className={"vd-pdt-banner vd-th-" + X.typeOf(p)}><RawOne html={X.bannerArt(p)} />
       {pvs.length ? <button type="button" className="vd-pdt-play" data-v="pv-open" data-p={p.id} data-l={pvs[0].id} onClick={() => act.pv(pvs[0].id)}><i><Icon n="play" /></i><span>미리보기 <b>{pvs.length}개</b></span></button> : null}</div>
   );
 }
@@ -261,8 +260,6 @@ function Fbar({ p, st, setSt, act }) {
 function PvModal({ p, lid, onClose }) {
   const X = VOD(), pvs = X.previewsOf(p), lz = X.lessons(p), ebook = X.typeOf(p) === "ebook";
   const [cur, setCur] = useState(() => pvs.find((l) => l.id === lid) || pvs[0] || lz.find((l) => l.id === lid));
-  // 창이 열려 있는 동안 맨 위 영상은 멈춰요 (예전 화면과 같은 heroPause)
-  useEffect(() => { X.heroPause(true); return () => X.heroPause(false); }, [X]);
   if (!cur) return null;
   const vid = (l) => (ebook ? '<div class="vd-pl-ph">' + window.icon("book") + "<b>" + DB().esc(l.title) + "</b><small>전자책 미리보기 페이지는 정식 오픈 때 PDF로 연결해요</small></div>" : X.videoHtml(l, true, "미리보기 영상을 준비하고 있어요"));
   const ch = X.chapOf(p, cur), c = X.ctaOf(p, X.me());
@@ -332,13 +329,11 @@ function Product({ p, n }) {
   // LIVE 이어지는 혜택 안내(예전 HTML) 안의 남은 시간
   useEffect(() => { const i = setInterval(() => document.querySelectorAll("#root .vd-fln [data-cd]").forEach((x) => { x.textContent = X.cdTxt(x.dataset.cd); }), 1000); return () => clearInterval(i); }, [X]);
   useEffect(() => { const root = document.getElementById("root"); if (root && X.hydrate) X.hydrate(root); }, [n, X]);
-  // 맨 위 영상: 그린 뒤 붙이기 (예전 화면과 같은 heroWire — 재생이 시작되면 배너를 걷어요)
-  useEffect(() => { const root = document.getElementById("root"); if (root) X.heroWire(root); }, [p.id, n, X]);
   const t = v.t, bk = v.bk, info = v.info, faq = v.faq;
   return (
     <>
       <div className="vd-pd5 vd-pd8"><div className="vd-wrap"><nav className="vd-crumbs"><a href="#/vod">홈</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/" + p.cat}>{v.cat.label}</a><Icon n="chevRight" c="xs" /><a href={"#/vod/c/all?tab=" + (v.ev ? "premium" : bk ? "ebook" : t)}>{X.TYPE[t][0]}</a></nav>
-        <div className="vd-pd8-g"><div className="vd-pd8-media"><Hero p={p} act={act} /></div><aside className="vd-pd8-side"><BuyCard p={p} act={act} /></aside>
+        <Hero p={p} act={act} /><div className="vd-pd8-g"><aside className="vd-pd8-side"><BuyCard p={p} act={act} /></aside>
           <div className="vd-pd8-body"><nav className="vd-pd-tabs"><div className="vd-pd-tabs-in">{v.tabs.map((x, i) => <button key={x[0]} type="button" data-v="jump" data-to={"vd-s-" + x[0]} className={i === tab ? "on" : ""} onClick={() => jump("vd-s-" + x[0])}>{x[1]}</button>)}</div></nav>
             <Intro p={p} v={v} />
             {v.noCur ? null : <Curri p={p} v={v} act={act} />}

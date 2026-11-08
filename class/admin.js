@@ -4226,8 +4226,6 @@
             '<div class="vda-accs" role="group" aria-label="포인트 색 고르기">' + VX().ACC.map((c) => '<button type="button" class="vda-acc" style="--c:' + c + '" data-action="vda-acc" data-c="' + c + '" aria-label="포인트 색 ' + c + '"></button>').join("") + "</div>" +
             '<div class="a-form-row">' + f("hook", "강조 띠 문구", d.hook, ' maxlength="20" placeholder="예) 재고 0원 · 사업자 없이 시작"') + f("tagline", "강사 한 줄 소개", d.tagline, ' maxlength="24" placeholder="예) 뉴질랜드 건기식 브랜드 대표"') + "</div>" +
             ta("thumbText", "썸네일 큰 제목 <small>(두 줄 · 둘째 줄은 포인트 색)</small>", d.thumbText, 2, "", "예) 건기식 브랜드\n0원 런칭") +
-            f("teaser", "상세 맨 위 영상 <small>(유튜브 · 비메오 · mp4 주소 · 비우면 첫 미리보기 강의 영상)</small>", d.teaser || "", ' maxlength="300" inputmode="url" placeholder="https://youtu.be/…"', "상세 맨 위에서 소리 끈 채로 저절로 반복 재생해요 (프레스런 · 탈잉처럼). 재생이 시작되기 전에는 이 썸네일이 보여요.") +
-            '<label class="a-check"><input type="checkbox" name="teaserOff"' + (d.teaserOff ? " checked" : "") + '><span>상세 맨 위 영상 자동 재생 끄기 <small class="a-muted">썸네일만 보여요</small></span></label>' +
           "</div></div>") +
         sec(4, "상세페이지 · 클래스 소개", "상세페이지 이미지(JPG)를 올리면 ‘강의 소개’에 크게 이어 붙여 보여요. 이미지 없이 쓰면 이 순서로 보여요: 큰 제목 → 고민 말풍선 → POINT(배워요) → 강의 전/후 → 추천 대상 → 상세 소개. ‘미리보기’를 켠 강의는 상세 ‘미리보기’ 칸에 모여요.",
           vdDimgBlock(d) +
