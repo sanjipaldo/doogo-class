@@ -1516,7 +1516,7 @@ body[data-mode="vod"]:has(.vd-player) { background: #0c0c0c; }
 .vd-crn img, .vd-crn i { width: 24px; height: 24px; }
 .vd-crn b { font-size: 15px; }
 .vd-hc { display: inline-flex; align-items: center; gap: 3px; font-weight: 500; color: var(--on2); }
-.vd-hc .icon { color: var(--vd-pri); width: 14px !important; height: 14px !important; }
+.vd-hc .icon { color: var(--vd-pri); width: 14px !important; height: 14px !important; fill: currentColor; } /* 찜 숫자 옆 하트: 속까지 채운 빨간 하트 (2026-11-08 · 누르는 찜 버튼은 찜했을 때만 채워요) */
 .vd-rvc { font-size: 14px; }
 .vd-rvc small { margin-left: 3px; font-size: 13px; }
 .vd-xcat { font-size: 13px; color: var(--on3); }
@@ -1668,6 +1668,7 @@ body[data-mode="vod"]:has(.vd-player) { background: #0c0c0c; }
 .vd-pdt-rate button { display: inline-flex; align-items: center; gap: 4px; font-size: 13px !important; color: var(--on3) !important; }
 .vd-pdt-rate span { display: inline-flex; align-items: center; gap: 3px; }
 .vd-pdt-rate .icon { color: var(--vd-pri); }
+.vd-pdt-rate > span > .icon { fill: currentColor; } /* 상세 제목 아래 ‘♡ 찜 수’도 카드처럼 채운 빨간 하트 (별점 별은 그대로) */
 .vd-pdt-btns { display: flex; gap: 8px; }
 .vd-pdt-btns .vd-likebtn { flex: none; }
 .vd-pdt-btns .vd-btn-xl { flex: 1 1 0; width: auto; padding: 0 12px; }
