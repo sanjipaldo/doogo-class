@@ -433,7 +433,12 @@ module.exports = {
         // 강사진 한 줄 슬라이드: 가만히 두면 그대로 (자동으로 안 넘어가요) → ‘다음’ → ‘이전’ 을 누를 때만 넘어가요
         const t0 = await teachSt(); await pg.waitForTimeout(1500); const t1 = await teachSt(); let t2 = null, t3 = null;
         if (t0 && t0.over && !t0.next) { await step(out, () => pg.click(".vd-teach-arr.next"), 900); t2 = await teachSt(); await step(out, () => pg.click(".vd-teach-arr.prev"), 900); t3 = await teachSt(); }
-        return { out, hero, tabs, chip: !!chip, pager: !!pager, teach: { t0, t1, t2, t3 }, stay: await stayed() };
+        // 전체 메뉴(휴대폰 아래 ‘메뉴’ — 넓은 화면에선 숨은 버튼을 눌러요): 맨 위 두고클래스 로고 + 검색 제목 문구 · 메뉴 줄 (#modal-root 모양도 비교)
+        await pg.evaluate(() => document.querySelector('[data-v="drawer"]').click()); await pg.waitForTimeout(350);
+        out.push(await L.domShape(pg, "modal-root"));
+        const dr = await pg.evaluate(() => { const a = document.querySelector("#modal-root .vd-modal-drawer .vd-dr-logo"); return a ? { href: a.getAttribute("href"), logo: !!a.querySelector("img.vd-logo-img"), tag: (a.querySelector("small") || {}).textContent || "", label: (document.querySelector("#modal-root .vd-modal") || { getAttribute: () => "" }).getAttribute("aria-label") } : null; });
+        await pg.evaluate(() => { const x = document.querySelector("#modal-root .vd-modal-h button[data-v='close']"); if (x) x.click(); }); await pg.waitForTimeout(250);
+        return { out, hero, tabs, chip: !!chip, pager: !!pager, teach: { t0, t1, t2, t3 }, dr, drClosed: !(await pg.$("#modal-root .vd-modal-drawer")), stay: await stayed() };
       };
       // 강사진 줄 상태: 카드 수 · 몇 줄인지 · 넘칠 게 있는지 · 스크롤 위치 · 좌우 화살표가 꺼졌는지
       const teachSt = () => pg.evaluate(() => {
@@ -445,6 +450,7 @@ module.exports = {
       const a4 = await home("off"), b4 = await home("all");
       await run.check(teachOk(a4.teach) && teachOk(b4.teach) && !!b4.teach.t0.over, "스토어 홈 강사진: 한 줄 슬라이드 (" + ((b4.teach.t0 || {}).n || 0) + "명) · 가만히 두면 안 넘어가요 · ‘다음’ · ‘이전’ 을 누를 때만 넘어가고 처음에서는 ‘이전’ 이 꺼져요 (예전 화면 · React 화면 같이)", { off: a4.teach, all: b4.teach }, pg);
       const d4 = a4.out.map((x, i) => L.shapeDiff(x, b4.out[i])).map((d, i) => d && { i, d }).filter(Boolean);
+      await run.check(!!a4.dr && !!b4.dr && b4.dr.href === "#/vod" && b4.dr.logo && b4.dr.tag === "배움이 기회가 되는 곳, 두고클래스" && b4.dr.label === "전체 메뉴" && JSON.stringify(a4.dr) === JSON.stringify(b4.dr) && a4.drClosed && b4.drClosed, "전체 메뉴 맨 위: 두고클래스 로고(누르면 첫 화면) + 검색 제목 문구 ‘배움이 기회가 되는 곳, 두고클래스’ · 창 이름은 ‘전체 메뉴’ · X 로 닫혀요 (예전 화면 = React)", { a: a4.dr, b: b4.dr }, pg);
       await run.check(!d4.length && a4.out.length === b4.out.length && b4.out.length >= 3 && b4.stay, "스토어 홈(React): " + (b4.hero ? "배너 멈춤 · 넘기기 · 점 · " : "") + (b4.tabs > 1 ? "분야 탭 · " : "") + (b4.chip ? "부업 찜 · " : "") + (b4.pager ? "줄 넘기기 " : "") + "— 누를 때마다 예전 화면과 같은 모양 (" + b4.out.length + "번) · 새로 불러오지 않아요", d4.slice(0, 1).concat([{ hero: b4.hero, tabs: b4.tabs, chip: b4.chip, pager: b4.pager, stay: b4.stay }]), pg);
       // 클래스 상세: 수강권 고르기 · 코칭권 · 미리보기 창(다른 강의 고르기 · 닫기) · 쿠폰 창(열기 · 닫기) · 소개 더보기 · 코멘트 더보기 · 탭 · 아래 막대 옵션 창
       const pdp = async (mode) => {

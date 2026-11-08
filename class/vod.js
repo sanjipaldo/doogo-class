@@ -1315,6 +1315,8 @@
   // 맨 위(머리글) 로고는 어느 화면에서나 처음 보이는 그림이라 먼저 받아요 (fetchpriority) — 바닥 · 다른 곳은 그대로
   const logoImg = '<img class="vd-logo-img" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">';
   const logoTop = logoImg.replace("<img ", '<img fetchpriority="high" ');
+  /* 스토어 첫 화면 검색 제목 (브라우저 탭 · 검색 결과 제목) — index.html <title> 과 같게. 전체 메뉴 맨 위 로고 아래 문구(STORE_TAG)도 여기서 가져가요 */
+  const STORE_TITLE = "배움이 기회가 되는 곳, 두고클래스 | 온라인 클래스", STORE_TAG = STORE_TITLE.split(" | ")[0];
   // 두잉고 | DOOGO CLASS 바꾸기: 둥근 알약 + 미끄러지는 손잡이 (지난번에 있던 쪽에서 지금 쪽으로 움직여요)
   const SW_KEY = "doinggo:site-sw";
   const SW_DG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.6 14.2c2.4.2 4.2 1.8 4.7 4.8"/></svg>';
@@ -3620,7 +3622,7 @@
     try { sessionStorage.setItem("dc:last", ROUTE.hash); } catch (e) {}
     catchAttr(); touchSeen();
     root.innerHTML = html;
-    document.title = !a ? "배움이 기회가 되는 곳, 두고클래스 | 온라인 클래스" : a === "legal" ? ((LEGAL_TABS.find((x) => x[0] === b) || LEGAL_TABS[0])[1] + " | 두고클래스 DOOGO CLASS") : (a === "p" && product(b) ? product(b).title + " | " : "") + "DOOGO CLASS — 돈 되는 클래스"; // 대표 주소 = index.html <title> (SEO)
+    document.title = !a ? STORE_TITLE : a === "legal" ? ((LEGAL_TABS.find((x) => x[0] === b) || LEGAL_TABS[0])[1] + " | 두고클래스 DOOGO CLASS") : (a === "p" && product(b) ? product(b).title + " | " : "") + "DOOGO CLASS — 돈 되는 클래스"; // 대표 주소 = index.html <title> (SEO)
     window.applyStudentTheme && window.applyStudentTheme(null);
     if (!a && !ui.paused && liveBanners().length > 1) ui.timer = setInterval(() => slide(1), 5000);
     if (document.querySelector("[data-cd]")) ui.cd = setInterval(() => document.querySelectorAll("[data-cd]").forEach((x) => { x.textContent = cdTxt(x.dataset.cd); }), 1000);
@@ -3730,8 +3732,9 @@
     const Lg = (window.CLASS_LEGAL || {})[k];
     return { title: Lg ? Lg[0] : "약관", html: Lg ? (window.CLASS_LEGAL_HTML ? window.CLASS_LEGAL_HTML(Lg[1]) : esc(Lg[1])) : "정식 오픈 때 올려요." };
   }
-  function modal(title, body, cls) {
-    document.getElementById("modal-root").innerHTML = '<div class="vd-modal-bg' + (cls ? " " + cls : "") + '"' + (MENU_MODAL.indexOf(cls) >= 0 ? ' data-v="close"' : "") + '><div class="vd-modal" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="vd-modal-h"><b>' + esc(title) + '</b><button type="button" data-v="close" aria-label="닫기">' + icon("x", "sm") + "</button></div>" + body + "</div></div>";
+  // head: 머리 글자 대신 넣을 내용(HTML) — 전체 메뉴는 로고 + 검색 제목 문구 (창 이름 aria-label 은 그대로 title)
+  function modal(title, body, cls, head) {
+    document.getElementById("modal-root").innerHTML = '<div class="vd-modal-bg' + (cls ? " " + cls : "") + '"' + (MENU_MODAL.indexOf(cls) >= 0 ? ' data-v="close"' : "") + '><div class="vd-modal" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="vd-modal-h">' + (head || "<b>" + esc(title) + "</b>") + '<button type="button" data-v="close" aria-label="닫기">' + icon("x", "sm") + "</button></div>" + body + "</div></div>";
   }
   // 내 계정 메뉴: 인사 · 내 강의 · 쿠폰 · 포인트 · 자주 가는 곳 · 로그아웃 (PC 는 오른쪽 위에서 펼침, 휴대폰은 아래에서 올라옴)
   function acctBody(m) {
@@ -3767,11 +3770,13 @@
   const drIc = (x) => '<i class="vd-dr-ic ' + (x.img ? "is-3d" : "t-" + x.tone) + '" aria-hidden="true">' + (x.img ? '<img src="' + tileImg(x.img) + '" alt="" loading="lazy">' : icon(x.ic, "sm")) + "</i>";
   const drIt = (x) => (x.out ? '<button type="button" class="vd-dr-it" data-v="logout">' + drIc(x) + "<span>" + esc(x.t) + "</span></button>"
     : '<a class="vd-dr-it" href="' + esc(x.h) + '"' + (x.kk ? ' target="_blank" rel="noopener" data-kk-ops' : ' data-v="close"') + ">" + drIc(x) + "<span>" + esc(x.t) + "</span></a>");
+  /* 전체 메뉴 맨 위: 두고클래스 로고(누르면 스토어 첫 화면) + 검색 제목 문구 ‘배움이 기회가 되는 곳, 두고클래스’ (2026-11-08 사용자 요청) */
+  const drHead = () => '<a class="vd-dr-logo" href="#/vod" data-v="close"><img class="vd-logo-img" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS"><small>' + esc(STORE_TAG) + "</small></a>";
   function drawer() {
     const m = me();
     modal("전체 메뉴", '<div class="vd-drawer">' +
       '<form class="vd-search vd-dr-search" data-vd-search role="search"><input name="q" type="search" placeholder="어떤 부업을 배워 볼까요?" aria-label="클래스 검색" autocomplete="off"><button type="submit" aria-label="검색">' + icon("search", "sm") + "</button></form>" + (m ? '<a class="vd-dr-me" href="#/vod/my" data-v="close"><span class="vd-me-av lg">' + esc(m.name.slice(0, 1)) + "</span><div><b>" + esc(m.name) + " 님</b><small>" + esc(m.email) + " · " + (Number(m.points) || 0).toLocaleString() + "P</small></div>" + icon("chevRight", "sm") + "</a>" : '<a class="vd-btn vd-btn-p vd-btn-xl" href="#/vod/login" data-v="close">로그인 · 회원가입</a>') +
-      drawerSecs(m).map((s) => '<div class="vd-dr-sec"><p>' + esc(s[0]) + "</p>" + s[1].map(drIt).join("") + "</div>").join("") + "</div>", "vd-modal-drawer");
+      drawerSecs(m).map((s) => '<div class="vd-dr-sec"><p>' + esc(s[0]) + "</p>" + s[1].map(drIt).join("") + "</div>").join("") + "</div>", "vd-modal-drawer", drHead());
   }
   /* ---------- PC 전체 카테고리 펼침 메뉴 (탈잉 · 패스트캠퍼스처럼) ----------
      [전체 카테고리]를 누르면 머리띠 바로 아래로 넓은 창이 열려요: 왼쪽 분야 → 가운데 그 분야의 종류별 바로가기 · 인기 클래스 → 오른쪽 바로가기 · 두고 파트너스.
@@ -4311,7 +4316,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroWire, heroSnd, heroPause, heroLoop, HERO_PRE, banImg, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroWire, heroSnd, heroPause, heroLoop, HERO_PRE, banImg, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),

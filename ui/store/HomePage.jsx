@@ -16,7 +16,7 @@ import { Eg, useMotion } from "../lib/motion.jsx";
 import { VOD, toast } from "../lib/legacy.js";
 import { usePageLike } from "./pageActs.js";
 
-const TITLE = "배움이 기회가 되는 곳, 두고클래스 | 온라인 클래스";
+const TITLE = "배움이 기회가 되는 곳, 두고클래스 | 온라인 클래스"; // 기본값 — 문구는 VOD.STORE_TITLE 한 곳 (전체 메뉴 로고 아래 문구와 같이)
 const TAGC = { red: "red", blue: "blue", pink: "pink", yellow: "yellow", orange: "orange", green: "green" };
 const PAUSE = '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';
 const lines = (t) => String(t || "").split("\n").map((x, i) => <Fragment key={i}>{i ? <br /> : null}{x}</Fragment>);
@@ -190,7 +190,7 @@ export default function HomePage({ n, moved }) {
   const onTopic = useCallback((k) => { const on = VOD().topicFlip(k); window.ReactApp.redraw(); toast(!on ? "‘" + k + "’ 찜을 풀었어요." : "‘" + k + "’ 클래스가 열리면 알려 드릴게요."); }, []);
   useMotion(n, moved);
   useEffect(() => {
-    document.title = TITLE;
+    document.title = VOD().STORE_TITLE || TITLE;
     if (window.applyStudentTheme) window.applyStudentTheme(null);
     try { sessionStorage.setItem("dc:last", window.ROUTE.hash); } catch (e) { /* 기억만 못 해요 */ }
     if (moved) window.scrollTo(0, 0);

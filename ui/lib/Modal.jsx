@@ -8,7 +8,8 @@ import Icon from "./Icon.jsx";
 
 export const MENU_MODAL = ["vd-modal-drawer", "vd-modal-acct"];
 
-export default function Modal({ title, cls, onClose, children }) {
+/** head: 머리 글자 대신 넣을 내용 — 전체 메뉴는 로고 + 검색 제목 문구 (창 이름 aria-label 은 그대로 title · 예전 modal(title, body, cls, head)) */
+export default function Modal({ title, cls, onClose, head, children }) {
   const menu = MENU_MODAL.indexOf(cls) >= 0;
   // 예전 처리 함수(doRfReq · doShipEdit …)가 끝에 팝업을 닫으면 (window.ReactApp.closeModal)
   useEffect(() => { const c = () => onClose(); window.addEventListener("dc:modal-close", c); return () => window.removeEventListener("dc:modal-close", c); }, [onClose]);
@@ -29,7 +30,7 @@ export default function Modal({ title, cls, onClose, children }) {
   return createPortal(
     <div className={"vd-modal-bg" + (cls ? " " + cls : "")} data-v={menu ? "close" : undefined} onClick={onBg}>
       <div className="vd-modal" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="vd-modal-h"><b>{title}</b><button type="button" data-v="close" aria-label="닫기"><Icon n="x" c="sm" /></button></div>
+        <div className="vd-modal-h">{head || <b>{title}</b>}<button type="button" data-v="close" aria-label="닫기"><Icon n="x" c="sm" /></button></div>
         {children}
       </div>
     </div>, box);

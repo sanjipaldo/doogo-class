@@ -115,14 +115,15 @@ function AcctMenu({ m, onClose }) {
 function DrIc({ x }) {
   return <i className={"vd-dr-ic " + (x.img ? "is-3d" : "t-" + x.tone)} aria-hidden="true">{x.img ? <img src={VOD().tileImg(x.img)} alt="" loading="lazy" /> : <Icon n={x.ic} c="sm" />}</i>;
 }
-/** 전체 메뉴 (휴대폰은 화면 전체) — 무엇을 보여 줄지는 예전 화면과 같은 VOD.drawerSecs */
+/** 전체 메뉴 (예전처럼 옆에서 나오는 판) — 무엇을 보여 줄지는 예전 화면과 같은 VOD.drawerSecs
+ *  맨 위는 두고클래스 로고(누르면 스토어 첫 화면) + 검색 제목 문구 VOD.STORE_TAG (예전 drHead) */
 function Drawer({ m, onClose }) {
   const X = VOD(), logout = useLogout(onClose);
   const it = (x) => (x.out ? <button key="out" type="button" className="vd-dr-it" data-v="logout" onClick={logout}><DrIc x={x} /><span>{x.t}</span></button>
     : x.kk ? <a key={x.h} className="vd-dr-it" href={x.h} target="_blank" rel="noopener" data-kk-ops=""><DrIc x={x} /><span>{x.t}</span></a>
     : <a key={x.h} className="vd-dr-it" href={x.h} data-v="close"><DrIc x={x} /><span>{x.t}</span></a>);
   return (
-    <Modal title="전체 메뉴" cls="vd-modal-drawer" onClose={onClose}>
+    <Modal title="전체 메뉴" cls="vd-modal-drawer" onClose={onClose} head={<a className="vd-dr-logo" href="#/vod" data-v="close"><img className="vd-logo-img" src={LOGO_SRC} alt="DOOGO CLASS" /><small>{X.STORE_TAG}</small></a>}>
       <div className="vd-drawer">
         <SearchForm cls="vd-search vd-dr-search" value={undefined} onDone={onClose} />
         {m ? <a className="vd-dr-me" href="#/vod/my" data-v="close"><span className="vd-me-av lg">{m.name.slice(0, 1)}</span><div><b>{m.name} 님</b><small>{m.email} · {(Number(m.points) || 0).toLocaleString()}P</small></div><Icon n="chevRight" c="sm" /></a> : <a className="vd-btn vd-btn-p vd-btn-xl" href="#/vod/login" data-v="close">로그인 · 회원가입</a>}

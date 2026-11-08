@@ -4374,3 +4374,10 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 @media (prefers-reduced-motion: reduce) {
   .vd-slide.on .vd-burst { animation: vd-cpop .5s ease .1s both; }
 }
+
+/* 전체 메뉴 맨 위 (2026-11-08): ‘전체 메뉴’ 글자 대신 두고클래스 로고(누르면 스토어 첫 화면) + 검색 제목 문구 ‘배움이 기회가 되는 곳, 두고클래스’ (vod.js drHead · STORE_TAG) */
+.vd-modal-drawer .vd-modal-h { padding: 14px 12px 14px 20px; }
+.vd-dr-logo { display: grid; justify-items: start; gap: 7px; min-width: 0; padding: 2px 0; color: #1d1e22 !important; text-decoration: none !important; }
+.vd-dr-logo .vd-logo-img { height: 20px; width: auto; }
+.vd-dr-logo small { font-size: 12.5px; font-weight: 500; line-height: 1.3; color: #8b8f99; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.vd-dr-logo:focus-visible { outline: 2px solid var(--vd-pri); outline-offset: 3px; border-radius: 4px; }
