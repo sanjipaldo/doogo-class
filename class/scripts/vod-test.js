@@ -1371,12 +1371,6 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const op = OO.plans612((k) => (k === "meta" ? fakeMeta : null)), nm = op.writes.meta.vod;
     ok(nm.products[0].faq[0][1] === "결제할 때 고른 수강권 기간(6개월 · 12개월) 동안 횟수 제한 없이 볼 수 있어요. 기간이 끝나면 재수강 할인가로 진도 그대로 다시 들을 수 있어요." && nm.products[0].faq[1][1] === "그대로 두세요" && nm.helpFaq[0][2] === "수강권 기간(6개월 · 12개월) 동안 볼 수 있어요." && nm.settings.rebuy.on && nm.settings.rebuy.pct === 40 && nm.settings.coach.n === 5 && op.result.faq === 1 && op.result.helpFaq === 1, "일회성 작업: FAQ 예전 문구만 6개월 · 12개월 · 재수강으로 + 재수강 할인 기본값 (다른 설정 그대로)", op.result);
     ok(OO.OPS.some((x) => x.id === "2026-11-03-plans-6-12-rebuy"), "일회성 작업 목록에 등록");
-    // 2026-11-08 첫 화면 배너 정사각형 카드: 기본 이미지 배너에만 카드 이미지 (마스터가 바꾼 배너 · 이미 있는 배너 · 디자인 배너는 그대로)
-    const bm = { vod: { banners: [{ id: "vb-img1", kind: "img", pc: "assets/vod/banner-class-pc.jpg", m: "assets/vod/banner-class-m.jpg" }, { id: "vb-x", kind: "img", pc: "/api/file?k=mine" }, { id: "vb-img1b", kind: "img", sq: "/api/file?k=sq", pc: "assets/vod/banner-class-pc.jpg" }, { id: "vb1", title: "디자인" }], products: [] } };
-    const bo = OO.bannerClassSq((k) => (k === "meta" ? JSON.parse(JSON.stringify(bm)) : null)), bb = bo.writes.meta.vod.banners;
-    ok(bo.result.banners === 1 && bb[0].sq === "assets/vod/banner-class-sq.jpg" && bb[0].pc === "assets/vod/banner-class-pc.jpg" && !bb[1].sq && bb[2].sq === "/api/file?k=sq" && !("sq" in bb[3]) && bo.writes.meta.vod.v24 === 1, "기본 이미지 배너에만 정사각형 카드 이미지 · v24 표시", bo);
-    const b2 = OO.bannerClassSq((k) => (k === "meta" ? bo.writes.meta : null));
-    ok(b2.result.banners === 0 && OO.OPS.some((x) => x.id === "2026-11-08-banner-class-sq" && x.run === OO.bannerClassSq), "다시 돌려도 그대로 · 작업 목록 등록", b2.result);
   }
   {
     console.log("20) 두고 파트너스 지원서 → 마스터 접수함 (2026-11)");

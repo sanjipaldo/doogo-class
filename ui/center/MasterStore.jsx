@@ -120,15 +120,15 @@ function FunnelCard({ v }) {
 }
 function BanState({ x }) {
   const DB = window.DB, t = DB.date.todayStr(), md = (s) => Number(s.slice(5, 7)) + "." + Number(s.slice(8, 10));
-  const st = x.on === false ? ["off", "꺼짐"] : x.from && t < x.from ? ["wait", md(x.from) + "부터"] : x.to && t > x.to ? ["end", "기간 끝"] : x.kind === "img" && !x.sq && !x.pc && !x.m ? ["end", "이미지 없음"] : ADM().VX().liveBanners().indexOf(x) < 0 ? ["end", "판매 영역 꺼짐"] : ["on", x.to ? "~" + md(x.to) + "까지" : "노출 중"];
+  const st = x.on === false ? ["off", "꺼짐"] : x.from && t < x.from ? ["wait", md(x.from) + "부터"] : x.to && t > x.to ? ["end", "기간 끝"] : x.kind === "img" && !x.pc && !x.m ? ["end", "이미지 없음"] : ADM().VX().liveBanners().indexOf(x) < 0 ? ["end", "판매 영역 꺼짐"] : ["on", x.to ? "~" + md(x.to) + "까지" : "노출 중"];
   return <i className={"vda-ban-st " + st[0]}>{st[1]}</i>;
 }
 function Banners({ v }) {
   const A = ADM();
-  return <section className="a-card"><div className="a-card-head"><h2>첫 화면 배너</h2><span className="a-muted">켜진 배너가 위에서부터 5초마다 넘어가요. 이미지 배너는 정사각형 카드 이미지({A.BAN_SQ.join(" × ")}px) 한 장을 PC · 휴대폰 같이 써요.</span><Btn action="vda-ban-add" cls="a-btn-primary a-btn-sm vda-ml"><Icon n="plus" c="sm" />배너 추가</Btn></div>
+  return <section className="a-card"><div className="a-card-head"><h2>첫 화면 배너</h2><span className="a-muted">켜진 배너가 위에서부터 5초마다 넘어가요. 이미지 배너는 PC {A.BAN_PC.join(" × ")} · 모바일 {A.BAN_M.join(" × ")}px 이미지를 따로 올려요.</span><Btn action="vda-ban-add" cls="a-btn-primary a-btn-sm vda-ml"><Icon n="plus" c="sm" />배너 추가</Btn></div>
     {v.banners.length ? <div className="vda-bans">{v.banners.map((x, i) => { const p = A.vdP(x.pid), img = x.kind === "img"; return (
       <div key={i} className={"vda-ban" + (x.on === false ? " off" : "")}><span className={"vda-ban-sw" + (img ? " img" : x.dark ? " dk" : "")} style={{ "--a": img ? x.bg || "#111" : (x.color || [])[0] || "#111", "--b": img ? x.bg || "#111" : (x.color || [])[1] || "#333" }}>
-          {img ? <>{A.banThumb(x) ? <Img u={A.banThumb(x)} /> : null}{A.banTag(x) ? <em>{A.banTag(x)}</em> : null}</> : <>{x.img ? <img src={x.img} alt="" /> : null}<b>{br(x.title)}</b></>}</span>
+          {img ? <>{x.pc || x.m ? <Img u={x.pc || x.m} /> : null}<em>{(x.pc ? "PC" : "") + (x.pc && x.m ? " · " : "") + (x.m ? "M" : "")}</em></> : <>{x.img ? <img src={x.img} alt="" /> : null}<b>{br(x.title)}</b></>}</span>
         <div className="vda-ban-t"><small>{img ? <i className="vda-ban-k">이미지 배너</i> : <i className="vda-ban-k art">디자인 배너</i>}<BanState x={x} />{img ? "" : x.eyebrow || ""}</small><b>{img ? x.alt || x.title || "이름 없는 이미지 배너" : (x.title || "").replace(/\n/g, " ")}</b><span>{p ? "→ " + p.title : x.href ? "→ " + x.href : <span className="a-muted">연결 없음 (전체 클래스로)</span>}</span></div>
         <div className="vda-ban-a"><Sw on={x.on !== false} action="vda-ban-on" i={i} label="배너 켜기" /><Mv action="vda-ban-move" i={i} dir={-1} label="위로" dis={i === 0} /><Mv action="vda-ban-move" i={i} dir={1} label="아래로" dis={i === v.banners.length - 1} />
           <Btn action="vda-ban-edit" cls="a-btn-ghost a-btn-sm" data-i={i}>수정</Btn><button type="button" className="a-icon-btn" data-action="vda-ban-del" data-i={i} aria-label="배너 지우기"><Icon n="trash" c="sm" /></button></div></div>); })}</div>

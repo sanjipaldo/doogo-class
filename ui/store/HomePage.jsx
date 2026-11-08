@@ -29,14 +29,14 @@ function imgP(u, at) {
 
 /* ---------- 배너 (예전 slide · wireSwipe) ---------- */
 function Hero({ bs }) {
-  const X = VOD(), n = bs.length, off = n > 1 ? X.HERO_PRE : 0;
+  const X = VOD(), n = bs.length, off = n > 1 ? 1 : 0;
   const first = useRef(null);
   if (first.current === null) { const s0 = Math.min(X.homeUi().slide, Math.max(0, n - 1)); X.homeUi({ slide: s0 }); first.current = s0; }
   const cur = useRef(first.current), jump = useRef(0);
   const [st, setSt] = useState(() => ({ i: first.current, pos: first.current + off, anim: false }));
   const [paused, setPaused] = useState(() => X.homeUi().paused);
   const [restart, setRestart] = useState(0);
-  // 끝에서 처음으로 넘어갈 때도 같은 방향으로: 양 끝 복제 배너(앞 2 · 뒤 3 — VOD.heroLoop)까지 움직인 뒤, 진짜 배너 자리로 순간 이동
+  // 끝에서 처음으로 넘어갈 때도 같은 방향으로: 양 끝 복제 배너까지 움직인 뒤, 진짜 배너 자리로 순간 이동
   const slide = useCallback((d, to) => {
     if (!n) return;
     const raw = to != null ? to : cur.current + d, i = ((raw % n) + n) % n;
@@ -61,16 +61,16 @@ function Hero({ bs }) {
   };
   const onCl = (e) => { if (sw.current.moved) { e.preventDefault(); sw.current.moved = false; } };
   if (!n) return null;
-  const loop = X.heroLoop(bs);
+  const loop = n > 1 ? [bs[n - 1]].concat(bs, [bs[0]]) : bs;
   return (
     <section className="vd-hero"><div className="vd-hero-vp"><div className={"vd-hero-track" + (st.anim ? " anim" : "")} id="vd-hero" style={{ "--i": st.pos }} onTouchStart={onTs} onTouchEnd={onTe} onClickCapture={onCl}>
       {loop.map((b, j) => {
         const i = j - off, clone = i < 0 || i >= n, on = i === st.i, p = b.pid ? X.product(b.pid) : null, ph = b.img || (p ? X.phOf(p) : ""), href = b.href || (p ? "#/vod/p/" + p.id : "#/vod/c/all");
         const hi = !clone && i === first.current ? "high" : undefined;
         if (b.kind === "img") {
-          const g = X.banImg(b);
-          return <a key={j} className={"vd-slide img" + (g.fit ? " fit" : "") + (on ? " on" : "")} href={href} target={b.newTab ? "_blank" : undefined} rel={b.newTab ? "noopener" : undefined} style={{ "--a": b.bg || (b.color || [])[0] || "#111" }} data-i={clone ? "" : i} tabIndex={on ? 0 : -1} aria-hidden={clone ? "true" : undefined}>
-            <picture><img {...imgP(g.src, "src")} fetchPriority={hi} alt={clone ? "" : b.alt || String(b.title || "").replace(/\n/g, " ")} draggable="false" /></picture></a>;
+          const pc = b.pc || b.m, m = b.m || "";
+          return <a key={j} className={"vd-slide img" + (b.fit === "contain" ? " fit" : "") + (on ? " on" : "")} href={href} target={b.newTab ? "_blank" : undefined} rel={b.newTab ? "noopener" : undefined} style={{ "--a": b.bg || (b.color || [])[0] || "#111" }} data-i={clone ? "" : i} tabIndex={on ? 0 : -1} aria-hidden={clone ? "true" : undefined}>
+            <picture>{m && m !== pc ? <source media="(max-width: 639px)" {...imgP(m, "srcSet")} /> : null}<img {...imgP(pc, "src")} fetchPriority={hi} alt={clone ? "" : b.alt || String(b.title || "").replace(/\n/g, " ")} draggable="false" /></picture></a>;
         }
         const sk = String(b.sticker || "").split("\n");
         return (

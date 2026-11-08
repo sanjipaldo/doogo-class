@@ -4703,8 +4703,8 @@
     const rank = (v.topics || []).map((t) => [t, tv[t] || 0]).sort((a, c) => c[1] - a[1]).slice(0, 10), mx = Math.max(1, ...rank.map((r) => r[1]));
     return head("VOD 전시 · 쿠폰 · 설정", "스토어 첫 화면 배너 · 쿠폰 · ‘다루는 부업’ 칩 · 카테고리, 기본 정산 비율 · 무통장 입금 계좌 · 후기 포인트를 정해요.", vdStoreBtn()) +
       vdBizCard(v) + vdFunnelCard(v) +
-      '<section class="a-card"><div class="a-card-head"><h2>첫 화면 배너</h2><span class="a-muted">켜진 배너가 위에서부터 5초마다 넘어가요. 이미지 배너는 정사각형 카드 이미지(' + BAN_SQ.join(" × ") + 'px) 한 장을 PC · 휴대폰 같이 써요.</span>' + btn(icon("plus", "sm") + "배너 추가", "vda-ban-add", "a-btn-primary a-btn-sm vda-ml") + "</div>" +
-        (v.banners.length ? '<div class="vda-bans">' + v.banners.map((x, i) => { const p = vdP(x.pid); return '<div class="vda-ban' + (x.on === false ? " off" : "") + '"><span class="vda-ban-sw' + (x.kind === "img" ? " img" : x.dark ? " dk" : "") + '" style="--a:' + esc(x.kind === "img" ? x.bg || "#111" : (x.color || [])[0] || "#111") + ";--b:" + esc(x.kind === "img" ? x.bg || "#111" : (x.color || [])[1] || "#333") + '">' + (x.kind === "img" ? (banThumb(x) ? "<img " + VX().imgAttr(banThumb(x), "src") + ' alt="">' : "") + (banTag(x) ? "<em>" + banTag(x) + "</em>" : "") : (x.img ? '<img src="' + esc(x.img) + '" alt="">' : "") + "<b>" + esc(x.title || "").replace(/\n/g, "<br>") + "</b>") + '</span><div class="vda-ban-t"><small>' + (x.kind === "img" ? '<i class="vda-ban-k">이미지 배너</i>' : '<i class="vda-ban-k art">디자인 배너</i>') + vdBanState(x) + esc(x.kind === "img" ? "" : x.eyebrow || "") + "</small><b>" + esc(x.kind === "img" ? x.alt || x.title || "이름 없는 이미지 배너" : (x.title || "").replace(/\n/g, " ")) + "</b><span>" + (p ? "→ " + esc(p.title) : x.href ? "→ " + esc(x.href) : '<span class="a-muted">연결 없음 (전체 클래스로)</span>') + '</span></div><div class="vda-ban-a">' +
+      '<section class="a-card"><div class="a-card-head"><h2>첫 화면 배너</h2><span class="a-muted">켜진 배너가 위에서부터 5초마다 넘어가요. 이미지 배너는 PC ' + BAN_PC.join(" × ") + " · 모바일 " + BAN_M.join(" × ") + 'px 이미지를 따로 올려요.</span>' + btn(icon("plus", "sm") + "배너 추가", "vda-ban-add", "a-btn-primary a-btn-sm vda-ml") + "</div>" +
+        (v.banners.length ? '<div class="vda-bans">' + v.banners.map((x, i) => { const p = vdP(x.pid); return '<div class="vda-ban' + (x.on === false ? " off" : "") + '"><span class="vda-ban-sw' + (x.kind === "img" ? " img" : x.dark ? " dk" : "") + '" style="--a:' + esc(x.kind === "img" ? x.bg || "#111" : (x.color || [])[0] || "#111") + ";--b:" + esc(x.kind === "img" ? x.bg || "#111" : (x.color || [])[1] || "#333") + '">' + (x.kind === "img" ? (x.pc || x.m ? "<img " + VX().imgAttr(x.pc || x.m, "src") + ' alt="">' : "") + "<em>" + (x.pc ? "PC" : "") + (x.pc && x.m ? " · " : "") + (x.m ? "M" : "") + "</em>" : (x.img ? '<img src="' + esc(x.img) + '" alt="">' : "") + "<b>" + esc(x.title || "").replace(/\n/g, "<br>") + "</b>") + '</span><div class="vda-ban-t"><small>' + (x.kind === "img" ? '<i class="vda-ban-k">이미지 배너</i>' : '<i class="vda-ban-k art">디자인 배너</i>') + vdBanState(x) + esc(x.kind === "img" ? "" : x.eyebrow || "") + "</small><b>" + esc(x.kind === "img" ? x.alt || x.title || "이름 없는 이미지 배너" : (x.title || "").replace(/\n/g, " ")) + "</b><span>" + (p ? "→ " + esc(p.title) : x.href ? "→ " + esc(x.href) : '<span class="a-muted">연결 없음 (전체 클래스로)</span>') + '</span></div><div class="vda-ban-a">' +
           '<button type="button" class="a-switch' + (x.on !== false ? " on" : "") + '" data-action="vda-ban-on" data-i="' + i + '" role="switch" aria-checked="' + (x.on !== false) + '" aria-label="배너 켜기"><i></i></button>' +
           '<button type="button" class="a-icon-btn" data-action="vda-ban-move" data-i="' + i + '" data-dir="-1" aria-label="위로"' + (i === 0 ? " disabled" : "") + ">" + icon("arrowUp", "sm") + '</button><button type="button" class="a-icon-btn" data-action="vda-ban-move" data-i="' + i + '" data-dir="1" aria-label="아래로"' + (i === v.banners.length - 1 ? " disabled" : "") + ">" + icon("arrowDown", "sm") + "</button>" +
           btn("수정", "vda-ban-edit", "a-btn-ghost a-btn-sm", ' data-i="' + i + '"') + '<button type="button" class="a-icon-btn" data-action="vda-ban-del" data-i="' + i + '" aria-label="배너 지우기">' + icon("trash", "sm") + "</button></div></div>"; }).join("") + "</div>" : emptyBox("image", "배너가 없어요. 배너가 없으면 첫 화면은 카테고리부터 보여요.")) + "</section>" +
@@ -4885,14 +4885,10 @@
     x.answer = a; x.answeredAt = Date.now(); commit("문의에 답변했어요.");
   }
   /* ---------- 첫 화면 배너 편집 ----------
-   * 이미지 배너: 정사각형 카드 이미지 한 장을 올리고(권장 크기 안내 + 미리보기 · 예전 가로 이미지는 접어 둔 칸), 누르면 갈 곳 · 새 창 · 노출 기간을 정해요.
+   * 이미지 배너: PC · 모바일 이미지를 따로 올리고(권장 크기 안내 + 미리보기), 누르면 갈 곳 · 새 창 · 노출 기간을 정해요.
    * 시안은 이미지를 이 브라우저(IndexedDB)에 저장해요. 정식 서버에서는 같은 자리에 파일 저장소 주소가 들어가요. */
-  /* 2026-11-08 탈잉형 카드 배너: 첫 화면 배너는 정사각형 카드라 이미지 배너는 ‘카드 이미지(정사각형)’ 한 장을 PC · 휴대폰 같이 써요.
-   * 예전에 올린 가로 이미지(PC 1672 × 736 · 모바일 1050 × 600)는 카드 이미지가 없을 때만 자르지 않고 다 보이게 넣어요 (vod.js banImg) */
-  const BAN_SQ = [1080, 1080], BAN_PC = [1672, 736], BAN_M = [1050, 600], BAN_MAX = 5 * 1024 * 1024;
-  const BANSZ = { sq: ["카드 이미지 (정사각형)", BAN_SQ, "image", "가로:세로 1 : 1 · PC · 휴대폰 같이 써요 · 글자는 가운데 쪽에 크게 (휴대폰 카드 폭 약 350px)"], pc: ["예전 PC 이미지", BAN_PC, "monitor", "가로:세로 약 2.3 : 1 · 카드 이미지가 없을 때만 써요"], m: ["예전 모바일 이미지", BAN_M, "smartphone", "가로:세로 7 : 4 · 카드 이미지가 없을 때 PC 이미지보다 먼저 써요"] };
-  const banTag = (x) => (x.sq ? "정사각형" : x.pc || x.m ? "예전 가로" : "");
-  const banThumb = (x) => x.sq || x.m || x.pc || "";
+  const BAN_PC = [1672, 736], BAN_M = [1050, 600], BAN_MAX = 5 * 1024 * 1024;
+  const BANSZ = { pc: ["PC 이미지", BAN_PC, "monitor", "가로:세로 약 2.3 : 1 · 화면 폭 836px 기준 2배 크기"], m: ["모바일 이미지", BAN_M, "smartphone", "가로:세로 7 : 4 · 비우면 PC 이미지를 가운데 맞춰 잘라 써요"] };
   /* ---------- 첫 화면 카테고리 아이콘 (배너 아래 아이콘 줄) ---------- */
   const TILE_MAX = 1024 * 1024;
   function vdTileCard(v) {
@@ -4933,16 +4929,16 @@
   });
   function vdBanState(x) {
     const t = DB.date.todayStr(), md = (s) => Number(s.slice(5, 7)) + "." + Number(s.slice(8, 10));
-    const st = x.on === false ? ["off", "꺼짐"] : x.from && t < x.from ? ["wait", md(x.from) + "부터"] : x.to && t > x.to ? ["end", "기간 끝"] : x.kind === "img" && !x.sq && !x.pc && !x.m ? ["end", "이미지 없음"] : VX().liveBanners().indexOf(x) < 0 ? ["end", "판매 영역 꺼짐"] : ["on", x.to ? "~" + md(x.to) + "까지" : "노출 중"];
+    const st = x.on === false ? ["off", "꺼짐"] : x.from && t < x.from ? ["wait", md(x.from) + "부터"] : x.to && t > x.to ? ["end", "기간 끝"] : x.kind === "img" && !x.pc && !x.m ? ["end", "이미지 없음"] : VX().liveBanners().indexOf(x) < 0 ? ["end", "판매 영역 꺼짐"] : ["on", x.to ? "~" + md(x.to) + "까지" : "노출 중"];
     return '<i class="vda-ban-st ' + st[0] + '">' + st[1] + "</i>";
   }
   function vbPrev(k) {
-    const d = ui.vbDraft || {}, old = k === "sq" && !d.sq ? d.m || d.pc : "", u = d[k] || old;
-    return u ? "<img " + VX().imgAttr(u, "src") + ' alt=""' + (old ? ' class="vb-old-img"' : "") + ">" + (old ? '<span class="vb-fb">카드 이미지가 없어서 예전 가로 이미지를 다 보이게 넣어요</span>' : "") : '<span class="vb-empty">' + icon(BANSZ[k][2], "lg") + "<b>" + BANSZ[k][1].join(" × ") + "</b><small>이미지를 올려 주세요</small></span>";
+    const d = ui.vbDraft || {}, u = d[k] || (k === "m" ? d.pc : "");
+    return u ? "<img " + VX().imgAttr(u, "src") + ' alt="">' + (k === "m" && !d.m ? '<span class="vb-fb">PC 이미지를 잘라서 보여 줘요</span>' : "") : '<span class="vb-empty">' + icon(BANSZ[k][2], "lg") + "<b>" + BANSZ[k][1].join(" × ") + "</b><small>이미지를 올려 주세요</small></span>";
   }
   function vbUp(k) {
     const z = BANSZ[k], has = !!(ui.vbDraft || {})[k];
-    return '<div class="vb-up" data-k="' + k + '"><div class="vb-up-h">' + icon(z[2], "sm") + "<b>" + z[0] + "</b>" + (k === "sq" ? '<em class="vb-req">필수</em>' : '<em class="vb-opt">선택</em>') + "<small>권장 <strong>" + z[1].join(" × ") + "px</strong> · " + z[3] + " · 더 크게 올려도 가로 " + z[1][0] + "px로 자동으로 맞추고 압축해요</small></div>" +
+    return '<div class="vb-up" data-k="' + k + '"><div class="vb-up-h">' + icon(z[2], "sm") + "<b>" + z[0] + "</b>" + (k === "pc" ? '<em class="vb-req">필수</em>' : '<em class="vb-opt">선택</em>') + "<small>권장 <strong>" + z[1].join(" × ") + "px</strong> · " + z[3] + " · 더 크게 올려도 가로 " + z[1][0] + "px로 자동으로 맞추고 압축해요</small></div>" +
       '<div class="vb-frame vb-frame-' + k + '" id="vb-fr-' + k + '">' + vbPrev(k) + "</div>" +
       '<div class="vb-up-a"><label class="a-btn a-btn-ghost a-btn-sm vb-file"><input class="vb-file-in" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-vb-up="' + k + '" aria-label="' + z[0] + ' 올리기">' + icon("upload", "sm") + "<span>" + (has ? "다른 이미지로 바꾸기" : "이미지 올리기") + "</span></label>" +
       (has ? '<button type="button" class="a-btn a-btn-ghost a-btn-sm" data-action="vda-ban-imgdel" data-k="' + k + '">' + icon("trash", "sm") + "<span>지우기</span></button>" : "") + '<span class="vb-info" id="vb-inf-' + k + '" aria-live="polite"></span></div></div>';
@@ -4981,22 +4977,22 @@
     if (file.type !== "image/gif") f = await vbShrink(file, BANSZ[k][1][0]).catch(() => file);
     const r = await VX().matPut(f).catch(() => null);
     if (!r) { toast("이미지를 저장하지 못했어요.", "warn"); return; }
-    ui.vbDraft[k] = r.url; vbPaint(k); if (k !== "sq") vbPaint("sq");
+    ui.vbDraft[k] = r.url; vbPaint(k); if (k === "pc") vbPaint("m");
     const e = document.getElementById("vb-error"); if (e) e.textContent = "";
     toast(BANSZ[k][0] + "를 올렸어요. 저장해 주세요.");
   }
-  document.addEventListener("change", (e) => { const t = e.target; if (!isActive() || !t.closest || !t.closest("#vda-ban-form")) return; if (t.matches("[data-vb-up]")) vbUpload(t); else if (t.name === "kind" || t.name === "fit") { t.form.dataset[t.name] = t.value; if (t.name === "fit") { vbInfo("sq"); vbInfo("pc"); vbInfo("m"); } } });
+  document.addEventListener("change", (e) => { const t = e.target; if (!isActive() || !t.closest || !t.closest("#vda-ban-form")) return; if (t.matches("[data-vb-up]")) vbUpload(t); else if (t.name === "kind" || t.name === "fit") { t.form.dataset[t.name] = t.value; if (t.name === "fit") { vbInfo("pc"); vbInfo("m"); } } });
   document.addEventListener("input", (e) => { const t = e.target; if (isActive() && t.name === "bg" && t.closest && t.closest("#vda-ban-form")) t.form.style.setProperty("--vb-bg", t.value); });
   function vdBanForm(i) {
-    const v = VD(), x = i == null ? { kind: "img", eyebrow: "", title: "", sub: "", pid: "", href: "", sticker: "", dark: false, color: ["#ff0037", "#ff0037"], on: true, img: "", sq: "", pc: "", m: "", alt: "", fit: "cover", bg: "#111111" } : v.banners[i];
+    const v = VD(), x = i == null ? { kind: "img", eyebrow: "", title: "", sub: "", pid: "", href: "", sticker: "", dark: false, color: ["#ff0037", "#ff0037"], on: true, img: "", pc: "", m: "", alt: "", fit: "cover", bg: "#111111" } : v.banners[i];
     const kind = x.kind === "img" ? "img" : "art", fit = x.fit === "contain" ? "contain" : "cover", bg = x.bg || "#111111";
-    ui.vbDraft = { sq: x.sq || "", pc: x.pc || "", m: x.m || "" };
+    ui.vbDraft = { pc: x.pc || "", m: x.m || "" };
     const kr = (val, t, s, ic) => '<label class="vb-kind-o"><input type="radio" name="kind" value="' + val + '"' + (kind === val ? " checked" : "") + "><span>" + icon(ic, "sm") + "<b>" + t + "</b><small>" + s + "</small></span></label>";
     const fr = (val, t) => '<label class="vb-seg-o"><input type="radio" name="fit" value="' + val + '"' + (fit === val ? " checked" : "") + "><span>" + t + "</span></label>";
     openModal(i == null ? "배너 추가" : "배너 수정",
       '<form id="vda-ban-form" class="a-form vb-form" data-i="' + (i == null ? "" : i) + '" data-kind="' + kind + '" data-fit="' + fit + '" style="--vb-bg:' + esc(bg) + '" novalidate>' +
-        '<div class="vb-kind" role="radiogroup" aria-label="배너 종류">' + kr("img", "이미지 배너", "디자이너가 만든 정사각형 카드 이미지를 그대로", "image") + kr("art", "디자인 배너", "글자 + 색만 넣으면 움직이는 배너로", "palette") + "</div>" +
-        '<div class="vb-only-img">' + vbUp("sq") + (x.pc || x.m ? '<details class="vb-old"><summary>예전 가로 이미지 (PC · 모바일) <small>카드 이미지가 없을 때만 다 보이게 넣어요 · 지워도 돼요</small></summary>' + vbUp("m") + vbUp("pc") + "</details>" : "") +
+        '<div class="vb-kind" role="radiogroup" aria-label="배너 종류">' + kr("img", "이미지 배너", "디자이너가 만든 PC · 모바일 이미지를 그대로", "image") + kr("art", "디자인 배너", "글자 + 색만 넣으면 움직이는 배너로", "palette") + "</div>" +
+        '<div class="vb-only-img">' + vbUp("pc") + vbUp("m") +
           '<div class="a-form-row"><div class="a-field"><span class="a-label">이미지 맞춤</span><div class="vb-seg">' + fr("cover", "꽉 채우기") + fr("contain", "전체 보이기") + '</div><small class="a-hint">비율이 다르면 ‘꽉 채우기’는 가장자리가 잘리고, ‘전체 보이기’는 남는 곳을 배경색으로 채워요.</small></div>' +
           '<div class="a-field"><label for="vb-bg">배경색</label><input class="a-input" id="vb-bg" name="bg" type="color" value="' + esc(bg) + '"></div></div>' +
           '<div class="a-field"><label for="vb-alt">배너 이름 · 대체 문구 <small>(화면 읽기 · 검색용 · 관리 목록에 보여요)</small></label><input class="a-input" id="vb-alt" name="alt" value="' + esc(x.alt || "") + '" maxlength="60" placeholder="예: 11월 블랙위크 최대 50% 할인"></div></div>' +
@@ -5005,10 +5001,10 @@
         '<div class="a-field"><label for="vb-eyebrow">작은 글씨 (위)</label><input class="a-input" id="vb-eyebrow" name="eyebrow" value="' + esc(x.eyebrow || "") + '" maxlength="30" placeholder="BEST · 문대표"></div>' +
         '<div class="a-field"><label for="vb-title">큰 제목 <small>(두 줄 권장 · 줄바꿈 가능)</small></label><textarea class="a-input" id="vb-title" name="title" rows="2" maxlength="60">' + esc(x.title || "") + "</textarea></div>" +
         '<div class="a-field"><label for="vb-sub">설명</label><input class="a-input" id="vb-sub" name="sub" value="' + esc(x.sub || "") + '" maxlength="60"></div>' +
-        '<div class="a-field"><label for="vb-sticker">스티커 문구 <small>(선택 · 넣으면 사진 대신 카드 오른쪽 위에 검정 별 모양 스티커 · 줄바꿈 가능 · 첫 줄은 연두색)</small></label><textarea class="a-input" id="vb-sticker" name="sticker" rows="3" maxlength="40">' + esc(x.sticker || "") + "</textarea></div>" +
+        '<div class="a-field"><label for="vb-sticker">오른쪽 스티커 문구 <small>(선택 · 넣으면 사진 대신 검정 별 모양 스티커 · 줄바꿈 가능 · 첫 줄은 연두색)</small></label><textarea class="a-input" id="vb-sticker" name="sticker" rows="3" maxlength="40">' + esc(x.sticker || "") + "</textarea></div>" +
         '<label class="a-check"><input type="checkbox" name="dark"' + (x.dark ? " checked" : "") + "><span>밝은 바탕이라 글자를 검정으로</span></label>" +
         '<div class="a-form-row"><div class="a-field"><label for="vb-c1">색 1</label><input class="a-input" id="vb-c1" name="c1" type="color" value="' + esc((x.color || [])[0] || "#141418") + '"></div><div class="a-field"><label for="vb-c2">색 2</label><input class="a-input" id="vb-c2" name="c2" type="color" value="' + esc((x.color || [])[1] || "#3a0f18") + '"></div></div>' +
-        '<div class="a-field"><label for="vb-img">사진 <small>(선택 · 비우면 강사 사진 · 배경을 지운 사람 사진(PNG)이 카드에 크게 들어가요)</small></label><input class="a-input" id="vb-img" name="img" type="file" accept="image/*">' + (x.img ? '<label class="a-check"><input type="checkbox" name="imgdel"><span>지금 사진 지우기</span></label>' : "") + "</div></div>" +
+        '<div class="a-field"><label for="vb-img">오른쪽 사진 <small>(선택 · 비우면 강사 사진)</small></label><input class="a-input" id="vb-img" name="img" type="file" accept="image/*">' + (x.img ? '<label class="a-check"><input type="checkbox" name="imgdel"><span>지금 사진 지우기</span></label>' : "") + "</div></div>" +
         '<fieldset class="vb-box"><legend>누르면 이동할 곳</legend>' +
         '<div class="a-field"><label for="vb-pid">클래스</label><select class="a-input" id="vb-pid" name="pid"><option value="">고르지 않음 (아래 링크로)</option>' + v.products.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === x.pid ? " selected" : "") + ">" + esc(p.title) + "</option>").join("") + "</select></div>" +
         '<div class="a-field"><label for="vb-href">또는 링크 <small>(사이트 안: #/vod/c/all · #/vod/p/v1 · 바깥: https://…)</small></label><input class="a-input" id="vb-href" name="href" value="' + esc(x.href || "") + '" maxlength="300" placeholder="#/vod/c/all" inputmode="url"></div>' +
@@ -5016,19 +5012,19 @@
         '<fieldset class="vb-box"><legend>노출 기간 <small>(비우면 계속 노출)</small></legend><div class="a-form-row"><div class="a-field"><label for="vb-from">시작일</label><input class="a-input" id="vb-from" name="from" type="date" value="' + esc(x.from || "") + '"></div><div class="a-field"><label for="vb-to">종료일</label><input class="a-input" id="vb-to" name="to" type="date" value="' + esc(x.to || "") + '"></div></div></fieldset>' +
         '<p class="a-error" id="vb-error"></p></form>',
       btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="vda-ban-form">저장</button>', "lg");
-    const mb = document.querySelector(".a-modal-body"); if (mb) { VX().hydrate(mb); vbInfo("sq"); vbInfo("pc"); vbInfo("m"); }
+    const mb = document.querySelector(".a-modal-body"); if (mb) { VX().hydrate(mb); vbInfo("pc"); vbInfo("m"); }
   }
   function saveVodBanner(f) {
     const v = VD(), i = f.dataset.i === "" ? null : Number(f.dataset.i), val = (k) => (f[k] ? f[k].value.trim() : "");
     const err = (m) => { document.getElementById("vb-error").textContent = m; }, kind = f.dataset.kind === "art" ? "art" : "img", dr = ui.vbDraft || {};
-    if (kind === "img" && !dr.sq && !dr.pc && !dr.m) return err("카드 이미지(정사각형)를 올려 주세요.");
+    if (kind === "img" && !dr.pc) return err("PC 이미지를 올려 주세요. (모바일 이미지는 선택이에요)");
     if (kind === "art" && !val("title")) return err("큰 제목을 적어 주세요.");
     const href = val("pid") ? "" : val("href");
     if (href && !/^(#\/|https?:\/\/|\/)/.test(href)) return err("링크는 #/ 로 시작하는 사이트 안 주소나 https:// 로 시작하는 주소를 넣어 주세요.");
     if (val("from") && val("to") && val("from") > val("to")) return err("노출 기간의 종료일이 시작일보다 빨라요.");
     const old = i == null ? { id: DB.uid("vb"), on: true } : v.banners[i];
     const link = { kind, pid: val("pid"), href, newTab: f.newTab.checked, from: val("from"), to: val("to") };
-    if (kind === "img") { const x = Object.assign({}, old, link, { sq: dr.sq || "", pc: dr.pc || "", m: dr.m || "", fit: f.dataset.fit === "contain" ? "contain" : "cover", bg: val("bg") || "#111111", alt: val("alt") }); if (i == null) v.banners.unshift(x); else v.banners[i] = x; ui.vbDraft = null; commit("배너를 " + (i == null ? "추가했어요." : "저장했어요.")); return; }
+    if (kind === "img") { const x = Object.assign({}, old, link, { pc: dr.pc, m: dr.m || "", fit: f.dataset.fit === "contain" ? "contain" : "cover", bg: val("bg") || "#111111", alt: val("alt") }); if (i == null) v.banners.unshift(x); else v.banners[i] = x; ui.vbDraft = null; commit("배너를 " + (i == null ? "추가했어요." : "저장했어요.")); return; }
     const done = (img) => { const x = Object.assign({}, old, link, { eyebrow: val("eyebrow"), title: f.title.value.replace(/\r/g, "").trim(), sub: val("sub"), sticker: f.sticker.value.replace(/\r/g, "").trim(), dark: f.dark.checked, color: [val("c1"), val("c2")], img: img }); if (i == null) v.banners.push(x); else v.banners[i] = x; ui.vbDraft = null; commit("배너를 " + (i == null ? "추가했어요." : "저장했어요.")); };
     const file = f.img.files && f.img.files[0];
     if (!file) { done(f.imgdel && f.imgdel.checked ? "" : old.img || ""); return; }
@@ -5954,7 +5950,7 @@
       case "vda-tile-reimg": { vtSync(); const x = v.tiles[Number(d.i)]; if (x && x.key) { x.img = VX().tileImg(x.key); commit("기본 아이콘으로 되돌렸어요."); } break; }
       case "vda-tile-del": { vtSync(); const x = v.tiles[Number(d.i)]; if (!x) break; confirmModal("아이콘 지우기", "‘" + esc(x.label || "아이콘") + "’ 아이콘을 지울까요?", "지우기", true, () => { v.tiles.splice(v.tiles.indexOf(x), 1); commit("아이콘을 지웠어요."); }); break; }
       case "vda-tile-reset": confirmModal("처음 구성으로", "아이콘 줄을 처음 12개 구성으로 되돌릴까요? 바꾼 이름 · 아이콘은 사라져요.", "되돌리기", true, () => { v.tiles = VX().seedTiles(); commit("아이콘 줄을 처음 구성으로 되돌렸어요."); }); break;
-      case "vda-ban-imgdel": if (ui.vbDraft) { ui.vbDraft[d.k] = ""; vbPaint(d.k); if (d.k !== "sq") vbPaint("sq"); } break;
+      case "vda-ban-imgdel": if (ui.vbDraft) { ui.vbDraft[d.k] = ""; vbPaint(d.k); if (d.k === "pc") vbPaint("m"); } break;
       case "vda-cp-add": vdCpForm(null); break;
       case "vda-cp-edit": vdCpForm(Number(d.i)); break;
       case "vda-cp-on": { const c = (v.coupons || [])[Number(d.i)]; if (!c) break; c.on = c.on === false; commit(c.on ? "‘" + c.name + "’ 쿠폰을 켰어요." : "‘" + c.name + "’ 쿠폰을 껐어요."); break; }
@@ -8893,7 +8889,7 @@
     vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
     vdKey, vdKeep, vdStmt, vdStState, vdRefundsOf, vdRfAmt, vdRfKind, vdRfSettle, vdRfSum, vdRfCases, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
     // 마스터: 대시보드 · 강사 플랫폼 · 전체 수강생 (운영자 계정이면 맡지 않은 버튼 · 링크를 빼요 — staffStrip)
-    sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, BAN_SQ, banTag, banThumb, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqRegHtml, inqAcc, inqTodo, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
+    sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqRegHtml, inqAcc, inqTodo, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
     legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
       const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);
