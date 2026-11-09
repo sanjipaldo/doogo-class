@@ -1678,9 +1678,12 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     // 정산: 체험 계정 주문(demo)은 정산에서 빼요 · 자동 로그아웃
     const ad24 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mj24 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8");
     ok(/const os = VD\(\)\.orders\.filter\(\(o\) => !o\.demo/.test(ad24) && /if \(o\.demo\) return;/.test(ad24), "정산: 체험 계정 0원 주문은 강사 정산 건수에 넣지 않아요");
-    ok(/IDLE = \{ admin: 30 \* 60e3, student: 60 \* 60e3 \}/.test(mj24) && /action: "logout", which: "admin"/.test(mj24) && /post\("vod-auth", \{ action: "logout" \}\)/.test(mj24) && /\^#\\\/center/.test(mj24),
-      "자동 로그아웃: 강사센터 30분 무동작 · 수강생/회원 60분 자리 비움 → 서버 쿠키까지 로그아웃 (강사센터 밖 탭은 새로 고치지 않아요)");
-    ok(/!\/\^#\\\/center\/\.test\(ROUTE\.hash\)/.test(mj24) && !/\.test\(location\.hash\)\) o\.admin = false/.test(mj24), "자동 로그아웃: 강사센터 화면인지는 ROUTE.hash 로 봐요 (운영의 깨끗한 주소 /center/… 에서도 켜 둔 화면이 30분 뒤 로그아웃)");
+    ok(/IDLE = \{ admin: 60 \* 60e3, student: 60 \* 60e3 \}/.test(mj24) && /action: "logout", which: "admin"/.test(mj24) && /post\("vod-auth", \{ action: "logout" \}\)/.test(mj24) && /\^#\\\/center/.test(mj24),
+      "자동 로그아웃: 강사센터 60분 무동작(2026-11-09: 30분 → 60분) · 수강생/회원 60분 자리 비움 → 서버 쿠키까지 로그아웃 (강사센터 밖 탭은 새로 고치지 않아요)");
+    ok(/if \(idleBusy \|\| unsaved\(\)\) return;/.test(mj24) && /document\.querySelector\("#modal-root form"\)/.test(mj24) && /typedForm && typedForm\.isConnected/.test(mj24) && /document\.addEventListener\("submit", \(\) => \{ typedForm = null; \}, true\);/.test(mj24) &&
+      /student: stu && now - lseen > IDLE\.student && !watching\(\)/.test(mj24) && /if \(document\.visibilityState === "visible" \|\| watching\(\)\) lsSet\(K_SEEN, Date\.now\(\)\);/.test(mj24) && /const LECT = "\.video iframe, \.vt-stage iframe, \.vt-stage video/.test(mj24),
+      "자동 로그아웃: 편집 창이 열려 있거나 칸에 적고 저장 전이면 미뤄요(작업이 날아가지 않게) · 강의 영상을 틀어 둔 동안은 창을 내려 두어도 수강생 · 회원 그대로");
+    ok(/!\/\^#\\\/center\/\.test\(ROUTE\.hash\)/.test(mj24) && !/\.test\(location\.hash\)\) o\.admin = false/.test(mj24), "자동 로그아웃: 강사센터 화면인지는 ROUTE.hash 로 봐요 (운영의 깨끗한 주소 /center/… 에서도 켜 둔 화면이 60분 뒤 로그아웃)");
     const vj24 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), dbb = fs.readFileSync(path.join(ROOT, "scripts/db-build.js"), "utf8");
     ok(/DB\.remote\.flush\(\)\)\.catch\(\(\) => \{\}\)\.then\(\(\) => authApi\("logout"\)\)/.test(vj24), "DOOGO CLASS 회원 로그아웃: 보내지 못한 기록을 먼저 보내고 로그아웃 (로그아웃 뒤에 보내면 서버가 거절)");
     ok(/DB_ROLE === "staging"/.test(dbb) && /__staging-db__/.test(dbb) && /process\.exit\(1\)/.test(dbb), "빌드: 시험용 미리보기(DB_ROLE=staging)는 시험용 표시가 있는 DB에서만 바꾸고, 표시 없는 DB면 멈춰요");

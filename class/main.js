@@ -122,17 +122,27 @@
 
   /* ---------- 자동 로그아웃 (2026-11) ----------
    * 로그인한 채로 창을 닫거나 내려 두면 다음에 열 때도 로그인이 남아 있었어요. 이제는
-   *  · 강사센터 · 코치 · 마스터 · 파트너 · 온드미디어: 30분 동안 아무 동작(누르기 · 키보드 · 스크롤)이 없으면
+   *  · 강사센터 · 코치 · 마스터 · 파트너 · 온드미디어: 60분 동안 아무 동작(누르기 · 키보드 · 스크롤)이 없으면 (2026-11-09: 30분 → 60분)
    *  · 수강생(두잉고 강의실) · DOOGO CLASS 회원: 화면을 보고 있는 동안은 그대로(영상 시청 중에도), 창을 닫거나 내린 뒤 60분이 지나면
-   * 로그아웃해요. 마지막 동작 시각은 이 브라우저에 남겨 탭끼리 같이 써요 (input = 진짜 동작 · seen = 화면을 보고 있던 때) */
-  const IDLE = { admin: 30 * 60e3, student: 60 * 60e3 }, K_IN = "doinggo:last-input", K_SEEN = "doinggo:last-seen";
+   * 로그아웃해요. 마지막 동작 시각은 이 브라우저에 남겨 탭끼리 같이 써요 (input = 진짜 동작 · seen = 화면을 보고 있던 때)
+   * 2026-11-09: 저장하지 않은 작업(편집 창이 열려 있거나 칸에 적고 아직 저장 전)이 있으면 미루고 — 강사센터에서 쓰던 내용이 날아갔어요 —
+   *  강의 영상을 틀어 둔 동안(재생기가 열려 있거나 영상 파일이 재생 중)은 창을 내려 두고 소리로 들어도 수강생 · 회원을 로그아웃하지 않아요 */
+  const IDLE = { admin: 60 * 60e3, student: 60 * 60e3 }, K_IN = "doinggo:last-input", K_SEEN = "doinggo:last-seen";
+  // 칸에 적은 편집 화면(form): 저장(제출)하거나 화면에서 사라지면(창 닫기 · 다른 화면) 끝 — 검색 칸은 빼요
+  let typedForm = null;
+  document.addEventListener("input", (e) => { const t = e.target, f = t && t.closest ? t.closest("form") : null; if (f && t.type !== "search" && !f.matches("[role=search]")) typedForm = f; }, true);
+  document.addEventListener("submit", () => { typedForm = null; }, true);
+  const unsaved = () => !!((window.__dirty && window.__dirty()) || document.querySelector("#modal-root form") || (typedForm && typedForm.isConnected));
+  // 강의 영상 재생기: 두잉고 강의 · 다시보기 · 응원 영상(누르면 생기는 iframe) · VOD 극장 · DOOGO CLASS 강의 · 미리보기 — 영상 파일은 재생 중일 때만
+  const LECT = ".video iframe, .vt-stage iframe, .vt-stage video, .vd-pl-video iframe, .vd-pl-video video, .vd-modal-video iframe, .vd-modal-video video";
+  const watching = () => Array.prototype.some.call(document.querySelectorAll(LECT), (el) => el.tagName !== "VIDEO" || (!el.paused && !el.ended));
   const lsNum = (k) => { try { return Number(localStorage.getItem(k)) || 0; } catch (e) { return 0; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* 저장 못 하면 자동 로그아웃만 쉬어요 */ } };
   let wrote = 0;
   function touch() { const t = Date.now(); if (t - wrote < 10e3) return; wrote = t; lsSet(K_IN, t); lsSet(K_SEEN, t); }
   ["pointerdown", "keydown", "wheel", "touchstart", "scroll"].forEach((ev) => window.addEventListener(ev, touch, { passive: true, capture: true }));
-  // 화면을 보고 있는 동안은 1분마다 ‘보고 있음’ (수강생 영상 시청은 끊지 않아요)
-  setInterval(() => { if (document.visibilityState === "visible") lsSet(K_SEEN, Date.now()); }, 60e3);
+  // 화면을 보고 있는 동안 · 강의 영상을 틀어 둔 동안은 1분마다 ‘보고 있음’ (수강생 영상 시청은 끊지 않아요 — 창을 내려 두고 들어도)
+  setInterval(() => { if (document.visibilityState === "visible" || watching()) lsSet(K_SEEN, Date.now()); }, 60e3);
   const studentIn = () => { const s = DB.session.student(); return !!(s && !s.preview); };
   // 서버 쿠키(수강생 · DOOGO CLASS 회원)로 로그인했는지 이 브라우저에 기억 — 다음에 열 때(서버에 묻기 전) 확인용
   const K_WHO = "doinggo:signed";
@@ -149,7 +159,8 @@
     const ad = !!DB.session.admin(), stu = studentIn() || signedSt();
     // 처음이거나 로그인한 곳이 없으면(방문자) 지금부터 셈
     if (!lin || !lseen || (!ad && !stu)) { lsSet(K_IN, now); lsSet(K_SEEN, now); return { admin: false, student: false }; }
-    return { admin: ad && now - lin > IDLE.admin, student: stu && now - lseen > IDLE.student };
+    // 강의 영상을 틀어 둔 채 돌아오면(휴대폰 화면이 꺼져 시계가 멈췄던 때 등) 수강생은 그대로
+    return { admin: ad && now - lin > IDLE.admin, student: stu && now - lseen > IDLE.student && !watching() };
   }
   /** 서버 쿠키까지 지워요 (강사센터 · 수강생 · DOOGO CLASS 회원) — 실패해도 이 화면 세션은 지워요 */
   function idleLogout(o, server) {
@@ -168,7 +179,7 @@
   const idleMsg = () => { try { if (sessionStorage.getItem("doinggo:idle-out")) { sessionStorage.removeItem("doinggo:idle-out"); notify("오래 사용하지 않아 로그아웃됐어요.", "warn"); } } catch (e) { /* 안내 생략 */ } };
   let idleBusy = false;
   function idleCheck() {
-    if (idleBusy || (window.__dirty && window.__dirty())) return; // 저장하지 않은 편집이 있으면 기다려요
+    if (idleBusy || unsaved()) return; // 저장하지 않은 편집(편집 창 · 적던 칸 · 무료강의 편집)이 있으면 기다려요
     const o = idleOver();
     // 강사센터 밖(수강생 강의실 · VOD 영상)을 보는 탭은 강사센터 로그아웃 때문에 새로 고치지 않아요 — 강사센터 탭을 다시 볼 때 · 다음에 열 때 확인
     // (운영의 깨끗한 주소 /center/… 에서는 location.hash 가 비어 있어서 ROUTE.hash 로 봐요)
@@ -180,7 +191,7 @@
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") idleCheck(); });
   window.addEventListener("pageshow", idleCheck);
   window.addEventListener("focus", idleCheck);
-  // 강사센터 등은 화면을 켜 둔 채 30분 동안 동작이 없어도 로그아웃 (1분마다 확인)
+  // 강사센터 등은 화면을 켜 둔 채 60분 동안 동작이 없어도 로그아웃 (1분마다 확인 · 저장하지 않은 편집이 있으면 기다려요)
   setInterval(() => { if (document.visibilityState === "visible") idleCheck(); }, 60e3);
 
   /** 새로 부르기 전에 떠 있던 알림 다시 보여 주기 (moveArea 가 남겨요 · 이 탭에서 이 사이트가 만든 알림만) */
