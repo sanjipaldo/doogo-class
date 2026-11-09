@@ -2805,6 +2805,29 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       /\.pt-tabs ~ \.pt-sec, \.pt-tabs ~ \.pt-sec \+ \.pt-sec \{ padding: 0; \}/.test(st50c) && /k === "disabled" \? true : ""/.test(raw50),
       "메뉴 구성: 고친 안 → ‘저장’ 눌러야 반영 · 저장 전 창 닫기 · 자동 로그아웃 막기 (화면 확인은 e2e reactdg 1-15) · 제휴 혜택 탭 아래 여백 없음 · React 조각의 disabled 버튼");
   }
+  {
+    console.log("51) 문대표 2주차 시장조사 → 벤치마킹 과제 · NZD 자동검수 빼기 (2026-11-09)");
+    const OO = require(path.join(ROOT, "api/_lib/oneoff.js"));
+    const mk = () => ({ no: 2, title: "소싱", missions: [
+      { id: "m2-1", title: "뉴질랜드 건강식품 시장조사 3개", type: "text", required: true, kind: "required", desc: "예전 설명", steps: ["a", "b"], check: { minLength: 120, keywords: ["NZD", "원"] }, templates: [{ id: "t-old", name: "2주차_시장조사.xlsx", data: "data:x" }] },
+      { id: "m2-2", title: "공급처 3곳 비교", type: "text", check: { keywords: ["NZD"] }, desc: "그대로" }] });
+    const st51 = { "content:moon": { weeks: [{ no: 1, missions: [] }, mk()], curricula: [{ id: "cur-4w", name: "4주 압축 과정", weeks: [{ no: 1, missions: [] }, mk()] }] } };
+    st51["prog:moon:s1"] = { submissions: { "m2-1": [{ at: 1, result: { pass: false, reasons: ["‘NZD’가 들어가도록 적어 주세요."], ok: ["분량 130자 확인"] } }, { at: 2, result: { pass: false, reasons: ["내용을 조금 더 자세히 적어 주세요. (현재 0자 / 최소 120자)", "‘NZD’가 들어가도록 적어 주세요.", "‘원’이 들어가도록 적어 주세요."] }, review: { status: "approved" } }], "m2-2": [{ result: { pass: false, reasons: ["‘NZD’가 들어가도록 적어 주세요."] } }] } };
+    st51["prog:moon:s2"] = { submissions: { "m1-1": [{ result: { pass: true, reasons: [] } }] } };
+    const g51 = (k) => JSON.parse(JSON.stringify(st51[k] || null)), k51 = (pre) => Object.keys(st51).filter((x) => x.indexOf(pre) === 0);
+    const r1 = OO.moonW2Benchmark(g51, k51), w1 = r1.writes["content:moon"], pw = r1.writes["prog:moon:s1"];
+    st51["content:moon"] = w1; if (pw) st51["prog:moon:s1"] = pw; const r2 = OO.moonW2Benchmark(g51, k51);
+    const sb = pw ? pw.submissions["m2-1"] : [];
+    ok(!!pw && !r1.writes["prog:moon:s2"] && sb[0].result.pass === true && !sb[0].result.reasons.length && sb[1].result.pass === false && sb[1].result.reasons.length === 2 && sb[1].result.reasons.every((t) => !/NZD/.test(t)) &&
+      JSON.stringify(pw.submissions["m2-2"]) === JSON.stringify(st51["prog:moon:s1"].submissions["m2-2"]) && r1.result.submissions.subs === 2 && r1.result.submissions.nowPass === 1,
+      "이미 낸 제출: 자동검수 결과의 ‘NZD’ 문구 지우기 · 그것 하나 때문이었으면 통과로 · 다른 과제 · 다른 수강생 · 강사 검수는 그대로");
+    const ms = w1 ? [w1.weeks[1].missions[0], w1.curricula[0].weeks[1].missions[0]] : [], m22 = w1 && w1.weeks[1].missions[1];
+    ok(!!w1 && r1.result.missions.length === 2 && ms.every((m) => m.title === "뉴질랜드 건강식품 시장조사 3개" && m.type === "text" && m.check.minLength === 120 && JSON.stringify(m.check.keywords) === '["원"]' && m.desc === OO.W2B_DESC &&
+        m.steps.length === 5 && /아래 칸에 정리해 제출/.test(m.steps[4]) && /공식몰/.test(m.steps.join(" ")) && m.templates.length === 1 && m.templates[0].id === "t-old" && m.templates[0].name === OO.W2B_FILE &&
+        /^data:application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet;base64,UEsDB/.test(m.templates[0].data) && m.templates[0].size > 3000) &&
+      m22.desc === "그대로" && JSON.stringify(m22.check.keywords) === '["NZD"]' && !Object.keys(r2.writes).length && !!r2.result.already,
+      "2주차 시장조사(기본 · 4주 압축 과정 모두): 자동검수 단어 NZD 빼고 ‘원’은 그대로 · 설명 · 진행 방법 벤치마킹 · 엑셀 양식(같은 양식 번호) · 제목 · 제출 방식 · 최소 글자 수 그대로 · 다른 과제는 그대로 · 두 번 돌려도 그대로");
+  }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });

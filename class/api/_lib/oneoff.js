@@ -971,6 +971,67 @@ function moonAciPartners(get) {
   return { writes: { [k]: Object.assign({}, c, ch ? { channels: ch } : {}, { partners: ps }) }, result: res };
 }
 
+/* ---------- 문대표 2주차 시장조사 → 벤치마킹 과제 (2026-11-09 · 대표님 요청) ----------
+ * 한국 마켓에 팔 상품이라 NZD 는 필요 없어요: 벤치마킹하고 싶은 브랜드를 찾고, 공식몰 판매가와 국내 최저 판매가를 찾는 과제.
+ * 문대표 모든 커리큘럼(기본 + 다른 커리큘럼)의 2주차 ‘시장조사’ 과제(id m2-1 이거나 자동검수 단어에 NZD 가 있는 시장조사 과제)에서
+ *  - 자동검수 ‘꼭 들어갈 단어’에서 NZD 빼기 (‘원’ 등 다른 단어는 그대로)
+ *  - 설명 · 진행 방법을 벤치마킹 과제로 (마지막 단계는 제출 방식에 맞게)
+ *  - 과제 양식: 머리글을 벤치마킹으로 바꾼 엑셀(forms/moon-w2-benchmark.xlsx · 배포 때 파일 저장소로)
+ * 제목 · 과제 종류 · 제출 방식 · 최소 글자 수는 그대로. 이미 바뀌어 있으면 그대로.
+ * 이미 낸 제출(prog:moon:*)의 자동검수 결과에 남은 ‘NZD’ 문구도 지워요 — 그것 하나 때문에 보완이었으면 통과로 (강사 검수 결과는 그대로) */
+const W2B_DESC = "벤치마킹하고 싶은 브랜드를 정하고, 그 브랜드 상품의 공식몰 판매가와 국내 최저 판매가를 찾아보세요. 같은 용량과 구성의 상품을 기준으로 비교하고, 최저가를 확인한 판매처를 첨부 엑셀에 정리해 주세요. 한국 마켓에서 팔 상품이라 가격은 모두 원화로 적어요.";
+const w2bSteps = (type) => [
+  "자료실의 ‘뉴질랜드 건강식품 리스트’를 참고해 벤치마킹하고 싶은 브랜드와 상품 3개를 고르세요.",
+  "첨부된 시장조사 엑셀을 내려받아 품목 · 브랜드 · 용량을 적으세요.",
+  "브랜드 공식몰(공식 스토어)에서 일반 판매가를 찾아 원화로 적으세요.",
+  "국내 쇼핑몰에서 같은 용량 · 구성의 최저 판매가와 판매처를 찾아 적고, 링크나 배송비 조건은 메모 칸에 남기세요.",
+  type === "image" ? "작성한 엑셀을 캡처하거나 PDF로 저장해 올려 주세요." : type === "link" ? "작성한 시트(구글 시트 등) 링크를 제출하세요." : "브랜드 · 공식몰 판매가 · 최저 판매가 · 판매처를 아래 칸에 정리해 제출하세요."
+];
+const W2B_FILE = "2주차_벤치마킹_시장조사_양식.xlsx";
+function w2bTemplate(old) {
+  const fs = require("fs"), path = require("path"), buf = fs.readFileSync(path.join(__dirname, "forms", "moon-w2-benchmark.xlsx"));
+  return { id: (old && old.id) || "t-m2-1", name: W2B_FILE, data: "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + buf.toString("base64"), size: buf.length };
+}
+const isW2Research = (m) => isObj(m) && /시장조사/.test(String(m.title || "")) && (m.id === "m2-1" || (isObj(m.check) && Array.isArray(m.check.keywords) && m.check.keywords.indexOf("NZD") >= 0));
+function moonW2Benchmark(get, keys) {
+  const k = "content:moon", c = get(k);
+  if (!isObj(c)) return { writes: {}, result: { skipped: "문대표 콘텐츠 없음" } };
+  const mids = new Set();
+  const lists = [["기본", c.weeks]].concat((Array.isArray(c.curricula) ? c.curricula : []).filter(isObj).map((cu) => [cu.name || cu.id, cu.weeks]));
+  const done = [];
+  lists.forEach(([name, weeks]) => (Array.isArray(weeks) ? weeks : []).forEach((w) => {
+    if (!isObj(w) || Number(w.no) !== 2 || !Array.isArray(w.missions)) return;
+    w.missions.forEach((m) => {
+      if (!isW2Research(m)) return;
+      if (m.id) mids.add(m.id);
+      const kw = isObj(m.check) && Array.isArray(m.check.keywords) ? m.check.keywords : [];
+      const tpl = Array.isArray(m.templates) ? m.templates : [];
+      if (m.desc === W2B_DESC && kw.indexOf("NZD") < 0 && tpl.length === 1 && tpl[0].name === W2B_FILE) return;
+      m.check = Object.assign({}, m.check);
+      const left = kw.filter((x) => x !== "NZD");
+      if (left.length) m.check.keywords = left; else delete m.check.keywords;
+      m.desc = W2B_DESC; m.steps = w2bSteps(m.type); m.templates = [w2bTemplate(tpl[0])];
+      done.push(name + " · " + m.title);
+    });
+  }));
+  // 이미 낸 제출의 자동검수 결과에서 ‘NZD’ 문구 지우기
+  const writes = done.length ? { [k]: c } : {}, fixed = { subs: 0, nowPass: 0 };
+  (typeof keys === "function" ? keys("prog:moon:") : []).forEach((pk) => {
+    const p = get(pk);
+    if (!isObj(p) || !isObj(p.submissions)) return;
+    let n = 0;
+    mids.forEach((mid) => (Array.isArray(p.submissions[mid]) ? p.submissions[mid] : []).forEach((s) => {
+      const r = isObj(s) && isObj(s.result) ? s.result : null;
+      if (!r || !Array.isArray(r.reasons) || !r.reasons.some((t) => /^‘NZD’/.test(String(t)))) return;
+      r.reasons = r.reasons.filter((t) => !/^‘NZD’/.test(String(t))); n++;
+      if (!r.reasons.length && !r.pass) { r.pass = true; fixed.nowPass++; }
+    }));
+    if (n) { writes[pk] = p; fixed.subs += n; }
+  });
+  if (!Object.keys(writes).length) return { writes: {}, result: { already: "바꿀 과제가 없거나 이미 바뀌어 있어요" } };
+  return { writes, result: { missions: done, submissions: fixed } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1006,7 +1067,8 @@ const OPS = [
   { id: "2026-11-08-v2-teaser", note: "AI 굿즈 클래스(v2) 상세 맨 위 영상: 유튜브 주소(25분 58초부터) — 영상 칸이 비어 있을 때만", run: v2Teaser },
   { id: "2026-11-09-moon3-cur-main", note: "문대표 3기 커리큘럼: 4주 압축 과정 → 5주 기본 과정(기본 커리큘럼) — 진행 주차는 그대로", run: moon3CurMain },
   { id: "2026-11-09-moon-aci-partners", note: "문대표 1:1 상담에 ACI EXPRESS(뉴질랜드 배송대행지 · 카카오톡 채널) · 제휴 혜택에 두고그룹 ACI EXPRESS + 제휴사 12곳(네이버 카페 글) — 이미 있으면 그대로", run: moonAciPartners },
+  { id: "2026-11-09-moon-w2-benchmark", note: "문대표 2주차 시장조사 과제 → 벤치마킹(브랜드 · 공식몰 판매가 · 국내 최저 판매가): 자동검수 단어에서 NZD 빼기 · 설명 · 진행 방법 · 엑셀 양식 머리글 (제목 · 제출 방식 · 최소 글자 수는 그대로)", run: moonW2Benchmark },
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
 ];
 
-module.exports = { OPS, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
