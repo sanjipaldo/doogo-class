@@ -2044,7 +2044,7 @@
     r.onload = () => { const img = new Image(); img.onload = () => { const sc = Math.min(1, 1400 / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height); cb(cv.toDataURL("image/jpeg", 0.8)); }; img.onerror = () => toast("사진을 읽지 못했어요.", "warn"); img.src = r.result; };
     r.readAsDataURL(file);
   }
-  window.__dirty = () => !!(ui.lpDirty && ui.lp);
+  window.__dirty = () => !!(ui.lpDirty && ui.lp) || !!(ui.menuDrafts && Object.keys(ui.menuDrafts).length);
   window.__leaveGuard = (h) => { if (!ui.lpDirty || !ui.lpHash || h === ui.lpHash) return true; if (window.confirm("저장하지 않은 변경이 있어요. 이 화면을 나가면 고친 내용이 사라져요. 나갈까요?")) { ui.lpDirty = false; ui.lp = null; ui.lpHash = ""; return true; } history.replaceState(null, "", ui.lpHash); return false; };
   const lpChanged = () => { if (!ui.lpDirty) { ui.lpDirty = true; const bar = document.querySelector(".a-lp-savebar .a-muted"); if (bar) bar.textContent = "저장하지 않은 변경이 있어요"; } };
 
@@ -2071,6 +2071,32 @@
       '<div class="tp-app"><span class="tp-nav on">' + icon("home", "xs") + '홈</span><span class="tp-nav">' + icon("book", "xs") + '커리큘럼</span><span class="tp-bar"><i></i></span><span class="tp-btn">제출하고 검수받기</span></div></div>';
   }
 
+  /* ---------------- 메뉴 구성: ‘저장’을 눌러야 수강생 화면에 반영 (2026-11-09) ----------------
+   * 더하기 · 빼기 · 옮기기 · 이름 · 자료함 칩 · 새 메뉴 · 메뉴 삭제는 먼저 이 화면의 고친 안(ui.menuDrafts[메뉴 ID])에만 → 위 ‘저장’을 누르면 수강생 화면에.
+   * ‘되돌리기’는 고친 안을 버려요. 저장 전에 창을 닫으려 하면 브라우저가 물어보고, 자동 로그아웃도 미뤄요 (window.__dirty). 색상은 예전처럼 고르면 바로 */
+  const menuCfg = (mid) => (ui.menuDrafts && ui.menuDrafts[mid]) || DB.menuConfig(mid);
+  const menuDirty = (mid) => !!(ui.menuDrafts && ui.menuDrafts[mid || ui.mMenuIns]);
+  function menuDraft() {
+    const mid = ui.mMenuIns; ui.menuDrafts = ui.menuDrafts || {};
+    if (!ui.menuDrafts[mid]) { const m = DB.menuConfig(mid); ui.menuDrafts[mid] = { items: DB.clone(m.items), library: DB.clone(m.library || {}), drop: [] }; }
+    return ui.menuDrafts[mid];
+  }
+  function menuSave() {
+    const mid = ui.mMenuIns, dr = ui.menuDrafts && ui.menuDrafts[mid];
+    if (!dr) return;
+    const m = DB.menuConfig(mid), was = { items: m.items, library: m.library };
+    m.items = dr.items; m.library = dr.library;
+    const sp = DB.splitMid(mid), c = sp.vod ? DB.vodContent(sp.iid, sp.pid) : DB.content(sp.iid), pages = c && c.pages ? Object.assign({}, c.pages) : null;
+    if (c && c.pages) dr.drop.forEach((k) => { delete c.pages[k]; });
+    if (!DB.save()) { m.items = was.items; m.library = was.library; if (pages) c.pages = pages; toast("저장 공간이 부족해요.", "warn"); return; }
+    delete ui.menuDrafts[mid];
+    actLog("메뉴 구성을 저장했어요."); render(); toast("메뉴를 저장했어요. 수강생 화면에 바로 보여요.");
+  }
+  // 위 오른쪽: 저장(고친 게 있을 때만 눌려요) · 되돌리기
+  const menuSaveBtns = (mid) => (menuDirty(mid) ? btn(icon("refresh", "sm") + "되돌리기", "menu-reset", "a-btn-ghost") : "") +
+    '<button type="button" class="a-btn ' + (menuDirty(mid) ? "a-btn-primary" : "a-btn-outline") + '" data-action="menu-save"' + (menuDirty(mid) ? "" : " disabled") + ">" + icon("check", "sm") + "저장</button>";
+  const menuDirtyNote = (mid) => (menuDirty(mid) ? '<p class="a-menu-dirty" role="status">' + icon("alert", "sm") + "<span>바꾼 메뉴가 아직 저장되지 않았어요. 위의 <b>저장</b>을 눌러야 수강생 화면에 반영돼요.</span></p>" : "");
+
   /* ---------------- 마스터: 메뉴 · 색상 설정 ---------------- */
   function pageMasterMenus(r, own) {
     const list = DB.data.instructors;
@@ -2078,7 +2104,7 @@
     if (!ui.mMenuIns || !DB.instructor(DB.splitMid(ui.mMenuIns).iid)) ui.mMenuIns = list[0] && list[0].id;
     const mid = ui.mMenuIns, isV = DB.splitMid(mid).vod, ins = DB.instructor(DB.splitMid(mid).iid);
     if (!ins) return head("메뉴 · 색상 설정", "") + '<section class="a-card">' + emptyBox("store", "강사 플랫폼을 먼저 만들어 주세요.") + "</section>";
-    const m = DB.menuConfig(mid), c = DB.content(ins.id);
+    const m = menuCfg(mid), c = DB.content(ins.id);
     const def = (key) => (isV ? DB.VOD_MENUS : DB.STUDENT_MENUS).find((d) => d.key === key);
     const nameOf = (x) => x.label || (def(x.key) ? (x.key === "bot" ? c.brand.botName : def(x.key).label) : "추가 메뉴");
     const iconOf = (x) => (def(x.key) ? def(x.key).icon : x.icon || "file");
@@ -2095,10 +2121,11 @@
         (x.key === "home" ? '<span class="a-pm locked" title="홈은 뺄 수 없어요">' + icon("lock", "sm") + "</span>" : '<button class="a-pm minus" data-action="menu-off" data-key="' + x.key + '" aria-label="' + esc(nameOf(x)) + ' 빼기">' + icon("minus", "sm") + "</button>") + "</li>";
     };
     return (own
-      ? head(isV ? "VOD 버전 메뉴 구성" : "메뉴 구성", isV ? "DOOGO CLASS에서 VOD를 산 수강생이 보는 왼쪽 메뉴예요. 꼭 필요한 메뉴만 켜 두세요. 주차별 강의 · 라이브 다시보기 · 과제 · 모범 과제 · 수업 캘린더 · 수료증은 VOD 버전에 없어요." : "수강생 화면 왼쪽 메뉴를 더하고(＋) 빼고(−), 이름과 순서를 바꿔요. 필요한 페이지나 링크 메뉴도 새로 만들 수 있어요. 바꾸면 바로 저장돼요.", btn(icon("eye", "sm") + (isV ? "VOD 수강생 화면" : "수강생 화면"), "preview", "a-btn-outline"))
-      : head("메뉴 · 색상 설정", "강사와 협의한 대로 수강생 화면의 메뉴를 더하고(＋) 빼고(−), 이름과 순서, 화면 색상을 정해요. 바꾸면 바로 저장돼요. 오른쪽 미리보기로 바뀐 강의실을 바로 확인해요.", dgSplitBtn("room:" + ins.id, "강의실 미리보기")) +
+      ? head(isV ? "VOD 버전 메뉴 구성" : "메뉴 구성", isV ? "DOOGO CLASS에서 VOD를 산 수강생이 보는 왼쪽 메뉴예요. 꼭 필요한 메뉴만 켜 두세요. 주차별 강의 · 라이브 다시보기 · 과제 · 모범 과제 · 수업 캘린더 · 수료증은 VOD 버전에 없어요." : "수강생 화면 왼쪽 메뉴를 더하고(＋) 빼고(−), 이름과 순서를 바꿔요. 필요한 페이지나 링크 메뉴도 새로 만들 수 있어요. 바꾼 뒤 <b>저장</b>을 눌러야 수강생 화면에 반영돼요.", menuSaveBtns(mid) + btn(icon("eye", "sm") + (isV ? "VOD 수강생 화면" : "수강생 화면"), "preview", "a-btn-outline"))
+      : head("메뉴 · 색상 설정", "강사와 협의한 대로 수강생 화면의 메뉴를 더하고(＋) 빼고(−), 이름과 순서, 화면 색상을 정해요. 메뉴는 바꾼 뒤 <b>저장</b>을 눌러야 반영돼요(색상은 고르면 바로). 오른쪽 미리보기로 바뀐 강의실을 바로 확인해요.", menuSaveBtns(mid) + dgSplitBtn("room:" + ins.id, "강의실 미리보기")) +
       '<section class="a-card a-menu-top"><label class="a-label" for="m-menu-ins">강사 플랫폼</label><select class="a-input" id="m-menu-ins">' + list.map((x) => '<option value="' + x.id + '"' + (x.id === ins.id ? " selected" : "") + ">" + esc(x.displayName) + " · " + esc(x.name) + "</option>").join("") + "</select>" +
         btn(icon("eye", "sm") + "수강생 화면", "m-preview", "a-btn-outline a-btn-sm", ' data-id="' + ins.id + '"') + "</section>") +
+      menuDirtyNote(mid) +
       '<div class="a-menu-grid">' +
         '<div class="a-stack">' +
           '<section class="a-card"><div class="a-card-head"><h2>수강생에게 보이는 메뉴</h2><span class="a-muted">' + onItems.length + "개</span></div>" +
@@ -2119,7 +2146,7 @@
       "</div>";
   }
   function sidebarPreview(iid) {
-    const sp = DB.splitMid(iid), m = DB.menuConfig(iid), c = DB.content(sp.iid), t = DB.themeOf(c.brand.theme);
+    const sp = DB.splitMid(iid), m = menuCfg(iid), c = DB.content(sp.iid), t = DB.themeOf(c.brand.theme);
     const def = (key) => (sp.vod ? DB.VOD_MENUS : DB.STUDENT_MENUS).find((d) => d.key === key);
     return '<ul class="a-sidebar-preview" style="--p:' + t.pale + ";--pd:" + t.deep + '">' + m.items.filter((x) => x.on).map((x, i) => {
       const d = def(x.key);
@@ -2128,7 +2155,7 @@
     }).join("") + "</ul>";
   }
   function menuItemForm(key, type) {
-    const m = DB.menuConfig(ui.mMenuIns);
+    const m = menuCfg(ui.mMenuIns);
     const it = key ? m.items.find((x) => x.key === key) : { type: type || "page", icon: type === "link" ? "link" : "file", label: "" };
     const isLink = it.type === "link";
     openModal(key ? "메뉴 수정" : isLink ? "외부 링크 메뉴 만들기" : "새 메뉴 만들기",
@@ -2141,7 +2168,7 @@
       btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="menu-item-form">' + (key ? "저장" : "만들기") + "</button>", "md");
   }
   function saveMenuItem(f) {
-    const m = DB.menuConfig(ui.mMenuIns);
+    const m = menuDraft();
     const label = f.label.value.trim(), err = document.getElementById("mi-error");
     if (!label) { err.textContent = "메뉴 이름을 입력해 주세요."; return; }
     const url = f.url ? f.url.value.trim() : "";
@@ -2149,7 +2176,7 @@
     const ic = (f.querySelector("input[name=icon]:checked") || {}).value || "file";
     if (f.dataset.key) Object.assign(m.items.find((x) => x.key === f.dataset.key), { label, url, icon: ic });
     else m.items.push({ key: DB.uid("cp_"), type: f.dataset.type, label, url, icon: ic, on: true });
-    commit(f.dataset.key ? "메뉴를 저장했어요." : "‘" + label + "’ 메뉴를 더했어요.");
+    closeModal(); render(); toast((f.dataset.key ? "메뉴를 고쳤어요" : "‘" + label + "’ 메뉴를 더했어요") + " · 저장을 눌러 주세요");
   }
 
   /* ---------------- 마스터: 플랫폼 현황 ---------------- */
@@ -8580,32 +8607,33 @@
       case "faq-bulk": faqBulkModal(); break;
       case "gl-bulk": glBulkModal(); break;
       case "showcase-from": showcaseFrom(a.dataset.sid, a.dataset.mid); break;
+      case "menu-save": menuSave(); break;
+      case "menu-reset": if (ui.menuDrafts) delete ui.menuDrafts[ui.mMenuIns]; render(); toast("저장하기 전으로 되돌렸어요."); break;
       case "menu-off": case "menu-on": {
-        const m = DB.menuConfig(ui.mMenuIns), it = m.items.find((x) => x.key === d.key);
+        const m = menuDraft(), it = m.items.find((x) => x.key === d.key);
         it.on = d.action === "menu-on";
         // 다시 켠 메뉴는 보이는 메뉴의 맨 아래로
         if (it.on) { m.items.splice(m.items.indexOf(it), 1); const lastOn = m.items.map((x) => x.on).lastIndexOf(true); m.items.splice(lastOn + 1, 0, it); }
-        DB.save(); render(); toast(it.on ? "메뉴를 더했어요." : "메뉴를 뺐어요.");
+        render(); toast((it.on ? "메뉴를 더했어요" : "메뉴를 뺐어요") + " · 저장을 눌러 주세요");
         break;
       }
       case "menu-move": {
-        const m = DB.menuConfig(ui.mMenuIns), onList = m.items.filter((x) => x.on);
+        const m = menuDraft(), onList = m.items.filter((x) => x.on);
         const i = onList.findIndex((x) => x.key === d.key), j = i + Number(d.dir);
         if (j < 0 || j >= onList.length) break;
         const a1 = m.items.indexOf(onList[i]), a2 = m.items.indexOf(onList[j]);
         [m.items[a1], m.items[a2]] = [m.items[a2], m.items[a1]];
-        DB.save(); render();
+        render();
         break;
       }
-      case "lib-toggle": { const m = DB.menuConfig(ui.mMenuIns); m.library[d.k] = m.library[d.k] === false; DB.save(); render(); break; }
+      case "lib-toggle": { const m = menuDraft(); m.library[d.k] = m.library[d.k] === false; render(); break; }
       case "menu-new": menuItemForm("", d.type); break;
       case "menu-edit": menuItemForm(d.key); break;
       case "menu-delete": {
-        const m = DB.menuConfig(ui.mMenuIns), it = m.items.find((x) => x.key === d.key);
-        confirmModal("메뉴 삭제", "‘" + esc(it.label) + "’ 메뉴를 완전히 삭제할까요?<br>강사가 작성한 내용도 함께 지워져요.", "삭제", true, () => {
-          m.items = m.items.filter((x) => x.key !== d.key);
-          const sp = DB.splitMid(ui.mMenuIns), c = sp.vod ? DB.vodContent(sp.iid, sp.pid) : DB.content(sp.iid); if (c && c.pages) delete c.pages[d.key];
-          commit("메뉴를 삭제했어요.");
+        const it = menuCfg(ui.mMenuIns).items.find((x) => x.key === d.key);
+        confirmModal("메뉴 삭제", "‘" + esc(it.label) + "’ 메뉴를 완전히 삭제할까요?<br>강사가 작성한 내용도 함께 지워져요. (위의 ‘저장’을 눌러야 삭제돼요)", "삭제", true, () => {
+          const m = menuDraft(); m.items = m.items.filter((x) => x.key !== d.key); if (m.drop.indexOf(d.key) < 0) m.drop.push(d.key);
+          closeModal(); render(); toast("메뉴를 지웠어요 · 저장을 눌러 주세요");
         });
         break;
       }
@@ -8862,7 +8890,7 @@
     else if (t.id === "a-vpid" || t.id === "a-vpid2") { setVpid(t.value); render(); toast("고른 VOD 강의실로 바꿨어요."); }
     else if (t.id === "m-menu-ins") { ui.mMenuIns = t.value; if (ROUTE.hash.indexOf("?") > -1) ROUTE.hash = "#/center/master/menus"; else render(); }
     else if (t.id === "m-rep-ins") { ui.mRepIns = t.value; render(); }
-    else if (t.classList.contains("a-menu-label")) { const it = DB.menuConfig(ui.mMenuIns).items.find((x) => x.key === t.dataset.key); it.label = t.value.trim(); DB.save(); render(); toast("메뉴 이름을 저장했어요."); }
+    else if (t.classList.contains("a-menu-label")) { const it = menuDraft().items.find((x) => x.key === t.dataset.key); it.label = t.value.trim(); render(); toast("메뉴 이름을 바꿨어요 · 저장을 눌러 주세요"); }
     else if (t.name === "mtheme") { const c = DB.content(DB.splitMid(ui.mMenuIns).iid); c.brand.theme = t.value; c.brand.themeSet = true; DB.save(); render(); toast(DB.themeOf(t.value).label + " 색으로 바꿨어요."); }
     else if (t.name === "theme" || t.name === "itheme") { const box = document.getElementById("theme-preview-" + t.name); if (box) box.innerHTML = themePreview(t.value); }
     else if (t.id === "m-status") { ui.mStatus = t.value; render(); }
@@ -8946,7 +8974,7 @@
     // 틀(머리띠 · 왼쪽 메뉴): 역할 · 강사 · 탭 · 메뉴 · 알림
     instructorNav, masterNav, partnerNav, mediaNav, INS, IID, TRK, VPID, MID, C, OPEN, isCoach, ME_COACH, myCoachCourses, coachTrack, can, MT,
     staffMe, staffRoleName, staffCan, affOf, affMe, affInqNew, affNoticeNew, masterInqAlerts, mdMe, mdName, mdRate, mdR, affDefRs, AFF,
-    trackable, trackSwitch, masterSwitch, vpidPick, vpidStrip, VP_PAGES, trackOffPage,
+    trackable, trackSwitch, masterSwitch, vpidPick, vpidStrip, VP_PAGES, trackOffPage, menuCfg, menuDirty, menuSaveBtns, menuDirtyNote,
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드

@@ -934,6 +934,43 @@ function menuOrder(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 문대표 1:1 상담 ACI EXPRESS · 제휴 혜택 13곳 (2026-11-09 · 대표님 요청) ----------
+ * 1:1 상담: ACI EXPRESS(뉴질랜드 배송대행지 · 카카오톡 채널) 카드 하나 더 (두고푸드 다음).
+ * 제휴 혜택: 두고그룹에 ACI EXPRESS, 제휴사에 12곳 (네이버 카페 글 링크). 카페 글은 자동으로 읽을 수 없어 서비스 소개는 짧게 · 혜택 · 할인 코드는 ‘카페 글에서 확인’.
+ * 같은 id(또는 같은 링크)가 이미 있으면 건너뛰어요 — 강사가 고치거나 지운 건 그대로 */
+const CAFE = "https://cafe.naver.com/doogomarket", TAIL = " 수강생 혜택 · 할인 코드는 카페 글에서 확인하세요.";
+const MOON_ACI_CH = { id: "ch-aci", type: "kakao", icon: "truck", color: "#0891b2", tag: "입고 · 재고 관리", title: "ACI EXPRESS · 뉴질랜드 배송대행지",
+  desc: "두고바이오에서 제품이 제조되면 ACI에 여러분의 제품이 입고돼요. 개인 계정 아이디를 받아 재고와 유통기한을 실시간으로 확인할 수 있어요.",
+  url: "https://pf.kakao.com/_DnnxlX", hours: "", label: "ACI EXPRESS 문의하기" };
+const pt = (id, icon, color, tag, title, desc, url) => ({ id, group: "partner", icon, color, tag, title, desc: desc + TAIL, url, label: "제휴 혜택 보기" });
+const MOON_PARTNERS_1109 = [
+  { id: "pt-aci", group: "doogo", icon: "truck", color: "#0891b2", tag: "뉴질랜드 배송대행지", title: "ACI EXPRESS",
+    desc: "두고바이오에서 제조된 제품이 ACI에 입고돼요. 개인 계정 아이디로 내 재고와 유통기한을 실시간으로 확인할 수 있어요.", url: "https://naver.me/GCJxvUEn", label: "ACI EXPRESS 바로가기" },
+  pt("pt-allo", "layers", "#6d28d9", "프로젝트 정리보드", "Allo", "아이디어 · 할 일 · 상품 기획을 한 보드에 정리하는 협업 툴이에요.", CAFE + "/15"),
+  pt("pt-moai", "sparkles", "#db2777", "제휴 혜택", "모아이스튜디오", "수강생 전용 제휴 혜택이 있는 곳이에요.", CAFE + "/290"),
+  pt("pt-postpixo", "image", "#0ea5e9", "CAFE24", "포스트픽소", "카페24 쇼핑몰에서 쓰는 앱이에요.", CAFE + "/29"),
+  pt("pt-upright", "activity", "#f97316", "마케팅", "업라이트", "쇼핑몰 · 상품 마케팅을 도와주는 제휴사예요.", CAFE + "/188"),
+  pt("pt-reviewhub", "message", "#16a34a", "마케팅", "리뷰허브", "상품 리뷰를 모으는 리뷰 마케팅 서비스예요.", CAFE + "/46"),
+  pt("pt-sellerlife", "search", "#2563eb", "키워드 분석", "셀러라이프", "상품명 · 상세페이지에 쓸 키워드와 검색량을 분석하는 셀러용 툴이에요.", CAFE + "/151"),
+  pt("pt-dal", "settings", "#475569", "CAFE24", "DAL 자동화", "카페24 쇼핑몰 운영 작업을 자동화해 주는 서비스예요.", CAFE + "/181"),
+  pt("pt-chatbotnow", "bot", "#7c3aed", "CAFE24", "챗봇나우", "카페24 쇼핑몰에 상담 챗봇을 붙여 자주 묻는 질문에 자동으로 답해요.", CAFE + "/21"),
+  pt("pt-reviewaid", "star", "#ca8a04", "CAFE24", "리뷰에이드", "카페24 쇼핑몰의 상품 리뷰를 모으고 관리하는 리뷰 앱이에요.", CAFE),
+  pt("pt-keepgrow", "userPlus", "#0d9488", "CAFE24", "킵그로우 1초 회원가입", "카페24 쇼핑몰에 간편 회원가입을 붙여 가입 단계를 줄여 주는 앱이에요.", CAFE + "/183"),
+  pt("pt-hwarang", "calculator", "#1e3a8a", "세무 · 기장", "화랑세무회계", "사업자 세무 신고와 기장을 맡길 수 있는 세무회계 사무소예요.", CAFE + "/23"),
+  pt("pt-catchsell", "megaphone", "#e11d48", "인플루언서", "캐치셀", "상품을 알릴 인플루언서를 찾고 연결해 주는 서비스예요.", CAFE + "/45")
+];
+function moonAciPartners(get) {
+  const k = "content:moon", c = get(k);
+  if (!isObj(c)) return { writes: {}, result: { skipped: "문대표 콘텐츠 없음" } };
+  const ch = Array.isArray(c.channels) ? c.channels.slice() : null, ps = Array.isArray(c.partners) ? c.partners.slice() : [];
+  const has = (list, x) => list.some((y) => isObj(y) && (y.id === x.id || (x.url && x.url !== CAFE && y.url === x.url) || (y.title === x.title && y.group === x.group)));
+  const res = { channel: "그대로", partners: [] };
+  if (ch && !has(ch, MOON_ACI_CH)) { ch.push(Object.assign({}, MOON_ACI_CH)); res.channel = "ACI EXPRESS 더함"; }
+  MOON_PARTNERS_1109.forEach((x) => { if (!has(ps, x)) { const at = x.group === "doogo" ? ps.reduce((a, y, i) => (isObj(y) && y.group === "doogo" ? i + 1 : a), 0) : ps.length; ps.splice(at, 0, Object.assign({}, x)); res.partners.push(x.title); } });
+  if (res.channel === "그대로" && !res.partners.length) return { writes: {}, result: { already: "이미 있어요" } };
+  return { writes: { [k]: Object.assign({}, c, ch ? { channels: ch } : {}, { partners: ps }) }, result: res };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -968,7 +1005,8 @@ const OPS = [
   { id: "2026-11-05-live-lectures", note: "두잉고 LIVE 기수 정리: 문대표 말고 다른 강사 기수 지우기(수강생 · 이용료 기록이 있으면 남김) · 문대표 1~3기만 · 3기 메인 강사 강의(주차마다 날짜 · 시간 · 끝나는 시간 · 장소 · 주제) · 5주차 줌 강의 12/15 19:00~22:00", run: liveLectures },
   { id: "2026-11-08-v2-teaser", note: "AI 굿즈 클래스(v2) 상세 맨 위 영상: 유튜브 주소(25분 58초부터) — 영상 칸이 비어 있을 때만", run: v2Teaser },
   { id: "2026-11-09-moon3-cur-main", note: "문대표 3기 커리큘럼: 4주 압축 과정 → 5주 기본 과정(기본 커리큘럼) — 진행 주차는 그대로", run: moon3CurMain },
+  { id: "2026-11-09-moon-aci-partners", note: "문대표 1:1 상담에 ACI EXPRESS(뉴질랜드 배송대행지 · 카카오톡 채널) · 제휴 혜택에 두고그룹 ACI EXPRESS + 제휴사 12곳(네이버 카페 글) — 이미 있으면 그대로", run: moonAciPartners },
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
 ];
 
-module.exports = { OPS, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

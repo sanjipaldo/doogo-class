@@ -594,6 +594,36 @@ module.exports = {
       await run.check(good(out.off) && good(out.all) && !d, "수강생 메뉴 = 강사센터 메뉴 구성(켠 메뉴 · 순서 그대로): 라이브 다시보기 · 모범 과제 · 용어 사전도 내용이 없어도 보이고 ‘아직 … 없어요’ (예전 화면 = React)",
         { off: out.off && { cfg: out.off.cfg, nav: out.off.nav, empty: out.off.empty }, all: out.all && { cfg: out.all.cfg, nav: out.all.nav, empty: out.all.empty }, d });
     }
+    // 1-15) 메뉴 구성 ‘저장’ (2026-11-09): 바꿔도 저장 전엔 수강생 화면 그대로 · 안내 줄 · 되돌리기 · 저장하면 수강생 화면에 (강사센터 예전 화면 = React)
+    for (const mode of ["off", "all"]) {
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "메뉴 저장 · 강사센터 " + mode);
+      await FL.instructor(ap, base, info); await L.reactCookie(ap, base, mode);
+      await L.open(ap, base, "/center/menus"); await ap.waitForTimeout(700);
+      const key = "glossary", sel = 'input.a-menu-label[data-key="' + key + '"]', NEW = "용어 사전 (저장 시험 " + mode + ")";
+      const st = () => ap.evaluate((k) => { const A = window.ADM, mid = A.ui.mMenuIns, saved = (window.DB.menuConfig(mid).items.find((x) => x.key === k) || {}).label || "", b = document.querySelector('[data-action="menu-save"]');
+        return { saved, draft: (A.menuCfg(mid).items.find((x) => x.key === k) || {}).label || "", note: !!document.querySelector(".a-menu-dirty"), saveOn: !!b && !b.disabled, reset: !!document.querySelector('[data-action="menu-reset"]'), dirty: !!(window.__dirty && window.__dirty()), prev: Array.from(document.querySelectorAll(".a-sidebar-preview li span")).map((x) => x.textContent) }; }, key);
+      const s0 = await st(), was = s0.saved;
+      await ap.fill(sel, NEW); await ap.press(sel, "Tab"); await ap.waitForTimeout(400);
+      const s1 = await st();
+      await ap.click('[data-action="menu-reset"]'); await ap.waitForTimeout(400);
+      const s2 = await st();
+      await ap.fill(sel, NEW); await ap.press(sel, "Tab"); await ap.waitForTimeout(300);
+      // 저장 전: 수강생 화면은 그대로
+      const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } }); run.watch(sp, "메뉴 저장 · 수강생 " + mode);
+      await FL.student(sp, base, info);
+      const navTxt = async () => { await L.open(sp, base, "/home"); await sp.waitForTimeout(500); return sp.$$eval("a.nav-item > span", (xs) => xs.map((x) => x.textContent.trim())); };
+      const n1 = await navTxt();
+      await ap.click('[data-action="menu-save"]'); await ap.waitForTimeout(500); await L.flushed(ap);
+      const s3 = await st(), n2 = await navTxt();
+      // 되돌려 두기 (원래 이름)
+      await ap.fill(sel, was); await ap.press(sel, "Tab"); await ap.waitForTimeout(300); await ap.click('[data-action="menu-save"]'); await ap.waitForTimeout(500); await L.flushed(ap);
+      const s4 = await st();
+      await sp.context().close(); await ap.context().close();
+      await run.check(!s0.note && !s0.saveOn && !s0.dirty && s1.draft === NEW && s1.saved === was && s1.note && s1.saveOn && s1.reset && s1.dirty && s1.prev.indexOf(NEW) >= 0 &&
+        s2.draft === was && !s2.note && !s2.saveOn && !s2.dirty && n1.indexOf(NEW) < 0 && s3.saved === NEW && !s3.note && !s3.dirty && n2.indexOf(NEW) >= 0 && s4.saved === was && !s4.dirty,
+        "메뉴 구성 ‘저장’ (" + (mode === "all" ? "React" : "예전 화면") + "): 바꿔도 저장 전엔 수강생 화면 그대로 · 안내 줄 · 저장 버튼 켜짐 · 되돌리기 · 저장하면 수강생 메뉴에 바로", { s0, s1, s2, n1, s3, n2, s4 });
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

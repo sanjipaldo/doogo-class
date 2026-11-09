@@ -2777,6 +2777,34 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/if \(on\("replays"\) && replaysSorted\(\)\.length\) out\.push\("지난 라이브 다시 볼래요"\)/.test(ap48) && /if \(!list\.length\) return \{ text: "아직 ‘" \+ ML\("replays"\)/.test(ap48) && /아직 등록된 용어가 없어요/.test(ap48) && /아직 등록된 용어가 없어요/.test(mo48),
       "비어 있을 때: AI 조교 ‘지난 라이브 다시 볼래요’ 칩은 영상이 있을 때만 · 물으면 ‘아직 올라온 영상이 없어요’ · 용어 사전 ‘아직 등록된 용어가 없어요’ (예전 화면 · React)");
   }
+  {
+    console.log("49) 응원 영상 큰 화면: 실제 유튜브 썸네일 그대로 (2026-11-09)");
+    const st49 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"), tail49 = st49.slice(st49.lastIndexOf("/* 응원 영상 큰 화면"));
+    ok(/\.mv-player-wrap \.video \.vp-img \{ opacity: 1; mix-blend-mode: normal; \}/.test(tail49) && /\.mv-player-wrap \.video \.video-ph::after \{ display: none; \}/.test(tail49) && /\.mv-player-wrap \.video \.vp-title \{ visibility: hidden; \}/.test(tail49) && st49.lastIndexOf(".th-nz .video .vp-img") < st49.lastIndexOf(".mv-player-wrap .video .vp-img"),
+      "응원 영상 큰 화면은 테마 색을 덮지 않은 썸네일 · 제목은 아래 줄에만 (뉴질랜드 테마 규칙보다 뒤 — 이겨요)");
+  }
+  {
+    console.log("50) 문대표 1:1 상담 ACI EXPRESS · 제휴 혜택 13곳 · 메뉴 구성 저장 · 제휴 혜택 여백 (2026-11-09)");
+    const OO = require(path.join(ROOT, "api/_lib/oneoff.js"));
+    const c0 = { channels: [{ id: "ch-bio", title: "두고바이오" }, { id: "ch-food", title: "두고푸드" }], partners: [{ id: "pt-cafe", group: "doogo", title: "두고 N카페" }, { id: "pt-food", group: "doogo", title: "두고푸드" }, { id: "pt-cowork", group: "partner", title: "코워크시티" }, { id: "pt-x", group: "partner", title: "챗봇나우", url: "https://cafe.naver.com/doogomarket/21" }] };
+    const st50 = { "content:moon": c0 }, g50 = (k) => JSON.parse(JSON.stringify(st50[k] || null));
+    const r1 = OO.moonAciPartners(g50), w1 = r1.writes["content:moon"];
+    st50["content:moon"] = w1; const r2 = OO.moonAciPartners(g50);
+    const ids = (w1 && w1.partners || []).map((x) => x.id);
+    ok(!!w1 && w1.channels.map((x) => x.id).join(",") === "ch-bio,ch-food,ch-aci" && w1.channels[2].url === "https://pf.kakao.com/_DnnxlX" && w1.channels[2].label === "ACI EXPRESS 문의하기" &&
+      ids.slice(0, 3).join(",") === "pt-cafe,pt-food,pt-aci" && ids.indexOf("pt-chatbotnow") < 0 && ids.length === 4 + 12 && r1.result.partners.length === 12 && !Object.keys(r2.writes).length && !!r2.result.already &&
+      w1.partners.filter((x) => x.group === "partner" && OO.MOON_PARTNERS_1109.some((y) => y.id === x.id)).every((x) => /카페 글에서 확인하세요\.$/.test(x.desc) && /^https:\/\/cafe\.naver\.com\/doogomarket/.test(x.url)),
+      "일회성 2026-11-09-moon-aci-partners: 1:1 상담 끝에 ACI EXPRESS(카톡 채널) · 두고그룹 끝에 ACI EXPRESS · 제휴사 12곳(같은 링크 · 이름이 있으면 건너뜀) · 두 번 돌려도 그대로");
+    const vmc = require("vm"), sbc = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sbc.window = sbc; vmc.createContext(sbc); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vmc.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sbc, { filename: f }));
+    const icOk = (list, k) => list.some((x) => x[0] === k);
+    ok(icOk(sbc.DB.CHANNEL_ICONS, OO.MOON_ACI_CH.icon) && OO.MOON_PARTNERS_1109.every((x) => icOk(sbc.DB.PARTNER_ICONS, x.icon)),
+      "새 카드 아이콘이 강사센터 아이콘 고르기에 있어요 (고쳐 저장해도 아이콘이 바뀌지 않게)");
+    const ad50 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), st50c = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"), raw50 = fs.readFileSync(path.join(ROOT, "../ui/lib/Raw.jsx"), "utf8");
+    ok(/case "menu-save": menuSave\(\); break;/.test(ad50) && /const m = menuDraft\(\), it = m\.items\.find/.test(ad50) && ad50.indexOf('DB.menuConfig(ui.mMenuIns).items.find((x) => x.key === t.dataset.key); it.label = t.value.trim(); DB.save()') < 0 && /Object\.keys\(ui\.menuDrafts\)\.length/.test(ad50) &&
+      /\.pt-tabs ~ \.pt-sec, \.pt-tabs ~ \.pt-sec \+ \.pt-sec \{ padding: 0; \}/.test(st50c) && /k === "disabled" \? true : ""/.test(raw50),
+      "메뉴 구성: 고친 안 → ‘저장’ 눌러야 반영 · 저장 전 창 닫기 · 자동 로그아웃 막기 (화면 확인은 e2e reactdg 1-15) · 제휴 혜택 탭 아래 여백 없음 · React 조각의 disabled 버튼");
+  }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });

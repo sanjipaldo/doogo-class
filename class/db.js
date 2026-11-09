@@ -351,7 +351,7 @@
     { key: "other", label: "기타 링크", icon: "link", color: "", ink: "" }
   ];
   // 카드마다 아이콘 · 색을 따로 고를 수 있다 (같은 카카오톡 채널이어도 구분되게)
-  const CHANNEL_ICONS = [["factory", "공장 (제조)"], ["chatLock", "잠긴 말풍선 (개별 방)"], ["globe", "지구 (해외 · 유통)"], ["store", "가게 (도매몰)"], ["message", "말풍선"], ["users", "사람들 (단체방)"], ["headset", "헤드셋 (상담)"], ["mail", "메일"], ["phone", "전화"], ["camera", "카메라"], ["link", "링크"]];
+  const CHANNEL_ICONS = [["factory", "공장 (제조)"], ["chatLock", "잠긴 말풍선 (개별 방)"], ["globe", "지구 (해외 · 유통)"], ["store", "가게 (도매몰)"], ["message", "말풍선"], ["users", "사람들 (단체방)"], ["headset", "헤드셋 (상담)"], ["mail", "메일"], ["phone", "전화"], ["camera", "카메라"], ["link", "링크"], ["truck", "트럭 (배송 · 배송대행)"]];
   const CHANNEL_COLORS = [["#0a5de2", "파랑"], ["#7c3aed", "보라"], ["#ea580c", "주황"], ["#03c75a", "초록"], ["#e1306c", "분홍"], ["#0e0f0c", "검정"], ["#fee500", "카카오 노랑"], ["#5e4bff", "채널톡 보라"]];
   function inkOn(hex) {
     const m = /^#?([0-9a-f]{6})$/i.exec(hex || ""); if (!m) return "#ffffff";
@@ -369,7 +369,7 @@
   ];
   // 제휴채널: 두고그룹 회사 · 외부 제휴사 바로가기. 강사가 따로 정하지 않았으면 문대표 구성을 그 강사 이름으로 쓴다
   const PARTNER_GROUPS = [{ key: "doogo", label: "두고그룹", desc: "두고그룹이 직접 운영하는 서비스예요." }, { key: "partner", label: "제휴사", desc: "수강생 전용 혜택을 주는 외부 제휴사예요. 할인 코드는 카페 글에서 확인하세요." }];
-  const PARTNER_ICONS = CHANNEL_ICONS.concat([["building", "건물 (사무실)"], ["send", "보내기 (송금)"], ["coins", "동전 (결제 · 금융)"], ["handshake", "악수 (제휴)"]]);
+  const PARTNER_ICONS = CHANNEL_ICONS.concat([["building", "건물 (사무실)"], ["send", "보내기 (송금)"], ["coins", "동전 (결제 · 금융)"], ["handshake", "악수 (제휴)"], ["layers", "겹친 판 (정리 · 기획)"], ["sparkles", "반짝 (스튜디오 · 디자인)"], ["image", "사진 (이미지)"], ["activity", "그래프 (마케팅)"], ["search", "돋보기 (키워드 분석)"], ["settings", "톱니 (자동화)"], ["bot", "로봇 (챗봇)"], ["star", "별 (리뷰)"], ["userPlus", "사람 더하기 (회원가입)"], ["calculator", "계산기 (세무 · 회계)"], ["megaphone", "확성기 (홍보 · 인플루언서)"]]);
   function defaultPartners(c) {
     const src = (window.CLASS_SEED.content.moon || {}).partners || [];
     const inst = (c && c.brand && c.brand.instructor) || "문대표";

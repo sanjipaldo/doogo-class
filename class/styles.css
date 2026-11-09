@@ -1370,6 +1370,8 @@ body.lib-gated #main > .page { filter: blur(6px); pointer-events: none; user-sel
 .pt-tabs { margin-bottom: 4px; }
 .pt-tabs .fnum { margin-left: 4px; }
 .pt-sec .section-head { margin-top: 26px; }
+/* 수강생 제휴 혜택 (2026-11-09): 스토어 ‘두고 파트너스’(vod.css .pt-sec { padding: 96px 0 })와 이름이 같아 탭 아래 · 섹션 사이가 크게 벌어졌어요 → 이 화면에서는 여백 없이 */
+.pt-tabs ~ .pt-sec, .pt-tabs ~ .pt-sec + .pt-sec { padding: 0; }
 .pt-feature { grid-column: 1 / -1; padding: 30px 30px 26px; background: radial-gradient(70% 120% at 100% 0%, rgba(3, 199, 90, .10), transparent 60%), var(--canvas); }
 .pt-feature .ch-icon { width: 60px; height: 60px; border-radius: 18px; }
 .pt-feature .ch-icon .icon { width: 28px; height: 28px; }
@@ -2538,3 +2540,10 @@ a.login-vod:hover { filter: brightness(.97); }
   .ag-day { grid-template-columns: 44px minmax(0, 1fr); gap: 10px; }
   .ag-t { font-size: 13.5px; }
 }
+
+/* 응원 영상 큰 화면 (2026-11-09): 실제 유튜브 썸네일 그대로 — 테마 색(뉴질랜드 남색 · 두잉고 · 밝은 테마)을 덮지 않아요.
+   제목 글자는 썸네일 위에 겹치지 않고 아래 줄(.mv-now)에만 · 재생 버튼 · ‘유튜브에서 보기’ · 길이는 그대로 */
+.mv-player-wrap .video .video-ph { background: #000; }
+.mv-player-wrap .video .vp-img { opacity: 1; mix-blend-mode: normal; }
+.mv-player-wrap .video .video-ph::after { display: none; }
+.mv-player-wrap .video .vp-title { visibility: hidden; }
