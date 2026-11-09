@@ -1049,6 +1049,23 @@ function demoResetNow(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 문대표 2주차 시장조사 제목 ‘10개’ → ‘3개’ (2026-11-10 · 대표님 요청) ----------
+ * 4주 압축 과정 등 다른 커리큘럼에 예전 제목(‘… 시장조사 10개’)이 남아 있으면 ‘시장조사 3개’로 (기본 커리큘럼과 같게). 제목 말고는 그대로 */
+function moonW2Title3(get) {
+  const k = "content:moon", c = get(k);
+  if (!isObj(c)) return { writes: {}, result: { skipped: "문대표 콘텐츠 없음" } };
+  const lists = [["기본", c.weeks]].concat((Array.isArray(c.curricula) ? c.curricula : []).filter(isObj).map((cu) => [cu.name || cu.id, cu.weeks])), done = [];
+  lists.forEach(([name, weeks]) => (Array.isArray(weeks) ? weeks : []).forEach((w) => {
+    if (!isObj(w) || Number(w.no) !== 2 || !Array.isArray(w.missions)) return;
+    w.missions.forEach((m) => {
+      if (!isObj(m) || !/시장조사\s*10개/.test(String(m.title || ""))) return;
+      const was = m.title; m.title = String(m.title).replace(/시장조사\s*10개/, "시장조사 3개"); done.push(name + ": " + was + " → " + m.title);
+    });
+  }));
+  if (!done.length) return { writes: {}, result: { already: "‘시장조사 10개’ 제목이 없어요" } };
+  return { writes: { [k]: c }, result: { titles: done } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1086,7 +1103,8 @@ const OPS = [
   { id: "2026-11-09-moon-aci-partners", note: "문대표 1:1 상담에 ACI EXPRESS(뉴질랜드 배송대행지 · 카카오톡 채널) · 제휴 혜택에 두고그룹 ACI EXPRESS + 제휴사 12곳(네이버 카페 글) — 이미 있으면 그대로", run: moonAciPartners },
   { id: "2026-11-09-moon-w2-benchmark", note: "문대표 2주차 시장조사 과제 → 벤치마킹(브랜드 · 공식몰 판매가 · 국내 최저 판매가): 자동검수 단어에서 NZD 빼기 · 설명 · 진행 방법 · 엑셀 양식 머리글 (제목 · 제출 방식 · 최소 글자 수는 그대로)", run: moonW2Benchmark },
   { id: "2026-11-09-demo-reset", note: "체험(테스트) 수강생 계정 진도 기록을 지금 한 번 처음으로 (모든 강사 · 끝난 기수의 수료 체험 계정은 그대로) — 앞으로는 로그인 · 로그아웃할 때마다", run: demoResetNow },
+  { id: "2026-11-10-moon-w2-title-3", note: "문대표 2주차 과제 제목 ‘시장조사 10개’ → ‘시장조사 3개’ (4주 압축 과정 등 · 기본 커리큘럼과 같게 · 제목만)", run: moonW2Title3 },
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
 ];
 
-module.exports = { OPS, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

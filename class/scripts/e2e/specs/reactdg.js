@@ -655,6 +655,23 @@ module.exports = {
         ["off", "all"].every((m) => open[m].cards >= 4 && open[m].locked === 0),
         "체험(테스트) 계정: 로그아웃하면 시청 · 과제 · 체크 완료 · 가이드가 처음으로 (강사센터에서도) · 다시 들어와도 처음 · 일정과 상관없이 모든 주차 열림 (예전 화면 = React)", { p0, seen, afterOut, back, open });
     }
+    // 1-17) 강사센터 › 수강생 관리 › 상세 ‘체험(테스트) 계정’ (2026-11-10): 목록 ‘체험’ 표시 · 체크 칸 끄기 → 저장 → 표시 사라짐 · 다시 켜기 → 저장 (예전 화면 = React)
+    for (const mode of ["off", "all"]) {
+      const sid = info.student.sid, ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "체험 계정 체크 칸 " + mode);
+      await FL.instructor(ap, base, info); await L.reactCookie(ap, base, mode);
+      const list = async () => { await L.open(ap, base, "/center/students"); await ap.waitForTimeout(500);
+        await ap.evaluate(() => { const t = Array.from(document.querySelectorAll('[data-action="stu-tab"]')).find((b) => /^수강 중/.test(b.textContent.trim())); if (t) t.click(); }); await ap.waitForTimeout(500);
+        return ap.evaluate((id) => { const b = document.querySelector('[data-action="student-open"][data-id="' + id + '"]'), td = b && b.closest("td"); return { row: !!b, tag: !!(td && td.querySelector(".a-demo-tag")) }; }, sid); };
+      const setDemo = async (on) => { await ap.click('[data-action="student-open"][data-id="' + sid + '"]'); await ap.waitForSelector('#student-form input[name="demo"]', { timeout: 5000 });
+        const was = await ap.$eval('#student-form input[name="demo"]', (x) => x.checked); await ap.setChecked('#student-form input[name="demo"]', on);
+        await ap.click('button[type="submit"][form="student-form"]'); await ap.waitForTimeout(600); await L.flushed(ap);
+        return { was, now: await ap.evaluate((id) => window.DB.student(id).demo === true, sid) }; };
+      const l0 = await list(), off = await setDemo(false), l1 = await list(), on = await setDemo(true), l2 = await list();
+      await ap.context().close();
+      await run.check(l0.row && l0.tag && off.was === true && off.now === false && !l1.tag && on.was === false && on.now === true && l2.tag,
+        "수강생 상세 ‘체험(테스트) 계정’ 체크 칸 (" + (mode === "all" ? "React" : "예전 화면") + "): 목록 ‘체험’ 표시 · 끄면 저장되고 표시 사라짐 · 다시 켜면 그대로", { l0, off, l1, on, l2 });
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

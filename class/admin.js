@@ -647,7 +647,7 @@
         (list.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr>' + (ui.stuStatus === "pending" ? '<th class="w-check"></th>' : "") + "<th>이름</th><th>뒷자리</th><th>기수</th><th>신청일</th><th>상태</th><th>성장 단계</th><th>진행률</th><th class=\"right\">관리</th></tr></thead><tbody>" +
           list.map((s) => {
             const st = s.status === "approved" ? DB.stats(DB.progress(s.id), iid, DB.studentCohort(s)) : null;
-            return '<tr><td' + (ui.stuStatus === "pending" ? ' class="w-check"><input type="checkbox" class="stu-pick" data-id="' + s.id + '"' + (ui.picked.has(s.id) ? " checked" : "") + ' aria-label="' + esc(s.name) + ' 선택"></td><td' : "") + '><button class="a-name" data-action="student-open" data-id="' + s.id + '">' + esc(s.name) + "</button>" + (s.memo ? '<small class="a-memo">' + esc(s.memo) + "</small>" : "") + "</td>" +
+            return '<tr><td' + (ui.stuStatus === "pending" ? ' class="w-check"><input type="checkbox" class="stu-pick" data-id="' + s.id + '"' + (ui.picked.has(s.id) ? " checked" : "") + ' aria-label="' + esc(s.name) + ' 선택"></td><td' : "") + '><button class="a-name" data-action="student-open" data-id="' + s.id + '">' + esc(s.name) + "</button>" + (s.demo === true ? '<span class="a-demo-tag" title="체험(테스트) 계정 · 로그인 · 로그아웃마다 처음으로">체험</span>' : "") + (s.memo ? '<small class="a-memo">' + esc(s.memo) + "</small>" : "") + "</td>" +
               '<td class="num">' + esc(s.phone4) + "</td><td>" + esc(cohortName(s.cohortId)) + '</td><td class="num">' + (s.appliedAt ? fmtMD(s.appliedAt) : "-") + "</td><td>" + pill(STU[s.status].label, STU[s.status].cls) + "</td>" +
               "<td>" + (st ? lvBadge(levelOfStudent(s)) : '<span class="a-muted">-</span>') + "</td>" +
               "<td>" + (st ? '<div class="a-bar"><span style="width:' + st.pct + '%"></span></div><small class="num">' + st.pct + "% · 필수 " + st.reqDone + "/" + st.reqTotal + "</small>" : '<span class="a-muted">-</span>') + "</td>" +
@@ -690,6 +690,8 @@
         '<div class="a-form-row"><div class="a-field"><label for="sf-cohort">기수</label><select class="a-input" id="sf-cohort" name="cohortId">' + cos.map((co) => '<option value="' + co.id + '"' + (co.id === s.cohortId ? " selected" : "") + ">" + esc(co.name) + " · " + fmtMD(co.startDate) + " 시작</option>").join("") + "</select></div>" +
         '<div class="a-field"><label for="sf-status">상태</label><select class="a-input" id="sf-status" name="status">' + Object.keys(STU).map((k) => '<option value="' + k + '"' + (k === s.status ? " selected" : "") + ">" + STU[k].label + "</option>").join("") + "</select></div></div>" +
         stuCurField(iid, s) +
+        // 체험(테스트) 계정 (2026-11-10): 강의 시연 · 남에게 보여 주기용 — 모든 주차 열림 · 로그인 · 로그아웃마다 진도 기록 처음으로 (서버 api/_lib/demoreset.js)
+        '<label class="a-check a-demo-check"><input type="checkbox" name="demo"' + (s.demo === true ? " checked" : "") + '><span><b>체험(테스트) 계정</b> · 강의 시연용이에요. 일정과 상관없이 모든 주차가 열리고, 로그인 · 로그아웃할 때마다 진도 기록(과제 제출 · 체크 완료 · 강의 시청 · 노트)이 처음으로 돌아가요. <em>실제 수강생에게는 켜지 마세요.</em></span></label>' +
         '<div class="a-field"><label for="sf-memo">메모 <small>(강사만 보여요)</small></label><input class="a-input" id="sf-memo" name="memo" value="' + esc(s.memo || "") + '" placeholder="예: 결제 확인 완료"></div>' +
         '<p class="a-error" id="sf-error"></p>' +
       "</form>",
@@ -727,6 +729,8 @@
       : DB.data.students[DB.data.students.push({ id: DB.uid("s"), instructorId: iid, cohortId: f.cohortId.value, name, phone4, status: f.status.value, memo: f.memo.value.trim(), appliedAt: todayStr() }) - 1];
     // 수강생 커리큘럼: 비우거나 기수 커리큘럼과 같으면 기수 그대로(칸 지움)
     if (f.curriculumId) { const cv = f.curriculumId.value, co = DB.cohort(tgt.cohortId); if (!cv || (co && (co.curriculumId || "main") === cv)) delete tgt.curriculumId; else tgt.curriculumId = cv; }
+    // 체험(테스트) 계정 표시 — 끄면 칸을 지워요
+    if (f.demo) { if (f.demo.checked) tgt.demo = true; else delete tgt.demo; }
     // 저장한 수강생이 목록에 바로 보이게: 지금 탭 · 기수 필터에 안 맞으면 그 수강생 상태 · 기수로 옮김
     if (ui.stuStatus !== "all" && ui.stuStatus !== f.status.value) ui.stuStatus = f.status.value;
     if (ui.stuCohort !== "all" && ui.stuCohort !== f.cohortId.value) ui.stuCohort = f.cohortId.value;

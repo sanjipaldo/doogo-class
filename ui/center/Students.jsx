@@ -34,7 +34,7 @@ export default function Students({ r }) {
           const st = s.status === "approved" ? DB.stats(DB.progress(s.id), iid, DB.studentCohort(s)) : null;
           return (
             <tr key={s.id}>{pend ? <td className="w-check"><input type="checkbox" className="stu-pick" data-id={s.id} defaultChecked={ui.picked.has(s.id)} aria-label={s.name + " 선택"} /></td> : null}
-              <td><button className="a-name" data-action="student-open" data-id={s.id}>{s.name}</button>{s.memo ? <small className="a-memo">{s.memo}</small> : null}</td>
+              <td><button className="a-name" data-action="student-open" data-id={s.id}>{s.name}</button>{s.demo === true ? <span className="a-demo-tag" title="체험(테스트) 계정 · 로그인 · 로그아웃마다 처음으로">체험</span> : null}{s.memo ? <small className="a-memo">{s.memo}</small> : null}</td>
               <td className="num">{s.phone4}</td><td>{A.cohortName(s.cohortId)}</td><td className="num">{s.appliedAt ? fmtMD(s.appliedAt) : "-"}</td><td><Pill cls={STU[s.status].cls}>{STU[s.status].label}</Pill></td>
               <td>{st ? <Isl html={A.lvBadge(A.levelOfStudent(s))} /> : <span className="a-muted">-</span>}</td>
               <td>{st ? <><div className="a-bar"><span style={{ width: st.pct + "%" }} /></div><small className="num">{st.pct}% · 필수 {st.reqDone}/{st.reqTotal}</small></> : <span className="a-muted">-</span>}</td>

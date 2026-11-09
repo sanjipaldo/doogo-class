@@ -2850,6 +2850,20 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       au52.indexOf("await DEMO.resetDemo(ids.student.iid") < au52.indexOf('w.forEach((x) => auth.setCookie(req, res, x, ""))') && /const isOpen = \(w\) => \(!!me && !!me\.demo && !preview\) \|\|/.test(ap52),
       "수강생 로그인(쿠키 주기 전) · 로그아웃(쿠키 지우기 전 · 자동 로그아웃 포함)에서 처음으로 · 체험 계정은 일정과 상관없이 모든 주차가 열려요 (실제 동작은 e2e reactdg 1-16)");
   }
+  {
+    console.log("53) 강사센터 수강생 상세 ‘체험(테스트) 계정’ · 2주차 제목 ‘시장조사 3개’ (2026-11-10)");
+    const ad53 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), st53 = fs.readFileSync(path.join(ROOT, "../ui/center/Students.jsx"), "utf8"), ac53 = fs.readFileSync(path.join(ROOT, "api/_lib/access.js"), "utf8");
+    ok(/<input type="checkbox" name="demo"' \+ \(s\.demo === true \? " checked" : ""\)/.test(ad53) && /if \(f\.demo\) \{ if \(f\.demo\.checked\) tgt\.demo = true; else delete tgt\.demo; \}/.test(ad53) &&
+      /s\.demo === true \? '<span class="a-demo-tag"/.test(ad53) && /s\.demo === true \? <span className="a-demo-tag"/.test(st53) && /case "stu":\n\s+if \(instructorOf\(ids, K\.iid\) \|\| \(coachOf\(ids, K\.iid\) && coachCan\(ids, \["students"\]\)\)\)/.test(ac53),
+      "수강생 상세 체크 칸으로 체험 계정 켜기 · 끄기 (끄면 칸 지움) · 수강생 목록 ‘체험’ 표시(예전 화면 = React) · 서버: 강사 · 수강생 관리 코치만 수강생 기록을 고쳐요 (수강생 본인은 못 바꿔요)");
+    const OO = require(path.join(ROOT, "api/_lib/oneoff.js"));
+    const st = { "content:moon": { weeks: [{ no: 2, missions: [{ id: "m2-1", title: "⭐ 뉴질랜드 건강식품 시장조사 3개" }] }], curricula: [{ id: "cur-4w", name: "4주 압축 과정", weeks: [{ no: 2, missions: [{ id: "m2-1", title: "뉴질랜드 건강식품 시장조사 10개", desc: "그대로" }, { id: "m2-2", title: "공급처 10개" }] }] }] } };
+    const g = (k) => JSON.parse(JSON.stringify(st[k] || null)), r1 = OO.moonW2Title3(g), w = r1.writes["content:moon"];
+    st["content:moon"] = w; const r2 = OO.moonW2Title3(g);
+    ok(!!w && w.curricula[0].weeks[0].missions[0].title === "뉴질랜드 건강식품 시장조사 3개" && w.curricula[0].weeks[0].missions[0].desc === "그대로" && w.curricula[0].weeks[0].missions[1].title === "공급처 10개" &&
+      w.weeks[0].missions[0].title === "⭐ 뉴질랜드 건강식품 시장조사 3개" && r1.result.titles.length === 1 && !Object.keys(r2.writes).length,
+      "일회성 2026-11-10-moon-w2-title-3: ‘시장조사 10개’ → ‘시장조사 3개’ (4주 압축 과정 · 제목만 · 다른 과제 그대로 · 두 번 돌려도 그대로)");
+  }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
