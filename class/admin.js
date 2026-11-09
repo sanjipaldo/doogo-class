@@ -1083,7 +1083,7 @@
       F("topics", "강의 내용 (한 줄에 하나)", "lines", { rows: 7, hint: "수강생 커리큘럼에 두 줄로 나눠 점 목록으로 보여요." }),
       F("summary", "한 줄 소개 (과제 화면 위에 보여요)", "textarea", { rows: 2 })],
       init: () => ({ lessons: [], missions: [], topics: [] }), after: () => CUR().weeks.forEach((w, i) => { w.no = i + 1; }) },
-    lesson: { name: "강의", list: (c, ctx) => weekOf(c, ctx).lessons, fields: [F("title", "강의 제목"), F("youtubeId", "유튜브 주소", "youtube"), F("minutes", "길이(분)", "number", { hint: "유튜브 주소를 넣으면 실제 영상 길이로 자동으로 채워져요. 수강생 화면에는 24:30처럼 보여요." }), F("desc", "강의 설명", "textarea", { rows: 4, rich: true }), F("attachments", "강의 자료 (교재·PDF·엑셀 등, 영상 아래에 보여요)", "attachments")], idp: "l", init: () => ({ attachments: [] }) },
+    lesson: { name: "강의", list: (c, ctx) => weekOf(c, ctx).lessons, fields: [F("title", "강의 제목"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }), F("minutes", "길이(분)", "number", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요. 수강생 화면에는 24:30처럼 보여요." }), F("desc", "강의 설명", "textarea", { rows: 4, rich: true }), F("attachments", "강의 자료 (교재·PDF·엑셀 등, 영상 아래에 보여요)", "attachments")], idp: "l", init: () => ({ attachments: [] }) },
     mission: { name: "과제", list: (c, ctx) => weekOf(c, ctx).missions, idp: "m",
       init: () => ({ required: true, kind: "required", type: "image", steps: [], check: { image: true } }),
       fields: [
@@ -1157,9 +1157,9 @@
     ann: { name: "강사 공지", list: () => DB.data.announcements, idp: "an", init: () => ({ date: todayStr(), pinned: false }),
       fields: [F("title", "제목"), F("to", "받는 강사", "select", { options: () => [["", "모든 강사 (전체 공지)"]].concat(DB.data.instructors.map((i) => [i.id, i.displayName + " · " + i.name + " 강사님에게만"])) }), F("body", "내용", "textarea", { rows: 6, rich: true }), F("date", "날짜", "date"), F("pinned", "맨 위에 고정", "checkbox")] },
     replay: { name: "라이브 다시보기", prepend: true, list: (c) => c.replays || (c.replays = []), idp: "rp", init: () => ({ date: todayStr(), attachments: [] }),
-      fields: [F("title", "영상 제목", "text", { hint: "예: 2주차 라이브 Q&A · 상세페이지 첨삭" }), F("youtubeId", "유튜브 주소", "youtube", { hint: "일부 공개(링크가 있는 사람만)로 올린 영상도 돼요." }),
+      fields: [F("title", "영상 제목", "text", { hint: "예: 2주차 라이브 Q&A · 상세페이지 첨삭" }), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "일부 공개(링크가 있는 사람만)로 올린 영상도 돼요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
         F("week", "주차", "select", { options: () => weekOpts("주차 없음"), get: (x) => (x.week ? String(x.week) : ""), set: (x, v) => { x.week = v ? Number(v) : ""; } }),
-        F("date", "라이브 날짜", "date"), F("minutes", "영상 길이 (선택 · 예: 1:12:30)", "text", { hint: "유튜브 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }),
+        F("date", "라이브 날짜", "date"), F("minutes", "영상 길이 (선택 · 예: 1:12:30)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }),
         F("summary", "핵심 정리 (영상 아래에 보여요)", "textarea", { rows: 6, rich: true, hint: "라이브에서 나온 핵심 내용, 자주 나온 질문을 짧게 정리해 두면 수강생이 다시 찾기 쉬워요." }),
         F("attachments", "라이브 자료 (선택)", "attachments")] },
     showcase: { name: "모범 과제", list: (c) => c.showcase || (c.showcase = []), idp: "sc", init: (ctx, seed) => Object.assign({ images: [] }, seed || {}),
@@ -1176,11 +1176,11 @@
       fields: [F("q", "질문", "text", { hint: "예: 이번 주 경쟁 상품을 보며 내 상품에 적용할 점은?" }),
         F("week", "주차", "select", { options: () => weekOpts(), get: (x) => String(x.week || 1), set: (x, v) => { x.week = Number(v) || 1; } })] },
     mv: { name: "응원 영상", prepend: true, list: (c) => c.motivation, idp: "mv", init: () => ({ date: todayStr() }),
-      fields: [F("title", "영상 제목"), F("youtubeId", "유튜브 주소", "youtube"), F("minutes", "영상 길이 (예: 31:57)", "text", { hint: "유튜브 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }), F("date", "올린 날", "date")] }
+      fields: [F("title", "영상 제목"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }), F("minutes", "영상 길이 (예: 31:57)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }), F("date", "올린 날", "date")] }
   };
   ["ebook", "file"].forEach((k) => { COLL["res-" + k] = { name: "자료", list: (c) => c.resources[k], idp: k[0], fields: [F("title", "자료 이름"), F("meta", "형식 (예: 전자책 · 86쪽)"), F("desc", "한 줄 설명"), F("url", "열람·다운로드 주소 (구글 드라이브 등)", "url")] }; });
   ["vod", "senior"].forEach((k) => { COLL["res-" + k] = { name: "영상", list: (c) => c.resources[k], idp: k[0], init: () => ({ body: "", attachments: [] }),
-    fields: [F("title", "영상 제목 (팝업 제목)"), F("meta", "형식 (예: 기초 · 15분)"), F("desc", "한 줄 설명 (목록에 보여요)"), F("youtubeId", "유튜브 주소", "youtube"),
+    fields: [F("title", "영상 제목 (팝업 제목)"), F("meta", "형식 (예: 기초 · 15분)"), F("desc", "한 줄 설명 (목록에 보여요)"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
       F("body", "본문 (게시판처럼 글을 쓰고, 사진은 [사진1] 자리에 들어가요)", "textarea", { rows: 14, rich: true, photos: true }), F("images", "사진 (여러 장 가능 · 첫 사진은 영상이 없을 때 썸네일)", "images"),
       F("attachments", "첨부 자료 (교습지·엑셀·PDF 등)", "attachments")] }; });
   const faqCats = () => C().faqs.map((f) => f.category || "기타").filter((c, i, a) => a.indexOf(c) === i);
@@ -1204,7 +1204,7 @@
     else if (f.type === "select") { const opts = typeof f.options === "function" ? f.options() : f.options; input = '<select class="a-input" id="' + id + '" name="' + f.key + '">' + opts.map((o) => '<option value="' + esc(o[0]) + '"' + (String(v) === String(o[0]) ? " selected" : "") + ">" + esc(o[1]) + "</option>").join("") + "</select>"; }
     else if (f.type === "combo") { const opts = f.options(); input = '<input class="a-input" id="' + id + '" name="' + f.key + '" list="' + id + '-list" value="' + esc(v) + '"><datalist id="' + id + '-list">' + opts.map((o) => '<option value="' + esc(o) + '"></option>').join("") + "</datalist>"; }
     else if (f.type === "tags") input = '<input class="a-input" id="' + id + '" name="' + f.key + '" value="' + esc(Array.isArray(v) ? v.join(", ") : v) + '">';
-    else if (f.type === "youtube") input = '<input class="a-input" id="' + id + '" name="' + f.key + '" value="' + esc(v ? "https://youtu.be/" + v : "") + '" placeholder="https://www.youtube.com/watch?v=… 또는 youtu.be/…">';
+    else if (f.type === "youtube") input = '<input class="a-input" id="' + id + '" name="' + f.key + '" value="' + esc(DB.vidShow(v)) + '" placeholder="https://www.youtube.com/watch?v=… · https://vimeo.com/…">';
     else input = '<input class="a-input" id="' + id + '" name="' + f.key + '" type="' + ({ number: "number", date: "date", time: "time", url: "url" }[f.type] || "text") + '"' + (f.min ? ' min="' + f.min + '"' : "") + ' value="' + esc(v) + '">';
     return '<div class="a-field"' + show + '><label for="' + id + '">' + esc(f.label) + "</label>" + input + (f.hint ? '<small class="a-muted">' + esc(f.hint) + "</small>" : "") + "</div>";
   }
@@ -1325,7 +1325,7 @@
       else if (f.type === "lines") v = LINES(el.value);
       else if (f.type === "tags") v = TAGS(el.value);
       else if (f.type === "number") v = el.value === "" ? "" : Number(el.value);
-      else if (f.type === "youtube") { v = DB.youtubeId(el.value); if (el.value.trim() && !v) { err.textContent = "유튜브 주소를 확인해 주세요. (youtube.com/watch?v=… 또는 youtu.be/…)"; return; } }
+      else if (f.type === "youtube") { v = DB.vidVal(el.value); if (el.value.trim() && !v) { err.textContent = "영상 주소를 확인해 주세요. 유튜브(youtube.com/watch?v=… · youtu.be/…) · 비메오(vimeo.com/…) 주소만 돼요."; return; } }
       else v = el.value.trim();
       if (f.check) { const bad = f.check(v); if (bad) { err.textContent = bad; return; } }
       if (f.set) f.set(item, v); else item[f.key] = v;
@@ -1397,7 +1397,7 @@
     if (!items.length) return emptyBox("inbox", emptyText);
     return '<ul class="a-items">' + items.map((it, i) => "<li>" + render1(it) + rowTools(coll, it.id || String(it.no), "", i, items.length) + "</li>").join("") + "</ul>";
   }
-  const ytBadge = (it) => (DB.youtubeId(it.youtubeId) ? pill("영상 연결됨", "ok") : pill("영상 없음", "mute"));
+  const ytBadge = (it) => (DB.vidOk(it.youtubeId) ? pill("영상 연결됨", "ok") : pill("영상 없음", "mute"));
 
   /* ---------------- 콘텐츠 화면들 ---------------- */
   function pageBrand() {
@@ -2995,7 +2995,7 @@
       '<form id="page-form" class="a-form" data-key="' + key + '" novalidate>' +
         '<div class="a-field"><label for="pf-title">페이지 제목</label><input class="a-input" id="pf-title" name="title" value="' + esc(pg.title || it.label) + '"></div>' +
         '<div class="a-field"><label for="pf-summary">한 줄 소개</label><input class="a-input" id="pf-summary" name="summary" value="' + esc(pg.summary || "") + '"></div>' +
-        '<div class="a-field"><label for="pf-yt">유튜브 주소 (선택)</label><input class="a-input" id="pf-yt" name="youtubeId" value="' + esc(pg.youtubeId ? "https://youtu.be/" + pg.youtubeId : "") + '"></div>' +
+        '<div class="a-field"><label for="pf-yt">영상 주소 (선택 · 유튜브 · 비메오)</label><input class="a-input" id="pf-yt" name="youtubeId" value="' + esc(DB.vidShow(pg.youtubeId)) + '" placeholder="https://www.youtube.com/watch?v=… · https://vimeo.com/…"></div>' +
         '<div class="a-field"><label for="pf-body">본문</label>' + richBar("pf-body") + '<textarea class="a-input a-rich-input" id="pf-body" name="body" rows="10">' + esc(pg.body || "") + '</textarea><small class="a-muted">## 소제목 · - 목록 · 1. 번호 · **굵게** · &gt; 강조 상자 · 주소는 자동으로 링크가 돼요.</small></div>' +
         '<div class="a-field"><span class="a-label">첨부 자료</span><div id="att-editor">' + attEditorHtml() + "</div></div>" +
         '<p class="a-error" id="pf-error"></p></form>',
@@ -3015,8 +3015,8 @@
     DB.save(); commit("자료실 안내 문구를 저장했어요.");
   }
   function savePage(f) {
-    const yt = f.youtubeId.value.trim(), yid = DB.youtubeId(yt);
-    if (yt && !yid) { document.getElementById("pf-error").textContent = "유튜브 주소를 확인해 주세요."; return; }
+    const yt = f.youtubeId.value.trim(), yid = DB.vidVal(yt);
+    if (yt && !yid) { document.getElementById("pf-error").textContent = "영상 주소를 확인해 주세요. (유튜브 · 비메오 주소만 돼요)"; return; }
     const c = C();
     c.pages[f.dataset.key] = { title: f.title.value.trim(), summary: f.summary.value.trim(), youtubeId: yid, body: f.body.value, attachments: attDraft.slice() };
     if (!DB.save()) { toast("저장 공간이 부족해요.", "warn"); DB.load(); return; }

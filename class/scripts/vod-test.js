@@ -2652,6 +2652,31 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "상단 영상: 영상을 누르거나 ⏸ 버튼으로 멈추기 · 다시 재생 · 멈추면 가운데 큰 ▶ · 사람이 멈춘 건 저절로 다시 안 틀어요 (예전 화면 · React)");
   }
 
+  {
+    console.log("42) 두잉고 영상 비메오 (2026-11-09): 강의 · 라이브 다시보기 · 응원 영상 · 자료실 · 추가 메뉴 — 유튜브처럼 영상 칸에 비메오 주소 · 수강생 화면에서 그 자리에서 재생");
+    const vm42 = require("vm"), ls42 = new Map(), sb42 = { console, Date, Math, JSON, Intl, localStorage: { getItem: (k) => (ls42.has(k) ? ls42.get(k) : null), setItem: (k, v) => ls42.set(k, String(v)), removeItem: (k) => ls42.delete(k), key: () => null, length: 0 } };
+    sb42.window = sb42; vm42.createContext(sb42); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm42.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb42, { filename: f }));
+    const D42 = sb42.DB;
+    ok(D42.vidVal("https://vimeo.com/1244973319") === "https://vimeo.com/1244973319" && D42.vidVal("https://vimeo.com/1244973319/abcdef1234") === "https://vimeo.com/1244973319/abcdef1234" && D42.vidVal("https://player.vimeo.com/video/1244973319?h=abcdef1234&x=1") === "https://vimeo.com/1244973319/abcdef1234" &&
+      D42.vidVal("https://vimeo.com/channels/staffpicks/123456789") === "https://vimeo.com/123456789" && D42.vidVal("https://youtu.be/dQw4w9WgXcQ") === "dQw4w9WgXcQ" && D42.vidVal("dQw4w9WgXcQ") === "dQw4w9WgXcQ" && D42.vidVal("vimeo.com/abc") === "" && D42.vidVal("") === "",
+      "영상 칸 값: 비메오 주소는 https://vimeo.com/숫자[/해시] 로 · 유튜브는 11자리 ID · 둘 다 아니면 빈 값 (잘못된 주소 안내)");
+    ok(D42.vimeoSrc("https://vimeo.com/1244973319") === "https://player.vimeo.com/video/1244973319?title=0&byline=0&portrait=0&dnt=1" && D42.vimeoSrc("https://vimeo.com/1244973319/abcdef1234") === "https://player.vimeo.com/video/1244973319?h=abcdef1234&title=0&byline=0&portrait=0&dnt=1" && D42.vimeoSrc("dQw4w9WgXcQ") === "" &&
+      D42.vidOk("https://vimeo.com/1244973319") && D42.vidOk("dQw4w9WgXcQ") && !D42.vidOk("") && !D42.vidOk("nope") && D42.vidShow("dQw4w9WgXcQ") === "https://youtu.be/dQw4w9WgXcQ" && D42.vidShow("https://vimeo.com/1244973319") === "https://vimeo.com/1244973319" && D42.vidShow("") === "" &&
+      D42.vdur.key("https://vimeo.com/1244973319/abcdef1234") === "vm:1244973319:abcdef1234" && D42.vdur.key("dQw4w9WgXcQ") === "yt:dQw4w9WgXcQ",
+      "비메오 재생기 주소(일부 공개 해시는 h=) · 영상 연결됨 · 고치는 칸에 보일 주소 · 실제 길이 자동 채우기 열쇠(vm:숫자:해시)도 그대로");
+    const ad42 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ap42 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), st42 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    const bi42 = fs.readFileSync(path.join(ROOT, "../ui/dg/bits.jsx"), "utf8"), mo42 = fs.readFileSync(path.join(ROOT, "../ui/dg/More.jsx"), "utf8"), lb42 = fs.readFileSync(path.join(ROOT, "../ui/dg/Lib.jsx"), "utf8");
+    ok((ad42.match(/F\("youtubeId", "영상 주소 \(유튜브 · 비메오\)", "youtube"/g) || []).length === 4 && !/"유튜브 주소", "youtube"/.test(ad42) && /else if \(f\.type === "youtube"\) \{ v = DB\.vidVal\(el\.value\);/.test(ad42) && /value="' \+ esc\(DB\.vidShow\(v\)\)/.test(ad42) &&
+      /const ytBadge = \(it\) => \(DB\.vidOk\(it\.youtubeId\)/.test(ad42) && /yid = DB\.vidVal\(yt\);/.test(ad42) && /esc\(DB\.vidShow\(pg\.youtubeId\)\)/.test(ad42),
+      "강사센터: 강의 · 라이브 다시보기 · 응원 영상 · 자료실 영상 칸이 ‘영상 주소 (유튜브 · 비메오)’ · 저장은 비메오 주소 / 유튜브 ID · ‘영상 연결됨’ · 추가 메뉴도 (예전 화면 · React 같은 편집 창)");
+    ok(/const yid = DB\.youtubeId\(item\.youtubeId\), vm = DB\.vimeoSrc\(item\.youtubeId\);/.test(ap42) && /<div class="video" data-vm="' \+ esc\(vm\)/.test(ap42) && /비메오에서 보기 ' \+ icon\("arrowUpRight", "xs"\)/.test(ap42) && /if \(box\.dataset\.vm\) \{/.test(ap42) && /if \(vm && mvAuto\)/.test(ap42) &&
+      /yid = DB\.youtubeId\(item\.youtubeId\), vm = DB\.vimeoSrc\(item\.youtubeId\);/.test(bi42) && /<div className="video" data-vm=\{vm\}>/.test(bi42) && /vm = box && box\.dataset\.vm/.test(bi42) && /<VmFrame src=\{vm\} title=\{cur\.title\} auto \/>/.test(mo42) && /yid = DB\.vidOk\(pg\.youtubeId\)/.test(mo42) && /yid = DB\.vidOk\(it\.youtubeId\);/.test(lb42) &&
+      /allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"/.test(ap42) && /allow="autoplay; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/.test(bi42),
+      "수강생 화면: 비메오 카드 → 누르면 그 자리에서 비메오 재생기 (주차별 강의 · 다시보기 · 응원 영상 · 자료실 · 추가 메뉴 · 예전 화면 · React)");
+    ok(/\n\.th-nz \.video-ph \{ overflow: hidden;/.test(st42) && !/\.th-nz \.video-ph \{ position: relative/.test(st42),
+      "뉴질랜드 테마 영상 카드도 영상 칸 전체를 채워요 (예전 position: relative 로 위쪽만 차던 것 고침)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

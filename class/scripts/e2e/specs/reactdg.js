@@ -290,6 +290,72 @@ module.exports = {
       await run.check(r.off.open && r.off.closed && r.all.open && r.all.closed, "강의실 휴대폰 메뉴: 아래 ‘전체’로 열고 · 어두운 바깥을 누르면 닫혀요 (예전 · React 같음)", r, page);
       await page.context().close();
     }
+    // 1-8) 비메오 강의 영상 (2026-11-09): 강사센터 ‘강의 수정’ 영상 칸에 비메오 주소 → 저장 · 다시 열면 그 주소 · 목록 ‘영상 연결됨’ · 잘못된 주소는 안내
+    //      → 수강생 강의 화면: 비메오 카드(예전 화면 = React · PC · 휴대폰) · 누르면 그 자리에서 비메오 재생기 → 끝나면 원래 값으로 되돌려요 (비메오는 시험 환경에서 막혀 있어 가짜 재생기)
+    {
+      const VM = "https://vimeo.com/1244973319";
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "비메오 · 강사센터");
+      await FL.instructor(ap, base, info); await L.reactCookie(ap, base, "all");
+      const field = 'form#coll-form input[name="youtubeId"]';
+      // 강사센터 ‘편집할 커리큘럼’을 이 수강생 기수가 쓰는 커리큘럼으로 (기수마다 커리큘럼이 다를 수 있어요 — 강의 번호는 같아도 다른 강의)
+      const pickCur = async () => {
+        const cur = await ap.evaluate((sid) => { const d = window.DB.data, s = (d.students || []).find((x) => x.id === sid), co = s && (d.cohorts || []).find((c) => c.id === s.cohortId); return (co && co.curriculumId) || "main"; }, info.student.sid);
+        const has = await ap.$$eval("#cur-pick option", (os) => os.map((o) => o.value)).catch(() => []);
+        if (has.indexOf(cur) >= 0 && (await ap.$eval("#cur-pick", (x) => x.value)) !== cur) { await ap.selectOption("#cur-pick", cur); await ap.waitForTimeout(600); }
+        return cur;
+      };
+      const edit = async (val) => {
+        await L.open(ap, base, "/center/curriculum"); await ap.waitForTimeout(600); await pickCur();
+        const b = await ap.$('[data-action="item-edit"][data-coll="lesson"]'); if (!b) return null;
+        const lid = await b.getAttribute("data-id"); await b.click(); await ap.waitForSelector(field, { timeout: 5000 });
+        const was = await ap.$eval(field, (x) => x.value), label = await ap.$eval(field, (x) => (x.closest(".a-field").querySelector("label") || {}).textContent || "");
+        await ap.fill(field, val); await ap.click('button[type="submit"][form="coll-form"]'); await ap.waitForTimeout(700);
+        const err = await ap.$eval("#coll-error", (x) => x.textContent).catch(() => "");
+        if (err) await ap.click('[data-action="modal-close"]').catch(() => {});
+        else await L.flushed(ap);
+        return { lid, was, label, err };
+      };
+      const reopen = async () => {
+        await L.open(ap, base, "/center/curriculum"); await ap.waitForTimeout(600); await pickCur();
+        const pill = await ap.evaluate(() => { const b = document.querySelector('[data-action="item-edit"][data-coll="lesson"]'), li = b && b.closest("li"); return li ? Array.from(li.querySelectorAll(".a-pill")).map((x) => x.textContent).join(",") : null; });
+        await ap.click('[data-action="item-edit"][data-coll="lesson"]'); await ap.waitForSelector(field, { timeout: 5000 });
+        const v = await ap.$eval(field, (x) => x.value); await ap.click('[data-action="modal-close"]').catch(() => {}); await ap.waitForTimeout(300);
+        return { v, pill };
+      };
+      const bad = await edit("vimeo.com/abc"), ok = await edit(VM), again = await reopen();
+      await run.check(!!bad && /영상 주소를 확인해 주세요/.test(bad.err) && /비메오/.test(bad.err) && /유튜브 · 비메오/.test(bad.label) && !!ok && !ok.err && again.v === VM && /영상 연결됨/.test(String(again.pill)),
+        "강사센터 강의 수정: 영상 칸(유튜브 · 비메오)에 비메오 주소 저장 → 다시 열면 그 주소 · 목록 ‘영상 연결됨’ · 잘못된 주소는 안내", { bad, ok, again }, ap);
+      // 수강생 강의 화면 (예전 화면 · React · PC · 휴대폰)
+      const look = async (vp) => {
+        const sp = await L.newPage(browser, { viewport: vp, isMobile: vp.width < 600, hasTouch: vp.width < 600 });
+        run.watch(sp, "비메오 · 강의실 " + vp.width);
+        await sp.route(/player\.vimeo\.com\//, (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><body style='margin:0;background:#000'></body>" }));
+        await FL.student(sp, base, info);
+        const out = {};
+        for (const mode of ["off", "all"]) {
+          await L.reactCookie(sp, base, mode); await L.open(sp, base, "/curriculum/" + ok.lid); await sp.waitForTimeout(500);
+          const shape = await L.domShape(sp);
+          const card = await sp.evaluate(() => { const v = document.querySelector(".video[data-vm]"), x = v && v.querySelector(".vp-ext"), ph = v && v.querySelector(".video-ph"), r = ph && ph.getBoundingClientRect(), vr = v && v.getBoundingClientRect(); return v ? { vm: v.dataset.vm, ext: x && x.getAttribute("href"), txt: x && x.textContent.trim(), fill: !!(r && vr && Math.abs(r.height - vr.height) < 2) } : null; });
+          if (vp.width < 600) await sp.tap(".video[data-vm] .vp-play"); else await sp.click(".video[data-vm] .vp-play");
+          await sp.waitForTimeout(600);
+          const play = await sp.evaluate(() => { const f = document.querySelector(".video iframe"), o = document.querySelector(".video .video-out"); return { src: f ? f.getAttribute("src") : "", allow: f ? f.getAttribute("allow") : "", out: o ? o.textContent.trim() : "", href: o ? o.getAttribute("href") : "" }; });
+          out[mode] = { shape, card, play };
+        }
+        await sp.context().close();
+        return out;
+      };
+      const pc = await look({ width: 1280, height: 900 }), mb = await look({ width: 390, height: 844 });
+      const good = (o) => !!o.card && /^https:\/\/player\.vimeo\.com\/video\/1244973319\?/.test(o.card.vm) && o.card.ext === VM && o.card.txt === "비메오에서 보기" && o.card.fill &&
+        /^https:\/\/player\.vimeo\.com\/video\/1244973319\?.*autoplay=1/.test(o.play.src) && /fullscreen/.test(o.play.allow) && /비메오에서 보기/.test(o.play.out) && o.play.href === VM;
+      const dPc = L.shapeDiff(pc.off.shape, pc.all.shape), dMb = L.shapeDiff(mb.off.shape, mb.all.shape);
+      await run.check([pc.off, pc.all, mb.off, mb.all].every(good) && !dPc && !dMb, "수강생 강의 화면: 비메오 카드(영상 칸을 꽉 채움 · 비메오에서 보기 · 예전 화면 = React · PC · 휴대폰) → 누르면 그 자리에서 비메오 재생기",
+        { pc: { off: [pc.off.card, pc.off.play], all: [pc.all.card, pc.all.play] }, mb: { off: [mb.off.card, mb.off.play], all: [mb.all.card, mb.all.play] }, d: [dPc, dMb] });
+      // 되돌리기
+      const back = await edit(ok.was || "");
+      await run.check(!!back && !back.err, "되돌리기: 강의 영상 칸을 원래 값으로", back, ap);
+      await ap.context().close();
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

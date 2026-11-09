@@ -11,12 +11,26 @@ export const fmtMD = (s) => window.DB.date.fmtMD(s);
 export const fmtFull = (s) => window.DB.date.fmtFull(s);
 export const todayStr = () => window.DB.date.todayStr();
 
-/** 유튜브 카드 → 누르면 그 자리에서 재생 (유튜브에서 보기 링크는 늘 · 영상이 없으면 채널로) */
+/** 비메오 재생기 (예전 app.js vmFrame 과 같은 모양 · 퍼가기를 허용한 영상이면 그 자리에서 재생) */
+export const VmFrame = ({ src, title, auto }) => <iframe src={src + (auto ? "&autoplay=1" : "")} title={title || "영상"} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />;
+/** 유튜브 카드 → 누르면 그 자리에서 재생 (유튜브에서 보기 링크는 늘 · 영상이 없으면 채널로)
+ *  비메오(2026-11-09): 같은 카드(대표 그림 없이) → 누르면 비메오 재생기 · 비메오에서 보기 링크 */
 export function Video({ item, headline }) {
-  const S = st(), DB = DBX(), yid = DB.youtubeId(item.youtubeId);
+  const S = st(), DB = DBX(), yid = DB.youtubeId(item.youtubeId), vm = DB.vimeoSrc(item.youtubeId);
   const [play, setPlay] = useState(false);
   const minutes = DB.vdur.label(item.youtubeId, item.durSec, item.minutes ? (typeof item.minutes === "number" || /^\d+$/.test(item.minutes) ? item.minutes + "분" : item.minutes) : "", "vp-time");
   const title = headline || item.title;
+  const key = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPlay(true); } };
+  if (vm) {
+    const url = DB.vimeoUrl(item.youtubeId);
+    if (play) return <div className="video" data-vm={vm}><VmFrame src={vm} title="영상" auto /><a className="video-out" href={url} target="_blank" rel="noopener">재생이 안 되면 비메오에서 보기 <Icon n="arrowUpRight" c="xs" /></a></div>;
+    const go = (e) => { if (e.target.closest(".vp-ext")) return; setPlay(true); };
+    return (
+      <div className="video" data-vm={vm}><div className="video-ph vp-vm" role="button" tabIndex={0} data-action="video-play" aria-label={item.title + " 재생"} onClick={go} onKeyDown={key}>
+        <span className="vp-title">{title}</span><span className="vp-play"><Icon n="play" /></span>
+        <span className="vp-foot"><a href={url} target="_blank" rel="noopener" className="vp-ext">비메오에서 보기 <Icon n="arrowUpRight" c="xs" /></a>{minutes ? <RawOne html={minutes} /> : null}</span></div></div>
+    );
+  }
   if (yid) {
     if (play) return <div className="video" data-yid={yid}><iframe src={"https://www.youtube-nocookie.com/embed/" + yid + "?autoplay=1&rel=0"} title="영상" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /><a className="video-out" href={"https://www.youtube.com/watch?v=" + yid} target="_blank" rel="noopener">재생이 안 되면 유튜브에서 보기 <Icon n="arrowUpRight" c="xs" /></a></div>;
     const go = (e) => { if (e.target.closest(".vp-ext")) return; setPlay(true); };
@@ -76,7 +90,9 @@ export function BotFace({ size }) {
 export function playDelegate(e) {
   const a = e.target.closest && e.target.closest("[data-action='video-play']"); if (!a) return;
   if (e.target.closest(".vp-ext")) return;
-  const box = a.closest(".video"), yid = box && box.dataset.yid, esc = window.DB.esc; if (!yid) return;
+  const box = a.closest(".video"), yid = box && box.dataset.yid, vm = box && box.dataset.vm, esc = window.DB.esc;
+  if (vm) { const ext = (box.querySelector(".vp-ext") || {}).href || ""; box.innerHTML = '<iframe src="' + esc(vm + "&autoplay=1") + '" title="영상" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>' + (ext ? '<a class="video-out" href="' + esc(ext) + '" target="_blank" rel="noopener">재생이 안 되면 비메오에서 보기 ' + window.icon("arrowUpRight", "xs") + "</a>" : ""); return; }
+  if (!yid) return;
   box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(yid) + '?autoplay=1&rel=0" title="영상" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>' +
     '<a class="video-out" href="https://www.youtube.com/watch?v=' + esc(yid) + '" target="_blank" rel="noopener">재생이 안 되면 유튜브에서 보기 ' + window.icon("arrowUpRight", "xs") + "</a>";
 }

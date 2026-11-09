@@ -106,7 +106,7 @@ function ResDetail({ c, id }) {
   if (!it) return <NotFound />;
   const imgs = it.images || [], used = {}, fig = (im) => '<figure class="n-img"><img src="' + esc(im.data || im.url) + '" alt="' + esc(im.name || "") + '" loading="lazy"></figure>';
   const body = it.body ? DB.rich(it.body, { token: (n) => { const im = imgs[n - 1]; if (!im) return ""; used[n - 1] = true; return fig(im); } }) : "";
-  const rest = imgs.filter((_, k) => !used[k]), prev = list[i - 1], next = list[i + 1], yid = DB.youtubeId(it.youtubeId);
+  const rest = imgs.filter((_, k) => !used[k]), prev = list[i - 1], next = list[i + 1], yid = DB.vidOk(it.youtubeId);
   return (
     <div className="page"><PageHead title={it.title} sub={[it.meta, it.desc].filter(Boolean).join(" · ")} crumbs={<Crumb items={[[X.ML("library"), "#/library"], [c.label, "#/library/" + c.id], [it.title]]} />} />
       <article className="card res-article">{yid ? <Video item={it} /> : null}

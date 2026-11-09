@@ -183,11 +183,20 @@
   }
 
   /* ---------------- 공통 컴포넌트 ---------------- */
+  /** 비메오 재생기 (퍼가기를 허용한 영상이면 그 자리에서 재생 · React 화면 ui/dg/bits.jsx VmFrame 과 같은 모양) */
+  const vmFrame = (src, title, auto) => '<iframe src="' + esc(src + (auto ? "&autoplay=1" : "")) + '" title="' + esc(title || "영상") + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
   // 유튜브: 썸네일 카드 → 누르면 재생. 내장 재생이 막힌 환경을 위해 "유튜브에서 보기" 링크도 항상 둔다.
+  // 비메오(2026-11-09): 같은 카드(대표 그림 없이) → 누르면 그 자리에서 비메오 재생기 · "비메오에서 보기" 링크도 늘
   function video(item, opts) {
     opts = opts || {};
-    const yid = DB.youtubeId(item.youtubeId);
+    const yid = DB.youtubeId(item.youtubeId), vm = DB.vimeoSrc(item.youtubeId);
     const minutes = DB.vdur.label(item.youtubeId, item.durSec, item.minutes ? (typeof item.minutes === "number" || /^\d+$/.test(item.minutes) ? item.minutes + "분" : item.minutes) : "", "vp-time");
+    if (vm) {
+      return '<div class="video" data-vm="' + esc(vm) + '"><div class="video-ph vp-vm" role="button" tabindex="0" data-action="video-play" aria-label="' + esc(item.title) + ' 재생">' +
+        '<span class="vp-title">' + esc(opts.headline || item.title) + '</span><span class="vp-play">' + icon("play") + "</span>" +
+        '<span class="vp-foot"><a href="' + esc(DB.vimeoUrl(item.youtubeId)) + '" target="_blank" rel="noopener" class="vp-ext">비메오에서 보기 ' + icon("arrowUpRight", "xs") + "</a>" +
+        minutes + "</span></div></div>";
+    }
     if (yid) {
       return '<div class="video" data-yid="' + esc(yid) + '"><div class="video-ph" role="button" tabindex="0" data-action="video-play" aria-label="' + esc(item.title) + ' 재생">' +
         '<img class="vp-img" src="https://i.ytimg.com/vi/' + esc(yid) + '/hqdefault.jpg" alt="" loading="lazy">' +
@@ -1994,10 +2003,10 @@
     const rest = imgs.filter((_, k) => !used[k]);
     const prev = list[i - 1], next = list[i + 1];
     return '<div class="page">' + pageHead(it.title, [it.meta, it.desc].filter(Boolean).join(" · "), crumb([[ML("library"), "#/library"], [c.label, "#/library/" + c.id], [it.title]])) +
-      '<article class="card res-article">' + (DB.youtubeId(it.youtubeId) ? video(it) : "") +
+      '<article class="card res-article">' + (DB.vidOk(it.youtubeId) ? video(it) : "") +
         '<div class="body">' + body + (rest.length ? '<div class="n-imgs">' + rest.map(fig).join("") + "</div>" : "") + "</div>" +
         attachmentList(it.attachments) +
-        (!body && !imgs.length && !DB.youtubeId(it.youtubeId) && !(it.attachments || []).length ? empty(c.icon, "내용을 준비하고 있어요.") : "") +
+        (!body && !imgs.length && !DB.vidOk(it.youtubeId) && !(it.attachments || []).length ? empty(c.icon, "내용을 준비하고 있어요.") : "") +
       "</article>" +
       pager(prev ? { href: "#/library/" + c.id + "/" + prev.id, label: "이전 자료", title: prev.title } : null, next ? { href: "#/library/" + c.id + "/" + next.id, label: "다음 자료", title: next.title } : null, "#/library/" + c.id) +
       "</div>";
@@ -2107,7 +2116,8 @@
   // 위에 큰 플레이어, 아래 썸네일을 누르면 위에서 바로 재생
   let mvSel = null, mvAuto = false;
   function mvPlayer(it) {
-    const yid = DB.youtubeId(it.youtubeId);
+    const yid = DB.youtubeId(it.youtubeId), vm = DB.vimeoSrc(it.youtubeId);
+    if (vm && mvAuto) return '<div class="video mv-player" data-vm="' + esc(vm) + '">' + vmFrame(vm, it.title, true) + "</div>";
     if (yid && mvAuto) return '<div class="video mv-player" data-yid="' + esc(yid) + '"><iframe src="https://www.youtube-nocookie.com/embed/' + esc(yid) + '?autoplay=1&rel=0&playsinline=1" title="' + esc(it.title) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>';
     return '<div class="mv-player-wrap">' + video(it) + "</div>";
   }
@@ -2413,10 +2423,10 @@
     const item = DB.menuConfig(MID()).items.find((x) => x.key === r.parts[1]);
     if (!item) return notFound();
     const pg = D.pages[item.key] || {};
-    const has = pg.body || DB.youtubeId(pg.youtubeId) || (pg.attachments || []).length;
+    const has = pg.body || DB.vidOk(pg.youtubeId) || (pg.attachments || []).length;
     return '<div class="page">' + pageHead(pg.title || item.label || "추가 메뉴", pg.summary || "") +
       '<section class="card custom-page">' + (has
-        ? (DB.youtubeId(pg.youtubeId) ? video({ title: pg.title || item.label, youtubeId: pg.youtubeId }) : "") +
+        ? (DB.vidOk(pg.youtubeId) ? video({ title: pg.title || item.label, youtubeId: pg.youtubeId }) : "") +
           (pg.body ? '<div class="body">' + DB.rich(pg.body) + "</div>" : "") + attachmentList(pg.attachments)
         : empty(item.icon || "file", "내용을 준비하고 있어요.")) +
       "</section></div>";
@@ -2707,6 +2717,7 @@
       case "video-play": {
         if (e.target.closest(".vp-ext")) return; // 외부 링크는 그대로 연다
         const box = a.closest(".video");
+        if (box.dataset.vm) { const ext = (box.querySelector(".vp-ext") || {}).href || ""; box.innerHTML = vmFrame(box.dataset.vm, "영상", true) + (ext ? '<a class="video-out" href="' + esc(ext) + '" target="_blank" rel="noopener">재생이 안 되면 비메오에서 보기 ' + icon("arrowUpRight", "xs") + "</a>" : ""); break; }
         box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(box.dataset.yid) + '?autoplay=1&rel=0" title="영상" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>' +
           '<a class="video-out" href="https://www.youtube.com/watch?v=' + esc(box.dataset.yid) + '" target="_blank" rel="noopener">재생이 안 되면 유튜브에서 보기 ' + icon("arrowUpRight", "xs") + "</a>";
         break;

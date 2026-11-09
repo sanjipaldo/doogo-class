@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "../lib/Icon.jsx";
 import { RawOne } from "../lib/Raw.jsx";
-import { DGA, DBX, st, fmtMD, fmtFull, todayStr, Progress, PctText, Empty, PageHead, Crumb, Pager, Video, StateBadge, playDelegate } from "./bits.jsx";
+import { DGA, DBX, st, fmtMD, fmtFull, todayStr, Progress, PctText, Empty, PageHead, Crumb, Pager, Video, VmFrame, StateBadge, playDelegate } from "./bits.jsx";
 import { NotFound, Attachments } from "./Learn.jsx";
 import { MainLecCard } from "./HomePage.jsx";
 
@@ -28,12 +28,14 @@ export function DgModal({ title, wide, actions, onClose, bodyHtml, children }) {
 /* ---------- 동기부여 ---------- */
 export function MotivationPage() {
   const X = DGA(), S = st(), D = S.D, DB = DBX(), quote = D.quotes.length ? D.quotes[DB.date.parseDate(todayStr()).getDate() % D.quotes.length] : "";
-  const list = D.motivation, mv = X.mv(), cur = list.find((x) => x.id === mv.sel) || list[0], yid = cur ? DB.youtubeId(cur.youtubeId) : "";
+  const list = D.motivation, mv = X.mv(), cur = list.find((x) => x.id === mv.sel) || list[0], yid = cur ? DB.youtubeId(cur.youtubeId) : "", vm = cur ? DB.vimeoSrc(cur.youtubeId) : "";
   const pick = (it) => { X.mv(it.id); redraw(); setTimeout(() => { const s = document.getElementById("mv-stage"); if (s && s.getBoundingClientRect().top < 60) s.scrollIntoView({ behavior: "smooth", block: "start" }); }, 0); };
   return (
     <div className="page mv-page"><PageHead title={X.ML("motivation")} sub={"지칠 때 다시 힘을 내도록 " + D.brand.instructor + "님이 고른 영상이에요."} />
       {cur ? <>
-        <section className="mv-stage" id="mv-stage">{yid && mv.auto
+        <section className="mv-stage" id="mv-stage">{vm && mv.auto
+          ? <div key={cur.id} className="video mv-player" data-vm={vm}><VmFrame src={vm} title={cur.title} auto /></div>
+          : yid && mv.auto
           ? <div key={cur.id} className="video mv-player" data-yid={yid}><iframe src={"https://www.youtube-nocookie.com/embed/" + yid + "?autoplay=1&rel=0&playsinline=1"} title={cur.title} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /></div>
           : <div key={cur.id} className="mv-player-wrap"><Video item={cur} /></div>}
           <div className="mv-now"><b>{cur.title}</b>{cur.minutes || cur.durSec || cur.date ? <span className="tiny">{[X.lenTxt(cur), cur.date ? fmtMD(cur.date) : ""].filter(Boolean).join(" · ")}</span> : null}</div></section>
@@ -283,7 +285,7 @@ export function GlossaryPage({ r }) {
 export function CustomPage({ r }) {
   const X = DGA(), DB = DBX(), c = X.customOf(r.parts[1]);
   if (!c) return <NotFound />;
-  const { item, pg } = c, yid = DB.youtubeId(pg.youtubeId), has = pg.body || yid || (pg.attachments || []).length;
+  const { item, pg } = c, yid = DB.vidOk(pg.youtubeId), has = pg.body || yid || (pg.attachments || []).length;
   return (
     <div className="page"><PageHead title={pg.title || item.label || "추가 메뉴"} sub={pg.summary || ""} />
       <section className="card custom-page">{has ? <>{yid ? <Video item={{ title: pg.title || item.label, youtubeId: pg.youtubeId }} /> : null}{pg.body ? <RawOne html={'<div class="body">' + DB.rich(pg.body) + "</div>"} onClick={playDelegate} /> : null}<Attachments list={pg.attachments} /></>

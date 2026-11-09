@@ -75,6 +75,24 @@
     const m = v.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/);
     return m ? m[1] : "";
   }
+  /* 비메오 (2026-11-09 · 두잉고 강의 · 라이브 다시보기 · 응원 영상 · 자료실 · 추가 메뉴 영상도 유튜브처럼):
+   * 영상 칸(이름은 예전 그대로 youtubeId)에 유튜브는 11자리 ID, 비메오는 주소(https://vimeo.com/숫자[/해시])를 그대로 둬요.
+   * 일부 공개(링크가 있는 사람만) 비메오 주소의 해시도 지켜서 재생기 주소에 h= 로 넣어요 */
+  const VM_RE = /vimeo\.com\/(?:video\/|channels\/[\w-]+\/|groups\/[\w-]+\/videos\/|manage\/videos\/)?(\d{5,12})(?:\/([0-9a-f]{6,}))?/i;
+  function vimeoParts(v) {
+    const s = String(v || "").trim(), m = s.match(VM_RE);
+    return m ? { id: m[1], h: m[2] || (s.match(/[?&]h=([0-9a-f]{6,})/i) || [])[1] || "" } : null;
+  }
+  /** 비메오 주소 → 저장할 주소 https://vimeo.com/숫자[/해시] (아니면 빈 문자열) */
+  function vimeoUrl(v) { const p = vimeoParts(v); return p ? "https://vimeo.com/" + p.id + (p.h ? "/" + p.h : "") : ""; }
+  /** 비메오 주소 → 재생기 주소 player.vimeo.com/video/숫자?h=… (아니면 빈 문자열) */
+  function vimeoSrc(v) { const p = vimeoParts(v); return p ? "https://player.vimeo.com/video/" + p.id + "?" + (p.h ? "h=" + p.h + "&" : "") + "title=0&byline=0&portrait=0&dnt=1" : ""; }
+  /** 영상 칸에 넣은 주소 → 저장할 값: 비메오 주소 · 유튜브 11자리 ID (둘 다 아니면 빈 문자열) */
+  const vidVal = (v) => (/vimeo\.com/i.test(String(v || "")) ? vimeoUrl(v) : youtubeId(v));
+  /** 영상이 연결돼 있는지 (유튜브 · 비메오) */
+  const vidOk = (v) => !!(youtubeId(v) || vimeoSrc(v));
+  /** 고치는 칸에 보여 줄 주소: 유튜브 ID → https://youtu.be/ID · 비메오는 저장한 주소 그대로 */
+  const vidShow = (v) => (!v ? "" : vimeoSrc(v) ? String(v) : youtubeId(v) ? "https://youtu.be/" + youtubeId(v) : String(v));
 
   /* ---------------- 영상 길이 (비메오 · 유튜브 실제 재생 시간) ----------------
    * 영상 링크로 실제 길이를 서버(/api/public · vdur)에서 받아 24:30 처럼 보여 줘요. 받은 길이는 이 브라우저에 기억하고,
@@ -1103,7 +1121,7 @@
   };
 
   window.DB = {
-    load, save, reset, store, clone, uid, esc, youtubeId, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
+    load, save, reset, store, clone, uid, esc, youtubeId, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
     get data() { return db; },
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,

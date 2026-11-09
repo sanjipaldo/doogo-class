@@ -2305,7 +2305,8 @@ html.th-night { color-scheme: dark; }
 .th-nz .sidebar { background: #fff url("assets/brand/nz-fern-soft.svg") no-repeat right -54px bottom -40px / 170px auto; }
 .th-nz .cohort-chip, .th-nz .badge-ink, .th-nz .hc-tag, .th-nz .prog-row.required .prog-ic { background: #0b2a5b; color: #fff; }
 .th-nz .video { background: #0b2a5b; }
-.th-nz .video-ph { position: relative; overflow: hidden; background: radial-gradient(120% 120% at 88% 8%, #1f4f97 0%, #0b2a5b 55%, #061833 100%); color: #fff; }
+/* 영상 카드는 기본처럼 영상 칸 전체(position: absolute · inset 0)를 채워요 — 예전 position: relative 때문에 카드가 위쪽 글자 높이만큼만 차고 아래가 비어 보였어요 (2026-11-09 고침) */
+.th-nz .video-ph { overflow: hidden; background: radial-gradient(120% 120% at 88% 8%, #1f4f97 0%, #0b2a5b 55%, #061833 100%); color: #fff; }
 .th-nz .video-ph::after { content: ""; position: absolute; right: -30px; bottom: -50px; width: 170px; aspect-ratio: 300 / 620; background: url("assets/brand/nz-fern.svg") no-repeat center / contain; opacity: .12; transform: rotate(14deg); pointer-events: none; }
 .th-nz .video-ph .vp-title { color: #fff; text-shadow: 0 1px 12px rgba(0, 0, 0, .25); }
 .th-nz .video-ph .vp-play { background: #fff; color: #0b2a5b; box-shadow: 0 10px 24px -10px rgba(0, 0, 0, .5); }
