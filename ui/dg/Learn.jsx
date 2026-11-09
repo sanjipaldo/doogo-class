@@ -112,7 +112,7 @@ function MissionCard({ w, m }) {
   return (
     <article className={"mcard st-" + s}><span className="mcard-ic"><Icon n={m.type === "image" ? "image" : m.type === "link" ? "link" : "pen"} c="sm" /></span>
       <div className="mcard-main"><div className="mcard-tags"><span className={"kbadge " + k.key}>{k.short}</span>{s !== "done" && left >= 0 ? <span className="mcard-d"><Icon n="clock" c="xs" />{left === 0 ? "오늘 마감" : "D-" + left}</span> : null}<span className={"mcard-due" + (late ? " late" : "")}>마감 {fmtMD(X.deadlineOf(w))}{late ? " (지남)" : ""}</span></div>
-        <h3><a href={href}>{m.title}</a></h3>{m.desc ? <p className="mcard-desc">{m.desc}</p> : null}
+        <h3><a href={href}>{m.title}</a></h3>{m.desc ? <p className="mcard-desc" dangerouslySetInnerHTML={{ __html: window.DB.linkify(m.desc) }} /> : null}
         <p className="mcard-type">제출 방식: {typeText(m)}</p>{(m.templates || []).length ? <div className="mcard-tpl">{m.templates.map((f, i) => tplLink(f, "tpl-btn", <><Icon n="download" c="xs" />과제 양식 다운로드</>, i))}</div> : null}</div>
       <span className={"mcard-state " + s}>{s === "done" ? <Icon n="check" c="xs" /> : null}{stLabel}</span>
       <a className={"btn " + (s === "done" ? "btn-secondary" : "btn-primary") + " btn-sm mcard-go"} href={href}>{s === "done" ? "제출 내용 보기" : s === "fix" ? "다시 제출" : "과제 제출"}</a></article>

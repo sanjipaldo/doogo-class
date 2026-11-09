@@ -1274,7 +1274,7 @@
       '<div class="mcard-main"><div class="mcard-tags"><span class="kbadge ' + k.key + '">' + k.short + "</span>" +
         (s !== "done" && left >= 0 ? '<span class="mcard-d">' + icon("clock", "xs") + (left === 0 ? "오늘 마감" : "D-" + left) + "</span>" : "") + '<span class="mcard-due' + (left < 0 && s !== "done" ? " late" : "") + '">마감 ' + fmtMD(deadlineOf(w)) + (left < 0 && s !== "done" ? " (지남)" : "") + "</span></div>" +
         '<h3><a href="#/missions/' + w.no + "/" + m.id + '">' + esc(m.title) + "</a></h3>" +
-        (m.desc ? '<p class="mcard-desc">' + esc(m.desc) + "</p>" : "") +
+        (m.desc ? '<p class="mcard-desc">' + DB.linkify(m.desc) + "</p>" : "") +
         '<p class="mcard-type">제출 방식: ' + typeText(m) + "</p>" + ((m.templates || []).length ? '<div class="mcard-tpl">' + tplBtns(m) + "</div>" : "") + "</div>" +
       '<span class="mcard-state ' + s + '">' + (s === "done" ? icon("check", "xs") : "") + stLabel + "</span>" +
       '<a class="btn ' + (s === "done" ? "btn-secondary" : "btn-primary") + ' btn-sm mcard-go" href="#/missions/' + w.no + "/" + m.id + '">' + (s === "done" ? "제출 내용 보기" : s === "fix" ? "다시 제출" : "과제 제출") + "</a></article>";

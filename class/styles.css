@@ -1158,6 +1158,10 @@ body.lib-gated #main > .page { filter: blur(6px); pointer-events: none; user-sel
 .mcard h3 { margin: 6px 0 0; font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
 .mcard h3 a { color: var(--ink); text-decoration: none; }
 .mcard h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* 과제 카드 어디를 눌러도 과제 상세로 (2026-11-09): 제목 링크를 카드 전체로 늘리고 · 글 속 주소 · 과제 양식 · 제출 버튼은 그 위에서 따로 눌려요 */
+.mcard h3 a::after { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; }
+.mcard:hover h3 a { text-decoration: underline; text-underline-offset: 3px; }
+.mcard-desc a, .mcard-tpl, .mcard-go { position: relative; z-index: 1; }
 .mcard-desc { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--body); }
 .mcard-type { margin: 6px 0 0; font-size: 12px; color: var(--mute); }
 .mcard-tpl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

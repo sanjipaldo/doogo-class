@@ -458,11 +458,25 @@ module.exports = {
         await L.reactCookie(sp, base, mode); await L.open(sp, base, href || "/missions/1"); await sp.waitForTimeout(500);
         out[mode] = await sp.evaluate((u) => { const a = Array.from(document.querySelectorAll("a.auto-link")).find((x) => x.getAttribute("href") === u); if (!a) return { miss: location.pathname, body: document.body.innerText.slice(0, 300) }; const p = a.parentElement, c = getComputedStyle(a); return { txt: a.textContent, target: a.target, rel: a.rel, after: (p.textContent.split(u)[1] || "").slice(0, 1), color: c.color, line: c.textDecorationLine }; }, URL1);
         out[mode].shape = await L.domShape(sp);
+        // 과제 목록 카드 (2026-11-09): 설명 · 제출 방식 아무 곳이나 누르면 과제 상세 · 설명 속 주소(새 창) · ‘과제 제출’ 버튼은 따로 눌려요
+        await L.open(sp, base, (href || "/missions/1").split("/").slice(0, 3).join("/")); await sp.waitForTimeout(500);
+        const card = await sp.evaluate(({ mid, u }) => {
+          const a = document.querySelector('.mcard h3 a[href$="/' + mid + '"]'), c = a && a.closest(".mcard"); if (!c) return null;
+          c.scrollIntoView({ block: "center", behavior: "instant" });
+          const d = c.querySelector(".mcard-desc"), ty = c.querySelector(".mcard-type"), g = c.querySelector(".mcard-go"), l = d && Array.from(d.querySelectorAll("a.auto-link")).find((x) => x.getAttribute("href") === u);
+          const at = (el, dx, dy) => { const r = el.getClientRects()[0] || el.getBoundingClientRect(); return document.elementFromPoint(r.left + (dx == null ? r.width / 2 : dx), r.top + (dy == null ? r.height / 2 : dy)); };
+          const hit = (el) => !el ? null : el.closest("a.auto-link") ? "link" : el.closest(".mcard-go") ? "go" : el.closest(".mcard h3 a") ? "card" : String(el.className || el.tagName);
+          const r = d.getBoundingClientRect();
+          return { desc: hit(at(d, 8, 8)), type: hit(at(ty, 8)), link: l ? hit(at(l)) : null, target: l ? l.target : null, go: hit(at(g)), x: r.left + 8, y: r.top + 8 };
+        }, { mid: ok && ok.mid, u: URL1 });
+        if (card) { await sp.mouse.click(card.x, card.y); await sp.waitForTimeout(700); const lu = new URL(sp.url()); card.after = lu.pathname + lu.hash; }
+        out[mode].card = card;
       }
       await sp.context().close();
-      const good = (o) => !!o && o.txt === URL1 && o.target === "_blank" && /noopener/.test(o.rel) && o.after === "." && o.color === "rgb(26, 111, 224)" && /underline/.test(o.line);
+      const cardOk = (c) => !!c && c.desc === "card" && c.type === "card" && c.link === "link" && c.target === "_blank" && c.go === "go" && !!ok && c.after.indexOf(ok.mid) >= 0;
+      const good = (o) => !!o && o.txt === URL1 && o.target === "_blank" && /noopener/.test(o.rel) && o.after === "." && o.color === "rgb(26, 111, 224)" && /underline/.test(o.line) && cardOk(o.card);
       const d = out.off && out.all ? L.shapeDiff(out.off.shape, out.all.shape) : "없음";
-      await run.check(!!ok && !ok.err && !!href && good(out.off) && good(out.all) && !d, "과제 설명 속 주소 → 파란 밑줄 링크 · 새 창 (끝 마침표는 링크 밖 · 예전 화면 = React)",
+      await run.check(!!ok && !ok.err && !!href && good(out.off) && good(out.all) && !d, "과제 설명 속 주소 → 파란 밑줄 링크 · 새 창 (끝 마침표는 링크 밖 · 예전 화면 = React) · 과제 목록 카드는 어디를 눌러도 과제 상세(주소 · 제출 버튼은 따로)",
         { ok, href, off: out.off && Object.assign({}, out.off, { shape: undefined }), all: out.all && Object.assign({}, out.all, { shape: undefined }), d });
       const back = ok && await edit(ok.was || "");
       await run.check(!!back && !back.err, "되돌리기: 과제 설명을 원래 글로", back, ap);
