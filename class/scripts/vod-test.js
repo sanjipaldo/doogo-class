@@ -2828,6 +2828,28 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       m22.desc === "그대로" && JSON.stringify(m22.check.keywords) === '["NZD"]' && !Object.keys(r2.writes).length && !!r2.result.already,
       "2주차 시장조사(기본 · 4주 압축 과정 모두): 자동검수 단어 NZD 빼고 ‘원’은 그대로 · 설명 · 진행 방법 벤치마킹 · 엑셀 양식(같은 양식 번호) · 제목 · 제출 방식 · 최소 글자 수 그대로 · 다른 과제는 그대로 · 두 번 돌려도 그대로");
   }
+  {
+    console.log("52) 체험(테스트) 수강생 계정: 로그인 · 로그아웃마다 처음 상태로 (2026-11-09)");
+    const DRS = require(path.join(ROOT, "api/_lib/demoreset.js")), OO = require(path.join(ROOT, "api/_lib/oneoff.js"));
+    const cos = [{ id: "c1", name: "1기", startDate: "2026-01-24", weeks: 4 }, { id: "c3", name: "3기", startDate: "2026-11-21" }, { id: "c9", name: "9기", startDate: "2026-11-01", weeks: 5 }];
+    const ct = { weeks: [1, 2, 3, 4, 5].map((n) => ({ no: n })) }, T = "2026-11-10";
+    ok(DRS.resettable({ demo: true, cohortId: "c3" }, cos, ct, T) && DRS.resettable({ demo: true, cohortId: "c9" }, cos, ct, T) && !DRS.resettable({ demo: true, cohortId: "c1" }, cos, ct, T) &&
+      !DRS.resettable({ cohortId: "c3" }, cos, ct, T) && !DRS.resettable({ demo: "yes", cohortId: "c3" }, cos, ct, T) && DRS.resettable({ demo: true, cohortId: "nope" }, cos, ct, T) &&
+      DRS.isFresh(DRS.fresh()) && !DRS.isFresh(Object.assign(DRS.fresh(), { watched: { l1: 1 } })) && !DRS.isFresh(Object.assign(DRS.fresh(), { extra: 1 })) && DRS.fresh().guideV === 2,
+      "처음으로 돌릴 계정: demo: true 이고 진행 중 · 시작 전 기수 (끝난 기수의 수료 체험 계정 · 일반 수강생은 그대로)");
+    const docs52 = { "cohorts:moon": cos, "content:moon": ct, "stu:moon:s1": { id: "s1", demo: true, cohortId: "c3" }, "stu:moon:demo1": { id: "demo1", demo: true, cohortId: "c1" }, "stu:moon:r1": { id: "r1", cohortId: "c3" },
+      "prog:moon:s1": Object.assign(DRS.fresh(), { submissions: { "m2-1": [{ at: 1, review: { status: "approved" } }] }, watched: { l1: 1 } }), "prog:moon:demo1": { submissions: { x: [{}] } }, "prog:moon:r1": { watched: { l1: 1 } },
+      "cohorts:choi": [{ id: "k1", startDate: "2026-12-01" }], "stu:choi:d1": { id: "d1", demo: true, cohortId: "k1" } };
+    const g52 = (k) => JSON.parse(JSON.stringify(docs52[k] === undefined ? null : docs52[k])), k52 = (pre) => Object.keys(docs52).filter((x) => x.indexOf(pre) === 0);
+    const r52 = OO.demoResetNow(g52, k52), w52 = r52.writes;
+    ok(Object.keys(w52).sort().join(",") === "prog:choi:d1,prog:moon:s1" && DRS.isFresh(w52["prog:moon:s1"]) && DRS.isFresh(w52["prog:choi:d1"]) && r52.result.kept.length === 1 && OO.OPS.some((o) => o.id === "2026-11-09-demo-reset"),
+      "배포 때 한 번: 모든 강사의 체험 계정 기록을 처음으로 (문대표 · 다른 강사) · 수료 체험 계정 · 일반 수강생은 그대로");
+    const au52 = fs.readFileSync(path.join(ROOT, "api/auth.js"), "utf8"), ap52 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+    ok(/if \(s\.demo === true\) await DEMO\.resetDemo\(iid, s\.id\)/.test(au52) && au52.indexOf("await DEMO.resetDemo(iid, s.id)") < au52.indexOf('auth.setCookie(req, res, "student", auth.sign') &&
+      /const ids = await auth\.identify\(req\)\.catch\(\(\) => null\); if \(ids && ids\.student\) await DEMO\.resetDemo\(ids\.student\.iid, ids\.student\.sid\)/.test(au52) &&
+      au52.indexOf("await DEMO.resetDemo(ids.student.iid") < au52.indexOf('w.forEach((x) => auth.setCookie(req, res, x, ""))') && /const isOpen = \(w\) => \(!!me && !!me\.demo && !preview\) \|\|/.test(ap52),
+      "수강생 로그인(쿠키 주기 전) · 로그아웃(쿠키 지우기 전 · 자동 로그아웃 포함)에서 처음으로 · 체험 계정은 일정과 상관없이 모든 주차가 열려요 (실제 동작은 e2e reactdg 1-16)");
+  }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });

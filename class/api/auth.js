@@ -4,6 +4,7 @@
  *        코치가 여러 강사님 강의를 맡고 있으면(같은 이름 + 뒷자리) 로그인 대신 { choose, courses } 를 돌려주고, iid 를 골라 다시 보내면 그 강의로 들어가요
  *  { action: "coachSwitch", iid? }                  로그인한 코치가 맡은 다른 강의로 옮기기 (iid 없으면 맡은 강의 목록)
  *  { action: "logout", which: "student"|"admin"|"all" }   all = 이 브라우저의 로그인 모두 (수강생 · 강사센터 · DOOGO CLASS 회원 · 2026-11-06)
+ *  체험(테스트) 수강생 계정(demo: true)은 로그인 · 로그아웃할 때마다 진도 기록을 처음으로 (2026-11-09 · _lib/demoreset.js)
  * 비밀번호(전화번호 뒷자리)는 서버에서만 확인하고, 15분에 여러 번 틀리면 잠시 막는다. */
 "use strict";
 const crypto = require("crypto");
@@ -12,6 +13,7 @@ const store = require("./_lib/store");
 const auth = require("./_lib/auth");
 const MD = require("./_lib/media");
 const COACH = require("../coach-perms");
+const DEMO = require("./_lib/demoreset");
 
 const IP_LIMIT = 40, NAME_LIMIT = 8;
 // 하루 기준 잠금 (Next.js 전환 4단계 · 2026-11): 같은 이름(아이디)으로 24시간 안에 30번 틀리면 그 24시간이 끝날 때까지 막아요.
@@ -48,6 +50,8 @@ async function studentLogin(req, res, b) {
   if (!s) { await fail(req, nameKey); return send(res, 200, { error: "notfound" }); }
   await clear(nameKey);
   if (s.status !== "approved") return send(res, 200, { error: s.status });
+  // 체험(테스트) 계정은 들어올 때마다 처음 상태로 (_lib/demoreset.js · 실패해도 로그인은 그대로)
+  if (s.demo === true) await DEMO.resetDemo(iid, s.id).catch(() => false);
   auth.setCookie(req, res, "student", auth.sign({ r: "student", sid: s.id, iid }));
   send(res, 200, { ok: true, sid: s.id, name: s.name });
 }
@@ -203,6 +207,8 @@ module.exports = handler(["POST"], async (req, res) => {
   if (b.action === "coachSwitch") return coachSwitch(req, res, b);
   if (b.action === "logout") {
     const w = b.which === "admin" ? ["admin"] : b.which === "student" ? ["student"] : ["student", "admin"];
+    // 체험(테스트) 계정은 나갈 때(자동 로그아웃 포함)도 처음 상태로 — 쿠키를 지우기 전에 누구인지 봐요
+    if (w.indexOf("student") >= 0) { const ids = await auth.identify(req).catch(() => null); if (ids && ids.student) await DEMO.resetDemo(ids.student.iid, ids.student.sid).catch(() => false); }
     w.forEach((x) => auth.setCookie(req, res, x, ""));
     // 어디서 로그아웃하든(스토어 · 두잉고 강의실 · 강사센터) DOOGO CLASS 회원 로그인도 같이 풀어요 — 강의실 · 강사센터에서 로그아웃해도 스토어에 ‘체험회원님’이 남던 것
     if (b.which === "all") require("./_lib/vod").logout(req, res);

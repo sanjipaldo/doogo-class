@@ -624,6 +624,37 @@ module.exports = {
         s2.draft === was && !s2.note && !s2.saveOn && !s2.dirty && n1.indexOf(NEW) < 0 && s3.saved === NEW && !s3.note && !s3.dirty && n2.indexOf(NEW) >= 0 && s4.saved === was && !s4.dirty,
         "메뉴 구성 ‘저장’ (" + (mode === "all" ? "React" : "예전 화면") + "): 바꿔도 저장 전엔 수강생 화면 그대로 · 안내 줄 · 저장 버튼 켜짐 · 되돌리기 · 저장하면 수강생 메뉴에 바로", { s0, s1, s2, n1, s3, n2, s4 });
     }
+    // 1-16) 체험(테스트) 수강생 계정 (2026-11-09): 로그아웃하면 진도 기록이 처음으로 · 다시 들어와도 처음 · 일정과 상관없이 모든 주차가 열려요 (예전 화면 = React)
+    {
+      const sid = info.student.sid;
+      const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(sp, "체험 계정 · 수강생");
+      await FL.student(sp, base, info);
+      const prog = (pg) => pg.evaluate((id) => { const p = window.DB.progress(id); return { w: Object.keys(p.watched || {}).length, s: Object.keys(p.submissions || {}).length, g: Object.keys(p.guide || {}).length }; }, sid);
+      const p0 = await prog(sp);
+      // 강의 하나 시청 · 과제 하나 ‘체크 완료’(강사 승인)인 상태를 만들어요
+      await sp.evaluate((id) => { const D = window.DB, p = D.progress(id); p.watched.e2eLesson = Date.now(); p.submissions.e2eMission = [{ at: Date.now(), text: "시험", result: { pass: true, reasons: [], ok: [] }, review: { status: "approved", at: Date.now() } }]; p.guide.e2e = Date.now(); D.saveProgress(id, p); }, sid);
+      await L.flushed(sp);
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "체험 계정 · 강사센터");
+      await FL.instructor(ap, base, info); await L.open(ap, base, "/center/students"); await ap.waitForTimeout(600);
+      const seen = await prog(ap);
+      // 수강생 화면의 ‘로그아웃’ 버튼
+      await Promise.all([sp.waitForNavigation({ timeout: 15000 }).catch(() => null), sp.click('[data-action="logout"]')]); await sp.waitForTimeout(1200);
+      await ap.reload(); await ap.waitForTimeout(1500);
+      const afterOut = await prog(ap);
+      // 다시 들어와도 처음 · 모든 주차 열림 (예전 화면 = React)
+      const open = {};
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(sp, base, mode); await FL.student(sp, base, info); await L.open(sp, base, "/missions"); await sp.waitForTimeout(600);
+        open[mode] = await sp.evaluate(() => ({ locked: document.querySelectorAll(".week-card.locked").length, cards: document.querySelectorAll(".week-card").length, done: document.querySelectorAll(".mcard.st-done").length }));
+      }
+      const back = await prog(sp);
+      await sp.context().close(); await ap.context().close();
+      await run.check(seen.w === p0.w + 1 && seen.s === p0.s + 1 && afterOut.w === 0 && afterOut.s === 0 && afterOut.g === 0 && back.w === 0 && back.s === 0 &&
+        ["off", "all"].every((m) => open[m].cards >= 4 && open[m].locked === 0),
+        "체험(테스트) 계정: 로그아웃하면 시청 · 과제 · 체크 완료 · 가이드가 처음으로 (강사센터에서도) · 다시 들어와도 처음 · 일정과 상관없이 모든 주차 열림 (예전 화면 = React)", { p0, seen, afterOut, back, open });
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);
