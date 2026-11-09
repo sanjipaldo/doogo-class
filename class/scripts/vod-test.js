@@ -2698,6 +2698,27 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "강사센터 커리큘럼: 처음엔 지금 기수(진행 중 → 모집 중)가 쓰는 커리큘럼 · 다른 커리큘럼을 고치면 ‘지금 N기 수강생 화면에는 …’ 안내 + 바로 가기 (예전 화면 · React 같은 줄)");
   }
 
+  {
+    console.log("44) 수강생마다 커리큘럼 (강사센터 › 수강생 관리 › 상세) · 문대표 3기 → 5주 기본 과정 (2026-11-09)");
+    const vm44 = require("vm"), sb44 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb44.window = sb44; vm44.createContext(sb44); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm44.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb44, { filename: f })); sb44.DB.load();
+    const D44 = sb44.DB, co44 = D44.data.cohorts.find((c) => c.instructorId === "moon" && c.curriculumId), curs44 = D44.curricula("moon");
+    const st0 = { id: "t44", instructorId: "moon", cohortId: co44.id }, other = curs44.find((x) => x.id !== co44.curriculumId);
+    const eff = D44.studentCohort(Object.assign({}, st0, { curriculumId: other.id })), same = D44.studentCohort(Object.assign({}, st0, { curriculumId: co44.curriculumId })), bad = D44.studentCohort(Object.assign({}, st0, { curriculumId: "nope" }));
+    ok(D44.studentCohort(st0) === D44.cohort(co44.id) && same === D44.cohort(co44.id) && bad === D44.cohort(co44.id) && eff !== D44.cohort(co44.id) && eff.id === co44.id && D44.weeksOf(eff).length === other.weeks.length && D44.weeksOf(eff)[0].title === other.weeks[0].title && eff.startDate === co44.startDate && D44.cohort(co44.id).curriculumId === co44.curriculumId && D44.studentCohort(null) === null,
+      "수강생 커리큘럼: 안 정했거나 기수와 같거나 없는 커리큘럼이면 기수 그대로 · 다른 커리큘럼이면 그 커리큘럼 전체(일정 · 기수 id 그대로 · 기수 기록은 안 바뀜)");
+    const OO44 = require(path.join(TMP, "class/api/_lib/oneoff.js")), dd = { "cohorts:moon": [{ id: "c1", name: "1기" }, { id: "c4", name: "3기", startDate: "2026-11-21", curriculumId: "cur-4w", weeks: 4 }], "content:moon": { curriculumName: "5주 기본 과정", weeks: [1, 2, 3, 4, 5], curricula: [{ id: "cur-4w", name: "4주 압축 과정", weeks: [] }] } };
+    const r44 = OO44.moon3CurMain((k) => dd[k]), n44 = r44.writes["cohorts:moon"];
+    dd["cohorts:moon"] = n44; const r44b = OO44.moon3CurMain((k) => dd[k]);
+    ok(!!n44 && !("curriculumId" in n44[1]) && n44[1].weeks === 4 && n44[1].startDate === "2026-11-21" && n44[0].name === "1기" && r44.result.from === "4주 압축 과정" && r44.result.to === "5주 기본 과정" && !Object.keys(r44b.writes).length && /이미 기본/.test(r44b.result.already) &&
+      OO44.OPS.findIndex((x) => x.id === "2026-11-09-moon3-cur-main") > OO44.OPS.findIndex((x) => x.id === "2026-11-08-v2-teaser") && OO44.OPS.find((x) => x.id === "2026-11-09-moon3-cur-main").run === OO44.moon3CurMain,
+      "일회성(문대표 3기): 4주 압축 과정 → 기본 커리큘럼(5주 기본 과정) · 진행 주차 4주 · 다른 칸 그대로 · 다시 돌려도 바꾸지 않아요");
+    const ad44 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ap44 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), su44 = fs.readFileSync(path.join(ROOT, "../ui/center/Students.jsx"), "utf8");
+    ok(/CO = DB\.studentCohort\(s\);/.test(ap44) && /const co = DB\.studentCohort\(me\);/.test(ap44) && /function stuCurField\(iid, s\)/.test(ad44) && /stuCurField\(iid, s\) \+/.test(ad44) && /if \(!cv \|\| \(co && \(co\.curriculumId \|\| "main"\) === cv\)\) delete tgt\.curriculumId; else tgt\.curriculumId = cv;/.test(ad44) &&
+      !/DB\.stats\([^)]*DB\.cohort\(s\.cohortId\)\)/.test(ad44) && /DB\.studentCohort\(s\)\)/.test(su44) && /const levelOfStudent = \(s\) => DB\.level\(DB\.progress\(s\.id\), s\.instructorId, DB\.studentCohort\(s\)\);/.test(ad44),
+      "강의실은 수강생이 보는 커리큘럼으로 · 강사센터 수강생 상세에 커리큘럼 고르기(기수 그대로 / 이 수강생만) · 진행률 · 성장 단계 · 주차 막대도 그 커리큘럼으로 (예전 화면 · React)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

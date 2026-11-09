@@ -464,6 +464,13 @@
   // 기수마다 진행 주차 수를 정할 수 있어요 (co.weeks · 비우면 커리큘럼 전체) — 예: 같은 커리큘럼으로 1기 5주 · 2기 4주
   const weeksOf = (co) => { if (co && co.kind === "vod") return []; const cu = co && curriculumOf(co); if (!cu) return []; const n = Number(co.weeks) || 0; return n > 0 && n < cu.weeks.length ? cu.weeks.slice(0, n) : cu.weeks; };
   const weekCount = (instId) => { const c = content(instId); return c ? c.weeks.length : 0; };
+  /** 수강생이 보는 기수 (2026-11-09): 강사센터 › 수강생 관리 › 상세에서 그 수강생 커리큘럼(s.curriculumId)을 정했으면
+   *  기수 커리큘럼 대신 그 커리큘럼 전체(진행 주차 제한 없음) — 강의일 · 마감 같은 일정은 기수 그대로. 안 정했거나 기수와 같으면 기수 그대로 */
+  function studentCohort(s) {
+    const co = s ? cohort(s.cohortId) : null, cid = s && s.curriculumId;
+    if (!co || !cid || co.kind === "vod" || (co.curriculumId || "main") === cid || !curricula(co.instructorId).some((x) => x.id === cid)) return co || null;
+    return Object.assign({}, co, { curriculumId: cid === "main" ? undefined : cid, weeks: undefined });
+  }
   const cohortWeeks = (co) => weeksOf(co).length;
   /* 주차별 강의일 바꾸기 (2026-11): co.classDates = { "5": "2026-09-23" } — 그 주차만 다른 날(예: 5주차는 수요일)에 강의해요.
    * 바꾼 날이 원래 주차 시작보다 빠르면 그 날 주차가 열리고, 과제 마감은 원래 마감과 바꾼 날 중 늦은 날이에요 */
@@ -1125,7 +1132,7 @@
     get data() { return db; },
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
-    curricula, curriculum, curriculumOf, weeksOf, cohortWeeks,
+    curricula, curriculum, curriculumOf, weeksOf, cohortWeeks, studentCohort,
     weekOpen, weekUnlock, weekDeadline, baseClassDate, cohortEnd, cohortStatus, STATUS_LABEL, currentWeek, LEVEL_SET, levelSteps, level, currentCohort, nextCohortName,
     EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort, calChip, calMain, CAL_ORDER, classOverOf, lectureOf, evTime, isWeekLec,
     REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, applyTrack, siteInfo, saveSite, SITE_DEFAULT, opsKakao,

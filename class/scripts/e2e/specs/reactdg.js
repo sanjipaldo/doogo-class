@@ -396,6 +396,38 @@ module.exports = {
       await run.check(lockedOk(d15.off) && lockedOk(d15.all) && openOk(d16.off) && openOk(d16.all),
         "주차 열림: 3기 1주차 강의 11/21 → 11/15 엔 잠김(‘11/16부터 공개’) · 11/16 엔 열림 (강의일 5일 전 · 강사 ‘수강생 화면’ · 예전 화면 = React)", { d15, d16 });
     }
+    // 1-10) 수강생마다 커리큘럼 (2026-11-09): 강사센터 › 수강생 관리 › 상세 ‘커리큘럼’ → 이 수강생만 다른 커리큘럼 → 수강생 주차별 강의(예전 화면 = React)가 그 커리큘럼
+    //       → ‘기수 커리큘럼 그대로’로 되돌리면 다시 기수 커리큘럼
+    {
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "수강생 커리큘럼 · 강사센터");
+      await FL.instructor(ap, base, info); await L.reactCookie(ap, base, "all");
+      const setCur = async (pick) => {
+        await L.open(ap, base, "/center/students"); await ap.waitForTimeout(600);
+        await ap.evaluate(() => { const t = Array.from(document.querySelectorAll('[data-action="stu-tab"]')).find((b) => /^수강 중/.test(b.textContent.trim())); if (t) t.click(); }); await ap.waitForTimeout(500); // ‘수강 중’ 탭
+        await ap.click('[data-action="student-open"][data-id="' + info.student.sid + '"]'); await ap.waitForSelector("#student-form", { timeout: 5000 });
+        const o = await ap.evaluate(() => { const sel = document.querySelector("#sf-cur"), co = window.DB.cohort(window.DB.student(document.querySelector("#student-form").dataset.id).cohortId); return sel ? { has: true, cohortCur: (co && co.curriculumId) || "main", opts: Array.from(sel.options).map((x) => x.value), label: sel.closest(".a-field").querySelector("label").textContent } : { has: false }; });
+        if (!o.has) { await ap.click('[data-action="modal-close"]').catch(() => {}); return o; }
+        const v = pick(o); await ap.selectOption("#sf-cur", v); await ap.click('button[type="submit"][form="student-form"]'); await ap.waitForTimeout(700); await L.flushed(ap);
+        o.saved = await ap.evaluate((sid) => window.DB.student(sid).curriculumId || "", info.student.sid); o.picked = v;
+        // 그 수강생이 봐야 할 주차 (기수 그대로면 진행 주차까지) — 주차 수 · 제목 · 강의 수로 비교 (커리큘럼끼리 1주차 제목이 같을 수 있어요)
+        o.want = await ap.evaluate((sid) => window.DB.weeksOf(window.DB.studentCohort(window.DB.student(sid))).map((w) => w.title + "/" + w.lessons.length).join(" | "), info.student.sid);
+        return o;
+      };
+      const weekTitle = async (sp) => sp.evaluate(() => { const X = window.DGA, S = X && X.st(); return S ? S.D.weeks.map((w) => w.title + "/" + w.lessons.length).join(" | ") : null; });
+      const look = async () => {
+        const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } }); run.watch(sp, "수강생 커리큘럼 · 강의실");
+        await FL.student(sp, base, info); const out = {};
+        for (const mode of ["off", "all"]) { await L.reactCookie(sp, base, mode); await L.open(sp, base, "/curriculum"); await sp.waitForTimeout(600); out[mode] = { title: await weekTitle(sp), shape: await L.domShape(sp) }; }
+        await sp.context().close(); return out;
+      };
+      const a1 = await setCur((o) => o.opts.find((x) => x && x !== o.cohortCur)), l1 = await look();
+      const a2 = await setCur(() => ""), l2 = await look();
+      await run.check(a1.has && /커리큘럼/.test(a1.label) && a1.saved === a1.picked && l1.off.title === a1.want && l1.all.title === a1.want && !L.shapeDiff(l1.off.shape, l1.all.shape) &&
+        a2.saved === "" && l2.off.title === a2.want && l2.all.title === a2.want && a1.want !== a2.want,
+        "수강생 커리큘럼: 상세에서 이 수강생만 다른 커리큘럼 → 주차별 강의가 그 커리큘럼(예전 화면 = React) → ‘기수 커리큘럼 그대로’로 되돌리면 기수 커리큘럼", { a1: Object.assign({}, a1, { want: a1.want }), t1: [l1.off.title, l1.all.title], a2: { saved: a2.saved, want: a2.want }, t2: [l2.off.title, l2.all.title] }, ap);
+      await ap.context().close();
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

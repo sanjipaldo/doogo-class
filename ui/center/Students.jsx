@@ -31,7 +31,7 @@ export default function Students({ r }) {
         <Btn action="bulk-reject" cls="a-btn-ghost a-btn-sm">선택 거절</Btn><Btn action="bulk-approve" cls="a-btn-primary a-btn-sm">선택 승인</Btn></div> : null}
       {list.length ? <div className="a-table-wrap"><table className="a-table"><thead><tr>{pend ? <th className="w-check" /> : null}<th>이름</th><th>뒷자리</th><th>기수</th><th>신청일</th><th>상태</th><th>성장 단계</th><th>진행률</th><th className="right">관리</th></tr></thead><tbody>
         {list.map((s) => {
-          const st = s.status === "approved" ? DB.stats(DB.progress(s.id), iid, DB.cohort(s.cohortId)) : null;
+          const st = s.status === "approved" ? DB.stats(DB.progress(s.id), iid, DB.studentCohort(s)) : null;
           return (
             <tr key={s.id}>{pend ? <td className="w-check"><input type="checkbox" className="stu-pick" data-id={s.id} defaultChecked={ui.picked.has(s.id)} aria-label={s.name + " 선택"} /></td> : null}
               <td><button className="a-name" data-action="student-open" data-id={s.id}>{s.name}</button>{s.memo ? <small className="a-memo">{s.memo}</small> : null}</td>

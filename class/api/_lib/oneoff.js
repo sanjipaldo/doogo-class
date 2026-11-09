@@ -893,6 +893,22 @@ function v2Teaser(get) {
   return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result: { teaser: "넣음", start: "25:58" } };
 }
 
+/* ---------- 문대표 3기 커리큘럼 → ‘5주 기본 과정’(기본 커리큘럼) (대표님 요청 2026-11-09) ----------
+ * 3기(11/21)가 ‘4주 압축 과정’(cur-4w)을 써서, 대표님이 고친 ‘5주 기본 과정’이 3기 수강생 화면에 안 보였어요 → 3기도 기본 커리큘럼으로.
+ * 진행 주차(weeks)는 그대로 — 3기 일정(11/21~12/12 4주 · 12/15 5주차 보너스 강의)대로 5주 과정의 1~4주차가 보여요(5주 다 보이게 하려면 기수 설계 › 진행 주차).
+ * ‘4주 압축 과정’ 커리큘럼 자체는 지우지 않아요 */
+function moon3CurMain(get) {
+  const ck = "cohorts:moon", list = get(ck), c = get("content:moon");
+  if (!Array.isArray(list) || !isObj(c)) return { writes: {}, result: { skipped: "문대표 기수 · 콘텐츠 없음" } };
+  const all = list.map((x, i) => [x, i]).filter((v) => isObj(v[0]) && v[0].name === "3기"), hit = all.find((v) => v[0].curriculumId) || all[0];
+  if (!hit) return { writes: {}, result: { skipped: "3기를 찾지 못했어요", ids: list.map((x) => x && x.id) } };
+  const co = hit[0], from = co.curriculumId || "main", wk = Number(co.weeks) || "전체";
+  if (from === "main") return { writes: {}, result: { already: "3기는 이미 기본 커리큘럼(" + (c.curriculumName || "기본 커리큘럼") + ")", weeks: wk } };
+  const cu = (Array.isArray(c.curricula) ? c.curricula : []).find((x) => isObj(x) && x.id === from), n = Object.assign({}, co), next = list.slice();
+  delete n.curriculumId; next[hit[1]] = n;
+  return { writes: { [ck]: next }, result: { cohort: co.name + " (" + co.id + ")", from: (cu && cu.name) || from, to: c.curriculumName || "기본 커리큘럼", mainWeeks: (Array.isArray(c.weeks) ? c.weeks : []).length, weeks: wk } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -926,6 +942,7 @@ const OPS = [
   { id: "2026-11-04-moon-cal-v2", note: "문대표 수업 캘린더: 강의 녹화본 업로드를 오프라인 강의 이틀 뒤로 · 일정 종류 ‘온라인 강의’ · 3기 12/15 5주차 보너스 강의 → 5주차 온라인 강의 · 특강(행사) → 초청강사", run: moonCalV2 },
   { id: "2026-11-05-live-lectures", note: "두잉고 LIVE 기수 정리: 문대표 말고 다른 강사 기수 지우기(수강생 · 이용료 기록이 있으면 남김) · 문대표 1~3기만 · 3기 메인 강사 강의(주차마다 날짜 · 시간 · 끝나는 시간 · 장소 · 주제) · 5주차 줌 강의 12/15 19:00~22:00", run: liveLectures },
   { id: "2026-11-08-v2-teaser", note: "AI 굿즈 클래스(v2) 상세 맨 위 영상: 유튜브 주소(25분 58초부터) — 영상 칸이 비어 있을 때만", run: v2Teaser },
+  { id: "2026-11-09-moon3-cur-main", note: "문대표 3기 커리큘럼: 4주 압축 과정 → 5주 기본 과정(기본 커리큘럼) — 진행 주차는 그대로", run: moon3CurMain },
 ];
 
-module.exports = { OPS, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

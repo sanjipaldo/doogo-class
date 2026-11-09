@@ -8,7 +8,7 @@ import { ADM, DBX, Btn, Head, Kpi, Empty, Pill, Pager } from "./bits.jsx";
 function CertResult({ q }) {
   const A = ADM(), DB = DBX(), s = DB.data.students.find((x) => A.certNoOf(x) === q) || DB.data.students.find((x) => A.certNoLegacy(x) === q);
   if (!s) return <div className="cert-res bad"><Icon n="alert" c="sm" /><div><b>등록되지 않은 수료번호예요</b><span>{q} · 번호를 다시 확인해 주세요.</span></div></div>;
-  const co = DB.cohort(s.cohortId), ins = DB.instructor(s.instructorId || co.instructorId), stt = DB.stats(DB.progress(s.id), ins.id, co), ok = stt.reqTotal && stt.reqDone === stt.reqTotal;
+  const co = DB.studentCohort(s), ins = DB.instructor(s.instructorId || co.instructorId), stt = DB.stats(DB.progress(s.id), ins.id, co), ok = stt.reqTotal && stt.reqDone === stt.reqTotal;
   return <div className={"cert-res " + (ok ? "ok" : "warn")}><Icon n={ok ? "award" : "alert"} c="sm" /><div><b>{ok ? "유효한 수료증이에요" : "수료 조건을 아직 채우지 않았어요"}</b><span>{q + " · " + s.name + " · " + ins.displayName + " " + co.name + " · 필수 과제 " + stt.reqDone + "/" + stt.reqTotal}</span></div></div>;
 }
 export function MasterCerts() {

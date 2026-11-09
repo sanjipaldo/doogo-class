@@ -558,7 +558,7 @@
       if (!ins || ins.status !== "active") return;
       // VOD 버전: DOOGO CLASS 수강 기간이 끝났거나 환불했으면 닫는다
       if (DB.isVodStudent(s) && window.VOD && s.vodMid && !window.VOD.vodAccess(s.vodMid, s.instructorId)) { DB.session.setStudent(null); vodClosed = true; return; }
-      CO = DB.cohort(s.cohortId);
+      CO = DB.studentCohort(s); // 강사센터에서 수강생 커리큘럼을 정했으면 그 커리큘럼 (2026-11-09)
       if (!CO) { me = null; return; }
       TRACK = DB.isVodStudent(s) ? "vod" : "live";
       if (TRACK === "vod") VP = pickVp(sess.vpid, ins.id, s.vodMid);
@@ -587,7 +587,7 @@
     if (!s) return;
     me = s; P = DB.progress(me.id);
     if (INS) { const ins = DB.instructor(INS.id); if (ins) INS = ins; }
-    if (CO) { const co = DB.cohort(CO.id); if (co) { CO = co; D = TRACK === "vod" ? DB.vodView(INS.id, VP) : cohortContent(INS.id, CO); } }
+    if (CO) { const co = DB.studentCohort(me); if (co) { CO = co; D = TRACK === "vod" ? DB.vodView(INS.id, VP) : cohortContent(INS.id, CO); } }
   });
 
   /* ---------------- 앱 셸 ---------------- */
