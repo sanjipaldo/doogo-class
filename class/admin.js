@@ -395,21 +395,24 @@
       ["brand", "기본 정보 · 색상 · AI 조교", "settings", null],
       ["menus", "메뉴 구성", "sliders", null],
       ["guide", "시작 가이드 · 빠른 이동", "sparkles", null],
+      // 순서 (2026-11-09): 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사가 가장 많이 고치는 것부터)
       ["curriculum", "주차별 강의 (커리큘럼)", "book", "curriculum"],
-      ["replays", "라이브 다시보기", "monitorPlay", "replays"],
       ["missions", "과제 · 미션", "clipboard", "missions"],
+      ["docs", "실무 체크리스트", "file", "docs"],
+      ["replays", "라이브 다시보기", "monitorPlay", "replays"],
       ["showcase", "모범 과제", "trophy", "showcase"],
       ["notes", "학습 노트 질문", "notebookPen", "notes"],
       ["schedule", "수업 캘린더", "calendar", "schedule"],
       ["notices", "클래스 소식 (공지)", "megaphone", "notices"],
       ["faq", "FAQ · 자주 묻는 질문", "help", "qna"],
-      ["docs", "실무 체크리스트", "file", "docs"],
       ["glossary", "용어 사전", "bookA", "glossary"],
       ["library", "강의 자료함", "library", "library"],
       ["motivation", "응원 영상", "flame", "motivation"],
       ["channels", "1:1 상담 채널", "headset", "channels"],
       ["partners", "제휴 혜택", "handshake", "partners"]
     ].filter((x) => !x[3] || on(x[3])).filter((x) => !vod || LIVE_ONLY_PAGES.indexOf(x[0]) < 0).map((x) => (vod && VOD_NAV_LABEL[x[0]] ? [x[0], VOD_NAV_LABEL[x[0]], x[2]] : x.slice(0, 3)));
+    // VOD 강의실 꾸미기는 예전 순서 그대로 (실습 체크리스트는 FAQ 다음)
+    if (vod) { const di = content.findIndex((x) => x[0] === "docs"), fi = content.findIndex((x) => x[0] === "faq"); if (di >= 0 && fi > di) content.splice(fi, 0, content.splice(di, 1)[0]); }
     if (vod) content.splice(2, 0, ["vodlink", "VOD 강의 연결", "circlePlay"], ["vodlessons", "VOD 강의 · 수업 자료", "paperclip"]);
     if (customPages(MID()).length) content.push(["pages", "추가 메뉴", "star"]);
     // 코치는 강사가 열어 준 매출 메뉴만 (아래에서 can() 으로 걸러요)

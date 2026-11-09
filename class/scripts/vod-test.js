@@ -2745,6 +2745,31 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "복사: 지금 창 내용(저장 안 한 고침 포함) · 원본 바로 아래(주차는 맨 끝) · 새 번호 · 강의 · 과제는 넣을 주차 고르기 (화면 확인은 e2e reactdg 1-12)");
   }
 
+  {
+    console.log("47) 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (2026-11-09)");
+    const OO = require(path.join(ROOT, "api/_lib/oneoff.js")), ks = (a) => a.map((x) => x.key).join(",");
+    const it = (k, extra) => Object.assign({ key: k, on: true }, extra || {});
+    const old = ["home", "curriculum", "replays", "missions", "showcase", "notes", "schedule", "notices", "qna", "docs", "glossary", "cp_1"].map((k) => it(k, k === "docs" ? { label: "서류 챙기기", on: false } : null));
+    const nx = OO.menuSeq(old), nx2 = OO.menuSeq([it("home"), it("cp_9"), it("curriculum"), it("notes"), it("missions"), it("docs")]);
+    ok(!!nx && ks(nx) === "home,curriculum,missions,docs,replays,showcase,notes,schedule,notices,qna,glossary,cp_1" && nx.find((x) => x.key === "docs").label === "서류 챙기기" && nx.find((x) => x.key === "docs").on === false &&
+      OO.menuSeq(nx) === null && !!nx2 && ks(nx2) === "home,cp_9,curriculum,missions,docs,notes" && OO.menuSeq([it("home"), it("missions")]) === null,
+      "저장된 순서 정리: 과제 · 미션 · 실무 체크리스트 · 라이브 다시보기를 주차별 강의 바로 뒤로 (켜기 · 끄기 · 바꾼 이름 · 추가 메뉴는 그대로 · 이미 그 순서면 그대로)");
+    const docs47 = { "ins:a": { id: "a", menu: { items: old.map((x) => Object.assign({}, x)) }, menuVod: { items: [it("home"), it("docs"), it("notices")] } }, "ins:b": { id: "b" }, "ins:c": { id: "c", menu: { items: nx.map((x) => Object.assign({}, x)) } } };
+    const r47 = OO.menuOrder((k) => JSON.parse(JSON.stringify(docs47[k] || null)), (p) => Object.keys(docs47).filter((k) => k.indexOf(p) === 0));
+    ok(Object.keys(r47.writes).join(",") === "ins:a" && ks(r47.writes["ins:a"].menu.items).indexOf("home,curriculum,missions,docs,replays,") === 0 && ks(r47.writes["ins:a"].menuVod.items) === "home,docs,notices" && r47.result.same === 1 &&
+      OO.OPS.some((o) => o.id === "2026-11-09-menu-order" && o.run === OO.menuOrder),
+      "일회성 2026-11-09-menu-order: 강사마다 저장된 LIVE 메뉴만 · VOD 메뉴 · 메뉴를 저장한 적 없는 강사는 그대로");
+    const vm47 = require("vm"), sb47 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb47.window = sb47; vm47.createContext(sb47); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm47.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb47, { filename: f }));
+    const D47 = sb47.DB; if (!D47.data) D47.load();
+    const ins47 = (D47.data.instructors || []).find((x) => x && x.id === "moon") || (D47.data.instructors || [])[0];
+    if (ins47) delete ins47.menu;
+    const ad47 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), i47 = (t) => ad47.indexOf('["' + t + '", ');
+    ok(ks(D47.STUDENT_MENUS).indexOf("home,curriculum,missions,docs,replays,showcase") === 0 && !!ins47 && ks(D47.menuConfig(ins47.id).items).indexOf("home,curriculum,missions,docs,replays,") === 0 &&
+      i47("curriculum") > 0 && i47("curriculum") < i47("missions") && i47("missions") < i47("docs") && i47("docs") < i47("replays") && i47("replays") < i47("showcase") && /if \(vod\) \{ const di = content\.findIndex\(\(x\) => x\[0\] === "docs"\)/.test(ad47),
+      "기본 순서(새 강사 · 저장 전) · 강사센터 왼쪽 메뉴도 주차별 강의 (커리큘럼) → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (VOD 강의실 꾸미기는 예전 순서)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

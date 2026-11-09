@@ -909,6 +909,31 @@ function moon3CurMain(get) {
   return { writes: { [ck]: next }, result: { cohort: co.name + " (" + co.id + ")", from: (cu && cu.name) || from, to: c.curriculumName || "기본 커리큘럼", mainWeeks: (Array.isArray(c.weeks) ? c.weeks : []).length, weeks: wk } };
 }
 
+/* ---------- 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (2026-11-09 · 대표님 요청) ----------
+ * 강사마다 저장된 수강생 메뉴 순서(ins.menu.items · 두잉고 LIVE)에서 과제 · 미션 · 실무 체크리스트 · 라이브 다시보기를 주차별 강의 바로 뒤로 모아요.
+ * 켜기 · 끄기 · 바꾼 이름 · 다른 메뉴 · 추가 메뉴 순서는 그대로. VOD 버전 메뉴(menuVod)는 건드리지 않아요. 이미 그 순서면 그대로 */
+const MENU_SEQ = ["curriculum", "missions", "docs", "replays"];
+function menuSeq(items) {
+  const at = items.findIndex((x) => isObj(x) && x.key === MENU_SEQ[0]);
+  if (at < 0) return null;
+  const pick = MENU_SEQ.slice(1).map((k) => items.find((x) => isObj(x) && x.key === k)).filter(Boolean);
+  const rest = items.filter((x) => pick.indexOf(x) < 0), i = rest.indexOf(items[at]);
+  const next = rest.slice(0, i + 1).concat(pick, rest.slice(i + 1));
+  return next.every((x, j) => x === items[j]) ? null : next;
+}
+function menuOrder(get, keys) {
+  const writes = {}, result = { changed: [], same: 0 };
+  keys("ins:").forEach((k) => {
+    const ins = get(k);
+    if (!isObj(ins) || !isObj(ins.menu) || !Array.isArray(ins.menu.items)) return;
+    const next = menuSeq(ins.menu.items);
+    if (!next) { result.same++; return; }
+    writes[k] = Object.assign({}, ins, { menu: Object.assign({}, ins.menu, { items: next }) });
+    result.changed.push(k + ": " + next.filter((x) => isObj(x) && x.key !== "home").slice(0, 5).map((x) => x.key).join(" → "));
+  });
+  return { writes, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -943,6 +968,7 @@ const OPS = [
   { id: "2026-11-05-live-lectures", note: "두잉고 LIVE 기수 정리: 문대표 말고 다른 강사 기수 지우기(수강생 · 이용료 기록이 있으면 남김) · 문대표 1~3기만 · 3기 메인 강사 강의(주차마다 날짜 · 시간 · 끝나는 시간 · 장소 · 주제) · 5주차 줌 강의 12/15 19:00~22:00", run: liveLectures },
   { id: "2026-11-08-v2-teaser", note: "AI 굿즈 클래스(v2) 상세 맨 위 영상: 유튜브 주소(25분 58초부터) — 영상 칸이 비어 있을 때만", run: v2Teaser },
   { id: "2026-11-09-moon3-cur-main", note: "문대표 3기 커리큘럼: 4주 압축 과정 → 5주 기본 과정(기본 커리큘럼) — 진행 주차는 그대로", run: moon3CurMain },
+  { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
 ];
 
-module.exports = { OPS, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

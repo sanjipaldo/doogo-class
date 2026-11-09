@@ -103,18 +103,19 @@
     const themeOf = (key) => THEMES[key] || THEMES.lime;
 
     /* ---------------- 수강생 메뉴 구성 (마스터가 강사별로 켜고 끄고 이름을 바꾼다) ---------------- */
+    // 순서 (2026-11-09): 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (이미 저장된 순서는 일회성 2026-11-09-menu-order)
     // 이름은 두고 클래스 표현으로 (강사·마스터가 메뉴 구성에서 바꿀 수 있다). replays · showcase · glossary 는 내용이 있을 때만 수강생에게 보인다
     const STUDENT_MENUS = [
       { key: "home", label: "내 강의실", icon: "home", locked: true },
       { key: "curriculum", label: "주차별 강의", icon: "book" },
-      { key: "replays", label: "라이브 다시보기", icon: "monitorPlay", needs: "replays", desc: "지난 라이브를 주차별로 다시 봐요" },
       { key: "missions", label: "과제 · 미션", icon: "checks" },
+      { key: "docs", label: "실무 체크리스트", icon: "clipboard" },
+      { key: "replays", label: "라이브 다시보기", icon: "monitorPlay", needs: "replays", desc: "지난 라이브를 주차별로 다시 봐요" },
       { key: "showcase", label: "모범 과제", icon: "trophy", needs: "showcase", desc: "강사가 고른 잘한 과제 예시" },
       { key: "notes", label: "학습 노트", icon: "notebookPen", desc: "주차별 회고 질문 + 강의 메모 모음" },
       { key: "schedule", label: "수업 캘린더", icon: "calendar" },
       { key: "notices", label: "클래스 소식", icon: "megaphone" },
       { key: "qna", label: "질문 · 요청", icon: "help" },
-      { key: "docs", label: "실무 체크리스트", icon: "clipboard" },
       { key: "glossary", label: "용어 사전", icon: "bookA", needs: "glossary", desc: "강의에 나오는 용어를 쉽게 풀어 둔 사전" },
       { key: "bot", label: "AI 조교", icon: "bot" },
       { key: "library", label: "강의 자료함", icon: "library" },

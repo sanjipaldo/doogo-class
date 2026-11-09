@@ -545,6 +545,24 @@ module.exports = {
       await run.check(sh(wz) === sh(w0) && JSON.stringify(dz.map((x) => x.id)) === JSON.stringify(d0.map((x) => x.id)), "복사본 지우기: 커리큘럼 · 과제 · 실무 체크리스트가 처음 그대로", { wz: sh(wz).slice(0, 300), w0: sh(w0).slice(0, 300) }, ap);
       await ap.context().close();
     }
+    // 1-13) 메뉴 순서 (2026-11-09): 수강생 왼쪽 메뉴 주차별 강의 → 과제 · 미션 → 실무 체크리스트 (예전 화면 = React) · 강사센터 주차별 강의 (커리큘럼) → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기
+    {
+      const seq = (labels, want) => { const i = labels.indexOf(want[0]); return i >= 0 && want.every((w, j) => labels[i + j] === w); };
+      const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(sp, "메뉴 순서 · 수강생");
+      await FL.student(sp, base, info); const stu = {};
+      for (const mode of ["off", "all"]) { await L.reactCookie(sp, base, mode); await L.open(sp, base, "/home"); await sp.waitForTimeout(500); stu[mode] = await sp.$$eval("a.nav-item > span", (xs) => xs.map((x) => x.textContent.trim())); }
+      await sp.context().close();
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "메뉴 순서 · 강사센터");
+      await FL.instructor(ap, base, info); const ctr = {};
+      for (const mode of ["off", "all"]) { await L.reactCookie(ap, base, mode); await L.open(ap, base, "/center/curriculum"); await ap.waitForTimeout(500); ctr[mode] = await ap.$$eval("a.a-nav > span", (xs) => xs.map((x) => x.textContent.trim())); }
+      await ap.context().close();
+      const SW = ["주차별 강의", "과제 · 미션", "실무 체크리스트"], CW = ["주차별 강의 (커리큘럼)", "과제 · 미션", "실무 체크리스트"];
+      const cOk = (l) => seq(l, CW) && (l.indexOf("라이브 다시보기") < 0 || l.indexOf("라이브 다시보기") === l.indexOf("실무 체크리스트") + 1);
+      await run.check(seq(stu.off, SW) && seq(stu.all, SW) && JSON.stringify(stu.off) === JSON.stringify(stu.all) && cOk(ctr.off) && cOk(ctr.all) && JSON.stringify(ctr.off) === JSON.stringify(ctr.all),
+        "메뉴 순서: 수강생 주차별 강의 → 과제 · 미션 → 실무 체크리스트 · 강사센터 주차별 강의 (커리큘럼) → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (예전 화면 = React)", { stu, ctr });
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);
