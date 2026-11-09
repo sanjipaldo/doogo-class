@@ -2680,6 +2680,24 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "뉴질랜드 테마 영상 카드도 영상 칸 전체를 채워요 (예전 position: relative 로 위쪽만 차던 것 고침)");
   }
 
+  {
+    console.log("43) 주차가 강의일 5일 전부터 열려요 · 강사센터 커리큘럼은 지금 기수가 쓰는 것부터 (2026-11-09)");
+    const SC43 = require(path.join(ROOT, "shared/schedule.js"));
+    const c3 = { startDate: "2026-11-21", classDow: 6, classDates: { "2": "2026-11-22" } };
+    ok(SC43.weekUnlock(c3, 1) === "2026-11-16" && SC43.weekUnlock(c3, 2) === "2026-11-17" && SC43.weekUnlock(c3, 3) === "2026-11-30" && SC43.weekUnlock(c3, 4) === "2026-12-07" &&
+      SC43.weekOpen(c3, 1) === "2026-11-21" && SC43.weekDeadline(c3, 1) === "2026-11-27" && SC43.currentWeek(c3, 4, "2026-11-16") === 0 && SC43.OPEN_BEFORE === 5,
+      "3기처럼 11/21(토) 첫 강의 · 2주차 11/22 로 바꾼 기수: 1주차 11/16 · 2주차 11/17 · 3주차 11/30 · 4주차 12/7 부터 열려요 (강의일 5일 전) · 마감 · 이번 주차 · 일정은 그대로");
+    const cm = { startDate: "2026-11-16", classDow: 0 }, cp = { startDate: "2026-11-16" };
+    ok(SC43.weekUnlock(cm, 1) === "2026-11-16" && SC43.weekUnlock(cm, 2) === "2026-11-23" && SC43.weekUnlock(cp, 1) === "2026-11-11" && SC43.weekUnlock({ startDate: "2026-11-16", classDow: 3, classDates: { "1": "2026-11-14" } }, 1) === "2026-11-09",
+      "원래 더 일찍 열리던 주차(월요일 시작 · 일요일 강의)는 그대로 · 강의 요일을 안 정한 기수는 주차 시작일 5일 전 · 앞당긴 강의일도 그 날 5일 전");
+    const ap43 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), ad43 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), hp43 = fs.readFileSync(path.join(ROOT, "../ui/dg/HomePage.jsx"), "utf8");
+    ok(/const openOf = \(w\) => DB\.weekUnlock\(CO, w\.no\);/.test(ap43) && /const isOpen = \(w\) => \(!!me && !!me\.demo && !preview\) \|\| todayStr\(\) >= openOf\(w\);/.test(ap43) && /fmtMD\(openOf\(D\.weeks\[0\]\)\) \+ "에 1주차가 열려요/.test(ap43) && /fmtMD\(X\.openOf\(D\.weeks\[0\]\)\) \+ "에 1주차가 열려요/.test(hp43) &&
+      /const open = DB\.weekUnlock\(co, w\.no\), dl = DB\.weekDeadline\(co, w\.no\);/.test(ad43),
+      "강의실(예전 화면 · React)은 주차를 강의일 5일 전부터 열고 ‘N일부터 공개’ 도 그 날 · 체험(테스트) 계정은 예전처럼 다 열려요 · 강사센터 기수 주차 줄도 그 날부터");
+    ok(/if \(!ui\.curId \|\| ui\.curFor !== IID\(\)\) \{ const now = DB\.currentCohort\(IID\(\)\); ui\.curFor = IID\(\); ui\.curId = \(now && now\.curriculumId\) \|\| "main"; \}/.test(ad43) && /function curWarn\(cur, used\)/.test(ad43) && /case "cur-go": ui\.curId = d\.id;/.test(ad43) && /case "cur-use": \{ const co = DB\.cohort\(d\.co\); if \(co\) planForm\(co\.instructorId, Object\.assign\(\{\}, co, \{ curriculumId: d\.id \}\)\); break; \}/.test(ad43) && /'<section class="a-card a-cur-bar">' \+ curWarn\(cur, used\)/.test(ad43),
+      "강사센터 커리큘럼: 처음엔 지금 기수(진행 중 → 모집 중)가 쓰는 커리큘럼 · 다른 커리큘럼을 고치면 ‘지금 N기 수강생 화면에는 …’ 안내 + 바로 가기 (예전 화면 · React 같은 줄)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

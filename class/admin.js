@@ -98,7 +98,12 @@
       (ps.length > 1 ? '<label class="a-vpbar-sel"><span>다른 강의실</span><select id="a-vpid2">' + vpOpts(p.id) + "</select></label>" : "") + "</div>";
   }
   // 커리큘럼 편집 화면에서 지금 고른 커리큘럼 (기본: 기본 커리큘럼)
-  const CUR = () => { const cu = DB.curriculum(IID(), ui.curId); ui.curId = cu ? cu.id : "main"; return cu; };
+  // 편집할 커리큘럼: 처음(이 강사로 처음 열 때)에는 지금 기수(진행 중 → 모집 중)가 쓰는 커리큘럼으로 (2026-11-09 —
+  //  예전에는 늘 기본 커리큘럼이 열려서, 3기는 다른 커리큘럼을 쓰는데 기본 커리큘럼을 고치고 수강생 화면에 안 바뀐다고 느꼈어요)
+  const CUR = () => {
+    if (!ui.curId || ui.curFor !== IID()) { const now = DB.currentCohort(IID()); ui.curFor = IID(); ui.curId = (now && now.curriculumId) || "main"; }
+    const cu = DB.curriculum(IID(), ui.curId); ui.curId = cu ? cu.id : "main"; return cu;
+  };
   const usedBy = (curId) => DB.cohortsOf(IID()).filter((co) => (co.curriculumId || "main") === curId);
   const classText = (co) => (co.classDow !== undefined && co.classDow !== null && co.classDow !== "" ? "매주 " + DOW[Number(co.classDow)] + "요일" : "주차 시작일") + (co.classTime ? " " + co.classTime + (co.classEnd ? "~" + co.classEnd : "") : "") + (co.classOver && Object.keys(co.classOver).length ? " · 주차별 따로" : "");
   /** 받침에 맞는 조사: josa("공지", "을", "를") → "공지를" · josa("상담 중", "으로", "로") → "상담 중으로" */
@@ -591,7 +596,7 @@
     const c = { weeks: DB.weeksOf(co) };
     const t = todayStr();
     return '<div class="a-weeks">' + c.weeks.map((w) => {
-      const open = DB.weekOpen(co, w.no), dl = DB.weekDeadline(co, w.no);
+      const open = DB.weekUnlock(co, w.no), dl = DB.weekDeadline(co, w.no); // 수강생에게 열리는 날(강의일 5일 전)부터
       const st = t > dl ? "past" : t >= open ? "now" : "next";
       const ov = (co.classOver || {})[w.no], lc = (co.classDates && co.classDates[w.no]) || ov ? DB.lectureOf(co.instructorId, co, w) : null;
       const moved = lc ? '<em class="a-week-mv">강의 ' + esc(mdDow(lc.date) + (lc.time ? " " + lc.time + (lc.end ? "~" + lc.end : "") : "") + (lc.mode === "online" ? " · 온라인" : lc.place ? " · " + lc.place : "")) + "</em>" : "";
@@ -1485,9 +1490,19 @@
     if (TRK() === "vod" || !ml) return "";
     return '<section class="a-card a-ml-strip"><span class="a-ml-ic">' + icon("link", "sm") + '</span><div class="a-grow"><b>메인 강의 · ' + esc(ml.platform || "외부 강의실") + (ml.on ? "" : " (꺼짐)") + '</b><small class="a-muted">' + esc(ml.url || "링크가 비어 있어요 — 수강생에게 ‘링크 준비 중’으로 보여요") + "</small></div>" + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/center/brand">' + icon("pen", "sm") + "링크 수정</a></section>";
   }
+  /** 지금 기수가 이 커리큘럼을 안 쓰면: 여기서 고친 내용이 그 기수 수강생 화면에 안 보인다고 알려 주고 그 기수 커리큘럼으로 바로 가기 */
+  function curWarn(cur, used) {
+    const now = DB.currentCohort(IID()); if (!now) return "";
+    const nowCur = DB.curriculumOf(now); if (!nowCur || nowCur.id === cur.id) return "";
+    return '<div class="a-cur-warn">' + icon("alert", "sm") + '<p class="a-grow"><b>지금 ' + esc(now.name) + "(" + esc(DB.STATUS_LABEL[DB.cohortStatus(now)] || "") + ") 수강생 화면에는 ‘" + esc(nowCur.name) + "’ 커리큘럼이 보여요.</b> " +
+      "여기(‘" + esc(cur.name) + "’)에서 고친 내용은 " + (used.length ? used.map((co) => esc(co.name)).join(" · ") + " 수강생 화면에만 보여요." : "쓰는 기수가 없어서 수강생 화면에 보이지 않아요.") + "</p>" +
+      btn(icon("arrowRight", "sm") + "‘" + esc(nowCur.name) + "’ 고치기", "cur-go", "a-btn-primary a-btn-sm", ' data-id="' + esc(nowCur.id) + '"') +
+      // 이 커리큘럼을 지금 기수가 쓰게 하려면: 그 기수 설계 창을 이 커리큘럼으로 골라 둔 채 열어요 (저장해야 바뀌어요)
+      btn(icon("layers", "sm") + esc(now.name) + "가 이 커리큘럼 쓰기", "cur-use", "a-btn-ghost a-btn-sm", ' data-co="' + esc(now.id) + '" data-id="' + esc(cur.id) + '"') + "</div>";
+  }
   function curBar() {
     const iid = IID(), cur = CUR(), list = DB.curricula(iid), used = usedBy(cur.id);
-    return '<section class="a-card a-cur-bar"><div class="a-cur-top"><label class="a-label" for="cur-pick">편집할 커리큘럼</label>' +
+    return '<section class="a-card a-cur-bar">' + curWarn(cur, used) + '<div class="a-cur-top"><label class="a-label" for="cur-pick">편집할 커리큘럼</label>' +
         '<select class="a-input" id="cur-pick">' + list.map((x) => '<option value="' + x.id + '"' + (x.id === cur.id ? " selected" : "") + ">" + esc(x.name) + " · " + x.weeks.length + "주" + (usedBy(x.id).length ? " · " + usedBy(x.id).map((co) => co.name).join(", ") : " · 쓰는 기수 없음") + "</option>").join("") + "</select>" +
         '<div class="a-row-actions">' + btn(icon("plus", "sm") + "새 커리큘럼", "cur-new", "a-btn-primary a-btn-sm") + btn(icon("pen", "sm") + "이름", "cur-rename", "a-btn-ghost a-btn-sm") + (cur.main ? "" : btn(icon("trash", "sm") + "삭제", "cur-delete", "a-btn-ghost a-btn-sm danger")) + "</div></div>" +
         '<p class="a-cur-info">' + icon("layers", "xs") + " <b>" + esc(cur.name) + "</b> · " + cur.weeks.length + "주 · 강의 " + cur.weeks.reduce((a, w) => a + w.lessons.length, 0) + "개 · 과제 " + cur.weeks.reduce((a, w) => a + w.missions.length, 0) + "개 · " +
@@ -8667,6 +8682,8 @@
       case "lp-revert": ui.lp = null; render(); toast("저장된 내용으로 되돌렸어요."); break;
       case "fq-del": { const c = C(); c.freeQuestions = (c.freeQuestions || []).filter((x) => x.id !== d.id); commit("질문을 지웠어요."); break; }
       case "lp-copy": { const el = document.getElementById("lp-url"); const done = () => toast("주소를 복사했어요."); if (navigator.clipboard) navigator.clipboard.writeText(el.value).then(done, () => { el.select(); toast("주소를 선택했어요. 길게 눌러 복사해 주세요."); }); else { el.select(); toast("주소를 선택했어요."); } break; }
+      case "cur-go": ui.curId = d.id; ui.curFor = IID(); render(); window.scrollTo(0, 0); break;
+      case "cur-use": { const co = DB.cohort(d.co); if (co) planForm(co.instructorId, Object.assign({}, co, { curriculumId: d.id })); break; }
       case "cur-new": curForm("new"); break;
       case "cur-rename": curForm("rename"); break;
       case "cur-delete": {

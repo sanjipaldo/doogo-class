@@ -136,7 +136,7 @@ function LiveHome() {
         {nm ? <a className="card next-card plain-link" href={"#/missions/" + nm.weekNo + "/" + nm.id}><span className="wk-icon"><Icon n="checks" /></span>
           <div style={{ flex: "1", minWidth: "0" }}><div className="tiny">{nm.weekNo}주차 · {X.kindOf(nm).short} · 마감 {fmtMD(DB.weekDeadline(S.CO, nm.weekNo))}</div><div className="m-title">{nm.title} <StateBadge id={nm.id} /></div><div className="m-desc">{nm.desc}</div></div>
           <span className="btn btn-primary btn-sm">열기 <Icon n="arrowRight" c="sm" /></span></a>
-          : <div className="card callout-ok callout"><Icon n="check" /><div>{D.weeks.length && !X.isOpen(D.weeks[0]) ? fmtMD(S.CO.startDate) + "에 1주차가 열려요. 조금만 기다려 주세요!" : "열린 주차의 과제를 모두 마쳤어요! 다음 주차가 열리면 바로 시작해 보세요."}</div></div>}</> : null}
+          : <div className="card callout-ok callout"><Icon n="check" /><div>{D.weeks.length && !X.isOpen(D.weeks[0]) ? fmtMD(X.openOf(D.weeks[0])) + "에 1주차가 열려요. 조금만 기다려 주세요!" : "열린 주차의 과제를 모두 마쳤어요! 다음 주차가 열리면 바로 시작해 보세요."}</div></div>}</> : null}
       <Notices empty="아직 공지가 없어요." />
       <QuickLinks />
     </div>

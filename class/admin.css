@@ -601,6 +601,11 @@ body[data-master="1"] .a-logo-role { padding: 2px 10px; border-radius: 8px; back
 .a-cur-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .a-cur-top select { flex: 1; min-width: 220px; max-width: 520px; background: #fff; }
 .a-cur-info { margin: 0; font-size: 13px; color: var(--m-charcoal); line-height: 1.6; }
+/* 지금 기수가 안 쓰는 커리큘럼을 고칠 때 안내 (2026-11-09) */
+.a-cur-warn { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: #fff7e8; border: 1px solid #f3c46e; color: #5c3b00; }
+.a-cur-warn > .icon { flex: none; color: #c27500; }
+.a-cur-warn p { margin: 0; min-width: 220px; font-size: 13px; line-height: 1.55; }
+.a-cur-warn b { color: #4a2f00; }
 .a-cur-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; background: var(--m-surface, #f5f5f5); font-size: 12px; font-weight: 700; color: var(--m-charcoal); }
 @media (max-width: 720px) { .a-cur-top select { min-width: 0; width: 100%; max-width: none; } .a-cur-top .a-label { width: 100%; } }
 

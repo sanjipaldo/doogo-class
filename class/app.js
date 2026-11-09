@@ -46,7 +46,8 @@
   const allMissions = () => D.weeks.flatMap((w) => w.missions.map((m) => Object.assign({ weekNo: w.no }, m)));
   const findWeek = (no) => D.weeks.find((w) => w.no === Number(no));
   const findMission = (id) => allMissions().find((m) => m.id === id);
-  const openOf = (w) => DB.weekOpen(CO, w.no);
+  // 주차가 열리는 날: 그 주 강의일 5일 전부터 (예: 11/21 강의 → 11/16 · 2026-11-09 — shared/schedule.js weekUnlock)
+  const openOf = (w) => DB.weekUnlock(CO, w.no);
   const deadlineOf = (w) => DB.weekDeadline(CO, w.no);
   // 체험 계정은 모든 주차를 열어 둔다 (강사 미리보기는 실제 수강생과 같은 일정으로)
   const isOpen = (w) => (!!me && !!me.demo && !preview) || todayStr() >= openOf(w);
@@ -733,7 +734,7 @@
         ? '<a class="card next-card plain-link" href="#/missions/' + nm.weekNo + "/" + nm.id + '"><span class="wk-icon">' + icon("checks") + "</span>" +
             '<div style="flex:1;min-width:0"><div class="tiny">' + nm.weekNo + "주차 · " + kindOf(nm).short + " · 마감 " + fmtMD(DB.weekDeadline(CO, nm.weekNo)) + '</div><div class="m-title">' + esc(nm.title) + " " + stateBadge(nm.id) + '</div><div class="m-desc">' + esc(nm.desc) + "</div></div>" +
             '<span class="btn btn-primary btn-sm">열기 ' + icon("arrowRight", "sm") + "</span></a>"
-        : '<div class="card callout-ok callout">' + icon("check") + "<div>" + (D.weeks.length && !isOpen(D.weeks[0]) ? fmtMD(CO.startDate) + "에 1주차가 열려요. 조금만 기다려 주세요!" : "열린 주차의 과제를 모두 마쳤어요! 다음 주차가 열리면 바로 시작해 보세요.") + "</div></div>") : "") +
+        : '<div class="card callout-ok callout">' + icon("check") + "<div>" + (D.weeks.length && !isOpen(D.weeks[0]) ? fmtMD(openOf(D.weeks[0])) + "에 1주차가 열려요. 조금만 기다려 주세요!" : "열린 주차의 과제를 모두 마쳤어요! 다음 주차가 열리면 바로 시작해 보세요.") + "</div></div>") : "") +
       (on("notices") ? '<section class="card" style="margin-top:14px"><div class="home-video-head"><h2>' + esc(NT()) + '</h2><a class="link-btn" href="#/notices">더보기 ' + icon("arrowRight", "sm") + "</a></div>" +
           (notices.length ? notices.map((n) => '<a class="list-row" href="#/notices/' + n.id + '">' + (n.pinned ? '<span class="badge badge-ink">필독</span>' : "") + '<span class="lr-title">' + esc(n.title) + "</span>" + newBadge(n) + '<span class="lr-date">' + fmtMD(n.date) + "</span></a>").join("") : '<p class="muted" style="margin:0">아직 공지가 없어요.</p>') +
         "</section>" : "") +
@@ -788,7 +789,7 @@
       (inner.length ? '<div class="ql-grid">' + inner.map(card).join("") + "</div>" : "") +
       (outer.length ? '<div class="ql-grid ql-outer">' + outer.map(card).join("") + "</div>" : "");
   }
-  // 이번 주(열린 주차) 또는 다음 주(아직 안 열린 주차) 한 장: 과제 공개일은 주차 시작일에 맞춰 자동으로 열린다
+  // 이번 주(열린 주차) 또는 다음 주(아직 안 열린 주차) 한 장: 과제 공개일은 그 주 강의일 5일 전에 자동으로 열린다 (2026-11-09 · openOf)
   function weekFocusCard() {
     if (!D.weeks.length) return "";
     const t = todayStr();

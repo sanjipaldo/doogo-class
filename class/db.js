@@ -468,7 +468,7 @@
   /* 주차별 강의일 바꾸기 (2026-11): co.classDates = { "5": "2026-09-23" } — 그 주차만 다른 날(예: 5주차는 수요일)에 강의해요.
    * 바꾼 날이 원래 주차 시작보다 빠르면 그 날 주차가 열리고, 과제 마감은 원래 마감과 바꾼 날 중 늦은 날이에요 */
   // 계산은 shared/schedule.js (화면 · 서버 공용) — 주차 수만 여기서 커리큘럼으로 정해 넘겨요
-  const { baseClassDate, weekOpen, weekDeadline, classDate } = SCH;
+  const { baseClassDate, weekOpen, weekUnlock, weekDeadline, classDate } = SCH;
   const cohortEnd = (co) => SCH.cohortEnd(co, cohortWeeks(co));
   const cohortStatus = (co) => SCH.cohortStatus(co, cohortWeeks(co), todayStr());
   const STATUS_LABEL = { upcoming: "모집 중", running: "진행 중", ended: "종료" };
@@ -1126,7 +1126,7 @@
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
     curricula, curriculum, curriculumOf, weeksOf, cohortWeeks,
-    weekOpen, weekDeadline, baseClassDate, cohortEnd, cohortStatus, STATUS_LABEL, currentWeek, LEVEL_SET, levelSteps, level, currentCohort, nextCohortName,
+    weekOpen, weekUnlock, weekDeadline, baseClassDate, cohortEnd, cohortStatus, STATUS_LABEL, currentWeek, LEVEL_SET, levelSteps, level, currentCohort, nextCohortName,
     EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort, calChip, calMain, CAL_ORDER, classOverOf, lectureOf, evTime, isWeekLec,
     REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, applyTrack, siteInfo, saveSite, SITE_DEFAULT, opsKakao,
     BILLING_DEFAULT, BILL_VAT, BILL_STATE, billingInfo, saveBilling, bills, saveBill, removeBill, billMoney, billState, won,

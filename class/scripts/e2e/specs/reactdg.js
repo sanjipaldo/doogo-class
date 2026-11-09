@@ -297,6 +297,20 @@ module.exports = {
       const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
       run.watch(ap, "비메오 · 강사센터");
       await FL.instructor(ap, base, info); await L.reactCookie(ap, base, "all");
+      // 강사센터 커리큘럼 (2026-11-09): 처음엔 지금 기수가 쓰는 커리큘럼 · 다른 커리큘럼을 고르면 ‘지금 N기 수강생 화면에는 …’ 안내 → ‘… 고치기’로 바로 돌아가요
+      await L.open(ap, base, "/center/curriculum"); await ap.waitForTimeout(600);
+      const curNow = await ap.evaluate(() => { const now = window.DB.currentCohort(window.ADM.IID()); return { want: (now && now.curriculumId) || "main", sel: document.querySelector("#cur-pick").value, warn: !!document.querySelector(".a-cur-warn"), opts: Array.from(document.querySelectorAll("#cur-pick option")).map((o) => o.value) }; });
+      const alt = curNow.opts.find((x) => x !== curNow.want); let other = null;
+      if (alt) {
+        await ap.selectOption("#cur-pick", alt); await ap.waitForTimeout(600);
+        other = await ap.evaluate(() => ({ warn: (document.querySelector(".a-cur-warn") || {}).textContent || "", go: !!document.querySelector('.a-cur-warn [data-action="cur-go"]') }));
+        // ‘N기가 이 커리큘럼 쓰기’: 그 기수 설계 창이 이 커리큘럼으로 골라진 채 열려요 (저장하지 않고 닫아요)
+        if (await ap.$('.a-cur-warn [data-action="cur-use"]')) { await ap.click('.a-cur-warn [data-action="cur-use"]'); await ap.waitForTimeout(600); other.use = await ap.evaluate(() => { const f = document.getElementById("plan-form"); return f ? f.querySelector('[name="pl-cur"]').value : null; }); await ap.click('[data-action="modal-close"]').catch(() => {}); await ap.waitForTimeout(400); }
+        if (other.go) { await ap.click('.a-cur-warn [data-action="cur-go"]'); await ap.waitForTimeout(600); }
+        other.back = await ap.evaluate(() => ({ sel: document.querySelector("#cur-pick").value, warn: !!document.querySelector(".a-cur-warn") }));
+      }
+      await run.check(curNow.sel === curNow.want && !curNow.warn && (!alt || (/수강생 화면에는/.test(other.warn) && other.go && other.use === alt && other.back.sel === curNow.want && !other.back.warn)),
+        "강사센터 커리큘럼: 처음엔 지금 기수가 쓰는 커리큘럼 · 다른 커리큘럼을 고르면 ‘지금 N기 수강생 화면에는 …’ 안내 · ‘N기가 이 커리큘럼 쓰기’(설계 창) · 바로 돌아가기", { curNow, other }, ap);
       const field = 'form#coll-form input[name="youtubeId"]';
       // 강사센터 ‘편집할 커리큘럼’을 이 수강생 기수가 쓰는 커리큘럼으로 (기수마다 커리큘럼이 다를 수 있어요 — 강의 번호는 같아도 다른 강의)
       const pickCur = async () => {
@@ -355,6 +369,32 @@ module.exports = {
       const back = await edit(ok.was || "");
       await run.check(!!back && !back.err, "되돌리기: 강의 영상 칸을 원래 값으로", back, ap);
       await ap.context().close();
+    }
+    // 1-9) 주차가 강의일 5일 전부터 열려요 (2026-11-09): 강사 ‘수강생 화면’(체험 계정과 달리 실제 일정 그대로)으로 — 3기 1주차 강의 11/21(토)
+    //      → 11/15 엔 잠김(‘11/16부터 공개’) · 11/16 엔 열림 (예전 화면 = React · 브라우저 시계만 그 날로)
+    {
+      const at = async (iso) => {
+        const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: "Asia/Seoul" });
+        await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); } catch (e) { /* #주소로 */ } }); // L.newPage 와 같게 (깨끗한 주소)
+        await ctx.clock.install({ time: new Date(iso) });
+        const pg = await ctx.newPage(); run.watch(pg, "주차 열림 " + iso.slice(0, 10));
+        await FL.instructor(pg, base, info);
+        const out = {};
+        for (const mode of ["off", "all"]) {
+          await L.reactCookie(pg, base, mode); await L.open(pg, base, "/center"); await pg.waitForTimeout(600);
+          await pg.click('[data-action="preview"]'); await pg.waitForTimeout(900);
+          await pg.evaluate(() => { window.ROUTE.hash = "#/curriculum"; }); await pg.waitForTimeout(900);
+          out[mode] = await pg.evaluate(() => { const c = document.querySelector(".cw"), co = window.DB.currentCohort((window.DB.session.student() || {}).instructorId); return { co: co && co.name, cls: window.DB.classDate(co, 1), unlock: window.DB.weekUnlock(co, 1), locked: !!(c && c.classList.contains("cw-locked")), msg: c ? (c.querySelector(".cw-lock") || {}).textContent || "" : null, lessons: c ? c.querySelectorAll("a[href*='curriculum/']").length : 0 }; });
+          await pg.evaluate(() => { window.ROUTE.hash = "#/center"; }).catch(() => {});
+        }
+        await ctx.close();
+        return out;
+      };
+      const d15 = await at("2026-11-15T12:00:00+09:00"), d16 = await at("2026-11-16T09:00:00+09:00");
+      const lockedOk = (o) => o.co === "3기" && o.cls === "2026-11-21" && o.unlock === "2026-11-16" && o.locked && /11\/16|11월 16일/.test(o.msg);
+      const openOk = (o) => o.co === "3기" && !o.locked && o.lessons >= 1;
+      await run.check(lockedOk(d15.off) && lockedOk(d15.all) && openOk(d16.off) && openOk(d16.all),
+        "주차 열림: 3기 1주차 강의 11/21 → 11/15 엔 잠김(‘11/16부터 공개’) · 11/16 엔 열림 (강의일 5일 전 · 강사 ‘수강생 화면’ · 예전 화면 = React)", { d15, d16 });
     }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
