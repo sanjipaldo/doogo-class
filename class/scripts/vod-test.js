@@ -2719,6 +2719,23 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "강의실은 수강생이 보는 커리큘럼으로 · 강사센터 수강생 상세에 커리큘럼 고르기(기수 그대로 / 이 수강생만) · 진행률 · 성장 단계 · 주차 막대도 그 커리큘럼으로 (예전 화면 · React)");
   }
 
+  {
+    console.log("45) 글 속 주소는 파란 링크 · 새 창 (2026-11-09)");
+    const vm45 = require("vm"), sb45 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb45.window = sb45; vm45.createContext(sb45); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm45.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb45, { filename: f }));
+    const L45 = sb45.DB.linkify, A = (u) => '<a class="auto-link" href="' + u + '" target="_blank" rel="noopener">' + u + "</a>";
+    ok(L45("어려우시다면 [코워크시티]를 이용하세요! https://www.doogoclass.com/curriculum/l1-1") === "어려우시다면 [코워크시티]를 이용하세요! " + A("https://www.doogoclass.com/curriculum/l1-1") &&
+      L45("링크: https://a.com/x?y=1&z=2.") === "링크: " + A("https://a.com/x?y=1&amp;z=2") + "." && L45("(https://a.com/b)") === "(" + A("https://a.com/b") + ")" &&
+      L45('<script>alert("x")</script> http://b.kr') === "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; " + A("http://b.kr") && L45('"https://c.com/d"') === "&quot;" + A("https://c.com/d") + "&quot;" && L45("주소 없음") === "주소 없음" && L45(null) === "" &&
+      /class="auto-link" href="https:\/\/x\.com\/p" target="_blank"/.test(sb45.DB.rich("**굵게** https://x.com/p")),
+      "주소 → 파란 링크(새 창): 끝의 마침표 · 괄호는 빼고 · 따옴표 · 태그는 이스케이프 그대로 · 서식 글(rich)도 같은 규칙");
+    const ap45 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), le45 = fs.readFileSync(path.join(ROOT, "../ui/dg/Learn.jsx"), "utf8"), bo45 = fs.readFileSync(path.join(ROOT, "../ui/dg/Board.jsx"), "utf8"), st45 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    ok(/DB\.linkify\(m\.desc\)/.test(ap45) && /"<li>" \+ DB\.linkify\(s\) \+ "<\/li>"/.test(ap45) && /DB\.linkify\(w\.goal\)/.test(ap45) && /DB\.linkify\(s\.review\.comment\)/.test(ap45) && /DB\.linkify\(f\.a\)/.test(ap45) && /DB\.linkify\(q\.body\)/.test(ap45) && /DB\.linkify\(q\.answer\)/.test(ap45) &&
+      /window\.DB\.linkify\(m\.desc\)/.test(le45) && /window\.DB\.linkify\(x\)/.test(le45) && /window\.DB\.linkify\(f\.a\)/.test(bo45) && /window\.DB\.linkify\(q\.answer\)/.test(bo45) && /\.rich a, a\.auto-link \{ color: #1a6fe0;/.test(st45), 
+      "과제 설명 · 이렇게 하세요 · 핵심 목표 · 강사 검수 의견 · FAQ 답 · 1:1 요청 · 강의 노트 · 메인 강의 안내에 주소 링크 (예전 화면 · React) · 파란색");
+    ok(/'<div class="a-text">' \+ DB\.linkify\(sub\.text\)/.test(fs.readFileSync(path.join(ROOT, "admin.js"), "utf8")), "강사센터 검수 화면: 수강생이 적어 낸 글 속 주소도 링크");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

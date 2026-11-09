@@ -1058,7 +1058,7 @@
       '<div class="a-review-box">' +
         (files ? '<div class="a-shots">' + files + "</div>" : "") +
         (sub.link ? '<p><b>링크</b> <a href="' + esc(sub.link) + '" target="_blank" rel="noopener">' + esc(sub.link) + "</a></p>" : "") +
-        (sub.text ? '<div class="a-text">' + esc(sub.text) + "</div>" : "") +
+        (sub.text ? '<div class="a-text">' + DB.linkify(sub.text) + "</div>" : "") +
         (!files && !sub.link && !sub.text ? '<p class="a-muted">제출 내용이 비어 있어요.</p>' : "") +
       "</div>" +
       '<div class="a-auto ' + (sub.result.pass ? "ok" : "warn") + '"><b>' + icon(sub.result.pass ? "check" : "alert", "sm") + "자동검수 " + (sub.result.pass ? "통과" : "보완 필요") + "</b>" +

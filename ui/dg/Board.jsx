@@ -92,7 +92,7 @@ function Faq() {
       : <><PageHead title={X.ML("qna")} sub="검색 한 번으로 답을 찾고, 화면 오류나 불편한 점은 1:1 요청으로 바로 알려 주세요." /><QnaTabs on="faq" /></>}
       <section className="card"><div className="search"><Icon n="search" /><input key={cat} className="input" id="faq-search" type="search" placeholder="궁금한 내용을 검색해 보세요 (예: 통관, 마진, 로그인)" aria-label="자주 묻는 질문 검색" onInput={(e) => setQ(e.currentTarget.value)} /></div>
         <div className="faq-cats" role="tablist">{cats.map((c) => <button key={c} type="button" className={"chip" + (c === cat ? " on" : "")} data-action="faq-cat" data-cat={c} onClick={() => { X.faqCat(c); setQ(""); redraw(); }}>{c} <span>{c === "전체" ? D.faqs.length : D.faqs.filter((f) => (f.category || "기타") === c).length}</span></button>)}</div>
-        <div id="faq-list">{list.length ? list.map((f, i) => <details key={i} className="faq"><summary><span className="q">Q</span><span><small className="faq-cat">{f.category || "기타"}</small>{f.q}</span><Icon n="chevDown" c="sm chev" /></summary><div className="a">{f.a}</div></details>) : <div className="empty"><Icon n="search" /><div>검색 결과가 없어요.</div></div>}</div></section>
+        <div id="faq-list">{list.length ? list.map((f, i) => <details key={i} className="faq"><summary><span className="q">Q</span><span><small className="faq-cat">{f.category || "기타"}</small>{f.q}</span><Icon n="chevDown" c="sm chev" /></summary><div className="a" dangerouslySetInnerHTML={{ __html: window.DB.linkify(f.a) }}></div></details>) : <div className="empty"><Icon n="search" /><div>검색 결과가 없어요.</div></div>}</div></section>
       <p className="tiny" style={{ marginTop: "12px" }}>{vod ? <>원하는 답이 없다면 {D.brand.botName}에게 물어보거나 1:1 코칭 질문을 남겨 주세요. 결제 · 환불 · 계정 문의는 <a href="#/vod/my/help">DOOGO CLASS 고객센터</a>로 남겨 주세요.</> : "원하는 답이 없다면 " + D.brand.botName + "에게 물어보거나 라이브 시간에 질문해 주세요."}</p></div>
   );
 }
@@ -148,10 +148,10 @@ function RequestDetail({ id }) {
     <div className="page"><PageHead title={X.ML("qna")} sub={vq ? "남긴 코칭 질문과 강사님 답변을 확인해요." : "남긴 요청과 강사님 답변을 확인해요."} /><QnaTabs on="req" />
       <a className="back-link" href="#/qna/requests"><Icon n="arrowLeft" c="sm" />{vq ? "1:1 코칭 목록" : "1:1 요청 목록"}</a>
       <article className="card req-detail"><div className="req-detail-top">{q.answer ? <span className="badge badge-positive">답변완료</span> : <span className="badge badge-neutral">답변대기</span>}<span className="badge badge-neutral">{q.category || "기타"}</span><span className="badge badge-neutral"><Icon n="lock" c="xs" />비공개</span><span className="req-no">#{x.no}</span></div>
-        <h2>{q.title}</h2><div className="meta">{S.me.name} · {DB.date.toStr(d)} {hm(d)}</div><div className="body">{q.body}</div>
+        <h2>{q.title}</h2><div className="meta">{S.me.name} · {DB.date.toStr(d)} {hm(d)}</div><div className="body" dangerouslySetInnerHTML={{ __html: window.DB.linkify(q.body) }} />
         {(q.images || []).length ? <div className="req-shots">{q.images.map((im, i) => <a key={i} href={im.data} target="_blank" rel="noopener"><img src={im.data} alt={im.name} /></a>)}</div> : null}</article>
       <div className="section-head"><h2>강사 답변</h2></div>
-      {q.answer ? <section className="card req-answer"><div className="req-answer-top"><b>{D.brand.instructor} · 운영자</b><span>{q.answeredAt ? DB.date.toStr(new Date(q.answeredAt)) + " " + hm(new Date(q.answeredAt)) : ""}</span></div><div className="body">{q.answer}</div></section>
+      {q.answer ? <section className="card req-answer"><div className="req-answer-top"><b>{D.brand.instructor} · 운영자</b><span>{q.answeredAt ? DB.date.toStr(new Date(q.answeredAt)) + " " + hm(new Date(q.answeredAt)) : ""}</span></div><div className="body" dangerouslySetInnerHTML={{ __html: window.DB.linkify(q.answer) }} /></section>
         : <section className="card empty"><Icon n="clock" /><div>강사님이 확인하고 있어요. 답변이 달리면 여기에 바로 보여요.</div>{S.preview ? null : <button type="button" className="btn btn-secondary btn-sm" data-action="req-cancel" data-id={q.id} data-arm={arm ? "1" : undefined} onClick={cancel}>{arm ? "한 번 더 누르면 취소돼요" : vq && q.coach ? "질문 취소하고 코칭권 돌려받기" : "요청 취소하기"}</button>}</section>}
     </div>
   );

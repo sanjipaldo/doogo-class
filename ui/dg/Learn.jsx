@@ -55,7 +55,7 @@ function CurWeek({ w, now }) {
   const watched = w.lessons.filter((l) => S.P.watched[l.id]).length;
   return (
     <section className="card cw">{head}
-      {w.goal ? <div className="cw-goal"><span className="cw-goal-label"><Icon n="target" c="sm" />핵심 목표</span><p>{w.goal}</p></div> : null}
+      {w.goal ? <div className="cw-goal"><span className="cw-goal-label"><Icon n="target" c="sm" />핵심 목표</span><p dangerouslySetInnerHTML={{ __html: window.DB.linkify(w.goal) }} /></div> : null}
       {w.howto ? <RawOne html={'<div class="cw-sec cw-howto"><h3>' + window.icon("checks", "sm") + "이번 주 진행 방법</h3>" + DB.rich(w.howto) + "</div>"} /> : null}
       {w.lessons.length ? <details className="cw-lessons" open><summary><Icon n="play" c="sm" />{X.lessonWord()} {w.lessons.length}개 <span className="tiny">{watched}개 시청 완료</span><Icon n="chevDown" c="sm" /></summary>
         {w.lessons.map((l) => <a key={l.id} className="lesson" href={"#/curriculum/" + l.id}><Thumb item={l} /><div><div className="lesson-title">{l.title}</div><div className="lesson-desc">{l.desc}</div></div>
@@ -178,8 +178,8 @@ function Week({ no }) {
 function ResultBox({ s }) {
   const fs = DBX().date.fmtStamp;
   return <>
-    {s.review ? (s.review.status === "approved" ? <div className="result pass"><h4><Icon n="check" />강사님이 승인했어요</h4><p>{fs(s.review.at) + (s.review.comment ? " · " + s.review.comment : "")}</p></div>
-      : <div className="result fix"><h4><Icon n="alert" />강사님이 보완을 요청했어요</h4><p>{s.review.comment || "내용을 보완해서 다시 제출해 주세요."}</p></div>) : null}
+    {s.review ? (s.review.status === "approved" ? <div className="result pass"><h4><Icon n="check" />강사님이 승인했어요</h4><p dangerouslySetInnerHTML={{ __html: window.DB.esc(fs(s.review.at)) + (s.review.comment ? " · " + window.DB.linkify(s.review.comment) : "") }} /></div>
+      : <div className="result fix"><h4><Icon n="alert" />강사님이 보완을 요청했어요</h4><p dangerouslySetInnerHTML={{ __html: window.DB.linkify(s.review.comment || "내용을 보완해서 다시 제출해 주세요.") }} /></div>) : null}
     {s.result.pass ? <div className="result pass" style={s.review ? { opacity: ".7" } : undefined}><h4><Icon n="check" />자동검수 통과</h4><p>{fs(s.at)} 제출 · 진행률에 반영되었습니다.{s.review ? "" : " 강사님이 한 번 더 확인할 수 있어요."}</p>{s.result.ok.length ? <ul>{s.result.ok.map((t, i) => <li key={i}>{t}</li>)}</ul> : null}</div>
       : <div className="result fix"><h4><Icon n="alert" />자동검수 · 보완이 필요해요</h4><p>아래 항목을 채워서 다시 제출해 주세요.</p><ul>{s.result.reasons.map((t, i) => <li key={i}>{t}</li>)}</ul></div>}
   </>;
@@ -206,8 +206,8 @@ function Mission({ no, id }) {
         <section className="card">
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "12px" }}>{m.required ? <span className="badge badge-ink">필수</span> : <span className="badge badge-neutral">{X.kindOf(m).short}</span>}<span className="badge badge-neutral">{typeLabel}</span>
             <span className={"badge " + (late ? "badge-negative" : "badge-neutral")}>{fmtMD(X.deadlineOf(w))} 마감{late ? " 지남" : ""}</span><StateBadge id={id} /></div>
-          <p style={{ margin: "0 0 20px", fontSize: "16px", lineHeight: "1.75" }}>{m.desc}</p>
-          {(m.steps || []).length ? <><p className="side-label">이렇게 하세요</p><ol className="steps">{m.steps.map((x, i) => <li key={i}>{x}</li>)}</ol></> : null}
+          <p style={{ margin: "0 0 20px", fontSize: "16px", lineHeight: "1.75" }} dangerouslySetInnerHTML={{ __html: window.DB.linkify(m.desc) }} />
+          {(m.steps || []).length ? <><p className="side-label">이렇게 하세요</p><ol className="steps">{m.steps.map((x, i) => <li key={i} dangerouslySetInnerHTML={{ __html: window.DB.linkify(x) }} />)}</ol></> : null}
           {(m.templates || []).length ? <div className="mcard-tpl" style={{ marginTop: "14px" }}>{m.templates.map((f, i) => tplLink(f, "tpl-btn", <><Icon n="download" c="xs" />과제 양식 다운로드</>, i))}</div> : null}
           <hr style={{ border: "0", borderTop: "1px solid var(--line-soft)", margin: "24px 0" }} />
           <form id="submit-form" data-id={id} className="stack" noValidate onSubmit={submit}>

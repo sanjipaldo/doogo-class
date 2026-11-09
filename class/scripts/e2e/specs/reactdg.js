@@ -428,6 +428,46 @@ module.exports = {
         "수강생 커리큘럼: 상세에서 이 수강생만 다른 커리큘럼 → 주차별 강의가 그 커리큘럼(예전 화면 = React) → ‘기수 커리큘럼 그대로’로 되돌리면 기수 커리큘럼", { a1: Object.assign({}, a1, { want: a1.want }), t1: [l1.off.title, l1.all.title], a2: { saved: a2.saved, want: a2.want }, t2: [l2.off.title, l2.all.title] }, ap);
       await ap.context().close();
     }
+    // 1-11) 글 속 주소는 파란 링크 · 새 창 (2026-11-09): 강사센터 › 과제 › 과제 설명에 주소 → 수강생 과제 상세(예전 화면 = React)에서 a.auto-link(새 창) → 되돌리기
+    {
+      const URL1 = "https://www.doogoclass.com/curriculum/l1-1";
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "주소 링크 · 강사센터");
+      await FL.instructor(ap, base, info); await L.reactCookie(ap, base, "all");
+      const fld = 'form#coll-form textarea[name="desc"]';
+      const edit = async (val) => {
+        await L.open(ap, base, "/center/missions"); await ap.waitForTimeout(600);
+        const cur = await ap.evaluate((sid) => { const d = window.DB.data, s = (d.students || []).find((x) => x.id === sid), co = s && (d.cohorts || []).find((c) => c.id === s.cohortId); return (s && s.curriculumId) || (co && co.curriculumId) || "main"; }, info.student.sid);
+        const has = await ap.$$eval("#cur-pick option", (os) => os.map((o) => o.value)).catch(() => []);
+        if (has.indexOf(cur) >= 0 && (await ap.$eval("#cur-pick", (x) => x.value)) !== cur) { await ap.selectOption("#cur-pick", cur); await ap.waitForTimeout(600); }
+        const b = await ap.$('[data-action="item-edit"][data-coll="mission"]'); if (!b) return null;
+        const mid = await b.getAttribute("data-id"); await b.click(); await ap.waitForSelector(fld, { timeout: 5000 });
+        const was = await ap.$eval(fld, (x) => x.value);
+        await ap.fill(fld, typeof val === "function" ? val(was) : val); await ap.click('button[type="submit"][form="coll-form"]'); await ap.waitForTimeout(700);
+        const err = await ap.$eval("#coll-error", (x) => x.textContent).catch(() => "");
+        if (err) await ap.click('[data-action="modal-close"]').catch(() => {}); else await L.flushed(ap);
+        return { mid, was, err };
+      };
+      const ok = await edit((was) => (was ? was + "\n" : "") + "어려우시다면 여기를 보세요! " + URL1 + ".");
+      const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(sp, "주소 링크 · 과제 상세");
+      await FL.student(sp, base, info); await L.reactCookie(sp, base, "all"); await L.open(sp, base, "/home"); await sp.waitForTimeout(500);
+      const href = ok && await sp.evaluate((mid) => { const X = window.DGA, S = X && X.st(), w = S && S.D && S.D.weeks.find((x) => x.missions.some((m) => m.id === mid)); return w ? "/missions/" + w.no + "/" + mid : null; }, ok.mid);
+      const out = {};
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(sp, base, mode); await L.open(sp, base, href || "/missions/1"); await sp.waitForTimeout(500);
+        out[mode] = await sp.evaluate((u) => { const a = Array.from(document.querySelectorAll("a.auto-link")).find((x) => x.getAttribute("href") === u); if (!a) return { miss: location.pathname, body: document.body.innerText.slice(0, 300) }; const p = a.parentElement, c = getComputedStyle(a); return { txt: a.textContent, target: a.target, rel: a.rel, after: (p.textContent.split(u)[1] || "").slice(0, 1), color: c.color, line: c.textDecorationLine }; }, URL1);
+        out[mode].shape = await L.domShape(sp);
+      }
+      await sp.context().close();
+      const good = (o) => !!o && o.txt === URL1 && o.target === "_blank" && /noopener/.test(o.rel) && o.after === "." && o.color === "rgb(26, 111, 224)" && /underline/.test(o.line);
+      const d = out.off && out.all ? L.shapeDiff(out.off.shape, out.all.shape) : "없음";
+      await run.check(!!ok && !ok.err && !!href && good(out.off) && good(out.all) && !d, "과제 설명 속 주소 → 파란 밑줄 링크 · 새 창 (끝 마침표는 링크 밖 · 예전 화면 = React)",
+        { ok, href, off: out.off && Object.assign({}, out.off, { shape: undefined }), all: out.all && Object.assign({}, out.all, { shape: undefined }), d });
+      const back = ok && await edit(ok.was || "");
+      await run.check(!!back && !back.err, "되돌리기: 과제 설명을 원래 글로", back, ap);
+      await ap.context().close();
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

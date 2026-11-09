@@ -952,7 +952,9 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .rich ul li::marker { color: var(--mute); }
 .rich ol li::marker { font-weight: 800; color: var(--ink); }
 .rich strong { font-weight: 800; color: var(--ink); }
-.rich a { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+/* 글 속 주소는 파란 링크 · 새 창 (2026-11-09 · DB.linkify · DB.rich) */
+.rich a, a.auto-link { color: #1a6fe0; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; word-break: break-all; }
+.rich a:hover, a.auto-link:hover { color: #1255b8; }
 .rich hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
 .rich-note { padding: 14px 16px; border-radius: var(--r-md); background: var(--primary-pale); color: var(--ink); font-weight: 600; }
 .article .body, .custom-page .body, .res-pop-body { white-space: normal; }
@@ -2134,6 +2136,8 @@ body.lib-gated #main > .page { filter: blur(6px); pointer-events: none; user-sel
 
 /* ===== VOD 두잉고 블랙 모드 (html.th-night) ===== */
 html.th-night { color-scheme: dark; }
+html.th-night .rich a, html.th-night a.auto-link { color: #7db3ff; }
+html.th-night .rich a:hover, html.th-night a.auto-link:hover { color: #a9cdff; }
 .th-night body { background: var(--canvas-soft); }
 .th-night .btn-secondary:hover { background: #2a2b31; }
 .th-night .input, .th-night .textarea, .th-night select.input { background: #111215; border-color: var(--line); color: var(--ink); }

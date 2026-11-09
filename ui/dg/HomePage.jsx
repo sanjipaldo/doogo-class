@@ -67,7 +67,7 @@ function MainLecBtn({ url, cls, text }) {
 }
 export function MainLecCard({ compact }) {
   const m = DGA().mainLec(); if (!m) return null;
-  return <section className={"card ml-card" + (compact ? " sm" : "")}><span className="ml-ic"><Icon n="monitorPlay" /></span><div className="ml-t"><small>메인 강의{m.platform ? " · " + m.platform : ""}</small><b>{m.platform ? m.platform + "에서 메인 강의를 들어요" : "메인 강의는 외부 강의실에서 들어요"}</b>{m.note && !compact ? <p>{m.note}</p> : null}</div><MainLecBtn /></section>;
+  return <section className={"card ml-card" + (compact ? " sm" : "")}><span className="ml-ic"><Icon n="monitorPlay" /></span><div className="ml-t"><small>메인 강의{m.platform ? " · " + m.platform : ""}</small><b>{m.platform ? m.platform + "에서 메인 강의를 들어요" : "메인 강의는 외부 강의실에서 들어요"}</b>{m.note && !compact ? <p dangerouslySetInnerHTML={{ __html: window.DB.linkify(m.note) }} /> : null}</div><MainLecBtn /></section>;
 }
 function LevelCard({ lv }) {
   const S = st();

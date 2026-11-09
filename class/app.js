@@ -1100,7 +1100,7 @@
             // 이전 · 다음은 늘 한 쌍으로 (없는 쪽은 흐리게) — 모바일에서도 줄이 흐트러지지 않게
             '<div class="vt-nav">' + (prev ? '<a class="btn btn-secondary" href="' + learnHref(pid, prev.id) + '">' + icon("chevLeft", "sm") + "이전 강의</a>" : '<span class="btn btn-secondary is-off" aria-disabled="true">' + icon("chevLeft", "sm") + "이전 강의</span>") + (next ? '<a class="btn btn-secondary" href="' + learnHref(pid, next.id) + '">다음 강의 ' + icon("chevRight", "sm") + "</a>" : '<span class="btn btn-secondary is-off" aria-disabled="true">다음 강의 ' + icon("chevRight", "sm") + "</span>") + "</div>" +
             (on("bot") ? '<button type="button" class="btn btn-tertiary vt-bot" data-action="bot-open">' + icon("bot", "sm") + esc(D.brand.botName) + "에게 묻기</button>" : "") + "</div>" +
-          (cur.desc ? '<div class="vt-sec"><h2>' + icon("book", "sm") + "강의 노트</h2><p>" + esc(cur.desc).replace(/\n/g, "<br>") + "</p></div>" : "") +
+          (cur.desc ? '<div class="vt-sec"><h2>' + icon("book", "sm") + "강의 노트</h2><p>" + DB.linkify(cur.desc).replace(/\n/g, "<br>") + "</p></div>" : "") +
           '<div class="vt-sec"><h2>' + icon("paperclip", "sm") + "수업 자료" + (fl.length ? " <small>" + fl.length + "</small>" : "") + "</h2>" + (fl.length ? vtFiles(fl) : '<p class="vt-empty">이 강의에는 수업 자료가 없어요. 다른 강의 자료는 ‘자료’ 탭에서 모아 볼 수 있어요.</p>') + "</div>" +
         "</section></div>" +
         '<aside class="vt-side">' + tabs + '<div class="vt-pane' + (tab === "toc" ? " on" : "") + '" data-pane="toc">' + toc + progCard + '</div><div class="vt-pane' + (tab === "note" ? " on" : "") + '" data-pane="note">' + notePane + '</div><div class="vt-pane' + (tab === "files" ? " on" : "") + '" data-pane="files">' + filePane + "</div></aside>" +
@@ -1152,7 +1152,7 @@
     return u ? '<a class="btn ' + (cls || "btn-primary") + ' ml-btn" href="' + esc(u) + '" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + esc(text || m.label || "메인 강의 들으러 가기") + "</a>" : '<span class="btn ' + (cls || "btn-primary") + ' ml-btn is-off" aria-disabled="true">' + icon("clock", "sm") + "링크 준비 중</span>"; };
   function mainLecCard(compact) {
     const m = mainLec(); if (!m) return "";
-    return '<section class="card ml-card' + (compact ? " sm" : "") + '"><span class="ml-ic">' + icon("monitorPlay") + '</span><div class="ml-t"><small>메인 강의' + (m.platform ? " · " + esc(m.platform) : "") + "</small><b>" + (m.platform ? esc(m.platform) + "에서 메인 강의를 들어요" : "메인 강의는 외부 강의실에서 들어요") + "</b>" + (m.note && !compact ? "<p>" + esc(m.note) + "</p>" : "") + "</div>" + mainBtn() + "</section>";
+    return '<section class="card ml-card' + (compact ? " sm" : "") + '"><span class="ml-ic">' + icon("monitorPlay") + '</span><div class="ml-t"><small>메인 강의' + (m.platform ? " · " + esc(m.platform) : "") + "</small><b>" + (m.platform ? esc(m.platform) + "에서 메인 강의를 들어요" : "메인 강의는 외부 강의실에서 들어요") + "</b>" + (m.note && !compact ? "<p>" + DB.linkify(m.note) + "</p>" : "") + "</div>" + mainBtn() + "</section>";
   }
   const lessonWord = () => (D.brand && D.brand.lessonLabel) || "강의 영상";
   function pageCurriculum(r) {
@@ -1185,7 +1185,7 @@
     }).join("");
     const watched = w.lessons.filter((l) => P.watched[l.id]).length;
     return '<section class="card cw">' + head +
-      (w.goal ? '<div class="cw-goal"><span class="cw-goal-label">' + icon("target", "sm") + "핵심 목표</span><p>" + esc(w.goal) + "</p></div>" : "") +
+      (w.goal ? '<div class="cw-goal"><span class="cw-goal-label">' + icon("target", "sm") + "핵심 목표</span><p>" + DB.linkify(w.goal) + "</p></div>" : "") +
       (w.howto ? '<div class="cw-sec cw-howto"><h3>' + icon("checks", "sm") + "이번 주 진행 방법</h3>" + DB.rich(w.howto) + "</div>" : "") +
       (w.lessons.length ? '<details class="cw-lessons"' + " open" + '><summary>' + icon("play", "sm") + esc(lessonWord()) + " " + w.lessons.length + '개 <span class="tiny">' + watched + "개 시청 완료</span>" + icon("chevDown", "sm") + "</summary>" +
         w.lessons.map((l) => '<a class="lesson" href="#/curriculum/' + l.id + '">' + thumb(l) + '<div><div class="lesson-title">' + esc(l.title) + '</div><div class="lesson-desc">' + esc(l.desc) + "</div></div>" +
@@ -1350,8 +1350,8 @@
         '<section class="card">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' + (m.required ? '<span class="badge badge-ink">필수</span>' : '<span class="badge badge-neutral">' + kindOf(m).short + "</span>") + '<span class="badge badge-neutral">' + typeLabel + "</span>" +
             '<span class="badge ' + (late ? "badge-negative" : "badge-neutral") + '">' + fmtMD(deadlineOf(w)) + " 마감" + (late ? " 지남" : "") + "</span>" + stateBadge(id) + "</div>" +
-          '<p style="margin:0 0 20px;font-size:16px;line-height:1.75">' + esc(m.desc) + "</p>" +
-          ((m.steps || []).length ? '<p class="side-label">이렇게 하세요</p><ol class="steps">' + m.steps.map((s) => "<li>" + esc(s) + "</li>").join("") + "</ol>" : "") +
+          '<p style="margin:0 0 20px;font-size:16px;line-height:1.75">' + DB.linkify(m.desc) + "</p>" +
+          ((m.steps || []).length ? '<p class="side-label">이렇게 하세요</p><ol class="steps">' + m.steps.map((s) => "<li>" + DB.linkify(s) + "</li>").join("") + "</ol>" : "") +
           ((m.templates || []).length ? '<div class="mcard-tpl" style="margin-top:14px">' + tplBtns(m) + "</div>" : "") +
           '<hr style="border:0;border-top:1px solid var(--line-soft);margin:24px 0">' +
           form + '<div id="result">' + (last ? resultBox(last) : "") + "</div>" +
@@ -1377,8 +1377,8 @@
     let html = "";
     if (s.review) {
       html += s.review.status === "approved"
-        ? '<div class="result pass"><h4>' + icon("check") + "강사님이 승인했어요</h4><p>" + esc(fmtStamp(s.review.at)) + (s.review.comment ? " · " + esc(s.review.comment) : "") + "</p></div>"
-        : '<div class="result fix"><h4>' + icon("alert") + "강사님이 보완을 요청했어요</h4><p>" + esc(s.review.comment || "내용을 보완해서 다시 제출해 주세요.") + "</p></div>";
+        ? '<div class="result pass"><h4>' + icon("check") + "강사님이 승인했어요</h4><p>" + esc(fmtStamp(s.review.at)) + (s.review.comment ? " · " + DB.linkify(s.review.comment) : "") + "</p></div>"
+        : '<div class="result fix"><h4>' + icon("alert") + "강사님이 보완을 요청했어요</h4><p>" + DB.linkify(s.review.comment || "내용을 보완해서 다시 제출해 주세요.") + "</p></div>";
     }
     if (s.result.pass) {
       html += '<div class="result pass"' + (s.review ? ' style="opacity:.7"' : "") + "><h4>" + icon("check") + "자동검수 통과</h4><p>" + esc(fmtStamp(s.at)) + " 제출 · 진행률에 반영되었습니다." + (s.review ? "" : " 강사님이 한 번 더 확인할 수 있어요.") + "</p>" +
@@ -1573,7 +1573,7 @@
     const t = q.trim().toLowerCase();
     const list = D.faqs.filter((f) => (faqCat === "전체" || (f.category || "기타") === faqCat) && (!t || (f.q + f.a + (f.tags || []).join(" ")).toLowerCase().indexOf(t) !== -1));
     if (!list.length) return '<div class="empty">' + icon("search") + '<div>검색 결과가 없어요.</div></div>';
-    return list.map((f) => '<details class="faq"><summary><span class="q">Q</span><span><small class="faq-cat">' + esc(f.category || "기타") + "</small>" + esc(f.q) + "</span>" + icon("chevDown", "sm chev") + '</summary><div class="a">' + esc(f.a) + "</div></details>").join("");
+    return list.map((f) => '<details class="faq"><summary><span class="q">Q</span><span><small class="faq-cat">' + esc(f.category || "기타") + "</small>" + esc(f.q) + "</span>" + icon("chevDown", "sm chev") + '</summary><div class="a">' + DB.linkify(f.a) + "</div></details>").join("");
   }
   const myRequests = () => DB.requests(INS.id, preview ? me : null).filter((x) => !DB.isVodStudent(x.s) || (me && x.s.id === me.id));
   function pageRequests() {
@@ -1644,12 +1644,12 @@
       '<a class="back-link" href="#/qna/requests">' + icon("arrowLeft", "sm") + (vq ? "1:1 코칭 목록" : "1:1 요청 목록") + "</a>" +
       '<article class="card req-detail"><div class="req-detail-top">' + (q.answer ? '<span class="badge badge-positive">답변완료</span>' : '<span class="badge badge-neutral">답변대기</span>') + '<span class="badge badge-neutral">' + esc(q.category || "기타") + '</span><span class="badge badge-neutral">' + icon("lock", "xs") + "비공개</span><span class=\"req-no\">#" + x.no + "</span></div>" +
         "<h2>" + esc(q.title) + '</h2><div class="meta">' + esc(me.name) + " · " + DB.date.toStr(d) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + "</div>" +
-        '<div class="body">' + esc(q.body) + "</div>" +
+        '<div class="body">' + DB.linkify(q.body) + "</div>" +
         ((q.images || []).length ? '<div class="req-shots">' + q.images.map((im) => '<a href="' + im.data + '" target="_blank" rel="noopener"><img src="' + im.data + '" alt="' + esc(im.name) + '"></a>').join("") + "</div>" : "") +
       "</article>" +
       '<div class="section-head"><h2>강사 답변</h2></div>' +
       (q.answer
-        ? '<section class="card req-answer"><div class="req-answer-top"><b>' + esc(D.brand.instructor) + " · 운영자</b><span>" + (q.answeredAt ? DB.date.toStr(new Date(q.answeredAt)) + " " + String(new Date(q.answeredAt).getHours()).padStart(2, "0") + ":" + String(new Date(q.answeredAt).getMinutes()).padStart(2, "0") : "") + '</span></div><div class="body">' + esc(q.answer) + "</div></section>"
+        ? '<section class="card req-answer"><div class="req-answer-top"><b>' + esc(D.brand.instructor) + " · 운영자</b><span>" + (q.answeredAt ? DB.date.toStr(new Date(q.answeredAt)) + " " + String(new Date(q.answeredAt).getHours()).padStart(2, "0") + ":" + String(new Date(q.answeredAt).getMinutes()).padStart(2, "0") : "") + '</span></div><div class="body">' + DB.linkify(q.answer) + "</div></section>"
         : '<section class="card empty">' + icon("clock") + "<div>강사님이 확인하고 있어요. 답변이 달리면 여기에 바로 보여요.</div>" + (preview ? "" : '<button type="button" class="btn btn-secondary btn-sm" data-action="req-cancel" data-id="' + esc(q.id) + '">' + (vq && q.coach ? "질문 취소하고 코칭권 돌려받기" : "요청 취소하기") + "</button>") + "</section>") +
       "</div>";
   }

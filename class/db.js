@@ -40,11 +40,15 @@
   /** 본문 서식: 줄바꿈 그대로 + 간단한 표시만 지원 (강사가 외울 것 없이 쓰는 정도)
    *   ## 소제목 · - 목록 (· • 도 됨) · 1. 번호 목록 · > 강조 상자 · --- 구분선 · **굵게** · 주소는 자동 링크
    *   opts.token(n) 을 주면 [사진1] 같은 자리에 그 결과를 넣는다 (공지 사진) */
+  /* 주소 자동 링크 (2026-11-09): 글에 넣은 http(s) 주소를 파란 링크로 · 새 창으로 열려요 — 끝에 붙은 마침표 · 쉼표 · 괄호는 링크에서 빼요 */
+  const URL_RE = /https?:\/\/(?:(?!&quot;|&#39;|&lt;|&gt;)[^\s<"'])+/g;
+  /** 이미 이스케이프한 HTML 안의 주소를 링크로 */
+  const linkUrls = (h) => String(h).replace(URL_RE, (u) => { const m = u.match(/(?:[.,;:!?)\]’”]|&amp;)+$/), tail = m ? m[0] : "", url = tail ? u.slice(0, -tail.length) : u; return url ? '<a class="auto-link" href="' + url + '" target="_blank" rel="noopener">' + url + "</a>" + tail : u; });
+  /** 글(줄글) → 이스케이프 + 주소 링크 */
+  const linkify = (t) => linkUrls(esc(t));
   function rich(text, opts) {
     opts = opts || {};
-    const inline = (t) => esc(t)
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/(https?:\/\/[^\s<]+[^\s<.,)!?’”])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    const inline = (t) => linkUrls(esc(t).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"));
     const out = [];
     let para = [], list = null;
     const flushP = () => { if (para.length) { out.push("<p>" + para.join("<br>") + "</p>"); para = []; } };
@@ -1128,7 +1132,7 @@
   };
 
   window.DB = {
-    load, save, reset, store, clone, uid, esc, youtubeId, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
+    load, save, reset, store, clone, uid, esc, linkify, youtubeId, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
     get data() { return db; },
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
