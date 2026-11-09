@@ -2769,6 +2769,14 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       i47("curriculum") > 0 && i47("curriculum") < i47("missions") && i47("missions") < i47("docs") && i47("docs") < i47("replays") && i47("replays") < i47("showcase") && /if \(vod\) \{ const di = content\.findIndex\(\(x\) => x\[0\] === "docs"\)/.test(ad47),
       "기본 순서(새 강사 · 저장 전) · 강사센터 왼쪽 메뉴도 주차별 강의 (커리큘럼) → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (VOD 강의실 꾸미기는 예전 순서)");
   }
+  {
+    console.log("48) 수강생 메뉴 = 강사센터 메뉴 구성 그대로 (두잉고 LIVE · 2026-11-09)");
+    const ap48 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), mo48 = fs.readFileSync(path.join(ROOT, "../ui/dg/More.jsx"), "utf8");
+    ok(/const needOk = \(key\) => TRACK !== "vod" \|\| !NEEDS\[key\] \|\| !!NEEDS\[key\]\(\);/.test(ap48) && /const on = \(key\) => DB\.menuOn\(MID\(\), key\) && needOk\(key\);/.test(ap48) && /items\.filter\(\(x\) => x\.on && needOk\(x\.key\)\)/.test(ap48) && ap48.indexOf("(!NEEDS[x.key] || NEEDS[x.key]())") < 0,
+      "두잉고 LIVE: 켠 메뉴는 내용이 아직 없어도 왼쪽 메뉴 · 화면 그대로 (라이브 다시보기 · 모범 과제 · 용어 사전) — VOD 버전만 내용이 있을 때 (화면 확인은 e2e reactdg 1-14)");
+    ok(/if \(on\("replays"\) && replaysSorted\(\)\.length\) out\.push\("지난 라이브 다시 볼래요"\)/.test(ap48) && /if \(!list\.length\) return \{ text: "아직 ‘" \+ ML\("replays"\)/.test(ap48) && /아직 등록된 용어가 없어요/.test(ap48) && /아직 등록된 용어가 없어요/.test(mo48),
+      "비어 있을 때: AI 조교 ‘지난 라이브 다시 볼래요’ 칩은 영상이 있을 때만 · 물으면 ‘아직 올라온 영상이 없어요’ · 용어 사전 ‘아직 등록된 용어가 없어요’ (예전 화면 · React)");
+  }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });

@@ -258,7 +258,7 @@ export function NotesPage({ n }) { return <NotesBody key={n} />; }
 function GlList({ q, cat }) {
   const X = DGA(), S = st(), G = S.D.glossary || [], t = String(q || "").trim().toLowerCase().replace(/\s/g, "");
   const list = G.filter((g) => (cat === "전체" || (g.category || "기타") === cat) && (!t || (g.term + g.desc + (g.category || "")).toLowerCase().replace(/\s/g, "").indexOf(t) !== -1)).sort((a, b) => String(a.term).localeCompare(String(b.term), "ko"));
-  if (!list.length) return <Empty ic="search">찾는 용어가 없어요. {S.D.brand.botName}에게 물어보세요.</Empty>;
+  if (!list.length) return <Empty ic="search">{G.length ? <>찾는 용어가 없어요. {S.D.brand.botName}에게 물어보세요.</> : <>아직 등록된 용어가 없어요. 모르는 말은 {S.D.brand.botName}에게 물어보세요.</>}</Empty>;
   const groups = []; list.forEach((g) => { const k = X.initialOf(g.term); let grp = groups.find((x) => x.k === k); if (!grp) groups.push(grp = { k, items: [] }); grp.items.push(g); });
   const jump = (e, k) => { e.preventDefault(); const g = document.getElementById("gl-" + encodeURIComponent(k)); if (g) g.scrollIntoView({ behavior: "smooth", block: "start" }); };
   return <>

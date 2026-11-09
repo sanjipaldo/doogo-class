@@ -154,7 +154,7 @@
   ];
   const navLabel = (n) => (typeof n.label === "function" ? n.label() : n.label);
   // 마스터가 강사별로 정한 메뉴 구성(켜기·끄기·이름·순서·추가 메뉴)을 따른다
-  // 라이브 다시보기 · 모범 과제 · 용어 사전은 강사가 내용을 올렸을 때만 메뉴에 보인다
+  // (VOD 버전) 자료함 · 실습 체크리스트 · 용어 사전은 내용이 있을 때만 메뉴에 보여요 — 두잉고 LIVE 는 메뉴 구성 그대로 (아래 needOk)
   const NEEDS = { replays: () => (D.replays || []).length, showcase: () => (D.showcase || []).length, glossary: () => (D.glossary || []).length,
     docs: () => TRACK !== "vod" || (D.docsGuide || []).length, library: () => TRACK !== "vod" || libList().length > 0 };
   // VOD 버전 자료함: 내려받을 수 있는 자료만 (주소가 없는 ‘준비 중’ 자료는 숨김) + 강의마다 올린 수업 자료 모음
@@ -167,12 +167,15 @@
     return out;
   }
   const LIB_LESSON = { id: "lesson", label: "수업 자료 모음", icon: "paperclip", cls: "ri-2", desc: () => "VOD 강의마다 강사님이 올린 교안 · 실습지를 한곳에 모았어요" };
-  const on = (key) => DB.menuOn(MID(), key) && (!NEEDS[key] || !!NEEDS[key]());
+  // 두잉고 LIVE (2026-11-09): 왼쪽 메뉴는 강사센터 › 메뉴 구성에서 켠 그대로 — 라이브 다시보기 · 모범 과제 · 용어 사전도 내용이 아직 없어도 보이고,
+  // 들어가면 ‘아직 … 없어요’ 안내. VOD 버전만 예전처럼 내용이 있을 때만 (자료함 · 실습 체크리스트 · 용어 사전)
+  const needOk = (key) => TRACK !== "vod" || !NEEDS[key] || !!NEEDS[key]();
+  const on = (key) => DB.menuOn(MID(), key) && needOk(key);
   /** 화면 제목 · 경로에 쓰는 메뉴 이름 (강사가 바꾼 이름 우선) */
   const ML = (key) => { const it = DB.menuConfig(MID()).items.find((x) => x.key === key); const d = NAV_DEFS.find((n) => n.id === key); return (it && it.label) || (d ? navLabel(d) : DEF_LABEL(key)); };
   const libList = () => (TRACK === "vod" ? (lessonFiles().length ? [LIB_LESSON] : []).concat(LIB.filter((c) => DB.libOn(MID(), c.id) && resOf(c.id).length)) : LIB.filter((c) => DB.libOn(MID(), c.id)));
   function NAV() {
-    return DB.menuConfig(MID()).items.filter((x) => x.on && (!NEEDS[x.key] || NEEDS[x.key]())).map((x) => {
+    return DB.menuConfig(MID()).items.filter((x) => x.on && needOk(x.key)).map((x) => {
       if (DB.isCustom(x.key)) {
         return x.type === "link"
           ? { id: x.key, label: x.label || "링크", icon: x.icon || "link", href: x.url || "#", external: true }
@@ -1688,7 +1691,7 @@
       return v;
     }
     const out = ["이번 주 과제 마감은?", "내 진도 알려줘", "다음 라이브 언제예요?"];
-    if (on("replays")) out.push("지난 라이브 다시 볼래요");
+    if (on("replays") && replaysSorted().length) out.push("지난 라이브 다시 볼래요");
     if (on("glossary") && (D.glossary || [])[0]) out.push("‘" + D.glossary[0].term + "’ 뜻이 뭐예요?");
     if (on("certificate")) out.push("수료하려면 뭘 해야 해요?");
     if (DB.libOn(MID(), "file") && (D.resources.file || []).some((x) => x.tool === "calculator")) out.push("마진 계산은 어떻게 해요?");
@@ -1778,6 +1781,7 @@
     }
     if (on("replays") && /(다시\s*보기|다시\s*볼|놓쳤|지난\s*라이브|녹화|replay)/i.test(t)) {
       const list = replaysSorted().slice(0, 3);
+      if (!list.length) return { text: "아직 ‘" + ML("replays") + "’에 올라온 영상이 없어요. 올라오면 거기서 주차별로 다시 볼 수 있어요.", links: [[ML("replays"), "#/replays"]] };
       return { text: "지난 라이브는 ‘" + ML("replays") + "’에서 주차별로 다시 볼 수 있어요.\n최근 영상: " + list.map((x) => "‘" + x.title + "’").join(", "), links: [[ML("replays"), "#/replays"]].concat(list[0] ? [[list[0].title, "#/replays/" + list[0].id]] : []) };
     }
     // 용어 사전에 있는 단어를 물으면 바로 풀이
@@ -2401,7 +2405,7 @@
     const t = String(q || "").trim().toLowerCase().replace(/\s/g, "");
     const list = (D.glossary || []).filter((g) => (glCat === "전체" || (g.category || "기타") === glCat) && (!t || (g.term + g.desc + (g.category || "")).toLowerCase().replace(/\s/g, "").indexOf(t) !== -1))
       .sort((a, b) => String(a.term).localeCompare(String(b.term), "ko"));
-    if (!list.length) return empty("search", "찾는 용어가 없어요. " + esc(D.brand.botName) + "에게 물어보세요.");
+    if (!list.length) return empty("search", (D.glossary || []).length ? "찾는 용어가 없어요. " + esc(D.brand.botName) + "에게 물어보세요." : "아직 등록된 용어가 없어요. 모르는 말은 " + esc(D.brand.botName) + "에게 물어보세요.");
     const groups = [];
     list.forEach((g) => { const k = initialOf(g.term); let grp = groups.find((x) => x.k === k); if (!grp) groups.push(grp = { k, items: [] }); grp.items.push(g); });
     return (t ? "" : '<nav class="gl-index" aria-label="초성 색인">' + groups.map((g) => '<a href="#gl-' + encodeURIComponent(g.k) + '" data-action="gl-jump" data-k="' + esc(g.k) + '">' + esc(g.k) + "</a>").join("") + "</nav>") +

@@ -563,6 +563,37 @@ module.exports = {
       await run.check(seq(stu.off, SW) && seq(stu.all, SW) && JSON.stringify(stu.off) === JSON.stringify(stu.all) && cOk(ctr.off) && cOk(ctr.all) && JSON.stringify(ctr.off) === JSON.stringify(ctr.all),
         "메뉴 순서: 수강생 주차별 강의 → 과제 · 미션 → 실무 체크리스트 · 강사센터 주차별 강의 (커리큘럼) → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (예전 화면 = React)", { stu, ctr });
     }
+    // 1-14) 수강생 메뉴 = 강사센터 메뉴 구성 그대로 (2026-11-09): 라이브 다시보기 · 모범 과제 · 용어 사전도 내용이 아직 없어도 메뉴에 보이고, 들어가면 ‘아직 … 없어요’ (예전 화면 = React)
+    //       서버에서 받은 강의실 내용에서 셋을 비운 채로 열어 봐요 (api/bootstrap 응답만 바꿔요 · DB 는 그대로)
+    {
+      const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(sp, "메뉴 구성 그대로 · 수강생");
+      await sp.route(/\/api\/bootstrap(\?|$)/, async (rt) => {
+        const res = await rt.fetch(), j = await res.json().catch(() => null);
+        if (j && Array.isArray(j.docs)) j.docs.forEach((x) => { if (x && /^content:/.test(x[0]) && x[1] && typeof x[1] === "object") { x[1].replays = []; x[1].showcase = []; x[1].glossary = []; } });
+        await rt.fulfill({ response: res, body: JSON.stringify(j) });
+      });
+      await FL.student(sp, base, info); const out = {};
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(sp, base, mode); await L.open(sp, base, "/home"); await sp.waitForTimeout(600);
+        const o = await sp.evaluate(() => {
+          const X = window.DGA, D = window.DB, iid = (X && X.st && X.st().INS && X.st().INS.id) || "moon";
+          const cfg = D.menuConfig(iid).items.filter((x) => x.on && !/^cp_/.test(x.key)).map((x) => x.key);
+          return { cfg, nav: Array.from(document.querySelectorAll("a.nav-item")).map((a) => (a.getAttribute("href") || "").replace(/^\/?#?\//, "").split(/[/?]/)[0]).filter(Boolean), empty: { rp: 0, sc: 0, gl: 0 } };
+        });
+        for (const [k, path, re] of [["rp", "/replays", /아직 올라온 (보충 강의|다시보기 영상)가 없어요/], ["sc", "/showcase", /아직 등록된 모범 과제가 없어요/], ["gl", "/glossary", /아직 등록된 용어가 없어요/]]) {
+          await L.open(sp, base, path); await sp.waitForTimeout(500);
+          o.empty[k] = { path: new URL(sp.url()).pathname, ok: re.test(await sp.evaluate(() => document.body.innerText)) };
+        }
+        o.shape = await L.domShape(sp); out[mode] = o;
+      }
+      await sp.context().close();
+      const good = (o) => !!o && ["replays", "showcase", "glossary"].every((k) => o.cfg.indexOf(k) < 0 || o.nav.indexOf(k) >= 0) && o.cfg.filter((k) => k !== "home").every((k, i, a) => o.nav.indexOf(k) >= 0 && (i === 0 || o.nav.indexOf(a[i - 1]) < o.nav.indexOf(k))) &&
+        ["rp", "sc", "gl"].every((k) => o.empty[k].ok && o.empty[k].path !== "/home");
+      const d = out.off && out.all ? L.shapeDiff(out.off.shape, out.all.shape) : "없음";
+      await run.check(good(out.off) && good(out.all) && !d, "수강생 메뉴 = 강사센터 메뉴 구성(켠 메뉴 · 순서 그대로): 라이브 다시보기 · 모범 과제 · 용어 사전도 내용이 없어도 보이고 ‘아직 … 없어요’ (예전 화면 = React)",
+        { off: out.off && { cfg: out.off.cfg, nav: out.off.nav, empty: out.off.empty }, all: out.all && { cfg: out.all.cfg, nav: out.all.nav, empty: out.all.empty }, d });
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);
