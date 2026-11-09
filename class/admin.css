@@ -180,6 +180,8 @@ textarea.a-input { min-height: 0; resize: vertical; line-height: 1.6; }
 .a-empty .icon { width: 32px; height: 32px; color: var(--m-stone); }
 .a-empty p { margin: 0; font-size: 14px; }
 .a-spacer { flex: 1; }
+.a-copy-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 12px 14px; border-radius: var(--m-r-lg); background: #eef5ff; color: #1d4f91; font-size: 14px; line-height: 1.6; }
+.a-copy-note svg { flex: none; margin-top: 3px; }
 
 /* KPI */
 .a-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }

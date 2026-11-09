@@ -468,6 +468,69 @@ module.exports = {
       await run.check(!!back && !back.err, "되돌리기: 과제 설명을 원래 글로", back, ap);
       await ap.context().close();
     }
+    // 1-12) 수정 창 ‘복사’ (2026-11-09): 지금 창 내용(저장 안 한 고침 포함) → 복사본 창 → 저장하면 원본 바로 아래 · 원본은 그대로 · 새 번호
+    //       강의(같은 주차) · 과제(다른 주차 → 그 주차 끝 · 자동검수 같은 숨은 값까지) · 실무 체크리스트 · 주차(맨 끝 · 강의 · 과제도 새 번호) → 수강생 화면(예전 = React) → 지우기
+    {
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "복사 · 강사센터");
+      await FL.instructor(ap, base, info); await L.reactCookie(ap, base, "all");
+      const go = async (p) => {
+        await L.open(ap, base, p); await ap.waitForTimeout(600);
+        const cur = await ap.evaluate((sid) => { const d = window.DB.data, s = (d.students || []).find((x) => x.id === sid), co = s && (d.cohorts || []).find((c) => c.id === s.cohortId); return (s && s.curriculumId) || (co && co.curriculumId) || "main"; }, info.student.sid);
+        const has = await ap.$$eval("#cur-pick option", (os) => os.map((o) => o.value)).catch(() => []);
+        if (has.indexOf(cur) >= 0 && (await ap.$eval("#cur-pick", (x) => x.value)) !== cur) { await ap.selectOption("#cur-pick", cur); await ap.waitForTimeout(600); }
+      };
+      const weeks = () => ap.evaluate(() => JSON.parse(JSON.stringify(window.DB.curriculum(window.ADM.IID(), window.ADM.ui.curId).weeks)));
+      const docs = () => ap.evaluate(() => JSON.parse(JSON.stringify(window.ADM.C().docsGuide || [])));
+      const modal = () => ap.evaluate(() => { const r = document.getElementById("modal-root"), f = r.querySelector("#coll-form"); return { title: (r.querySelector("#a-modal-title") || {}).textContent, note: (r.querySelector(".a-copy-note") || {}).textContent || "", copyBtn: !!r.querySelector('[data-action="item-copy"]'), del: !!r.querySelector('[data-action="item-delete"]'), week: f && f.cpWeek ? f.cpWeek.value : null, t: f && f.title ? f.title.value : null, save: (r.querySelector('button[type="submit"][form="coll-form"]') || {}).textContent }; });
+      const open = async (coll, id) => { await ap.click('[data-action="item-edit"][data-coll="' + coll + '"][data-id="' + id + '"]'); await ap.waitForSelector("form#coll-form", { timeout: 5000 }); };
+      const copy = async () => { await ap.click('#modal-root [data-action="item-copy"]'); await ap.waitForSelector('form#coll-form[data-copy="1"]', { timeout: 5000 }); };
+      const save = async () => { await ap.click('button[type="submit"][form="coll-form"]'); await ap.waitForTimeout(700); await L.flushed(ap); };
+      const del = async (coll, id) => { await open(coll, id); await ap.click('#modal-root [data-action="item-delete"]'); await ap.waitForSelector('#modal-root [data-action="confirm-ok"]'); await ap.click('#modal-root [data-action="confirm-ok"]'); await ap.waitForTimeout(500); await L.flushed(ap); };
+      // (가) 강의: 제목을 고친 채(저장 안 함) ‘복사’ → 복사본 창 → 저장 → 같은 주차 원본 바로 아래 · 원본 제목 그대로
+      await go("/center/curriculum");
+      const w0 = await weeks(), d0 = await docs(), wk = w0[0], l0 = wk.lessons[0];
+      await open("lesson", l0.id); await ap.fill('form#coll-form input[name="title"]', l0.title + " 새판"); await copy();
+      const m1 = await modal(); await save();
+      const w1 = await weeks(), la = w1[0].lessons, lc = la[1] || {};
+      const lessonOk = m1.title === "강의 복사" && /내용을 복사했어요/.test(m1.note) && !m1.copyBtn && !m1.del && m1.week === String(wk.no) && m1.t === l0.title + " 새판 (복사)" && /복사본 저장/.test(m1.save) &&
+        la.length === wk.lessons.length + 1 && la[0].title === l0.title && lc.title === l0.title + " 새판 (복사)" && !!lc.id && lc.id !== l0.id && lc.youtubeId === l0.youtubeId && (lc.desc || "") === (l0.desc || "");
+      // (나) 과제: 다른 주차(2주차)로 → 그 주차 맨 끝 · 자동검수 · 종류 그대로 · 1주차는 그대로
+      await go("/center/missions");
+      const mo = w1[0].missions[0]; await open("mission", mo.id); await copy();
+      const m2 = await modal(); await ap.selectOption("#cp-week", String(w1[1].no)); await save();
+      const w2 = await weeks(), mc = w2[1].missions[w2[1].missions.length - 1] || {};
+      const missionOk = m2.title === "과제 복사" && m2.week === String(w1[0].no) && w2[0].missions.length === w1[0].missions.length && w2[1].missions.length === w1[1].missions.length + 1 &&
+        mc.title === mo.title + " (복사)" && mc.id && mc.id !== mo.id && JSON.stringify(mc.check || {}) === JSON.stringify(mo.check || {}) && mc.kind === mo.kind && mc.type === mo.type && JSON.stringify(mc.steps || []) === JSON.stringify(mo.steps || []);
+      // (다) 실무 체크리스트 (서류 단계) → 원본 바로 아래
+      await go("/center/docs");
+      const dOk0 = d0.length > 0; let docOk = false, dc = {};
+      if (dOk0) { await open("doc", d0[0].id); await copy(); await save(); const d1 = await docs(); dc = d1[1] || {}; docOk = d1.length === d0.length + 1 && d1[0].id === d0[0].id && dc.title === d0[0].title + " (복사)" && dc.id !== d0[0].id; }
+      // (라) 주차 → 맨 끝 주차 · 그 주차의 강의 · 과제도 새 번호 (진도 · 제출이 섞이지 않게)
+      await go("/center/curriculum");
+      await open("week", String(w2[0].no)); await copy(); const m4 = await modal(); await save();
+      const w4 = await weeks(), wc = w4[w4.length - 1] || {}, oldIds = new Set(w2.flatMap((w) => w.lessons.map((x) => x.id).concat(w.missions.map((x) => x.id))));
+      const weekOk = /맨 끝 주차로/.test(m4.note) && m4.week === null && w4.length === w2.length + 1 && wc.no === w4.length && wc.title === w2[0].title + " (복사)" && wc.lessons.length === w2[0].lessons.length && wc.missions.length === w2[0].missions.length &&
+        wc.lessons.concat(wc.missions).every((x) => !oldIds.has(x.id));
+      await run.check(lessonOk && missionOk && dOk0 && docOk && weekOk, "수정 창 ‘복사’: 강의(원본 바로 아래 · 저장 안 한 고침까지 · 원본 그대로) · 과제(다른 주차 끝 · 자동검수 그대로) · 실무 체크리스트 · 주차(맨 끝 · 새 번호)",
+        { lessonOk, m1, lc: { t: lc.title, id: lc.id }, missionOk, m2, mc: { t: mc.title, check: mc.check, kind: mc.kind }, docOk, dc: dc.title, weekOk, m4, wc: { no: wc.no, t: wc.title } }, ap);
+      // (마) 수강생 주차별 강의에 복사본 (예전 화면 = React)
+      const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(sp, "복사 · 수강생");
+      await FL.student(sp, base, info); const seen = {};
+      for (const mode of ["off", "all"]) { await L.reactCookie(sp, base, mode); await L.open(sp, base, "/curriculum"); await sp.waitForTimeout(600); seen[mode] = await sp.evaluate((t) => document.body.innerText.indexOf(t) >= 0, l0.title + " 새판 (복사)"); seen[mode + "S"] = await L.domShape(sp); }
+      await sp.context().close();
+      const dS = L.shapeDiff(seen.offS, seen.allS);
+      await run.check(seen.off && seen.all && !dS, "수강생 주차별 강의: 복사한 강의가 보여요 (예전 화면 = React)", { off: seen.off, all: seen.all, d: dS });
+      // (바) 복사본 지우기 → 처음 그대로
+      await del("week", String(wc.no)); await del("lesson", lc.id);
+      await go("/center/missions"); await del("mission", mc.id);
+      if (docOk) { await go("/center/docs"); await del("doc", dc.id); }
+      await go("/center/curriculum");
+      const wz = await weeks(), dz = await docs(), sh = (ws) => JSON.stringify(ws.map((w) => [w.no, w.title, w.lessons.map((x) => x.id), w.missions.map((x) => x.id)]));
+      await run.check(sh(wz) === sh(w0) && JSON.stringify(dz.map((x) => x.id)) === JSON.stringify(d0.map((x) => x.id)), "복사본 지우기: 커리큘럼 · 과제 · 실무 체크리스트가 처음 그대로", { wz: sh(wz).slice(0, 300), w0: sh(w0).slice(0, 300) }, ap);
+      await ap.context().close();
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

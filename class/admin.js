@@ -1306,18 +1306,43 @@
     });
   }
 
-  function editItem(coll, id, ctx, seed) {
+  function editItem(coll, id, ctx, seed, copy) {
     const def = COLL[coll], c = C();
     const list = def.list(c, ctx);
-    const item = id ? list.find((x) => (x.id || String(x.no)) === id) : Object.assign({}, def.init ? def.init(ctx, seed) : {});
+    const item = copy ? copy.item : id ? list.find((x) => (x.id || String(x.no)) === id) : Object.assign({}, def.init ? def.init(ctx, seed) : {});
     if (!item) return;
     const attF = def.fields.find((f) => f.type === "attachments");
     attDraft = DB.clone((attF && item[attF.key]) || []);
     imgDraft = DB.clone(item.images || []);
-    openModal((id ? def.name + " 수정" : def.name + " 추가"),
-      '<form id="coll-form" class="a-form" data-coll="' + coll + '" data-id="' + esc(id || "") + '" data-ctx="' + esc(ctx || "") + '" novalidate>' + def.fields.map((f) => fieldHtml(f, item)).join("") + '<p class="a-error" id="coll-error"></p></form>',
-      (id ? btn(icon("trash", "sm") + "삭제", "item-delete", "a-btn-ghost danger", ' data-coll="' + coll + '" data-id="' + esc(id) + '" data-ctx="' + esc(ctx || "") + '"') : "") + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="coll-form">저장</button>', "md");
+    // 복사본 (2026-11-09): 원본 내용 그대로 채운 새 항목 — 고쳐서 저장하면 원본 바로 아래(주차는 맨 끝)에 새로 추가 · 강의 · 과제는 넣을 주차를 골라요
+    const head = copy ? '<p class="a-copy-note">' + icon("copy", "sm") + "<span>‘" + esc(copy.label) + "’ 내용을 복사했어요. 고쳐서 <b>저장</b>하면 " + (coll === "week" ? "맨 끝 주차로" : "원본 바로 아래에") + " 새로 추가돼요. 원본은 그대로예요.</span></p>" +
+      (coll === "lesson" || coll === "mission" ? '<div class="a-field"><label for="cp-week">넣을 주차</label><select class="a-input" id="cp-week" name="cpWeek">' + CUR().weeks.map((w) => '<option value="' + w.no + '"' + (String(w.no) === String(ctx) ? " selected" : "") + ">" + w.no + "주차" + (w.title ? " · " + esc(w.title) : "") + (String(w.no) === String(ctx) ? " (원본과 같은 주차)" : "") + "</option>").join("") + '</select><small class="a-muted">다른 주차를 고르면 그 주차 맨 끝에 들어가요.</small></div>' : "") : "";
+    openModal((copy ? def.name + " 복사" : id ? def.name + " 수정" : def.name + " 추가"),
+      '<form id="coll-form" class="a-form" data-coll="' + coll + '" data-id="' + esc(id || "") + '" data-ctx="' + esc(ctx || "") + '"' + (copy ? ' data-copy="1"' : "") + " novalidate>" + head + def.fields.map((f) => fieldHtml(f, item)).join("") + '<p class="a-error" id="coll-error"></p></form>',
+      (id ? btn(icon("trash", "sm") + "삭제", "item-delete", "a-btn-ghost danger", ' data-coll="' + coll + '" data-id="' + esc(id) + '" data-ctx="' + esc(ctx || "") + '"') + btn(icon("copy", "sm") + "복사", "item-copy", "a-btn-ghost") : "") + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="coll-form">' + (copy ? "복사본 저장" : "저장") + "</button>", "md");
     applyShowIf();
+  }
+  // 수정 창의 ‘복사’: 지금 창에 보이는 내용(아직 저장 안 한 고침 포함)으로 복사본 창을 열어요 — 저장 전엔 아무것도 안 생겨요
+  let copyDraft = null;
+  const COPY_MARK = " (복사)";
+  function copyItem(form) {
+    const coll = form.dataset.coll, def = COLL[coll], c = C(), ctx = form.dataset.ctx, id = form.dataset.id;
+    const orig = def.list(c, ctx).find((x) => (x.id || String(x.no)) === id);
+    if (!orig) return;
+    const err = document.getElementById("coll-error"); err.textContent = "";
+    let cp = DB.clone(orig);
+    if (!readFields(form, def, cp, err)) return;
+    cp = DB.clone(cp); delete cp.id; delete cp.no;
+    // 첨부 · 사진 · (주차를 복사하면) 그 주차의 강의 · 과제는 새 번호로 — 같은 번호가 둘이면 진도 · 제출이 섞여요
+    const reId = (arr, p) => (Array.isArray(arr) ? arr : []).forEach((x) => { if (x && x.id) x.id = DB.uid(p); });
+    def.fields.forEach((f) => { if (f.type === "attachments") reId(cp[f.key], "a"); });
+    reId(cp.images, "im");
+    if (coll === "week") { reId(cp.lessons, "l"); reId(cp.missions, "m"); }
+    const tf = def.fields.find((f) => f.type === "text" && typeof cp[f.key] === "string" && cp[f.key].trim());
+    const label = tf ? cp[tf.key] : def.name;
+    if (tf && cp[tf.key].slice(-COPY_MARK.length) !== COPY_MARK) cp[tf.key] += COPY_MARK;
+    copyDraft = { coll, of: id, ctx, item: cp };
+    editItem(coll, "", ctx, null, { item: cp, label });
   }
   function applyShowIf() {
     const form = document.getElementById("coll-form");
@@ -1327,11 +1352,8 @@
       el.hidden = !form[k] || form[k].value !== v;
     });
   }
-  function saveItem(form) {
-    const def = COLL[form.dataset.coll], c = C(), ctx = form.dataset.ctx, id = form.dataset.id;
-    const list = def.list(c, ctx);
-    const item = id ? list.find((x) => (x.id || String(x.no)) === id) : Object.assign({}, def.init ? def.init(ctx) : {});
-    const err = document.getElementById("coll-error");
+  // 폼 칸 값을 항목에 넣어요 (저장 · 복사 같이) — 잘못된 값이면 안내하고 false
+  function readFields(form, def, item, err) {
     for (const f of def.fields) {
       const el = f.type === "attachments" || f.type === "images" ? true : form[f.key];
       if (!el) continue;
@@ -1342,11 +1364,22 @@
       else if (f.type === "lines") v = LINES(el.value);
       else if (f.type === "tags") v = TAGS(el.value);
       else if (f.type === "number") v = el.value === "" ? "" : Number(el.value);
-      else if (f.type === "youtube") { v = DB.vidVal(el.value); if (el.value.trim() && !v) { err.textContent = "영상 주소를 확인해 주세요. 유튜브(youtube.com/watch?v=… · youtu.be/…) · 비메오(vimeo.com/…) 주소만 돼요."; return; } }
+      else if (f.type === "youtube") { v = DB.vidVal(el.value); if (el.value.trim() && !v) { err.textContent = "영상 주소를 확인해 주세요. 유튜브(youtube.com/watch?v=… · youtu.be/…) · 비메오(vimeo.com/…) 주소만 돼요."; return false; } }
       else v = el.value.trim();
-      if (f.check) { const bad = f.check(v); if (bad) { err.textContent = bad; return; } }
+      if (f.check) { const bad = f.check(v); if (bad) { err.textContent = bad; return false; } }
       if (f.set) f.set(item, v); else item[f.key] = v;
     }
+    return true;
+  }
+  function saveItem(form) {
+    const def = COLL[form.dataset.coll], c = C(), id = form.dataset.id;
+    // 복사본: 원본의 숨은 값까지 담은 copyDraft 로 · 강의 · 과제는 고른 주차에
+    const cp = !id && form.dataset.copy === "1" && copyDraft && copyDraft.coll === form.dataset.coll ? copyDraft : null;
+    const ctx = cp && form.cpWeek ? form.cpWeek.value : form.dataset.ctx;
+    const list = def.list(c, ctx);
+    const item = id ? list.find((x) => (x.id || String(x.no)) === id) : cp ? cp.item : Object.assign({}, def.init ? def.init(ctx) : {});
+    const err = document.getElementById("coll-error");
+    if (!readFields(form, def, item, err)) return;
     const titleKey = def.fields[0].key;
     if (def.fields[0].type === "text" && !item[titleKey] && titleKey !== "type") { err.textContent = josa(def.fields[0].label, "을", "를") + " 입력해 주세요."; return; }
     if (form.dataset.coll === "mission") {
@@ -1377,11 +1410,13 @@
     if (!id) {
       if (form.dataset.coll === "week") item.no = list.length + 1;
       else item.id = DB.uid(def.idp || "x");
-      if (def.prepend) list.unshift(item); else list.push(item);
+      const at = cp && form.dataset.coll !== "week" && String(ctx) === String(cp.ctx) ? list.findIndex((x) => (x.id || String(x.no)) === cp.of) : -1;
+      if (at >= 0) list.splice(at + 1, 0, item); else if (def.prepend && !cp) list.unshift(item); else list.push(item);
     }
     if (def.after) def.after(c);
     if (!DB.save()) { if (!id) list.splice(list.indexOf(item), 1); toast("저장 공간이 부족해요.", "warn"); DB.load(); return; }
-    commit(josa(def.name, "을", "를") + " 저장했어요.");
+    if (cp) copyDraft = null;
+    commit(cp ? "복사본을 추가했어요." : josa(def.name, "을", "를") + " 저장했어요.");
   }
   function deleteItem(coll, id, ctx) {
     const def = COLL[coll], c = C();
@@ -8707,6 +8742,7 @@
       case "item-add": editItem(d.coll, "", d.ctx); break;
       case "item-edit": editItem(d.coll, d.id, d.ctx); break;
       case "item-delete": deleteItem(d.coll, d.id, d.ctx); break;
+      case "item-copy": { const f = document.getElementById("coll-form"); if (f) copyItem(f); break; }
       case "item-move": moveItem(d.coll, d.id, d.ctx, Number(d.dir)); break;
       // 마스터
       case "ins-add": if (staffDeny("master/instructors")) break; insForm(null); break;

@@ -2736,6 +2736,15 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     ok(/'<div class="a-text">' \+ DB\.linkify\(sub\.text\)/.test(fs.readFileSync(path.join(ROOT, "admin.js"), "utf8")), "강사센터 검수 화면: 수강생이 적어 낸 글 속 주소도 링크");
   }
 
+  {
+    console.log("46) 강사센터 수정 창 ‘복사’ (2026-11-09)");
+    const ad46 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ic46 = fs.readFileSync(path.join(ROOT, "icons.js"), "utf8");
+    ok(/btn\(icon\("copy", "sm"\) \+ "복사", "item-copy", "a-btn-ghost"\)/.test(ad46) && /case "item-copy": \{ const f = document\.getElementById\("coll-form"\); if \(f\) copyItem\(f\); break; \}/.test(ad46) && /\n    copy: '<rect/.test(ic46),
+      "모든 수정 창(강의 · 과제 · 실무 체크리스트 · 주차 · 공지 · FAQ …)의 삭제 옆에 ‘복사’ 버튼");
+    ok(/if \(!readFields\(form, def, cp, err\)\) return;/.test(ad46) && /if \(coll === "week"\) \{ reId\(cp\.lessons, "l"\); reId\(cp\.missions, "m"\); \}/.test(ad46) && /list\.splice\(at \+ 1, 0, item\)/.test(ad46) && /name="cpWeek"/.test(ad46),
+      "복사: 지금 창 내용(저장 안 한 고침 포함) · 원본 바로 아래(주차는 맨 끝) · 새 번호 · 강의 · 과제는 넣을 주차 고르기 (화면 확인은 e2e reactdg 1-12)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);
