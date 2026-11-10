@@ -472,6 +472,10 @@
     const on = side.querySelector(".a-nav.on");
     if (on) { const a = on.getBoundingClientRect(), b = side.getBoundingClientRect(); if (a.top < b.top + 8 || a.bottom > b.bottom - 8) side.scrollTop += a.top - b.top - b.height / 2 + a.height / 2; }
   }
+  /** 이 센터(지금 탭)의 대시보드 주소 — 왼쪽 메뉴 첫 칸 (강사 · 코치 · 마스터 · 파트너 · 온드미디어 · 운영자는 열린 첫 메뉴) */
+  const homeOf = (groups) => { const f = groups && groups[0] && groups[0][1] && groups[0][1][0]; return "#/center" + (f && f[0] ? "/" + f[0] : ""); };
+  /** 코치센터 머리글: 맡은 강의 제목 (2026-11-10) */
+  const coachCourse = () => (isCoach() && INS() ? String(((C() || {}).brand || {}).courseTitle || "") : "");
   function renderShell0(r) {
     const partner = S.role === "partner", PM = partner ? affOf(S.partnerId) : null;
     const media = S.role === "media", MDM = media ? mdMe() : null;
@@ -487,9 +491,9 @@
         (S.role === "master" && S.actingAs ? '<div class="a-acting">' + icon("shieldCheck", "sm") + "<span>마스터 권한으로 <b>" + esc(ins.name) + "</b> 강사센터를 보고 있어요.</span>" + btn("마스터로 돌아가기", "stop-acting", "a-btn-light a-btn-sm") + "</div>" : "") +
         '<header class="a-top' + (ins && isCoach() && myCoachCourses().length > 1 ? " has-csw" : "") + '">' +
           '<button class="a-icon-btn a-menu" type="button" data-action="toggle-nav" aria-label="메뉴">' + icon("menu") + "</button>" +
-          // 로고는 두잉고 첫 화면(/doinggo)으로, 옆의 ‘강사센터’ 글자는 이 센터 첫 화면으로
+          // 로고 · 옆의 ‘강사센터’ 글자 모두 이 센터(지금 탭)의 대시보드로 (2026-11-10 · 예전엔 로고가 두잉고 첫 화면으로 갔어요)
           // 관리 영역 탭이 DOOGO CLASS 면 로고도 DOOGO CLASS (마스터 · 강사 · 코치 — 탭이 있는 센터 모두 · 2026-11-06)
-          (() => { const dcL = master ? MT() === "dc" : !!ins && TRK() === "vod"; return '<span class="a-logo"><a class="a-logo-home' + (dcL ? " a-logo-dc" : "") + '" href="' + (dcL ? "#/vod" : "#/doinggo") + '" title="' + (dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로") + '" aria-label="' + (dcL ? "DOOGO CLASS 홈으로" : "두잉고 홈으로") + '">' + (dcL ? '<img class="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">' : window.doogoClassLock("hm-lock-xs")) + '</a>'; })() + '<a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "파트너센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + "</span>" +
+          (() => { const dcL = master ? MT() === "dc" : !!ins && TRK() === "vod"; return '<span class="a-logo"><a class="a-logo-home' + (dcL ? " a-logo-dc" : "") + '" href="' + homeOf(groups) + '" title="대시보드로" aria-label="대시보드로">' + (dcL ? '<img class="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">' : window.doogoClassLock("hm-lock-xs")) + '</a>'; })() + '<a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "파트너센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + (coachCourse() ? '<span class="a-top-course a-hide-sm" title="' + esc(coachCourse()) + '">' + esc(coachCourse()) + "</span>" : "") + "</span>" +
           '<div class="a-top-right">' +
             (ins ? '<span class="a-chip a-hide-sm' + (TRK() === "vod" ? " a-chip-vod" : "") + '">' + (TRK() === "vod" ? "DOOGO CLASS · VOD 수강생 " + VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? esc(co.name) + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음") + "</span>" +
               // 수강생에게 보이는 화면 미리 보기 버튼 — 이름은 PC · 휴대폰 모두 ‘수강생 화면’ (VOD 탭은 PC ‘VOD 수강생 화면’ · 2026-11-06)
@@ -533,31 +537,48 @@
       (here.length ? '<div class="a-coach-chips">' + here.map(chip).join("") + "</div>" : '<p class="a-muted" style="margin:0">' + (vod ? "VOD" : "LIVE") + " 두잉고에서 열린 메뉴가 아직 없어요. 강사님께 요청해 주세요.</p>") +
       (there.length ? '<p class="a-coach-other">' + icon("swap", "xs") + "<span>" + (vod ? "두잉고(LIVE)" : "DOOGO CLASS(VOD)") + " 탭 메뉴도 맡고 있어요 · " + there.map((x) => esc(x[1])).join(" · ") + " — 왼쪽 위 탭을 바꾸면 보여요.</span></p>" : "") + "</section>";
   }
-  // 코치 대시보드: 인사 + 맡은 메뉴의 할 일만
+  /** 코치 대시보드 핵심 업무 (2026-11-10 · 대표님 요청): 기수 관리 · 수강생 관리 · 과제 검수 · 1:1 요청 답변 — 강사님이 열어 준 것만 · 숫자와 바로 가기 */
+  function coachCore() {
+    const iid = IID(), co = DB.currentCohort(iid), n = counts(iid), wk = co ? DB.currentWeek(co) : 0, cs = co ? DB.cohortStatus(co) : "";
+    const stu = DB.studentsOf(iid).filter((s) => s.status === "approved" && (!co || s.cohortId === co.id)).length;
+    const cards = [
+      can("cohorts") ? ["cohorts", "layers", "기수 관리", co ? co.name : "-", co ? (cs === "running" ? wk + "주차 진행 중" : cs === "ended" ? "끝난 기수" : fmtMD(co.startDate) + " 시작") : "기수가 아직 없어요", ""] : null,
+      can("students") ? [n.pending ? "students?status=pending" : "students", "users", "수강생 관리", stu + "명", n.pending ? "승인 대기 " + n.pending + "명" : (co ? co.name + " 수강 중" : "수강 중"), n.pending ? "warn" : ""] : null,
+      can("reviews") ? ["reviews", "checks", "과제 검수", n.review + "개", n.review ? "검수를 기다리는 과제" : "검수 대기 없음", n.review ? "info" : ""] : null,
+      can("questions") ? ["questions", "bug", "1:1 요청 답변", n.questions + "건", n.questions ? "답변을 기다리는 요청" : "답변 대기 없음", n.questions ? "warn" : ""] : null
+    ].filter(Boolean);
+    if (!cards.length) return '<section class="a-card"><p class="a-muted" style="margin:0">아직 맡은 업무가 없어요. 강사님께 기수 관리 · 수강생 관리 · 과제 검수 · 1:1 요청 답변을 열어 달라고 요청해 주세요.</p></section>';
+    return '<div class="a-coach-core" aria-label="코치 핵심 업무">' + cards.map((x) => '<a class="a-cc' + (x[5] ? " " + x[5] : "") + '" href="#/center/' + x[0] + '"><span class="a-cc-h"><i class="a-cc-ic">' + icon(x[1], "sm") + "</i><b>" + esc(x[2]) + "</b>" + icon("arrowRight", "xs") + '</span><strong>' + esc(x[3]) + "</strong><small>" + esc(x[4]) + "</small></a>").join("") + "</div>";
+  }
+  /** 코치 대시보드 아래쪽: 주차 일정(기수 관리) · 수강생 진행 현황(수강생 관리) — 맡은 것만 */
+  function coachMore() {
+    const iid = IID(), co = DB.currentCohort(iid); if (!co) return "";
+    const cs = DB.cohortStatus(co), rows = can("students") ? studentProgressRows(iid, (s) => s.cohortId === co.id && s.status === "approved") : [];
+    return (can("cohorts") ? '<section class="a-card"><div class="a-card-head"><h2>' + esc(co.name) + " 주차 일정</h2>" + pill(DB.STATUS_LABEL[cs], COHORT_CLS[cs]) + '<a class="a-link" href="#/center/cohorts">기수 관리 ' + icon("arrowRight", "xs") + "</a></div>" + weekStrip(co) + "</section>" : "") +
+      (can("students") ? '<section class="a-card"><div class="a-card-head"><h2>' + esc(co.name) + ' 수강생 진행 현황</h2><span class="a-muted">' + rows.length + '명</span><a class="a-link" href="#/center/students">수강생 관리 ' + icon("arrowRight", "xs") + "</a></div>" + progressTable(rows, { weeks: DB.weeksOf(co) }) + "</section>" : "");
+  }
+  // 코치 대시보드: 인사 + 핵심 업무(기수 · 수강생 · 과제 검수 · 1:1) + 할 일
   function coachDashboard() {
     const iid = IID(), ins = INS(), c = C(), me = ME_COACH() || {};
     const co = DB.currentCohort(iid), n = counts(iid), wk = co ? DB.currentWeek(co) : 0;
     const subs = can("reviews") ? allSubmissions(iid, "all").filter((x) => x.review === "pending").slice(0, 6) : [];
     const reqs = can("questions") ? DB.requests(iid).filter((x) => !x.q.answer && (TRK() === "vod") === DB.isVodStudent(x.s)).slice(0, 5) : [];
     const pend = can("students") ? DB.studentsOf(iid).filter((s) => s.status === "pending").slice(0, 5) : [];
-    const kpis = [];
-    if (can("reviews")) kpis.push(kpi("검수 대기 과제", n.review + "개", "피드백 · 승인 · 보완 요청", "#/center/reviews", n.review ? "info" : ""));
-    if (can("questions")) kpis.push(kpi("답변 대기 문의", n.questions + "건", "1:1 요청 · 오류 신고", "#/center/questions", n.questions ? "warn" : ""));
-    if (can("students")) kpis.push(kpi("승인 대기 수강생", n.pending + "명", "새 수강 신청", "#/center/students?status=pending", n.pending ? "warn" : ""));
-    kpis.push(kpi("진행 중 기수", co ? co.name : "-", co ? (DB.cohortStatus(co) === "running" ? wk + "주차 진행 중" : fmtMD(co.startDate) + " 시작") : "기수 없음", can("cohorts") ? "#/center/cohorts" : "#/center"));
     const many = myCoachCourses();
     return head((me.name || "") + " 코치님, 안녕하세요", esc(ins.displayName) + " · " + esc(c.brand.courseTitle) + " 코치" + (me.memo ? " · " + esc(me.memo) : ""), many.length > 1 ? btn(icon("swap", "sm") + "다른 강의 코치센터 (" + many.length + "개)", "coach-switch", "a-btn-outline") : "") +
-      '<div class="a-kpis">' + kpis.join("") + "</div>" +
-      coachMenusCard() +
+      coachCore() +
+      (can("reviews") && can("questions") ? '<div class="a-grid-2">' : "") +
       (can("reviews") ? '<section class="a-card"><div class="a-card-head"><h2>검수를 기다리는 과제</h2><a class="a-link" href="#/center/reviews">과제 검수 ' + icon("arrowRight", "xs") + "</a></div>" +
         (subs.length ? '<ul class="a-list">' + subs.map((x) => '<li class="clickable" data-action="review-open" data-sid="' + x.s.id + '" data-mid="' + x.m.id + '"><div class="a-who"><span class="a-avatar">' + esc(x.s.name.slice(0, 1)) + "</span><div><b>" + esc(x.s.name) + " · " + esc(x.m.title) + "</b><small>" + esc(cohortName(x.s.cohortId)) + " · " + x.w.no + "주차 · " + fmtStamp(x.sub.at) + "</small></div></div>" + reviewPill(x) + "</li>").join("") + "</ul>"
           : emptyBox("check", "검수를 기다리는 과제가 없어요.")) + "</section>" : "") +
       (can("questions") ? '<section class="a-card"><div class="a-card-head"><h2>답변을 기다리는 문의</h2><a class="a-link" href="#/center/questions">1:1 요청 답변 ' + icon("arrowRight", "xs") + "</a></div>" +
         (reqs.length ? '<ul class="a-list">' + reqs.map((x) => '<li><div class="a-who"><span class="a-avatar">' + esc(x.s.name.slice(0, 1)) + "</span><div><b>#" + x.no + " " + esc(x.q.title) + "</b><small>" + esc(x.s.name) + " · " + esc(cohortName(x.s.cohortId)) + " · " + fmtStamp(x.q.at) + "</small></div></div>" + pill(x.q.category || "기타", "mute") + "</li>").join("") + "</ul>"
           : emptyBox("check", "답변을 기다리는 문의가 없어요.")) + "</section>" : "") +
+      (can("reviews") && can("questions") ? "</div>" : "") +
       (can("students") && pend.length ? '<section class="a-card"><div class="a-card-head"><h2>승인 대기</h2><a class="a-link" href="#/center/students?status=pending">전체 ' + icon("arrowRight", "xs") + "</a></div>" +
         '<ul class="a-list">' + pend.map((s) => '<li><div class="a-who"><span class="a-avatar">' + esc(s.name.slice(0, 1)) + "</span><div><b>" + esc(s.name) + "</b><small>" + esc(cohortName(s.cohortId)) + " · 뒷자리 " + esc(s.phone4) + " · " + fmtMD(s.appliedAt) + " 신청</small></div></div>" +
-          '<div class="a-row-actions">' + btn("거절", "stu-reject", "a-btn-ghost a-btn-sm", ' data-id="' + s.id + '"') + btn("승인", "stu-approve", "a-btn-primary a-btn-sm", ' data-id="' + s.id + '"') + "</div></li>").join("") + "</ul></section>" : "");
+          '<div class="a-row-actions">' + btn("거절", "stu-reject", "a-btn-ghost a-btn-sm", ' data-id="' + s.id + '"') + btn("승인", "stu-approve", "a-btn-primary a-btn-sm", ' data-id="' + s.id + '"') + "</div></li>").join("") + "</ul></section>" : "") +
+      coachMore();
   }
   function pageDashboard() {
     if (TRK() === "vod") return pageVodDash();
@@ -8991,7 +9012,7 @@
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
-    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard,
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse,
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,

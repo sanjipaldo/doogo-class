@@ -50,18 +50,15 @@ function CoachDash() {
   const pend = A.can("students") ? DB.studentsOf(iid).filter((s) => s.status === "pending").slice(0, 5) : [], many = A.myCoachCourses();
   return <>
     <Head title={(me.name || "") + " 코치님, 안녕하세요"} sub={ins.displayName + " · " + c.brand.courseTitle + " 코치" + (me.memo ? " · " + me.memo : "")} right={many.length > 1 ? <Btn action="coach-switch" cls="a-btn-outline"><Icon n="swap" c="sm" />다른 강의 코치센터 ({many.length}개)</Btn> : null} />
-    <div className="a-kpis">
-      {A.can("reviews") ? <Kpi label="검수 대기 과제" value={n.review + "개"} sub="피드백 · 승인 · 보완 요청" href="#/center/reviews" tone={n.review ? "info" : ""} /> : null}
-      {A.can("questions") ? <Kpi label="답변 대기 문의" value={n.questions + "건"} sub="1:1 요청 · 오류 신고" href="#/center/questions" tone={n.questions ? "warn" : ""} /> : null}
-      {A.can("students") ? <Kpi label="승인 대기 수강생" value={n.pending + "명"} sub="새 수강 신청" href="#/center/students?status=pending" tone={n.pending ? "warn" : ""} /> : null}
-      <Kpi label="진행 중 기수" value={co ? co.name : "-"} sub={co ? (DB.cohortStatus(co) === "running" ? wk + "주차 진행 중" : fmtMD(co.startDate) + " 시작") : "기수 없음"} href={A.can("cohorts") ? "#/center/cohorts" : "#/center"} />
-    </div>
-    <Isl html={A.coachMenusCard()} />
+    <Isl html={A.coachCore()} />
+    {(() => { const two = A.can("reviews") && A.can("questions"), inner = <>
     {A.can("reviews") ? <section className="a-card"><div className="a-card-head"><h2>검수를 기다리는 과제</h2><More href="#/center/reviews">과제 검수</More></div>
       {subs.length ? <ul className="a-list">{subs.map((x) => <li key={x.s.id + x.m.id} className="clickable" data-action="review-open" data-sid={x.s.id} data-mid={x.m.id}><div className="a-who"><Ava name={x.s.name} /><div><b>{x.s.name} · {x.m.title}</b><small>{A.cohortName(x.s.cohortId)} · {x.w.no}주차 · {fmtStamp(x.sub.at)}</small></div></div><Rp x={x} /></li>)}</ul> : <Empty ic="check">검수를 기다리는 과제가 없어요.</Empty>}</section> : null}
     {A.can("questions") ? <section className="a-card"><div className="a-card-head"><h2>답변을 기다리는 문의</h2><More href="#/center/questions">1:1 요청 답변</More></div>
       {reqs.length ? <ul className="a-list">{reqs.map((x) => <li key={x.q.id}><div className="a-who"><Ava name={x.s.name} /><div><b>#{x.no} {x.q.title}</b><small>{x.s.name} · {A.cohortName(x.s.cohortId)} · {fmtStamp(x.q.at)}</small></div></div><Pill cls="mute">{x.q.category || "기타"}</Pill></li>)}</ul> : <Empty ic="check">답변을 기다리는 문의가 없어요.</Empty>}</section> : null}
+    </>; return two ? <div className="a-grid-2">{inner}</div> : inner; })()}
     {A.can("students") && pend.length ? <section className="a-card"><div className="a-card-head"><h2>승인 대기</h2><More href="#/center/students?status=pending">전체</More></div><PendList pend={pend} /></section> : null}
+    <Isl html={A.coachMore()} />
   </>;
 }
 

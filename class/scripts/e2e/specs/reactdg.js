@@ -733,6 +733,23 @@ module.exports = {
       const okm = (x) => x.pd.mine === 1 && /쿠폰 적용가 14,900원/.test(x.pd.card) && x.co.opt.some((t) => /첫 책 1,000원 할인 \(-1,000원\)/.test(t)) && !!x.co.sel && x.co.tot === "18,400원" && x.co.cp === "-1,000원" && !/가격이 방금 바뀌었어요/.test(x.srv[0]) && /가격이 방금 바뀌었어요/.test(x.srv[1]);
       await run.check(okm(r.off) && okm(r.all), "첫 책 1,000원 할인 쿠폰: 회원이면 한 장 · 책 상세 쿠폰 적용가 14,900원 · 종이책 결제 화면에 쿠폰이 골라져 18,400원(쿠폰 -1,000원) · 서버 계산도 18,400원 (예전 화면 = React)", r);
     }
+    // 1-21) 코치센터 (2026-11-10): 로고 → 대시보드 · 머리글에 맡은 강의 제목 · 대시보드는 핵심 업무(기수 · 수강생 · 과제 검수 · 1:1)만 · ‘내가 맡은 메뉴’ 칸 없음 · 운영팀 상담 버튼 가운데 (예전 화면 = React)
+    {
+      const r = {};
+      for (const mode of ["off", "all"]) {
+        const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+        run.watch(ap, "코치센터 대시보드 " + mode);
+        await FL.coach(ap, base, info); await L.reactCookie(ap, base, mode); await L.open(ap, base, "/center/students"); await ap.waitForTimeout(600);
+        await ap.click(".a-logo-home"); await ap.waitForTimeout(900);
+        r[mode] = await ap.evaluate(() => { const A = window.ADM, k = document.querySelector(".a-side-kk"), kr = k && k.getBoundingClientRect(), pr = k && k.parentElement.getBoundingClientRect();
+          const want = ["cohorts", "students", "reviews", "questions"].filter((x) => A.can(x)).length;
+          return { path: location.pathname, logo: document.querySelector(".a-logo-home").getAttribute("href"), course: ((document.querySelector(".a-top-course") || {}).textContent || "") === String(A.C().brand.courseTitle || ""), menus: !!document.querySelector(".a-coach-menus"), cc: document.querySelectorAll(".a-cc").length, want,
+            kk: !!k && getComputedStyle(k).justifyContent === "center" && Math.abs(kr.width - pr.width) < 12 }; });
+        await ap.context().close();
+      }
+      await run.check(["off", "all"].every((m) => r[m].path === "/center" && r[m].logo === "#/center" && r[m].course && !r[m].menus && r[m].cc === r[m].want && r[m].want > 0 && r[m].kk) && JSON.stringify(r.off) === JSON.stringify(r.all),
+        "코치센터: 로고를 누르면 대시보드 · 머리글에 맡은 강의 제목 · 대시보드 핵심 업무 카드(맡은 것만) · ‘내가 맡은 메뉴’ 칸 없음 · 운영팀 상담 버튼 한 줄 가운데 (예전 화면 = React)", r);
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

@@ -2962,6 +2962,19 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "결제 화면: 종이책도 쓸 수 있는 쿠폰이 있으면 쿠폰 칸 · 쿠폰 할인 줄 (예전 화면 = React) · 새 회원은 가입할 때 자동으로 · 서버가 쿠폰 금액을 다시 계산 (실제 결제 18,400원은 e2e reactdg 1-20)");
   }
 
+  {
+    console.log("58) 코치센터 · 모든 센터 로고 → 대시보드 · 코치 대시보드 핵심 업무 · 운영팀 상담 버튼 (2026-11-10)");
+    const ad = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), sh = fs.readFileSync(path.join(ROOT, "../ui/center/Shell.jsx"), "utf8"), da = fs.readFileSync(path.join(ROOT, "../ui/center/Dashboard.jsx"), "utf8"), cs = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
+    const cd = ad.slice(ad.indexOf("  function coachDashboard() {"), ad.indexOf("  function pageDashboard() {")), rc = da.slice(da.indexOf("function CoachDash() {"), da.indexOf("/* ---------- VOD 두잉고"));
+    ok(/class="a-logo-home' \+ \(dcL \? " a-logo-dc" : ""\) \+ '" href="' \+ homeOf\(groups\) \+ '"/.test(ad) && /href=\{A\.homeOf\(groups\)\}/.test(sh) && !/href=\{dcL \? "#\/vod" : "#\/doinggo"\}/.test(sh) &&
+      /const homeOf = \(groups\) => \{ const f = groups && groups\[0\] && groups\[0\]\[1\] && groups\[0\]\[1\]\[0\]; return "#\/center" \+ \(f && f\[0\] \? "\/" \+ f\[0\] : ""\); \};/.test(ad),
+      "로고: 강사 · 코치 · 마스터 · 파트너 · 온드미디어 센터 모두 지금 탭의 대시보드(왼쪽 메뉴 첫 칸)로 — 두잉고 첫 화면으로 가지 않아요 (예전 화면 = React)");
+    ok(/coachCore\(\) \+/.test(cd) && !/coachMenusCard\(\)/.test(cd) && !/a-kpis/.test(cd) && /coachMore\(\);/.test(cd) && /<Isl html=\{A\.coachCore\(\)\} \/>/.test(rc) && !/coachMenusCard/.test(rc) && /<Isl html=\{A\.coachMore\(\)\} \/>/.test(rc) &&
+      /can\("cohorts"\) \? \["cohorts", "layers", "기수 관리"/.test(ad) && /can\("students"\) \? \[n\.pending \? "students\?status=pending" : "students", "users", "수강생 관리"/.test(ad) && /can\("reviews"\) \? \["reviews", "checks", "과제 검수"/.test(ad) && /can\("questions"\) \? \["questions", "bug", "1:1 요청 답변"/.test(ad) &&
+      /a-top-course/.test(ad) && /a-top-course/.test(sh) && /\.a-side-kk \{ display: flex !important; align-items: center; justify-content: center; gap: 6px; width: 100%;/.test(cs),
+      "코치 대시보드(LIVE): 핵심 업무 카드 기수 관리 · 수강생 관리 · 과제 검수 · 1:1 요청 답변(맡은 것만) · ‘내가 맡은 메뉴’ 칸 없음 · 주차 일정 · 수강생 진행 현황 · 머리글 강의 제목 · 운영팀 상담 버튼 한 줄 가운데 (실제 화면은 e2e reactdg 1-21)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);
