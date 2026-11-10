@@ -167,6 +167,42 @@ module.exports = {
       await run.check(!d.length && a.out.length === b.out.length && b.out.length >= 20 && b.stay, "무료강의 · 강사 소개 페이지 편집(React): 칸 탭 · 카드 더하기 · 적기 · 지우기 · 숨기기 · 순서 · 공개 · 되돌리기 — 누를 때마다 예전 화면과 같은 모양 (" + b.out.length + "번)", d.slice(0, 1).concat([{ n: [a.out.length, b.out.length], stay: b.stay }]));
       await page.context().close();
     }
+    // 2-2c) 수업 캘린더 맨 위 달력 (2026-11-10 · 수강생 화면과 같은 달력): 맨 위 카드 · 칸 글씨 = 수강생 달력 글씨(DB.calChip) · 다음 달 · 날짜 누르기 · 오늘 · 기수 바꾸기 — 누를 때마다 예전 화면과 같은 모양
+    {
+      const page = await L.newPage(browser);
+      run.watch(page, "수업 캘린더 달력");
+      await FL.instructor(page, base, info);
+      const st = () => page.evaluate(() => {
+        const c = document.querySelector("#a-main .a-scal"); if (!c) return { none: 1 };
+        const A = window.ADM, iid = A.IID(), co = DB.cohort(A.ui.schedCohort), ym = A.ui.scYM, by = {};
+        const ORDER = DB.CAL_ORDER, rank = (e) => { const i = ORDER.indexOf(e.type); return i < 0 ? 99 : i; };
+        DB.events(iid, co).forEach((e) => { (by[e.date] = by[e.date] || []).push(e); });
+        let bad = 0, n = 0;
+        c.querySelectorAll(".cal-day").forEach((d) => { const want = (by[d.dataset.d] || []).slice().sort((a, b) => rank(a) - rank(b)).slice(0, 3).map((e) => DB.calChip(iid, e).l), got = Array.from(d.querySelectorAll(".cal-chip .l")).map((b) => b.textContent); n += got.length; if (want.join("|") !== got.join("|")) bad++; });
+        const sel = c.querySelector(".cal-day.sel");
+        return { first: document.querySelector("#a-main .a-card") === c, ym, h2: c.querySelector("h2").textContent, bad, n, sel: sel ? sel.dataset.d : "", day: (c.querySelector(".a-scal-dh h3") || {}).textContent || "", cards: (c.querySelectorAll(".a-scal-day .ev-card") || []).length, today: DB.date.todayStr() };
+      });
+      const flow = async (mode) => {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/center/schedule"); await page.waitForTimeout(500);
+        const out = [await L.domShape(page)], s = [await st()];
+        const step = async (fn) => { await fn(); await page.waitForTimeout(350); out.push(await L.domShape(page)); s.push(await st()); };
+        await step(() => page.click('.a-scal [data-action="sc-move"][data-dir="1"]'));
+        const evDay = await page.evaluate(() => { const d = document.querySelector(".a-scal .cal-day:not(.other):not(.sel) .cal-chip"); return d ? d.closest(".cal-day").dataset.d : ""; });
+        if (evDay) await step(() => page.click('.a-scal .cal-day[data-d="' + evDay + '"]'));
+        await step(() => page.click('.a-scal [data-action="sc-move"][data-dir="-1"]'));
+        await step(() => page.click('.a-scal [data-action="sc-today"]'));
+        const cos = await page.$$eval("#sched-cal-cohort option", (os) => os.map((o) => o.value));
+        if (cos.length > 1) { await step(() => page.selectOption("#sched-cal-cohort", cos[0])); s.push({ pv: await page.$eval("#sched-cohort", (x) => x.value), want: cos[0] }); await step(() => page.selectOption("#sched-cal-cohort", cos[cos.length - 1])); }
+        return { out, s, evDay };
+      };
+      const a = await flow("off"), b = await flow("all");
+      const d = a.out.map((x, i) => L.shapeDiff(x, b.out[i])).map((x, i) => x && { i, d: x }).filter(Boolean);
+      const ss = b.s.filter((x) => !x.pv), pv = b.s.find((x) => x.pv);
+      const ok = !d.length && a.out.length === b.out.length && ss.length >= 4 && ss.every((x) => !x.none && x.first && !x.bad) && ss.some((x) => x.n > 0) &&
+        ss[1].ym !== ss[0].ym && (!b.evDay || (ss[2].sel === b.evDay && ss[2].cards > 0)) && ss.some((x) => x.sel === x.today) && (!pv || pv.pv === pv.want);
+      await run.check(ok, "수업 캘린더(강사 · 코치센터) 맨 위 달력: 수강생 달력과 같은 칸 글씨 · 다음 달 · 날짜 누르면 그날 일정 · 오늘 · 기수 바꾸기 — 예전 화면과 같은 모양 (" + b.out.length + "번)", d.slice(0, 1).concat([{ s: ss.map((x) => [x.ym, x.sel, x.n, x.bad, x.first, x.cards].join(",")), pv, evDay: b.evDay }]), page);
+      await page.context().close();
+    }
     // 2-3) 마스터: 화면 모양 (PC · 휴대폰) + 강사 · 상태 고르기 · 강사 수정 팝업
     for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       const page = await L.newPage(browser, { viewport: vp });

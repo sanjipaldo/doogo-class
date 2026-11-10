@@ -3660,3 +3660,24 @@ body[data-ath="nz"] .a-vpbar-t small { color: #9cc3ee; }
 .a-cc.warn strong { color: var(--m-attention); }
 .a-cc.info strong { color: var(--m-primary); }
 @media (max-width: 720px) { .a-coach-core { grid-template-columns: repeat(2, minmax(0, 1fr)); } .a-cc { padding: 14px; } .a-cc strong { font-size: 22px; } .a-cc-h { font-size: 14px; } }
+
+/* ---------- 수업 캘린더 맨 위 달력 (2026-11-10) — 수강생 화면과 같은 달력 (styles.css .cal2) 을 강사센터 · 코치센터 카드 안에 ----------
+ * 강사 색은 admin.js schedCalVars 가 이 카드에만 (style) · 칸 · 글씨 모양은 수강생 화면 그대로 */
+.a-scal { margin-bottom: 18px; }
+.a-scal .cal-head { flex-wrap: wrap; gap: 10px 14px; }
+.a-scal .cal-head h2 { margin: 0; font-size: 20px; font-weight: 900; color: var(--ink); }
+.a-scal-co { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 600; color: var(--mute); letter-spacing: 0; }
+.a-scal .cal-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.a-scal .cal-nav select { margin-right: 4px; min-width: 96px; }
+.a-scal .cal-day { color: var(--ink); }
+.a-scal-day { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.a-scal-dh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.a-scal-dh h3 { margin: 0; font-size: 17px; font-weight: 800; color: var(--ink); }
+.a-scal-none { margin: 0; }
+.a-scal .ev-card { background: var(--canvas); }
+@media (max-width: 720px) {
+  .a-scal { padding: 16px 12px; }
+  .a-scal .cal-head h2 { font-size: 18px; }
+  .a-scal .cal-nav { width: 100%; }
+  .a-scal .cal-nav select { flex: 1; }
+}

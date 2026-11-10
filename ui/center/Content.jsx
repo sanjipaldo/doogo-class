@@ -60,6 +60,7 @@ export function Schedule() {
   const auto = ["open", "deadline"].concat(DB.calTypes(iid).indexOf("replay") >= 0 && DB.calManual(iid).indexOf("replay") < 0 ? ["replay"] : []).map((k) => "‘" + L(k) + "’").join(" · ");
   return <>
     <Head title="수업 캘린더" sub={auto + "은 기수 시작일로 자동 계산돼요. " + DB.calManual(iid).filter((k) => k !== "open").map(L).join(" · ") + " 같은 일정만 추가하세요. 기수 하나의 무료 강의 · 오프라인 강의 · 챌린지 날짜는 ‘기수 관리 › 일정 설계’에서 한 번에 정할 수도 있어요."} right={<AddBtn coll="event" label="일정 추가" />} />
+    <Isl html={A.schedCal(iid, co)} />
     <section className="a-card"><div className="a-card-head"><h2>추가한 일정</h2><span className="a-muted">{c.schedule.length}개</span></div>
       <SimpleList coll="event" items={c.schedule} one={(e) => <><Main b={e.title} s={DB.ruleText(e) + (DB.evTime(e) ? " · " + DB.evTime(e) : "") + (e.place ? " · " + e.place : "")} /><Pill cls={EV_CLS[e.type]}>{L(e.type)}</Pill></>} empty="추가한 일정이 없어요." /></section>
     <section className="a-card"><div className="a-card-head"><h2>기수별 전체 일정 미리보기</h2><select key={"s" + ui.schedCohort} className="a-input a-sm" id="sched-cohort" aria-label="기수" defaultValue={ui.schedCohort}>{cos.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>

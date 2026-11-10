@@ -1616,6 +1616,59 @@
         "</section>").join("") + "</div>"
         : '<section class="a-card">' + emptyBox("clipboard", "커리큘럼에서 주차를 먼저 만들어 주세요.", '<a class="a-btn a-btn-primary" href="#/center/curriculum">커리큘럼으로</a>') + "</section>");
   }
+  /* 수업 캘린더 맨 위 달력 (2026-11-10) — 수강생 ‘수업 캘린더’와 똑같은 달력 (app.js pageSchedule · styles.css .cal2) 을 고른 기수로 보여요.
+   * 코치 · 강사가 수강생 눈으로 한 달 일정을 봐요. 칸을 누르면 아래에 그날 일정 · 강사 색(테마)은 이 카드 안에서만 (강사센터 색은 그대로) */
+  function schedCalVars(iid) {
+    const t = DB.themeOf(((DB.content(iid) || {}).brand || {}).theme); if (!t) return "";
+    const v = { "--primary": t.primary, "--primary-active": t.active, "--primary-pale": t.pale, "--ink-deep": t.deep, "--on-primary": t.onPrimary || t.deep, "--cal-main": t.primary, "--cal-on": t.onPrimary || t.deep };
+    Object.keys(t.vars || {}).forEach((k) => { v[k] = t.vars[k]; });
+    return Object.keys(v).filter((k) => v[k] && /^[#\w(),.\s%-]+$/.test(String(v[k]))).map((k) => k + ":" + v[k]).join(";");
+  }
+  // 처음 보는 달: 오늘이 그 기수 일정 안이면 이번 달 · 아니면 그 기수 첫 일정 달 (기수를 바꾸면 다시 정해요)
+  function schedCalYM(co, evs) {
+    const id = co ? co.id : "";
+    if (ui.scYM && ui.scCo === id) return ui.scYM;
+    const now = todayStr().slice(0, 7), ms = evs.map((e) => String(e.date || "").slice(0, 7)).filter(Boolean).sort();
+    ui.scCo = id; ui.scDay = null;
+    ui.scYM = !ms.length || (now >= ms[0] && now <= ms[ms.length - 1]) ? now : ms[0];
+    return ui.scYM;
+  }
+  function schedCal(iid, co) {
+    const cos = DB.cohortsOf(iid), today = todayStr();
+    const evs = co ? DB.events(iid, co).filter((e) => e && e.date) : [];
+    const ym = schedCalYM(co, evs), y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)) - 1;
+    const pd = (s) => new Date(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
+    const ko = (s) => { const d = pd(s); return (d.getMonth() + 1) + "월 " + d.getDate() + "일 (" + DOW[d.getDay()] + ")"; };
+    const startOffset = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), cells = [];
+    for (let i = 0; i < Math.ceil((startOffset + days) / 7) * 7; i++) cells.push(DB.date.toStr(new Date(y, m, 1 - startOffset + i)));
+    const byDate = {};
+    evs.forEach((e) => { (byDate[e.date] = byDate[e.date] || []).push(e); });
+    const ORDER = DB.CAL_ORDER, rank = (e) => { const i = ORDER.indexOf(e.type); return i < 0 ? 99 : i; };
+    Object.keys(byDate).forEach((k) => byDate[k].sort((a, b) => rank(a) - rank(b)));
+    const CT = DB.calTypes(iid), T = DB.EVENT_TYPES, used = CT.concat(Object.keys(T).filter((k) => CT.indexOf(k) < 0 && evs.some((e) => e.type === k))), L = (t) => DB.evLabel(iid, t);
+    const chipL = (e) => DB.calChip(iid, e).l;
+    const chip = (e) => { const c = DB.calChip(iid, e); return '<span class="cal-chip t-' + e.type + '" title="' + esc(c.l) + '"><b class="s">' + esc(c.s) + '</b><b class="l">' + esc(c.l) + "</b></span>"; };
+    // 고른 날: 누른 날 → 이번 달이면 오늘 → 그 달 첫 일정
+    const inM = (k) => k && k.slice(0, 7) === ym;
+    const sel = inM(ui.scDay) ? ui.scDay : inM(today) ? today : Object.keys(byDate).filter(inM).sort()[0] || "";
+    const sl = sel ? byDate[sel] || [] : [];
+    const coSel = cos.length > 1 ? '<select class="a-input a-sm" id="sched-cal-cohort" aria-label="달력에 볼 기수">' + cos.map((x) => '<option value="' + esc(x.id) + '"' + (co && x.id === co.id ? " selected" : "") + ">" + esc(x.name) + "</option>").join("") + "</select>" : "";
+    return '<section class="a-card cal2 a-scal" style="' + esc(schedCalVars(iid)) + '"><div class="cal-head"><h2>' + y + "년 " + (m + 1) + "월" + (co ? ' <small class="a-scal-co">' + esc(co.name) + " · 수강생 화면과 같은 달력</small>" : "") + "</h2>" +
+        '<div class="cal-nav">' + coSel + '<button type="button" class="icon-btn ghost" data-action="sc-move" data-dir="-1" aria-label="이전 달">' + icon("chevLeft") + '</button><button type="button" class="btn btn-tertiary btn-sm" data-action="sc-today">오늘</button><button type="button" class="icon-btn ghost" data-action="sc-move" data-dir="1" aria-label="다음 달">' + icon("chevRight") + "</button></div></div>" +
+      (co ? '<div class="cal">' + DOW.map((d, i) => '<div class="cal-dow' + (i === 0 ? " sun" : i === 6 ? " sat" : "") + '">' + d + "</div>").join("") +
+          cells.map((k) => {
+            const d = pd(k), list = byDate[k] || [], main = list.some(DB.calMain);
+            return '<button type="button" class="cal-day' + (main ? " main" : "") + (d.getMonth() !== m ? " other" : "") + (k === today ? " today" : "") + (k === sel ? " sel" : "") + (d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : "") +
+              '" data-action="sc-day" data-d="' + k + '" aria-label="' + esc(ko(k) + (list.length ? " · " + list.map(chipL).join(", ") : "")) + '"><span class="d">' + d.getDate() + "</span>" +
+              (list.length ? '<span class="cal-evs">' + list.slice(0, 3).map(chip).join("") + (list.length > 3 ? '<span class="cal-more">+' + (list.length - 3) + "</span>" : "") + "</span>" : "") + "</button>";
+          }).join("") + "</div>" +
+        '<div class="legend cal-legend">' + used.map((k) => '<span><i class="cal-sw t-' + k + '"></i>' + esc(L(k)) + "</span>").join("") + "</div>" +
+        (sel ? '<div class="a-scal-day"><div class="a-scal-dh"><h3>' + esc(ko(sel)) + '</h3><span class="a-muted">' + sl.length + "건</span></div>" +
+          (sl.length ? '<div class="stack">' + sl.map((e) => '<div class="ev-card"><i class="ev-dot ' + esc(e.type) + '"></i><div class="a-grow"><div class="tiny">' + esc(L(e.type)) + (e.week ? " · " + e.week + "주차" : "") + (DB.evTime(e) ? " · " + esc(DB.evTime(e)) : "") + '</div><div class="ev-title">' + esc(e.title) + "</div>" + (e.place ? '<div class="tiny ev-place">' + icon("mapPin", "xs") + esc(e.place) + "</div>" : "") + "</div></div>").join("") + "</div>"
+            : '<p class="a-muted a-scal-none">이 날은 일정이 없어요.</p>') + "</div>" : "")
+        : emptyBox("calendar", "기수를 먼저 만들어 주세요.")) +
+      "</section>";
+  }
   function pageSchedule() {
     const iid = IID(), c = C();
     const cos = DB.cohortsOf(iid);
@@ -1625,6 +1678,7 @@
     const cls = { qna: "warn", notice: "mute", challenge: "ok", guest: "guest", event: "dark", open: "info", online: "info", deadline: "bad", replay: "info", bonus: "warn", free: "warn", offline: "dark" }, L = (t) => DB.evLabel(iid, t);
     const auto = ["open", "deadline"].concat(DB.calTypes(iid).indexOf("replay") >= 0 && DB.calManual(iid).indexOf("replay") < 0 ? ["replay"] : []).map((k) => "‘" + L(k) + "’").join(" · ");
     return head("수업 캘린더", auto + "은 기수 시작일로 자동 계산돼요. " + DB.calManual(iid).filter((k) => k !== "open").map(L).join(" · ") + " 같은 일정만 추가하세요. 기수 하나의 무료 강의 · 오프라인 강의 · 챌린지 날짜는 ‘기수 관리 › 일정 설계’에서 한 번에 정할 수도 있어요.", addBtn("event", "일정 추가")) +
+      schedCal(iid, co) +
       '<section class="a-card"><div class="a-card-head"><h2>추가한 일정</h2><span class="a-muted">' + c.schedule.length + "개</span></div>" +
         simpleList("event", c.schedule, (e) => '<div class="a-item-main"><b>' + esc(e.title) + "</b><small>" + esc(DB.ruleText(e)) + (DB.evTime(e) ? " · " + esc(DB.evTime(e)) : "") + (e.place ? " · " + esc(e.place) : "") + "</small></div>" + pill(L(e.type), cls[e.type]), "추가한 일정이 없어요.") + "</section>" +
       '<section class="a-card"><div class="a-card-head"><h2>기수별 전체 일정 미리보기</h2><select class="a-input a-sm" id="sched-cohort" aria-label="기수">' + cos.map((x) => '<option value="' + x.id + '"' + (x.id === ui.schedCohort ? " selected" : "") + ">" + esc(x.name) + "</option>").join("") + "</select>" + (co ? btn(icon("eye", "sm") + "수강생 화면", "plan-pv", "a-btn-ghost a-btn-sm", ' data-iid="' + esc(iid) + '" data-id="' + esc(co.id) + '" data-pg="schedule"') : "") + "</div>" +
@@ -8574,6 +8628,10 @@
       case "cal-move": { const ym = ui.calYM || todayStr().slice(0, 7); const dt = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + Number(d.dir), 1); ui.calYM = DB.date.toStr(dt).slice(0, 7); ui.calDay = null; render(); break; }
       case "cal-today": ui.calYM = todayStr().slice(0, 7); ui.calDay = todayStr(); render(); break;
       case "cal-day": ui.calDay = d.d && d.d !== ui.calDay ? d.d : null; render(); break;
+      // 수업 캘린더 맨 위 달력 (수강생과 같은 달력) — 달 옮기기 · 오늘 · 날짜 고르기
+      case "sc-move": { const ym = ui.scYM || todayStr().slice(0, 7); ui.scYM = DB.date.toStr(new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + Number(d.dir), 1)).slice(0, 7); ui.scDay = null; render(); break; }
+      case "sc-today": ui.scYM = todayStr().slice(0, 7); ui.scDay = todayStr(); render(); break;
+      case "sc-day": ui.scDay = d.d || null; if (d.d && d.d.slice(0, 7) !== ui.scYM) ui.scYM = d.d.slice(0, 7); render(); break;
       case "rev-year": ui.revYear = (ui.revYear || Number(todayStr().slice(0, 4))) + Number(d.dir); render(); break;
       case "rev-year-set": ui.revYear = Number(d.y); render(); break;
       case "cohort-edit": { const co = DB.cohort(d.id); if (co) planForm(co.instructorId, co); break; }
@@ -8916,7 +8974,7 @@
     if (t.id === "stu-cohort") { ui.stuCohort = t.value; ui.picked.clear(); if (ROUTE.hash.indexOf("?") > -1) ROUTE.hash = "#/center/students"; else render(); }
     else if (t.id === "rev-cohort") { ui.revCohort = t.value; ui.revPicked.clear(); render(); }
     else if (t.id === "rev-week") { ui.revWeek = t.value; ui.revPicked.clear(); render(); }
-    else if (t.id === "sched-cohort") { ui.schedCohort = t.value; render(); }
+    else if (t.id === "sched-cohort" || t.id === "sched-cal-cohort") { ui.schedCohort = t.value; render(); }
     else if (t.id === "cur-pick") { ui.curId = t.value; render(); }
     else if (t.closest && t.closest("#plan-form")) refreshPlanPv();
     else if (t.name === "base" && t.closest("#cur-form")) { const b = document.querySelector("[data-show-blank]"); if (b) b.hidden = t.value !== "blank"; }
@@ -9012,7 +9070,7 @@
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
-    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse,
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,
