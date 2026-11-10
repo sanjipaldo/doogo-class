@@ -821,6 +821,7 @@
       if (o.time) x.time = o.time; if (o.end) x.end = o.end; if (o.mode === "online") x.mode = "online";
       if (pl) { if (/^https?:\/\//i.test(pl)) x.url = pl; else x.place = pl.slice(0, 120); }
       if (o.topic) x.topic = String(o.topic).slice(0, 80);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(o.replay || "")) x.replay = o.replay; if (/^\d{4}-\d{2}-\d{2}$/.test(o.due || "")) x.due = o.due;
       if (Object.keys(x).length) out[no] = x;
     });
     return out;
@@ -833,6 +834,7 @@
     const base = planFake(iid, c, false), wk = DB.weeksOf(base);
     if (!wk.length) return '<p class="a-muted p-small">커리큘럼에 주차가 없어요.</p>';
     const brand = (DB.content(iid) || {}).brand || {}, dt = c.classTime || brand.liveTime || "", tr = dt ? dt + (c.classEnd ? "~" + c.classEnd : "") : "", dp = c.classPlace || "";
+    const cal = DB.calCfg(iid), rpA = cal && cal.types && cal.types.indexOf("replay") >= 0 && cal.replayAfter != null ? Number(cal.replayAfter) : null, dueBase = { startDate: c.startDate, classDates: c.classDates || {} };
     return '<div class="pl-lec-list">' + wk.map((w) => {
       const no = w.no, o = (c.classOver || {})[no] || {}, def = mdDow(no === 1 ? c.startDate : DB.baseClassDate(base, no)), pl = o.url || o.place || "";
       return '<div class="pl-lec" data-no="' + no + '">' +
@@ -844,7 +846,11 @@
         '<select class="a-input a-sm pl-lec-m" name="pl-lm-' + no + '" aria-label="' + no + '주차 방식"><option value="">오프라인</option><option value="online"' + (o.mode === "online" ? " selected" : "") + ">온라인 (줌)</option></select>" +
         '<input class="a-input a-sm pl-lec-p" name="pl-lp-' + no + '" maxlength="300" value="' + esc(pl) + '" placeholder="' + esc(dp ? "장소 (기본 " + dp + ") 또는 입장 링크" : "장소 또는 입장 링크") + '" aria-label="' + no + '주차 장소 또는 입장 링크">' +
         '<input class="a-input a-sm pl-lec-c" name="pl-lc-' + no + '" maxlength="80" value="' + esc(o.topic || "") + '" placeholder="' + esc("주제 (기본: " + (w.title || no + "주차") + ")") + '" aria-label="' + no + '주차 주제">' +
-        "</div>";
+        // 그 주차만 녹화본 업로드일 · 과제 마감일을 따로 (2026-11-10 · 예: 평일로 옮긴 5주차 — 비우면 기본)
+        '<div class="pl-lec-x">' +
+          (rpA != null ? '<label><small>녹화본 업로드 <em>비우면 강의 ' + rpA + "일 뒤</em></small>" + '<input class="a-input a-sm" type="date" name="pl-lr-' + no + '" value="' + esc(o.replay || "") + '" aria-label="' + no + "주차 강의 녹화본 업로드일 (비우면 강의 " + rpA + '일 뒤)"></label>' : "") +
+          '<label><small>과제 마감 <em>비우면 ' + esc(mdDow(DB.weekDeadline(dueBase, no))) + "</em></small>" + '<input class="a-input a-sm" type="date" name="pl-ld-' + no + '" value="' + esc(o.due || "") + '" aria-label="' + no + "주차 과제 마감일 (비우면 " + esc(mdDow(DB.weekDeadline(dueBase, no))) + ')"></label>' +
+        "</div></div>";
     }).join("") + "</div>";
   }
   const planWdSig = (c) => [c.startDate, c.curriculumId, c.weeks, c.classDow, c.classTime, c.classEnd, c.classPlace].join("|");
@@ -852,7 +858,7 @@
   function planRead(f) {
     const g = (n) => { const x = f.elements.namedItem(n); return x ? String(x.value || "").trim() : ""; };
     const cd = {}; Array.from(f.querySelectorAll('[name^="pl-wd-"]')).forEach((x) => { const v = String(x.value || "").trim(); if (v) cd[x.name.slice(6)] = v; });
-    const lo = {}; Array.from(f.querySelectorAll(".pl-lec[data-no]")).forEach((r) => { const no = r.dataset.no, v = (k) => String((r.querySelector('[name="pl-' + k + "-" + no + '"]') || {}).value || "").trim(); const o = { time: v("lt"), end: v("le"), mode: v("lm"), place: v("lp"), topic: v("lc") }; if (o.time || o.end || o.mode || o.place || o.topic) lo[no] = o; });
+    const lo = {}; Array.from(f.querySelectorAll(".pl-lec[data-no]")).forEach((r) => { const no = r.dataset.no, v = (k) => String((r.querySelector('[name="pl-' + k + "-" + no + '"]') || {}).value || "").trim(); const o = { time: v("lt"), end: v("le"), mode: v("lm"), place: v("lp"), topic: v("lc"), replay: v("lr"), due: v("ld") }; if (o.time || o.end || o.mode || o.place || o.topic || o.replay || o.due) lo[no] = o; });
     return { co: { id: f.dataset.id, name: g("pl-name"), startDate: g("pl-start"), curriculumId: g("pl-cur") || "main", weeks: Number(g("pl-weeks")) || 0, classDow: g("pl-dow"), classTime: g("pl-time"), classEnd: g("pl-end"), classPlace: g("pl-place"), classUrl: g("pl-url"), recruiting: !!(f.elements.namedItem("pl-rec") || {}).checked, classDates: cd, classOver: lo },
       evs: Array.from(f.querySelectorAll(".pl-ev")).map((r) => { const v = (n) => String((r.querySelector('[name="' + n + '"]') || {}).value || "").trim(); return { id: r.dataset.id || "", type: v("ev-type"), date: v("ev-date"), time: v("ev-time"), end: v("ev-end"), title: v("ev-title"), place: v("ev-place") }; }) };
   }
@@ -861,11 +867,11 @@
     const c = d.co;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.startDate || "")) return '<p class="a-muted">1주차 강의일을 고르면 일정이 보여요.</p>';
     const fake = planFake(iid, c);
-    const L = (t) => DB.evLabel(iid, t), wk = DB.weeksOf(fake), first = DB.classDate(fake, 1), lastD = DB.classDate(fake, wk.length);
+    const L = (t) => DB.evLabel(iid, t), wk = DB.weeksOf(fake), first = DB.classDate(fake, 1), lastD = DB.classDate(fake, wk.length), lastDue = wk.reduce((m, w) => { const x = DB.weekDeadline(fake, w.no); return x > m ? x : m; }, "");
     const list = DB.events(iid, fake).concat(d.evs.filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date)).map((e) => ({ date: e.date, time: e.time, end: e.time ? e.end : "", type: e.type, title: e.title || L(e.type), place: e.place, special: true })))
       .sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99")));
     const cls = { open: "info", online: "info", deadline: "bad", free: "warn", offline: "dark", challenge: "ok", qna: "warn", bonus: "warn", guest: "guest", event: "dark", notice: "mute", replay: "info" };
-    return '<div class="pl-sum"><b>' + wk.length + "주 과정</b><span>1주차 " + mdDow(first) + " → " + wk.length + "주차 " + mdDow(lastD) + "</span><small>마지막 과제 마감 " + mdDow(DB.cohortEnd(fake)) + "</small></div>" +
+    return '<div class="pl-sum"><b>' + wk.length + "주 과정</b><span>1주차 " + mdDow(first) + " → " + wk.length + "주차 " + mdDow(lastD) + "</span><small>마지막 과제 마감 " + mdDow(lastDue || DB.cohortEnd(fake)) + "</small></div>" +
       '<ul class="pl-list">' + list.map((e) => '<li class="' + (e.special ? "sp" : e.type === "deadline" ? "dl" : "") + '"><span class="pl-d">' + mdDow(e.date) + (DB.evTime(e) ? "<small>" + esc(DB.evTime(e)) + "</small>" : "") + "</span>" + pill(L(e.type), cls[e.type] || "mute") + "<span class=\"pl-t\">" + esc(e.title) + (e.place && !/^https?:/i.test(e.place) ? ' <small class="a-muted">· ' + esc(e.place) + "</small>" : "") + "</span></li>").join("") + "</ul>";
   }
   function refreshPlanPv() {
@@ -915,6 +921,9 @@
       const st = o.time || c.classTime || brandT;
       if (o.end && !st) { err.textContent = n + "주차 시작 시간을 먼저 골라 주세요."; return; }
       if (o.end && o.end <= st) { err.textContent = n + "주차 끝나는 시간은 시작 시간(" + st + ")보다 뒤여야 해요."; return; }
+      const ld = DB.classDate(Object.assign({}, base, { classDates: cd }), n);
+      if (o.replay && o.replay < ld) { err.textContent = n + "주차 녹화본 업로드일은 강의일(" + mdDow(ld) + ")부터 고를 수 있어요."; return; }
+      if (o.due && o.due < ld) { err.textContent = n + "주차 과제 마감일은 강의일(" + mdDow(ld) + ")부터 고를 수 있어요."; return; }
       lec[n] = o;
     }
     const fields = { name: c.name, startDate: c.startDate, recruiting: c.recruiting, curriculumId: c.curriculumId === "main" ? undefined : c.curriculumId, weeks: c.weeks > 0 && c.weeks < full ? c.weeks : undefined, classDow: c.classDow === "" ? undefined : Number(c.classDow), classTime: c.classTime || undefined, classEnd: c.classEnd || undefined, classPlace: c.classPlace || undefined, classUrl: c.classUrl || undefined, classDates: Object.keys(cd).length ? cd : undefined, classOver: Object.keys(lec).length ? lec : undefined };

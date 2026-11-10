@@ -21,8 +21,11 @@
   }
   /** 주차가 열리는 날: 바꾼 강의일이 원래 주차 시작보다 빠르면 그 날 */
   const weekOpen = (co, no) => { const o = baseOpen(co, no), v = dateOver(co, no); return v && v < o ? v : o; };
-  /** 과제 마감일: 원래 마감(주차 시작 + 6일)과 바꾼 강의일 중 늦은 날 */
-  const weekDeadline = (co, no) => { const d = addDays(co.startDate, (no - 1) * 7 + 6), v = dateOver(co, no); return v && v > d ? v : d; };
+  /** 주차별로 정한 과제 마감일 (2026-11-10 · co.classOver[주차].due) — 없으면 null */
+  const dueOver = (co, no) => { const m = co && co.classOver, o = m && typeof m === "object" ? m[String(no)] : null, v = o && typeof o === "object" ? o.due : null; return typeof v === "string" && ISO_D.test(v) ? v : null; };
+  /** 과제 마감일: 주차별로 정한 마감일 → 원래 마감(주차 시작 + 6일)과 바꾼 강의일 중 늦은 날
+   *  (예: 문대표 3기 5주차는 12/15(화) 평일 강의라 마감을 4주차와 같은 12/18로) */
+  const weekDeadline = (co, no) => { const f = dueOver(co, no); if (f) return f; const d = addDays(co.startDate, (no - 1) * 7 + 6), v = dateOver(co, no); return v && v > d ? v : d; };
   /** 주차 강의 날짜: 주차별로 바꾼 날 → 매주 강의 요일 → 주차 시작일 */
   const classDate = (co, no) => dateOver(co, no) || baseClassDate(co, no);
   /** 주차가 수강생에게 열리는 날 (2026-11-09): 그 주 강의일 5일 전부터 — 예: 11/21(토) 강의면 11/16부터 (강의일 포함 6일 전)
@@ -47,5 +50,5 @@
   }
   /** 모든 기수에 들어가는 일정(‘N주차 무슨 요일’)의 날짜 */
   const weekDow = (co, week, dow) => { const open = weekOpen(co, Number(week) || 1); return addDays(open, ((Number(dow) - parseDate(open).getDay()) + 7) % 7); };
-  return { dateOver, baseOpen, baseClassDate, weekOpen, weekUnlock, OPEN_BEFORE, weekDeadline, classDate, cohortEnd, cohortStatus, currentWeek, weekDow };
+  return { dateOver, dueOver, baseOpen, baseClassDate, weekOpen, weekUnlock, OPEN_BEFORE, weekDeadline, classDate, cohortEnd, cohortStatus, currentWeek, weekDow };
 });

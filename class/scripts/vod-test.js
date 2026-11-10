@@ -2865,6 +2865,61 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "일회성 2026-11-10-moon-w2-title-3: ‘시장조사 10개’ → ‘시장조사 3개’ (4주 압축 과정 · 제목만 · 다른 과제 그대로 · 두 번 돌려도 그대로)");
   }
 
+  {
+    console.log("54) 문대표 종이책 최종 표지 · 판매가 14,900원 + 배송비 3,500원 · 목차 (2026-11-10)");
+    const OO = require(path.join(ROOT, "api/_lib/oneoff.js")), BK = require(path.join(ROOT, "api/_lib/books.js")).MOON_BOOK, PR = require(path.join(ROOT, "shared/price.js"));
+    const vs54 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), m54 = vs54.match(/^  const MOON_BOOK = (\{.*\});$/m);
+    const lz = (BK.curriculum || []).reduce((a, c) => a.concat(c.lessons || []), []);
+    ok(!!m54 && JSON.stringify(JSON.parse(m54[1])) === JSON.stringify(BK) && BK.price === 15900 && BK.sale === 14900 && BK.sale >= Math.ceil(BK.price * 0.9 / 10) * 10 && BK.shipFee === 3500 && BK.pages === 168 &&
+      BK.curriculum.length === 5 && lz.length === 25 && lz.every((l) => l.id && l.title && Number(l.min) > 0) && /moon-cover2\.webp$/.test(BK.cover) && BK.detailImgs.length === 2 &&
+      ["cover2", "mock2", "spread2"].every((n) => fs.existsSync(path.join(ROOT, "assets/vod/book/moon-" + n + ".webp"))) && !fs.existsSync(path.join(ROOT, "assets/vod/book/moon-cover.webp")),
+      "책 상품(서버 books.js = 화면 vod.js): 정가 15,900원 · 판매가 14,900원(도서정가제 90% 이상) · 배송비 3,500원 · 168쪽 · 목차 5장 25꼭지 · 새 표지 이미지 3장");
+    const oldBook = { id: "b1", type: "book", title: BK.title, price: 15900, sale: null, shipFee: 0, pages: null, size: "", cover: "assets/vod/book/moon-cover.webp", curriculum: [],
+      detailImgs: [{ url: "assets/vod/book/moon-mock.webp", name: "앞표지 · 뒤표지" }, { url: "assets/vod/book/moon-spread.webp", name: "x" }, { url: "/api/file?h=abc", name: "마스터가 올린 사진" }],
+      sub: "0원에서 시작한 사람이 건네는 4단계 차선 변경법 · 문대표 첫 책", pitch: "마스터가 고친 소개", learn: ["a"], who: [], intro: "" };
+    const meta = { vod: { products: [{ id: "v1", title: "x" }, oldBook], settings: {} }, other: 1 }, cat = { at: 1, products: [{ id: "v1" }, { id: "b1", type: "book", status: "on", price: 15900, sale: null, shipFee: 0, stock: "" }] };
+    const r = OO.moonBookFinal((k) => JSON.parse(JSON.stringify(k === "meta" ? meta : k === "vcat" ? cat : null))), b = r.writes.meta.vod.products[1], c = r.writes.vcat.products[1];
+    ok(b.cover === BK.cover && b.detailImgs.length === 3 && b.detailImgs[0].url === BK.detailImgs[0].url && b.detailImgs[2].url === "/api/file?h=abc" && b.sale === 14900 && b.shipFee === 3500 && b.pages === 168 && b.curriculum.length === 5 &&
+      b.sub === BK.sub && b.pitch === "마스터가 고친 소개" && JSON.stringify(b.learn) === '["a"]' && JSON.stringify(b.who) === JSON.stringify(BK.who) && b.intro === BK.intro &&
+      r.result.kept.join(",") === "pitch,learn" && r.writes.meta.other === 1 && r.writes.meta.vod.products[0].title === "x" && c.sale === 14900 && c.shipFee === 3500 && c.price === 15900 && c.stock === "" && r.writes.vcat.at === 1 &&
+      OO.OPS.some((o) => o.id === "2026-11-10-moon-book-final" && o.run === OO.moonBookFinal),
+      "일회성 2026-11-10-moon-book-final: 표지 · 목업 · 펼침면 교체(마스터가 올린 사진은 뒤에 그대로) · 판매가 · 배송비 · 쪽수 · 목차 · 처음 글 그대로인 칸만 새 글(고친 글은 그대로) · 결제 가격표도 같이");
+    const p2 = OO.moonBookFinal((k) => (k === "meta" ? { vod: { products: [], settings: {} } } : k === "vcat" ? { products: [] } : null));
+    const P = require(path.join(ROOT, "api/_lib/vodprice.js")), pr = P.pricer ? P.pricer({ products: [c] }, Date.now()) : null;
+    ok(p2.writes.meta.vod.products[0].id === "b1" && p2.writes.vcat.products[0].sale === 14900 && p2.writes.vcat.products[0].dg === false && (!pr || (pr.priceOf(pr.product("b1")) === 14900 && pr.shipOf(pr.product("b1")) === 3500)),
+      "책이 없던 곳엔 새로 넣기 · 서버 가격 계산: 14,900원 · 배송비 3,500원(주문마다 한 번)");
+    const pp = fs.readFileSync(path.join(ROOT, "../ui/store/ProductPage.jsx"), "utf8");
+    ok(/icon\(bk \? "book" : own \|\| l\.preview/.test(vs54) && /<Icon n=\{bk \? "book" : own \|\| l\.preview/.test(pp) && /\(t === "ebook" \|\| bk \? \(ch\.lessons \|\| \[\]\)\.reduce/.test(vs54) && /\{t === "ebook" \|\| bk \? \(ch\.lessons \|\| \[\]\)\.reduce/.test(pp) &&
+      /\(bk \? "읽기" : "강의"\) \+ ' 전과 후/.test(vs54) && /\{v\.bk \? "읽기" : "강의"\} 전과 후/.test(pp),
+      "종이책 목차: 장마다 쪽수 · 꼭지 아이콘 책(자물쇠 아님) · ‘읽기 전과 후’ (예전 화면 = React)");
+  }
+
+  {
+    console.log("55) 문대표 3기 5주차 12/15(화) 온라인 강의 · 주차별 녹화본 업로드 · 과제 마감일 (2026-11-10)");
+    const SCH = require(path.join(ROOT, "shared/schedule.js")), OO = require(path.join(ROOT, "api/_lib/oneoff.js"));
+    const co = { startDate: "2026-11-21", classDow: 6, classDates: { 5: "2026-12-15" }, classOver: { 5: { mode: "online", replay: "2026-12-16", due: "2026-12-18" }, 3: { due: "nope" } } };
+    ok(SCH.weekDeadline(co, 5) === "2026-12-18" && SCH.weekDeadline(co, 4) === "2026-12-18" && SCH.weekDeadline(co, 3) === "2026-12-11" && SCH.classDate(co, 5) === "2026-12-15" && SCH.weekUnlock(co, 5) === "2026-12-10" &&
+      SCH.cohortEnd(co, 5) === "2026-12-25" && SCH.dueOver(co, 5) === "2026-12-18" && SCH.dueOver(co, 3) === null && SCH.weekDeadline({ startDate: "2026-11-21", classDates: { 5: "2026-12-30" } }, 5) === "2026-12-30",
+      "과제 마감일: 주차별로 정한 날(classOver.due) → 없으면 예전 규칙(주차 시작 + 6일 · 늦춘 강의일) · 잘못된 날짜는 무시 · 기수 기간은 그대로");
+    const db55 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), ad55 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
+    ok(/date: replayOver\(co, w\.no\) \|\| addDays\(date, rpAfter\)/.test(db55) && /replay: v\("lr"\), due: v\("ld"\)/.test(ad55) && /x\.replay = o\.replay; if \(\/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\/\.test\(o\.due \|\| ""\)\) x\.due = o\.due;/.test(ad55) &&
+      /주차 과제 마감일은 강의일\(/.test(ad55) && /name="pl-lr-' \+ no/.test(ad55) && /name="pl-ld-' \+ no/.test(ad55),
+      "캘린더 녹화본 업로드: 주차별로 정한 날 → 없으면 강의 N일 뒤 · 기수 설계에 칸 2개(녹화본 업로드 · 과제 마감, 강의일 전은 막기 · 저장해도 안 지워져요 — 실제 동작은 e2e reactdg 1-18)");
+    const cos = [{ id: "c2", name: "2기", startDate: "2026-08-01" }, { id: "c4", name: "3기", startDate: "2026-11-21", classDow: 6, classTime: "12:00", classOver: { 4: { time: "09:00", topic: "자동화" } }, classDates: { 2: "2026-11-22" } }];
+    const ct = { weeks: [1, 2, 3, 4, 5].map((n) => ({ no: n, title: n + "주" })), curricula: [{ id: "cur-4w", weeks: [1, 2, 3, 4].map((n) => ({ no: n })) }],
+      schedule: [{ id: "e-m3-bonus", type: "online", scope: "cohort", cohortId: "c4", date: "2026-12-15", time: "19:00", end: "22:00", place: "ZOOM 라이브", url: "https://zoom.us/j/1", title: "5주차 온라인 강의 — 광고의 모든것" },
+        { id: "e-m3-ch4", type: "challenge", scope: "cohort", cohortId: "c4", date: "2026-12-16", title: "챌린지 4회차" }, { id: "g1", type: "guest", scope: "cohort", cohortId: "c4", date: "2026-12-15", title: "초청 특강" }] };
+    const run55 = (list, c) => OO.moon3W5Online((k) => JSON.parse(JSON.stringify(k === "cohorts:moon" ? list : k === "content:moon" ? c : null)));
+    const r = run55(cos, ct), n = r.writes["cohorts:moon"] && r.writes["cohorts:moon"][1], o5 = n && n.classOver[5], sc = r.writes["content:moon"] && r.writes["content:moon"].schedule;
+    ok(!!n && n.classDates[5] === "2026-12-15" && o5.mode === "online" && o5.time === "19:00" && o5.end === "22:00" && o5.url === "https://zoom.us/j/1" && o5.topic === "광고의 모든것" && o5.replay === "2026-12-16" && o5.due === "2026-12-18" &&
+      n.classOver[4].topic === "자동화" && n.classDates[2] === "2026-11-22" && r.writes["cohorts:moon"][0].name === "2기" && sc.length === 2 && !sc.some((e) => e.id === "e-m3-bonus") && sc.some((e) => e.id === "g1") &&
+      SCH.classDate(n, 5) === "2026-12-15" && SCH.weekDeadline(n, 5) === "2026-12-18" && OO.OPS.some((o) => o.id === "2026-11-10-moon3-w5-online" && o.run === OO.moon3W5Online),
+      "일회성 2026-11-10-moon3-w5-online: 3기 5주차 → 12/15(화) 19:00~22:00 온라인(입장 링크 · 장소 옮김) · 녹화본 12/16 · 마감 12/18 · 겹치는 12/15 특별 일정만 지우기(챌린지 · 초청강사 · 다른 주차 · 2기 그대로)");
+    const r4 = run55([Object.assign({}, cos[1], { curriculumId: "cur-4w" })], ct), rw = run55([Object.assign({}, cos[1], { weeks: 4 })], ct), rs = run55([Object.assign({}, cos[1], { startDate: "2026-11-28" })], ct);
+    ok(!Object.keys(r4.writes).length && /4주 과정/.test(r4.result.skipped) && !Object.keys(rw.writes).length && !Object.keys(rs.writes).length,
+      "3기가 4주 과정이거나 1주차가 11/21이 아니면 건드리지 않아요");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

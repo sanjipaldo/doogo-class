@@ -2740,14 +2740,20 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 /* 메인 강사 강의 (주차마다 날짜 · 시작 ~ 끝 · 방식 · 장소 · 주제) */
 .pl-lec-list { display: grid; gap: 8px; }
 /* 좁을 때(기본 · 휴대폰): 날짜 / 시작 · 끝 / 방식 · 장소 / 주제 · 480px~: 날짜 · 시작 · 끝 / 방식 · 장소 / 주제 · PC 570px~: 날짜 · 시작 · 끝 · 방식 한 줄 */
-.pl-lec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "date date" "time end" "mode place" "topic topic"; gap: 6px; padding: 10px; border: 1px solid var(--m-hairline); border-radius: 12px; background: var(--m-surface); }
-@container (min-width: 480px) { .pl-lec { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "head head head" "date time end" "mode place place" "topic topic topic"; } }
-@media (min-width: 721px) { @container (min-width: 570px) { .pl-lec { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, .85fr); grid-template-areas: "head head head head" "date time end mode" "place place topic topic"; } } }
+.pl-lec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "date date" "time end" "mode place" "topic topic" "x x"; gap: 6px; padding: 10px; border: 1px solid var(--m-hairline); border-radius: 12px; background: var(--m-surface); }
+@container (min-width: 480px) { .pl-lec { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "head head head" "date time end" "mode place place" "topic topic topic" "x x x"; } }
+@media (min-width: 721px) { @container (min-width: 570px) { .pl-lec { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, .85fr); grid-template-areas: "head head head head" "date time end mode" "place place topic topic" "x x x x"; } } }
 .pl-lec-h { grid-area: head; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
 .pl-lec-h small { color: var(--m-slate); font-size: 12px; font-variant-numeric: tabular-nums; }
 .pl-lec-d { grid-area: date; } .pl-lec-t { grid-area: time; } .pl-lec-e { grid-area: end; } .pl-lec-m { grid-area: mode; } .pl-lec-p { grid-area: place; } .pl-lec-c { grid-area: topic; }
 .pl-lec .a-input { min-width: 0; }
 .pl-lec-d:disabled { opacity: .7; }
+/* 그 주차만 녹화본 업로드일 · 과제 마감일 (2026-11-10 · 비우면 기본) */
+.pl-lec-x { grid-area: x; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pl-lec-x label { display: grid; grid-template-rows: 1fr auto; gap: 3px; min-width: 0; }
+.pl-lec-x label small { align-self: end; }
+.pl-lec-x small { color: var(--m-slate); font-size: 12px; font-weight: 600; }
+.pl-lec-x small em { font-style: normal; font-weight: 400; margin-left: 4px; }
 /* 아주 좁은 칸(360px 안팎 휴대폰): 안쪽 여백을 줄여 시작 · 끝을 나란히 · 더 좁으면(320px 휴대폰) 한 줄에 하나씩 */
 @container (max-width: 379px) {
   .pl-ev, .pl-lec { padding: 8px; }
@@ -2756,7 +2762,8 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 }
 @container (max-width: 289px) {
   .pl-ev { grid-template-areas: "type type del" "date date date" "time time time" "end end end" "title title title" "place place place"; }
-  .pl-lec { grid-template-areas: "head head" "date date" "time time" "end end" "mode mode" "place place" "topic topic"; }
+  .pl-lec { grid-template-areas: "head head" "date date" "time time" "end end" "mode mode" "place place" "topic topic" "x x"; }
+  .pl-lec-x { grid-template-columns: minmax(0, 1fr); }
 }
 .pl-t { min-width: 0; overflow-wrap: anywhere; }
 .pl-ins { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 16px; padding-bottom: 4px; scrollbar-width: thin; }

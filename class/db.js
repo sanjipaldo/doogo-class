@@ -494,6 +494,8 @@
     const c = content(instId), b = (c && c.brand) || {}, o = classOverOf(co, w.no), on = o.mode === "online";
     return { date: classDate(co, w.no), time: o.time || co.classTime || b.liveTime || "", end: o.end || (o.time ? "" : co.classEnd || ""), place: o.place || (on ? "" : co.classPlace || ""), url: o.url || co.classUrl || b.liveUrl || "", mode: on ? "online" : "", topic: o.topic || w.title || "" };
   }
+  /** 주차별로 정한 강의 녹화본 업로드일 (2026-11-10 · classOver[주차].replay) — 없으면 null (그러면 강의일 + 캘린더 설정 replayAfter일) */
+  const replayOver = (co, no) => { const v = classOverOf(co, no).replay; return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; };
   /** 일정 시간 글씨 — 19:00~22:00 (끝나는 시간이 있으면) · 19:00 · 없으면 "" */
   const evTime = (e) => (e && e.time ? e.time + (e.end ? "~" + e.end : "") : "");
   /** 기수에서 생기는 주차 강의인지 (오프라인 · 온라인 주차 둘 다) */
@@ -582,7 +584,7 @@
     weeksOf(co).forEach((w) => {
       const lc = lectureOf(instId, co, w), date = lc.date, type = lc.mode === "online" ? "online" : "open";
       out.push({ date, time: lc.time, end: lc.end, type, week: w.no, title: w.no + "주차 " + (type === "online" ? evLabel(instId, "online") : openWord) + " — " + lc.topic, url: lc.url, place: lc.place, auto: true });
-      if (rpAfter != null) out.push({ date: addDays(date, rpAfter), time: "", type: "replay", week: w.no, title: w.no + "주차 강의 녹화본 업로드", auto: true });
+      if (rpAfter != null) out.push({ date: replayOver(co, w.no) || addDays(date, rpAfter), time: "", type: "replay", week: w.no, title: w.no + "주차 강의 녹화본 업로드", auto: true });
       out.push({ date: weekDeadline(co, w.no), time: "", type: "deadline", week: w.no, title: w.no + "주차 과제 마감", auto: true });
     });
     c.schedule.forEach((e) => {
@@ -1138,7 +1140,7 @@
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
     curricula, curriculum, curriculumOf, weeksOf, cohortWeeks, studentCohort,
     weekOpen, weekUnlock, weekDeadline, baseClassDate, cohortEnd, cohortStatus, STATUS_LABEL, currentWeek, LEVEL_SET, levelSteps, level, currentCohort, nextCohortName,
-    EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort, calChip, calMain, CAL_ORDER, classOverOf, lectureOf, evTime, isWeekLec,
+    EVENT_TYPES, events, ruleText, evLabel, calTypes, calManual, calShort, calChip, calMain, CAL_ORDER, classOverOf, replayOver, calCfg, lectureOf, evTime, isWeekLec,
     REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, applyTrack, siteInfo, saveSite, SITE_DEFAULT, opsKakao,
     BILLING_DEFAULT, BILL_VAT, BILL_STATE, billingInfo, saveBilling, bills, saveBill, removeBill, billMoney, billState, won,
     THEMES, themeOf, STUDENT_MENUS, LIB_MENUS, CUSTOM_ICONS, menuConfig, menuOn, libOn, isCustom, NOTE_PROMPTS, botNameOf,

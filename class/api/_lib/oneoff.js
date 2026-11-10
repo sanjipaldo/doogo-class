@@ -1066,6 +1066,78 @@ function moonW2Title3(get) {
   return { writes: { [k]: c }, result: { titles: done } };
 }
 
+/* ---------- 문대표 종이책 최종 표지 · 가격 (2026-11-10 · 대표님 요청) ----------
+ * 최종 표지(흰 표지 + 검정 띠지) · 3D 목업 · 펼침면으로 바꾸고, 정가 15,900원 → 판매가 14,900원(도서정가제 10% 안) + 배송비 3,500원(주문마다 한 번).
+ * 쪽수 168쪽 · 판형 152 × 225 mm · 목차(5장 25꼭지)는 비어 있을 때만 넣어요.
+ * 책 소개 글(부제 · 소개 · POINT · 추천 대상 · 본문)은 처음 넣은 글 그대로일 때만 새 글로 (마스터가 고친 글은 그대로).
+ * 결제 가격표(vcat)의 가격 · 배송비도 같이 맞춰요 (서버가 이 표로 금액을 다시 계산해요) */
+const BOOK_OLD_TXT = { sub: "b41157acc4ec", pitch: "753e372bc7e8", learn: "5dd13bd898e5", who: "4b096f65dfbe", intro: "01638ecd6421" };
+const BOOK_OLD_IMG = /assets\/vod\/book\/moon-(?:cover|mock|spread)\.webp$/;
+function moonBookFinal(get) {
+  const { MOON_BOOK } = require("./books");
+  const hash = (v) => require("crypto").createHash("sha1").update(JSON.stringify(v === undefined ? null : v)).digest("hex").slice(0, 12);
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod) || !Array.isArray(meta.vod.products)) return { writes: {}, result: { skipped: "두고클래스 상품 없음" } };
+  const v = clone(meta.vod), i = v.products.findIndex((p) => isObj(p) && p.id === MOON_BOOK.id), set = [], kept = [];
+  if (i < 0) { v.products.push(clone(MOON_BOOK)); set.push("상품 추가"); }
+  else {
+    const p = v.products[i], B = MOON_BOOK;
+    p.cover = B.cover; set.push("cover");
+    const mine = (Array.isArray(p.detailImgs) ? p.detailImgs : []).filter((x) => isObj(x) && x.url && !BOOK_OLD_IMG.test(String(x.url)) && !B.detailImgs.some((y) => y.url === x.url));
+    p.detailImgs = clone(B.detailImgs).concat(mine); set.push("detailImgs");
+    p.color = clone(B.color);
+    if (!(Number(p.price) > 0)) p.price = B.price;
+    p.sale = B.sale; p.saleEnd = ""; p.shipFee = B.shipFee; set.push("sale " + B.sale, "shipFee " + B.shipFee);
+    if (!(Number(p.pages) > 0)) { p.pages = B.pages; set.push("pages"); }
+    if (!p.size) { p.size = B.size; set.push("size"); }
+    if (!(Array.isArray(p.curriculum) && p.curriculum.length)) { p.curriculum = clone(B.curriculum); set.push("목차"); }
+    Object.keys(BOOK_OLD_TXT).forEach((k) => { if (hash(p[k]) === BOOK_OLD_TXT[k] || p[k] == null || p[k] === "" || (Array.isArray(p[k]) && !p[k].length)) { p[k] = clone(B[k]); set.push(k); } else kept.push(k); });
+  }
+  const writes = { meta: Object.assign({}, meta, { vod: v }) };
+  const cat = get("vcat");
+  if (isObj(cat) && Array.isArray(cat.products)) {
+    const b = v.products.find((p) => isObj(p) && p.id === MOON_BOOK.id), j = cat.products.findIndex((p) => isObj(p) && p.id === MOON_BOOK.id);
+    const P_KEYS = ["id", "title", "type", "status", "price", "sale", "saleEnd", "iid", "share", "shipFee", "stock"], row = j < 0 ? { dg: false } : Object.assign({}, cat.products[j]);
+    if (j < 0) P_KEYS.forEach((k) => { if (b[k] !== undefined) row[k] = b[k]; });
+    Object.assign(row, { price: b.price, sale: b.sale, saleEnd: b.saleEnd || "", shipFee: b.shipFee });
+    const list = cat.products.slice(); if (j < 0) list.push(row); else list[j] = row;
+    writes.vcat = Object.assign({}, cat, { products: list });
+  }
+  return { writes, result: { set, kept, vcat: writes.vcat ? "맞춤" : "가격표 없음" } };
+}
+
+/* ---------- 문대표 3기 5주차: 12/15(화) 평일 온라인 강의 (2026-11-10 · 대표님 요청) ----------
+ * 원래 5주차 메인 강의는 토요일(12/19)이지만 3기만 12/15(화) 19:00~22:00 줌으로 해요.
+ *  ① 3기 5주차 강의일 → 12/15 · 온라인 · 19:00~22:00 · ZOOM 라이브 · 광고의 모든것 (12/19 ‘5주차 오프라인 강의’는 달력에서 사라져요)
+ *  ② 5주차 강의 녹화본 업로드 12/16 · 5주차 과제 마감 12/18 (4주차 과제 마감과 같은 날)
+ *  ③ 따로 넣어 둔 12/15 ‘5주차 온라인 강의’ 특별 일정은 주차 강의와 겹치니 지워요 (시간 · 장소 · 입장 링크는 5주차 강의로 옮겨요)
+ *  다른 기수 · 챌린지 · 초청강사 일정은 그대로 · 3기가 11/21 시작 5주 과정이 아니면 건드리지 않고 적어요 */
+const MOON3_W5 = { no: 5, date: "2026-12-15", time: "19:00", end: "22:00", place: "ZOOM 라이브", topic: "광고의 모든것", replay: "2026-12-16", due: "2026-12-18" };
+function moon3W5Online(get) {
+  const SCH = require("../../shared/schedule");
+  const ck = "cohorts:moon", list = get(ck), c = get("content:moon");
+  if (!Array.isArray(list) || !isObj(c)) return { writes: {}, result: { skipped: "문대표 기수 · 콘텐츠 없음" } };
+  let i = list.findIndex((x) => isObj(x) && x.id === "c4" && x.name === "3기"); if (i < 0) i = list.findIndex((x) => isObj(x) && x.name === "3기");
+  if (i < 0) return { writes: {}, result: { skipped: "3기를 찾지 못했어요" } };
+  const co = list[i], Z = MOON3_W5;
+  if (co.startDate !== "2026-11-21") return { writes: {}, result: { skipped: "3기 1주차 강의일이 " + co.startDate + " 이라 그대로" } };
+  const cu = co.curriculumId && co.curriculumId !== "main" ? (Array.isArray(c.curricula) ? c.curricula : []).find((x) => isObj(x) && x.id === co.curriculumId) : null;
+  const all = ((cu ? cu.weeks : c.weeks) || []).length, wk = Number(co.weeks) > 0 ? Math.min(Number(co.weeks), all) : all;
+  if (wk < Z.no) return { writes: {}, result: { skipped: "3기는 " + wk + "주 과정이라 5주차가 없어요" } };
+  const sched = Array.isArray(c.schedule) ? c.schedule : [];
+  const dup = sched.filter((e) => isObj(e) && e.scope === "cohort" && e.cohortId === co.id && e.date === Z.date && (e.type === "online" || e.type === "bonus") && /5\s*주차/.test(String(e.title || "")));
+  const ev = dup[0] || {}, cd = Object.assign({}, isObj(co.classDates) ? co.classDates : {}), ov = Object.assign({}, isObj(co.classOver) ? co.classOver : {});
+  if (Z.date === SCH.baseClassDate(co, Z.no)) delete cd[Z.no]; else cd[Z.no] = Z.date;
+  const tp = (String(ev.title || "").match(/—\s*(.+)$/) || [])[1];
+  const o5 = Object.assign({}, isObj(ov[Z.no]) ? ov[Z.no] : {}, { time: ev.time || Z.time, end: ev.end || Z.end, mode: "online", place: ev.place && !/^https?:/i.test(ev.place) ? ev.place : Z.place, topic: (tp || Z.topic).trim().slice(0, 80), replay: Z.replay, due: Z.due });
+  if (ev.url && /^https?:\/\//i.test(ev.url)) o5.url = ev.url;
+  ov[Z.no] = o5;
+  const n = Object.assign({}, co, { classOver: ov }); if (Object.keys(cd).length) n.classDates = cd; else delete n.classDates;
+  const writes = { [ck]: list.map((x, j) => (j === i ? n : x)) };
+  if (dup.length) writes["content:moon"] = Object.assign({}, c, { schedule: sched.filter((e) => dup.indexOf(e) < 0) });
+  return { writes, result: { cohort: co.name + " (" + co.id + ")", week5: "12/15(화) " + o5.time + "~" + o5.end + " 온라인 · " + o5.topic + " · 녹화본 12/16 · 과제 마감 12/18", removed: dup.map((e) => e.date + " " + (e.title || e.type)), url: o5.url ? "입장 링크 옮김" : "입장 링크 없음" } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1104,7 +1176,9 @@ const OPS = [
   { id: "2026-11-09-moon-w2-benchmark", note: "문대표 2주차 시장조사 과제 → 벤치마킹(브랜드 · 공식몰 판매가 · 국내 최저 판매가): 자동검수 단어에서 NZD 빼기 · 설명 · 진행 방법 · 엑셀 양식 머리글 (제목 · 제출 방식 · 최소 글자 수는 그대로)", run: moonW2Benchmark },
   { id: "2026-11-09-demo-reset", note: "체험(테스트) 수강생 계정 진도 기록을 지금 한 번 처음으로 (모든 강사 · 끝난 기수의 수료 체험 계정은 그대로) — 앞으로는 로그인 · 로그아웃할 때마다", run: demoResetNow },
   { id: "2026-11-10-moon-w2-title-3", note: "문대표 2주차 과제 제목 ‘시장조사 10개’ → ‘시장조사 3개’ (4주 압축 과정 등 · 기본 커리큘럼과 같게 · 제목만)", run: moonW2Title3 },
+  { id: "2026-11-10-moon-book-final", note: "문대표 종이책 최종 표지(흰 표지 + 검정 띠지) · 목업 · 펼침면 · 판매가 14,900원(정가 15,900원) + 배송비 3,500원 · 168쪽 · 목차", run: moonBookFinal },
+  { id: "2026-11-10-moon3-w5-online", note: "문대표 3기 5주차: 12/15(화) 19:00~22:00 온라인 강의로 (12/19 토요일 강의 없음) · 녹화본 업로드 12/16 · 과제 마감 12/18 · 겹치는 12/15 특별 일정 지우기", run: moon3W5Online },
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
 ];
 
-module.exports = { OPS, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

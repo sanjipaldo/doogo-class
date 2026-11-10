@@ -672,6 +672,29 @@ module.exports = {
       await run.check(l0.row && l0.tag && off.was === true && off.now === false && !l1.tag && on.was === false && on.now === true && l2.tag,
         "수강생 상세 ‘체험(테스트) 계정’ 체크 칸 (" + (mode === "all" ? "React" : "예전 화면") + "): 목록 ‘체험’ 표시 · 끄면 저장되고 표시 사라짐 · 다시 켜면 그대로", { l0, off, l1, on, l2 });
     }
+    // 1-18) 기수 설계 › 주차별 ‘녹화본 업로드 · 과제 마감’ 칸 (2026-11-10 · 3기 5주차처럼 평일로 옮긴 주차): 저장 → 캘린더 · 과제 마감에 반영 · 강의일 전 마감은 막기 · 비우면 기본 (예전 화면 = React)
+    for (const mode of ["off", "all"]) {
+      const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+      run.watch(ap, "주차별 녹화본 · 마감일 " + mode);
+      await FL.instructor(ap, base, info); await L.reactCookie(ap, base, mode); await L.open(ap, base, "/center/cohorts"); await ap.waitForTimeout(600);
+      const coId = await ap.evaluate(() => (window.DB.data.cohorts.find((x) => x.instructorId === "moon" && x.name === "3기") || {}).id || "");
+      const open = async () => { await ap.click('[data-action="cohort-edit"][data-id="' + coId + '"]'); await ap.waitForSelector("#plan-form .pl-lec[data-no='4'] [name='pl-ld-4']", { timeout: 5000 }); };
+      const put = (r, d) => ap.evaluate((v) => { const f = document.getElementById("plan-form"); f.querySelector("[name=pl-lr-4]").value = v[0]; f.querySelector("[name=pl-ld-4]").value = v[1]; f.requestSubmit(); }, [r, d]);
+      const state = () => ap.evaluate((id) => { const D = window.DB, co = D.cohort(id), ev = D.events("moon", co).filter((e) => e.auto && e.week === 4);
+        return { rp: (ev.find((e) => e.type === "replay") || {}).date, dl: (ev.find((e) => e.type === "deadline") || {}).date, wd: D.weekDeadline(co, 4), o4: JSON.stringify(co.classOver && co.classOver[4]), form: !!document.getElementById("plan-form"), err: (document.getElementById("pl-error") || {}).textContent || "" }; }, coId);
+      const r = {};
+      if (coId) {
+        await open(); r.base = await state();
+        await put("2026-12-13", "2026-12-01"); await ap.waitForTimeout(400); r.bad = await state();
+        await put("2026-12-13", "2026-12-17"); await ap.waitForTimeout(800); await L.flushed(ap); r.set = await state();
+        await open(); r.keep = await ap.evaluate(() => [document.querySelector("[name=pl-lr-4]").value, document.querySelector("[name=pl-ld-4]").value]);
+        await put("", ""); await ap.waitForTimeout(800); await L.flushed(ap); r.back = await state();
+      }
+      await ap.context().close();
+      await run.check(!!coId && r.base.rp === "2026-12-14" && r.base.dl === "2026-12-18" && r.bad.form && /강의일/.test(r.bad.err) && r.set.rp === "2026-12-13" && r.set.dl === "2026-12-17" && r.set.wd === "2026-12-17" && !r.set.form &&
+        r.keep[0] === "2026-12-13" && r.keep[1] === "2026-12-17" && r.back.rp === "2026-12-14" && r.back.dl === "2026-12-18" && !/replay|due/.test(r.back.o4 || ""),
+        "기수 설계 주차별 녹화본 업로드 · 과제 마감 (" + (mode === "all" ? "React" : "예전 화면") + "): 저장하면 캘린더 · 과제 마감이 그 날로 · 강의일 전 마감은 막기 · 다시 열면 그대로 · 비우면 기본(강의 2일 뒤 · 주차 마감)", r);
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);
