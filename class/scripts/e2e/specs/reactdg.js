@@ -695,6 +695,25 @@ module.exports = {
         r.keep[0] === "2026-12-13" && r.keep[1] === "2026-12-17" && r.back.rp === "2026-12-14" && r.back.dl === "2026-12-18" && !/replay|due/.test(r.back.o4 || ""),
         "기수 설계 주차별 녹화본 업로드 · 과제 마감 (" + (mode === "all" ? "React" : "예전 화면") + "): 저장하면 캘린더 · 과제 마감이 그 날로 · 강의일 전 마감은 막기 · 다시 열면 그대로 · 비우면 기본(강의 2일 뒤 · 주차 마감)", r);
     }
+    // 1-19) 강의 목록 설명은 요약만(서식 기호 없이 · 길면 ‘자세히 보기’) · 자료 파일은 바로 쓸 수 있는 것 먼저 (2026-11-10 · 예전 화면 = React)
+    {
+      const r = {};
+      for (const mode of ["off", "all"]) {
+        const pg = await L.newPage(browser, { viewport: { width: 390, height: 844 } });
+        run.watch(pg, "강의 요약 · 자료 순서 " + mode);
+        await L.reactCookie(pg, base, mode); await FL.student(pg, base, info);
+        await L.open(pg, base, "/curriculum"); await pg.waitForTimeout(700);
+        const cur = await pg.evaluate(() => { const X = window.DGA, D = X.st().D, ls = []; (D.weeks || []).forEach((w) => (w.lessons || []).forEach((l) => ls.push(l)));
+          const cards = Array.from(document.querySelectorAll("a.lesson"));
+          return { n: cards.length, ok: cards.every((a) => { const l = ls.find((x) => a.getAttribute("href") === "#/curriculum/" + x.id), d = a.querySelector(".lesson-desc"); return l && d && d.textContent === window.DB.brief(l.desc) && !/^#|\s##\s/.test(d.textContent) && !!a.querySelector(".lesson-more") === X.lessonLong(l); }),
+            clamp: cards.length ? getComputedStyle(cards[0].querySelector(".lesson-desc")).webkitLineClamp : "" }; });
+        await L.open(pg, base, "/library/file"); await pg.waitForTimeout(700);
+        const lib = await pg.evaluate(() => { const rows = Array.from(document.querySelectorAll(".res-item")).map((x) => !x.querySelector('[data-action="not-ready"]')); return { rows, sorted: rows.every((v, i) => i === 0 || rows[i - 1] || !v), anyReady: rows.some(Boolean), anyWait: rows.some((v) => !v) }; });
+        r[mode] = { cur, lib }; await pg.context().close();
+      }
+      await run.check(["off", "all"].every((m) => r[m].cur.n > 0 && r[m].cur.ok && r[m].cur.clamp === "3" && r[m].lib.sorted && r[m].lib.anyReady && r[m].lib.anyWait) && JSON.stringify(r.off) === JSON.stringify(r.all),
+        "강의 목록 설명은 요약(서식 기호 없이 · 휴대폰 세 줄 · 길면 ‘자세히 보기’) · 자료 파일은 다운로드 · 계산기 먼저, ‘준비 중’은 아래 (예전 화면 = React)", r);
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);

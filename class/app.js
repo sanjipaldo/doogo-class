@@ -159,6 +159,9 @@
     docs: () => TRACK !== "vod" || (D.docsGuide || []).length, library: () => TRACK !== "vod" || libList().length > 0 };
   // VOD 버전 자료함: 내려받을 수 있는 자료만 (주소가 없는 ‘준비 중’ 자료는 숨김) + 강의마다 올린 수업 자료 모음
   const resOk = (it) => !!(it.url || it.tool || (it.attachments || []).length || (it.images || []).length || it.video || it.youtube || it.body);
+  /** 자료 목록 (2026-11-10): 바로 쓸 수 있는 것(파일 주소 · 계산기)을 위로, ‘준비 중’은 아래로 — 같은 묶음 안 순서는 그대로 */
+  const resReady = (it) => !!(it && (it.tool === "calculator" || it.url));
+  const readyFirst = (list) => list.filter(resReady).concat(list.filter((x) => !resReady(x)));
   const resOf = (id) => (id === "lesson" ? lessonFiles() : TRACK === "vod" ? (D.resources[id] || []).filter(resOk) : D.resources[id] || []);
   function lessonFiles() {
     if (TRACK !== "vod" || !me || !window.VOD) return [];
@@ -1158,6 +1161,8 @@
     return '<section class="card ml-card' + (compact ? " sm" : "") + '"><span class="ml-ic">' + icon("monitorPlay") + '</span><div class="ml-t"><small>메인 강의' + (m.platform ? " · " + esc(m.platform) : "") + "</small><b>" + (m.platform ? esc(m.platform) + "에서 메인 강의를 들어요" : "메인 강의는 외부 강의실에서 들어요") + "</b>" + (m.note && !compact ? "<p>" + DB.linkify(m.note) + "</p>" : "") + "</div>" + mainBtn() + "</section>";
   }
   const lessonWord = () => (D.brand && D.brand.lessonLabel) || "강의 영상";
+  /** 강의 목록 설명이 길어서 줄였는지 (2026-11-10) — 목록은 요약 두세 줄만 · 눌러서 강의 화면에서 전체 */
+  const lessonLong = (l) => DB.brief(l && l.desc).length > 60;
   function pageCurriculum(r) {
     if (r.parts[1]) return pageLesson(r.parts[1]);
     const cur = D.weeks.find((w) => isOpen(w) && todayStr() <= deadlineOf(w)) || D.weeks.filter(isOpen).slice(-1)[0];
@@ -1191,7 +1196,7 @@
       (w.goal ? '<div class="cw-goal"><span class="cw-goal-label">' + icon("target", "sm") + "핵심 목표</span><p>" + DB.linkify(w.goal) + "</p></div>" : "") +
       (w.howto ? '<div class="cw-sec cw-howto"><h3>' + icon("checks", "sm") + "이번 주 진행 방법</h3>" + DB.rich(w.howto) + "</div>" : "") +
       (w.lessons.length ? '<details class="cw-lessons"' + " open" + '><summary>' + icon("play", "sm") + esc(lessonWord()) + " " + w.lessons.length + '개 <span class="tiny">' + watched + "개 시청 완료</span>" + icon("chevDown", "sm") + "</summary>" +
-        w.lessons.map((l) => '<a class="lesson" href="#/curriculum/' + l.id + '">' + thumb(l) + '<div><div class="lesson-title">' + esc(l.title) + '</div><div class="lesson-desc">' + esc(l.desc) + "</div></div>" +
+        w.lessons.map((l) => '<a class="lesson" href="#/curriculum/' + l.id + '">' + thumb(l) + '<div><div class="lesson-title">' + esc(l.title) + '</div><div class="lesson-desc">' + esc(DB.brief(l.desc)) + "</div>" + (lessonLong(l) ? '<span class="lesson-more">자세히 보기' + icon("chevRight", "xs") + "</span>" : "") + "</div>" +
           (P.watched[l.id] ? '<span class="badge badge-positive">' + icon("check", "xs") + "시청 완료</span>" : '<span class="tiny">' + DB.vdur.label(l.youtubeId, l.durSec, l.minutes ? l.minutes + "분" : "") + "</span>") + "</a>").join("") + "</details>" : "") +
       ((w.topics || []).length ? '<div class="cw-sec"><h3>' + (mainLec() ? "메인 강의에서 다루는 내용" : "강의 내용") + '</h3><ul class="cw-topics">' + w.topics.map((t) => "<li>" + esc(t) + "</li>").join("") + "</ul></div>" : "") +
       (w.missions.length ? '<div class="cw-sec"><div class="cw-sec-head"><h3>과제</h3><span class="cw-period">' + icon("clock", "xs") + "과제 제출 기간 · " + fmtMD(openOf(w)) + " ~ " + fmtMD(deadlineOf(w)) + "</span>" +
@@ -1981,7 +1986,7 @@
           '<span class="vod-meta">' + (it.youtubeId ? DB.vdur.label(it.youtubeId, it.durSec, "", "vod-len") : "") + (it.meta ? "<span>" + esc(it.meta) + "</span>" : "") + ((it.images || []).length ? "<span>" + icon("image", "xs") + "사진 " + it.images.length + "</span>" : "") +
           ((it.attachments || []).length ? "<span>" + icon("paperclip", "xs") + "첨부 " + it.attachments.length + "</span>" : "") + "</span></span></a>").join("") + "</div>";
     } else {
-      body = items.map((it) => {
+      body = readyFirst(items).map((it) => {
         const action = it.tool === "calculator"
           ? '<a class="btn btn-primary btn-sm" href="#/library/file?tool=calculator">' + icon("calculator", "sm") + "계산기 열기</a>"
           : it.url ? '<a class="btn btn-tertiary btn-sm" href="' + esc(it.url) + '" target="_blank" rel="noopener">' + icon(cat === "ebook" ? "book" : "download", "sm") + (cat === "ebook" ? "열람" : "다운로드") + "</a>"
@@ -2882,6 +2887,7 @@
     // 지금 상태 (수강생 · 강사 · 콘텐츠 · 기수 · 진행 기록 · 버전 · 미리보기 · VOD 강의실)
     st: () => ({ me, INS, D, CO, P, TRACK, preview, previewBy, VP, botOpen, botThinking, chipTab }),
     prep, route, setVp, NAV, NAV_DEFS, navLabel, on, ML, NT, libList, LV, unreadNotices, newAnswers, newFixes,
+    lessonLong, readyFirst, resReady,
     isOpen, weekStats, overallStats, nextMissionOverall, myEvents, isUnread, kindOf, kindCount, findWeek, findMission, openOf, deadlineOf, missionState, lastSub, isDone, daysUntil, greetWord,
     guideGroup, guideDoneCheck, quickList: () => DB.quickLinksOf(D).filter((l) => l.url && (/^https?:/i.test(l.url) || linkOk([l.title, l.url]))), linkOk, mainLec,
     vodList, vodPct, vodPctOf, vodNext, coachN, addPid, coachEnd, myCoachQs, vodExp, learnHref, vodMode, applyTheme,

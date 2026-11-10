@@ -69,6 +69,18 @@
     flush();
     return '<div class="rich">' + out.join("") + "</div>";
   }
+  /** 목록용 짧은 요약 (2026-11-10): 서식 기호(## 소제목 · - 목록 · > · ** · ---)를 빼고 한 줄로 이어요
+   *  소제목 줄은 빼고(글이 소제목뿐이면 그대로) · [사진1] 자리도 빼요 — 전체 글은 상세 화면에서 rich 로 */
+  function brief(text) {
+    const body = [], heads = [];
+    String(text || "").replace(/\r/g, "").split("\n").forEach((raw) => {
+      let line = raw.trim(), m;
+      if (!line || /^\[사진\s*\d+\]$/.test(line) || /^(-{3,}|—{2,}|_{3,})$/.test(line)) return;
+      if ((m = line.match(/^#{1,3}\s+(.+)$/))) { heads.push(m[1]); return; }
+      body.push(line.replace(/^>\s?/, "").replace(/^[-·•*]\s+/, ""));
+    });
+    return (body.length ? body : heads).join(" ").replace(/\*\*(.+?)\*\*/g, "$1").replace(/\s+/g, " ").trim();
+  }
   const uid = (p) => (p || "id") + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
   /** 유튜브 주소/ID → 11자리 ID (아니면 빈 문자열) */
@@ -1134,7 +1146,7 @@
   };
 
   window.DB = {
-    load, save, reset, store, clone, uid, esc, linkify, youtubeId, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
+    load, save, reset, store, clone, uid, esc, linkify, brief, youtubeId, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
     get data() { return db; },
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,

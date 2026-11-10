@@ -334,6 +334,12 @@ a.mission:hover { border-color: var(--ink); }
 .lesson-thumb .icon { position: relative; width: 22px; height: 22px; fill: currentColor; stroke: none; }
 .lesson-title { font-size: 16px; font-weight: 700; }
 .lesson-desc { font-size: 14px; color: var(--body); margin-top: 2px; }
+/* 강의 목록 설명은 요약 두 줄만 (휴대폰 세 줄) · 끝은 … · 전체는 눌러서 강의 화면에서 (2026-11-10) */
+.lesson .lesson-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.lesson-more { display: inline-flex; align-items: center; gap: 2px; margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.lesson-more .icon { width: 12px; height: 12px; }
+.lesson:hover .lesson-more { text-decoration: underline; }
+@media (max-width: 720px) { .lesson .lesson-desc { -webkit-line-clamp: 3; line-clamp: 3; } }
 .week-block { padding: 8px; }
 .week-block + .week-block { margin-top: 14px; }
 .week-block-head { display: flex; align-items: center; gap: 12px; padding: 16px 14px 12px; }

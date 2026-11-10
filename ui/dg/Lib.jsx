@@ -147,7 +147,7 @@ function Library({ r, n }) {
           <span className="vod-meta">{it.youtubeId ? <RawOne html={DB.vdur.label(it.youtubeId, it.durSec, "", "vod-len")} /> : null}{it.meta ? <span>{it.meta}</span> : null}{(it.images || []).length ? <span><Icon n="image" c="xs" />사진 {it.images.length}</span> : null}{(it.attachments || []).length ? <span><Icon n="paperclip" c="xs" />첨부 {it.attachments.length}</span> : null}</span></span></a>
     ))}</div>
   );
-  else body = items.map((it, i) => {
+  else body = X.readyFirst(items).map((it, i) => {
     const action = it.tool === "calculator" ? <a className="btn btn-primary btn-sm" href="#/library/file?tool=calculator"><Icon n="calculator" c="sm" />계산기 열기</a>
       : it.url ? <a className="btn btn-tertiary btn-sm" href={it.url} target="_blank" rel="noopener"><Icon n={cat === "ebook" ? "book" : "download"} c="sm" />{cat === "ebook" ? "열람" : "다운로드"}</a>
         : <button className="btn btn-secondary btn-sm" data-action="not-ready" onClick={() => X.toast("자료를 준비 중이에요. 곧 알려 드릴게요.")}>준비 중</button>;

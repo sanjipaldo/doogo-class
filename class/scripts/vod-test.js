@@ -2920,6 +2920,23 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
       "3기가 4주 과정이거나 1주차가 11/21이 아니면 건드리지 않아요");
   }
 
+  {
+    console.log("56) 강의 목록 설명은 요약만 · 자료는 준비된 것 먼저 (2026-11-10)");
+    const vm56 = require("vm"), sb = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb.window = sb; vm56.createContext(sb); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm56.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb, { filename: f }));
+    const B = sb.DB.brief, desc = "## 강의에서 배우는 내용\n- 코워크시티에 이메일로 회원가입하고 휴대전화 인증을 완료합니다.\n- 사업자 유형, 업종을 **선택**해요.\n\n[사진1]\n---\n## 할인코드 확인\n> 아래 카페 글에서 확인";
+    ok(B(desc) === "코워크시티에 이메일로 회원가입하고 휴대전화 인증을 완료합니다. 사업자 유형, 업종을 선택해요. 아래 카페 글에서 확인" && B("## 제목만") === "제목만" && B("") === "" && B(null) === "" && B("한 줄 설명") === "한 줄 설명",
+      "요약: 소제목 · 목록 기호 · 굵게 · 사진 자리 · 구분선을 빼고 한 줄로 (소제목뿐이면 소제목)");
+    const ap = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), le = fs.readFileSync(path.join(ROOT, "../ui/dg/Learn.jsx"), "utf8"), li = fs.readFileSync(path.join(ROOT, "../ui/dg/Lib.jsx"), "utf8"), cs = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    ok(/<div class="lesson-desc">' \+ esc\(DB\.brief\(l\.desc\)\) \+ "<\/div>" \+ \(lessonLong\(l\) \? '<span class="lesson-more">자세히 보기'/.test(ap) && /<div className="lesson-desc">\{DB\.brief\(l\.desc\)\}<\/div>\{X\.lessonLong\(l\) \? <span className="lesson-more">자세히 보기/.test(le) &&
+      /\.lesson \.lesson-desc \{ display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;/.test(cs) && /\(DB\.rich\(l\.desc\)\)|DB\.rich\(l\.desc\)/.test(ap),
+      "강의 목록: 요약 두 줄(휴대폰 세 줄) · 길면 ‘자세히 보기’ · 강의 화면은 전체 서식 그대로 (예전 화면 = React)");
+    const rf = (list) => list.filter((it) => !!(it && (it.tool === "calculator" || it.url))).concat(list.filter((it) => !(it && (it.tool === "calculator" || it.url))));
+    const L = [{ id: "a" }, { id: "b", tool: "calculator" }, { id: "c" }, { id: "d", url: "/x" }];
+    ok(/const readyFirst = \(list\) => list\.filter\(resReady\)\.concat\(list\.filter\(\(x\) => !resReady\(x\)\)\);/.test(ap) && /body = readyFirst\(items\)\.map/.test(ap) && /else body = X\.readyFirst\(items\)\.map/.test(li) && rf(L).map((x) => x.id).join("") === "bdac",
+      "자료 파일: 바로 쓸 수 있는 것(다운로드 · 계산기)을 위로 · 준비 중은 아래로 · 같은 묶음 순서는 그대로 (예전 화면 = React)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);
