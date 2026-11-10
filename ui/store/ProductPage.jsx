@@ -106,7 +106,8 @@ function PcHead({ p, act }) {
 }
 function BuyCard({ p, act }) {
   const X = VOD(), { m, own, pr, left, isLiked, pvs, best, ps, rb } = X.buyView(p);
-  const signup = !m && !X.isBook(p) ? <p className="vd-buy-cp"><span className="vd-tag vd-tag-red">쿠폰</span>가입하면 바로 쓰는 5,000원 할인 쿠폰을 드려요</p> : null;
+  const bc = !m && X.isBook(p) ? X.bookSignupCp(p) : null;
+  const signup = !m && !X.isBook(p) ? <p className="vd-buy-cp"><span className="vd-tag vd-tag-red">쿠폰</span>가입하면 바로 쓰는 5,000원 할인 쿠폰을 드려요</p> : bc ? <p className="vd-buy-cp"><span className="vd-tag vd-tag-red">쿠폰</span>{"가입하면 바로 쓰는 ‘" + bc.name + "’ 쿠폰을 드려요 · 쿠폰 적용가 " + won(X.priceOf(p) - X.couponOff(bc, p, X.priceOf(p)))}</p> : null;
   let price = null;
   if (p.status === "soon" || pr === 0) price = null;
   else if (own && ps.length) price = <OwnBox p={p} m={m} />;

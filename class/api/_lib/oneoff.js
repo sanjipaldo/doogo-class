@@ -1138,6 +1138,42 @@ function moon3W5Online(get) {
   return { writes, result: { cohort: co.name + " (" + co.id + ")", week5: "12/15(화) " + o5.time + "~" + o5.end + " 온라인 · " + o5.topic + " · 녹화본 12/16 · 과제 마감 12/18", removed: dup.map((e) => e.date + " " + (e.title || e.type)), url: o5.url ? "입장 링크 옮김" : "입장 링크 없음" } };
 }
 
+/* ---------- 첫 책 1,000원 할인 쿠폰 (2026-11-10 · 대표님 요청) ----------
+ * 책 값을 판매가(-1,000원)로 깎지 않고, 두고클래스 회원이면 누구나 한 장 받는 쿠폰으로 깎아요 (정가 15,900원 − 쿠폰 1,000원 + 배송비 3,500원 = 18,400원).
+ *  ① 쿠폰 ‘첫 책 1,000원 할인’(기한 없음 · 전자책 · 종이책 · 가입하면 자동)을 마스터 쿠폰 목록(meta.vod.coupons)과 결제 가격표(vcat.coupons)에 — 없을 때만
+ *  ② 문대표 종이책(b1) 판매가 14,900원 → 없음(정가 그대로) — 마스터가 다른 값으로 바꿨으면 그대로
+ *  ③ 이미 가입한 회원(탈퇴 빼고)에게 한 장씩 — 이미 가진 회원은 그대로 (회원마다 한 장)
+ *  종이책은 도서정가제로 ‘종이책’을 고른 책 전용 쿠폰만 · 판매가 할인과 합쳐 정가의 10%까지 (shared/price.js couponOff) */
+function bookCoupon(get, keys) {
+  const PR = require("../../shared/price"), B = PR.BOOK_CP, { MOON_BOOK } = require("./books");
+  const writes = {}, result = { coupon: [], book: "", members: 0, had: 0 };
+  const C_KEYS = ["id", "code", "name", "kind", "value", "max", "min", "days", "endAt", "types", "auto", "dl", "on"], cp = () => JSON.parse(JSON.stringify(B));
+  const meta = get("meta");
+  if (isObj(meta) && isObj(meta.vod)) {
+    const v = clone(meta.vod);
+    v.coupons = Array.isArray(v.coupons) ? v.coupons : [];
+    if (!v.coupons.some((c) => isObj(c) && c.id === B.id)) { v.coupons.push(cp()); result.coupon.push("마스터 쿠폰 목록에 추가"); } else result.coupon.push("마스터 쿠폰 목록에 이미 있음");
+    (Array.isArray(v.products) ? v.products : []).forEach((p) => { if (isObj(p) && p.id === MOON_BOOK.id) { if (Number(p.sale) === 14900) { p.sale = null; p.saleEnd = ""; result.book = "판매가 14,900원 → 없음 (정가 " + p.price + "원)"; } else result.book = "판매가 " + (p.sale == null ? "없음" : p.sale) + " 그대로"; } });
+    v.v24 = 1;
+    writes.meta = Object.assign({}, meta, { vod: v });
+  }
+  const cat = get("vcat");
+  if (isObj(cat)) {
+    const c2 = Object.assign({}, cat, { coupons: (Array.isArray(cat.coupons) ? cat.coupons : []).slice(), products: (Array.isArray(cat.products) ? cat.products : []).map((p) => (isObj(p) && p.id === MOON_BOOK.id && Number(p.sale) === 14900 ? Object.assign({}, p, { sale: null, saleEnd: "" }) : p)) });
+    if (!c2.coupons.some((c) => isObj(c) && c.id === B.id)) { const r = {}; C_KEYS.forEach((k) => { if (B[k] !== undefined) r[k] = cp()[k]; }); c2.coupons.push(r); result.coupon.push("결제 가격표에 추가"); }
+    writes.vcat = c2;
+  }
+  const now = Date.now();
+  keys("vm:").forEach((k, i) => {
+    const m = get(k); if (!isObj(m) || m.withdrawnAt) return;
+    const list = Array.isArray(m.coupons) ? m.coupons : [];
+    if (list.some((x) => isObj(x) && x.cid === B.id)) { result.had++; return; }
+    writes[k] = Object.assign({}, m, { coupons: list.concat([{ id: "mc" + now.toString(36) + i.toString(36) + require("crypto").randomBytes(3).toString("hex"), cid: B.id, at: now, exp: "", usedAt: null, orderNo: "" }]) });
+    result.members++;
+  });
+  return { writes, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1178,7 +1214,8 @@ const OPS = [
   { id: "2026-11-10-moon-w2-title-3", note: "문대표 2주차 과제 제목 ‘시장조사 10개’ → ‘시장조사 3개’ (4주 압축 과정 등 · 기본 커리큘럼과 같게 · 제목만)", run: moonW2Title3 },
   { id: "2026-11-10-moon-book-final", note: "문대표 종이책 최종 표지(흰 표지 + 검정 띠지) · 목업 · 펼침면 · 판매가 14,900원(정가 15,900원) + 배송비 3,500원 · 168쪽 · 목차", run: moonBookFinal },
   { id: "2026-11-10-moon3-w5-online", note: "문대표 3기 5주차: 12/15(화) 19:00~22:00 온라인 강의로 (12/19 토요일 강의 없음) · 녹화본 업로드 12/16 · 과제 마감 12/18 · 겹치는 12/15 특별 일정 지우기", run: moon3W5Online },
+  { id: "2026-11-10-book-coupon", note: "첫 책 1,000원 할인 쿠폰(회원마다 한 장 · 기한 없음 · 전자책 · 종이책) 만들기 · 이미 가입한 회원에게 한 장씩 · 문대표 종이책은 정가 15,900원 그대로(쿠폰으로 18,400원)", run: bookCoupon },
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
 ];
 
-module.exports = { OPS, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

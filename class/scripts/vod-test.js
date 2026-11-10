@@ -2870,24 +2870,24 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const OO = require(path.join(ROOT, "api/_lib/oneoff.js")), BK = require(path.join(ROOT, "api/_lib/books.js")).MOON_BOOK, PR = require(path.join(ROOT, "shared/price.js"));
     const vs54 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), m54 = vs54.match(/^  const MOON_BOOK = (\{.*\});$/m);
     const lz = (BK.curriculum || []).reduce((a, c) => a.concat(c.lessons || []), []);
-    ok(!!m54 && JSON.stringify(JSON.parse(m54[1])) === JSON.stringify(BK) && BK.price === 15900 && BK.sale === 14900 && BK.sale >= Math.ceil(BK.price * 0.9 / 10) * 10 && BK.shipFee === 3500 && BK.pages === 168 &&
+    ok(!!m54 && JSON.stringify(JSON.parse(m54[1])) === JSON.stringify(BK) && BK.price === 15900 && BK.sale === null && BK.shipFee === 3500 && BK.pages === 168 &&
       BK.curriculum.length === 5 && lz.length === 25 && lz.every((l) => l.id && l.title && Number(l.min) > 0) && /moon-cover2\.webp$/.test(BK.cover) && BK.detailImgs.length === 2 &&
       ["cover2", "mock2", "spread2"].every((n) => fs.existsSync(path.join(ROOT, "assets/vod/book/moon-" + n + ".webp"))) && !fs.existsSync(path.join(ROOT, "assets/vod/book/moon-cover.webp")),
-      "책 상품(서버 books.js = 화면 vod.js): 정가 15,900원 · 판매가 14,900원(도서정가제 90% 이상) · 배송비 3,500원 · 168쪽 · 목차 5장 25꼭지 · 새 표지 이미지 3장");
+      "책 상품(서버 books.js = 화면 vod.js): 정가 15,900원(할인은 첫 책 쿠폰으로 · 57) · 배송비 3,500원 · 168쪽 · 목차 5장 25꼭지 · 새 표지 이미지 3장");
     const oldBook = { id: "b1", type: "book", title: BK.title, price: 15900, sale: null, shipFee: 0, pages: null, size: "", cover: "assets/vod/book/moon-cover.webp", curriculum: [],
       detailImgs: [{ url: "assets/vod/book/moon-mock.webp", name: "앞표지 · 뒤표지" }, { url: "assets/vod/book/moon-spread.webp", name: "x" }, { url: "/api/file?h=abc", name: "마스터가 올린 사진" }],
       sub: "0원에서 시작한 사람이 건네는 4단계 차선 변경법 · 문대표 첫 책", pitch: "마스터가 고친 소개", learn: ["a"], who: [], intro: "" };
     const meta = { vod: { products: [{ id: "v1", title: "x" }, oldBook], settings: {} }, other: 1 }, cat = { at: 1, products: [{ id: "v1" }, { id: "b1", type: "book", status: "on", price: 15900, sale: null, shipFee: 0, stock: "" }] };
     const r = OO.moonBookFinal((k) => JSON.parse(JSON.stringify(k === "meta" ? meta : k === "vcat" ? cat : null))), b = r.writes.meta.vod.products[1], c = r.writes.vcat.products[1];
-    ok(b.cover === BK.cover && b.detailImgs.length === 3 && b.detailImgs[0].url === BK.detailImgs[0].url && b.detailImgs[2].url === "/api/file?h=abc" && b.sale === 14900 && b.shipFee === 3500 && b.pages === 168 && b.curriculum.length === 5 &&
+    ok(b.cover === BK.cover && b.detailImgs.length === 3 && b.detailImgs[0].url === BK.detailImgs[0].url && b.detailImgs[2].url === "/api/file?h=abc" && b.sale === null && b.shipFee === 3500 && b.pages === 168 && b.curriculum.length === 5 &&
       b.sub === BK.sub && b.pitch === "마스터가 고친 소개" && JSON.stringify(b.learn) === '["a"]' && JSON.stringify(b.who) === JSON.stringify(BK.who) && b.intro === BK.intro &&
-      r.result.kept.join(",") === "pitch,learn" && r.writes.meta.other === 1 && r.writes.meta.vod.products[0].title === "x" && c.sale === 14900 && c.shipFee === 3500 && c.price === 15900 && c.stock === "" && r.writes.vcat.at === 1 &&
+      r.result.kept.join(",") === "pitch,learn" && r.writes.meta.other === 1 && r.writes.meta.vod.products[0].title === "x" && c.sale === null && c.shipFee === 3500 && c.price === 15900 && c.stock === "" && r.writes.vcat.at === 1 &&
       OO.OPS.some((o) => o.id === "2026-11-10-moon-book-final" && o.run === OO.moonBookFinal),
       "일회성 2026-11-10-moon-book-final: 표지 · 목업 · 펼침면 교체(마스터가 올린 사진은 뒤에 그대로) · 판매가 · 배송비 · 쪽수 · 목차 · 처음 글 그대로인 칸만 새 글(고친 글은 그대로) · 결제 가격표도 같이");
     const p2 = OO.moonBookFinal((k) => (k === "meta" ? { vod: { products: [], settings: {} } } : k === "vcat" ? { products: [] } : null));
     const P = require(path.join(ROOT, "api/_lib/vodprice.js")), pr = P.pricer ? P.pricer({ products: [c] }, Date.now()) : null;
-    ok(p2.writes.meta.vod.products[0].id === "b1" && p2.writes.vcat.products[0].sale === 14900 && p2.writes.vcat.products[0].dg === false && (!pr || (pr.priceOf(pr.product("b1")) === 14900 && pr.shipOf(pr.product("b1")) === 3500)),
-      "책이 없던 곳엔 새로 넣기 · 서버 가격 계산: 14,900원 · 배송비 3,500원(주문마다 한 번)");
+    ok(p2.writes.meta.vod.products[0].id === "b1" && p2.writes.vcat.products[0].sale === null && p2.writes.vcat.products[0].dg === false && (!pr || (pr.priceOf(pr.product("b1")) === 15900 && pr.shipOf(pr.product("b1")) === 3500)),
+      "책이 없던 곳엔 새로 넣기 · 서버 가격 계산: 15,900원 · 배송비 3,500원(주문마다 한 번)");
     const pp = fs.readFileSync(path.join(ROOT, "../ui/store/ProductPage.jsx"), "utf8");
     ok(/icon\(bk \? "book" : own \|\| l\.preview/.test(vs54) && /<Icon n=\{bk \? "book" : own \|\| l\.preview/.test(pp) && /\(t === "ebook" \|\| bk \? \(ch\.lessons \|\| \[\]\)\.reduce/.test(vs54) && /\{t === "ebook" \|\| bk \? \(ch\.lessons \|\| \[\]\)\.reduce/.test(pp) &&
       /\(bk \? "읽기" : "강의"\) \+ ' 전과 후/.test(vs54) && /\{v\.bk \? "읽기" : "강의"\} 전과 후/.test(pp),
@@ -2935,6 +2935,31 @@ const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId:
     const L = [{ id: "a" }, { id: "b", tool: "calculator" }, { id: "c" }, { id: "d", url: "/x" }];
     ok(/const readyFirst = \(list\) => list\.filter\(resReady\)\.concat\(list\.filter\(\(x\) => !resReady\(x\)\)\);/.test(ap) && /body = readyFirst\(items\)\.map/.test(ap) && /else body = X\.readyFirst\(items\)\.map/.test(li) && rf(L).map((x) => x.id).join("") === "bdac",
       "자료 파일: 바로 쓸 수 있는 것(다운로드 · 계산기)을 위로 · 준비 중은 아래로 · 같은 묶음 순서는 그대로 (예전 화면 = React)");
+  }
+
+  {
+    console.log("57) 첫 책 1,000원 할인 쿠폰 — 회원마다 한 장 · 기한 없음 · 전자책 · 종이책 (2026-11-10)");
+    const PR = require(path.join(ROOT, "shared/price.js")), OO = require(path.join(ROOT, "api/_lib/oneoff.js")), VP = require(path.join(ROOT, "api/_lib/vodprice.js")), B = PR.BOOK_CP;
+    const book = { id: "b1", type: "book", status: "on", price: 15900, sale: null, shipFee: 3500 }, bookS = Object.assign({}, book, { id: "b2", sale: 14900 }), eb = { id: "e1", type: "ebook", status: "on", price: 19900 }, vod = { id: "v1", type: "vod", status: "on", price: 99000 };
+    const X = VP.pricer({ products: [book, bookS, eb, vod], coupons: [B] }, Date.now()), welcome = { id: "w", kind: "won", value: 5000, types: [] }, big = { id: "g", kind: "won", value: 3000, types: ["book"] };
+    ok(B.id === "cp-book1000" && B.auto === "signup" && !B.days && !B.endAt && B.value === 1000 && JSON.stringify(B.types) === '["ebook","book"]' &&
+      X.couponOff(B, book, 15900) === 1000 && X.couponOff(B, book, 31800) === 1000 && X.couponOff(B, eb, 19900) === 1000 && X.couponOff(B, vod, 99000) === 0 && X.couponOff(welcome, book, 15900) === 0 &&
+      X.couponOff(big, book, 15900) === 1590 && X.couponOff(B, bookS, 14900) === 590 && X.couponOff(big, bookS, 14900 * 2) === 1180,
+      "쿠폰 규칙: 첫 책 쿠폰은 전자책 · 종이책에 1,000원 (VOD는 안 돼요) · 종이책엔 ‘종이책’을 고른 쿠폰만(가입 5,000원 쿠폰은 안 돼요) · 판매가 할인과 합쳐 정가의 10%까지(도서정가제)");
+    const st = { meta: { vod: { products: [Object.assign({}, book, { sale: 14900 })], coupons: [{ id: "cp-welcome" }] }, other: 1 }, vcat: { at: 1, products: [Object.assign({}, book, { sale: 14900 })], coupons: [{ id: "cp-welcome" }] },
+      "vm:a": { id: "a", coupons: [{ id: "x", cid: "cp-welcome" }] }, "vm:b": { id: "b", coupons: [{ id: "y", cid: B.id, usedAt: 1 }] }, "vm:c": { id: "c", withdrawnAt: 1, coupons: [] }, "vm:d": { id: "d" } };
+    const g = (k) => JSON.parse(JSON.stringify(st[k] === undefined ? null : st[k])), ks = (pre) => Object.keys(st).filter((k) => k.indexOf(pre) === 0);
+    const r = OO.bookCoupon(g, ks), w = r.writes;
+    ok(w.meta.vod.coupons.length === 2 && w.meta.vod.coupons[1].id === B.id && w.meta.vod.products[0].sale === null && w.meta.vod.v24 === 1 && w.meta.other === 1 && w.vcat.coupons[1].id === B.id && w.vcat.products[0].sale === null && w.vcat.at === 1 &&
+      w["vm:a"].coupons.length === 2 && w["vm:a"].coupons[1].cid === B.id && w["vm:a"].coupons[1].exp === "" && !w["vm:a"].coupons[1].usedAt && !w["vm:b"] && !w["vm:c"] && w["vm:d"].coupons.length === 1 && r.result.members === 2 && r.result.had === 1 &&
+      OO.OPS.some((o) => o.id === "2026-11-10-book-coupon" && o.run === OO.bookCoupon),
+      "일회성 2026-11-10-book-coupon: 쿠폰을 마스터 목록 · 결제 가격표에 · 책 판매가 14,900원 → 없음(정가) · 가입한 회원에게 한 장씩(이미 가진 · 쓴 회원 · 탈퇴 회원은 그대로)");
+    Object.keys(w).forEach((k) => { st[k] = w[k]; }); const r2 = OO.bookCoupon(g, ks);
+    ok(r2.result.members === 0 && r2.writes.meta.vod.coupons.length === 2 && r2.writes.vcat.coupons.length === 2 && /그대로/.test(r2.result.book), "두 번 돌려도 쿠폰 · 회원 쿠폰이 늘지 않아요");
+    const vs = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), co = fs.readFileSync(path.join(ROOT, "../ui/store/CheckoutPage.jsx"), "utf8"), vd = fs.readFileSync(path.join(ROOT, "api/_lib/vod.js"), "utf8");
+    ok(/k === "course" && \(!bk \|\| cps\.length\) && !rbC \?/.test(vs) && /k === "course" && \(!bk \|\| cps\.length\) && !rbC \?/.test(co) && /\(k === "course" && \(!bk \|\| cps\.length\) \? '<div><dt>쿠폰 할인<\/dt>/.test(vs) && /k === "course" && \(!bk \|\| cps\.length\) \? <div><dt>쿠폰 할인<\/dt>/.test(co) &&
+      /c\.auto === "signup" && c\.on !== false\)\.forEach\(\(c\) => m\.coupons\.push/.test(vd) && /cp = def \? X\.couponOff\(def, p, pr\) : 0;/.test(vd),
+      "결제 화면: 종이책도 쓸 수 있는 쿠폰이 있으면 쿠폰 칸 · 쿠폰 할인 줄 (예전 화면 = React) · 새 회원은 가입할 때 자동으로 · 서버가 쿠폰 금액을 다시 계산 (실제 결제 18,400원은 e2e reactdg 1-20)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

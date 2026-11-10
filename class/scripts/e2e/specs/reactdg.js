@@ -714,6 +714,25 @@ module.exports = {
       await run.check(["off", "all"].every((m) => r[m].cur.n > 0 && r[m].cur.ok && r[m].cur.clamp === "3" && r[m].lib.sorted && r[m].lib.anyReady && r[m].lib.anyWait) && JSON.stringify(r.off) === JSON.stringify(r.all),
         "강의 목록 설명은 요약(서식 기호 없이 · 휴대폰 세 줄 · 길면 ‘자세히 보기’) · 자료 파일은 다운로드 · 계산기 먼저, ‘준비 중’은 아래 (예전 화면 = React)", r);
     }
+    // 1-20) 첫 책 1,000원 할인 쿠폰 (2026-11-10): 회원이면 한 장 · 책 상세 ‘쿠폰 적용가 14,900원’ · 종이책 결제 화면에 쿠폰이 골라져 18,400원 · 서버도 18,400원 (예전 화면 = React)
+    {
+      const r = {};
+      for (const mode of ["off", "all"]) {
+        const pg = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
+        run.watch(pg, "첫 책 쿠폰 " + mode);
+        await FL.member(pg, base, info.vodDemo.email, info.vodDemo.pw); await L.reactCookie(pg, base, mode);
+        await L.open(pg, base, "/vod/p/b1"); await pg.waitForTimeout(900);
+        const pd = await pg.evaluate(() => ({ card: ((document.querySelector("#vd-pdt-info") || {}).innerText || "").replace(/\s+/g, " "), mine: window.VOD.myCoupons(window.VOD.me().id).filter((y) => y.c && y.c.id === "cp-book1000" && y.st === "ok").length }));
+        await L.open(pg, base, "/vod/checkout/b1"); await pg.waitForTimeout(1200);
+        const co = await pg.evaluate(() => { const f = document.querySelector("form[data-vd-pay]") || document, s = f.querySelector("select[name=coupon]"); return { opt: s ? Array.from(s.options).map((o) => o.textContent) : [], sel: s ? s.value : "", tot: ((f.querySelector("[data-co-tot]") || {}).textContent || "").trim(), cp: ((f.querySelector("[data-co-cp]") || {}).textContent || "").trim() }; });
+        const srv = await pg.evaluate((mcid) => { const ship = { name: "홍길동", phone: "010-1234-5678", zip: "06234", addr1: "서울 강남구 테헤란로 123", addr2: "4층", memo: "" };
+          const go = (expect) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid: "b1", kind: "course", qty: 1, method: "card", mcid, ship, expect }) }).then((x) => x.json()).then((j) => j.message || (j.ok ? "ok" : ""));
+          return Promise.all([go(18400), go(18300)]); }, co.sel);
+        r[mode] = { pd, co, srv }; await pg.context().close();
+      }
+      const okm = (x) => x.pd.mine === 1 && /쿠폰 적용가 14,900원/.test(x.pd.card) && x.co.opt.some((t) => /첫 책 1,000원 할인 \(-1,000원\)/.test(t)) && !!x.co.sel && x.co.tot === "18,400원" && x.co.cp === "-1,000원" && !/가격이 방금 바뀌었어요/.test(x.srv[0]) && /가격이 방금 바뀌었어요/.test(x.srv[1]);
+      await run.check(okm(r.off) && okm(r.all), "첫 책 1,000원 할인 쿠폰: 회원이면 한 장 · 책 상세 쿠폰 적용가 14,900원 · 종이책 결제 화면에 쿠폰이 골라져 18,400원(쿠폰 -1,000원) · 서버 계산도 18,400원 (예전 화면 = React)", r);
+    }
     // 2) VOD 수강생 (DOOGO CLASS 회원 → 산 VOD 의 두잉고 강의실)
     {
       const page = await L.newPage(browser);
