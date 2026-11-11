@@ -16,7 +16,7 @@ E2E_AREAS=all:only node scripts/e2e/run.js           # 문서 종류마다 제 �
 ```
 
 - Playwright(chromium)가 설치된 컴퓨터에서 돌려요. 배포 빌드가 무거워지지 않게 저장소 `package.json`에는 넣지 않아요.
-- **운영 DB · 운영 사이트에는 접속하지 않아요.** 테스트 서버(`scripts/dev-server.js`)를 시험용 SQLite 파일로 띄우고, 운영 비밀 값(DB · Storage · 포트원 · 카카오 · AI 키)은 넘기지 않아요 (`lib.js` `cleanEnv`).
+- **운영 DB · 운영 사이트에는 접속하지 않아요.** 테스트 서버(`scripts/dev-server.js`)를 시험용 SQLite 파일로 띄우고, 운영 비밀 값(DB · Storage · 토스페이먼츠 · 카카오 · AI 키)은 넘기지 않아요 (`lib.js` `cleanEnv`).
 - 시험 DB는 운영과 같은 순서로 만들어요: 처음 데이터(data.js) → 마스터가 스토어를 한 번 열어 스토어 데이터 · 결제 가격표 올림 → 배포 빌드처럼 일회성 작업 전부 + 기본값 채우기 (`fixture.js`).
 - 체험 계정 이름 · 뒷자리는 코드에 적지 않고 시험 DB에서 읽어요 (`fixture.json`).
 - 화면은 운영처럼 `#` 없는 깨끗한 주소로 열어요 (`dc:clean`).
@@ -38,6 +38,7 @@ E2E_AREAS=all:only node scripts/e2e/run.js           # 문서 종류마다 제 �
 | react · reactdg | React 화면(스토어 · 회원 · 두잉고 강의실)이 예전 화면과 같은 구조 · 누르기 (Next.js 서버 `E2E_SERVER=next` 에서만) |
 | reactct | 강사센터 · 코치 · VOD 탭 · 마스터 · 운영자(스태프) 계정 화면이 예전 화면과 같은 구조 (PC · 휴대폰) · 운영 화면 · 무료강의 · 강사 소개 페이지 편집 · 클래스 세팅 · 마스터 화면 누르기 (Next.js 서버에서만) |
 | reactpm | 마스터가 화면에서 만든 파트너 · 온드미디어 계정으로 파트너센터 · 온드미디어 센터가 예전 화면과 같은 구조 · 탭 · 고르기 · 찾기 (Next.js 서버에서만) |
+| pay | 결제 화면 (토스페이먼츠 · 2026-11-11): 시험용 가짜 토스 키 · 결제수단을 넣은 서버로 — 탈잉 순서 목록(계좌이체 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 · 무통장) · 처음엔 카드 · 고른 수단 아래 안내 · 예전 화면 = React 화면 · 결제하기 → 가짜 토스 SDK 가 받은 값(네이버페이 · 카카오페이 DIRECT · 카드 통합결제창 · 계좌이체 · 가상계좌 입금 기한 · 금액 · 주문 번호 · 돌아올 주소) · 결제창에서 취소하고 돌아오면 ‘결제 안 됨’ (`spec.env` 로 그 시험만 서버 설정 · `E2E_PAY_SHOTS=<폴더>` 면 사진) |
 
 ## 주소 목록 (지금 운영에서 열리는 주소 — 전환 뒤에도 그대로)
 
@@ -58,9 +59,9 @@ E2E_AREAS=all:only node scripts/e2e/run.js           # 문서 종류마다 제 �
 | `/center/login` · `/center/<메뉴>` · `/center/master/<메뉴>` · `/center/partner/…` · `/center/media/…` | 강사센터 · 코치 · 마스터 · 파트너 · 온드미디어 |
 | `/#/…` | 예전 링크 — 깨끗한 주소로 바꿔서 같은 화면 |
 
-**돌아오는 주소의 값:** 결제 `/?pay=<결제ID>#/vod/order/<주문번호>` (+ 포트원 `paymentId` · `code` · `message` · `pgCode` · `pgMessage` · `transactionType` · `txId`) · 카카오 로그인 `?vodlogin=ok|linked|deny|dup|taken|other|blocked|fail` — 화면이 읽고 나서 주소에서 지워요 (`ROUTE.dropQuery`).
+**돌아오는 주소의 값:** 결제 `/` (토스 결제창이 붙여 보내는 `paymentKey` · `orderId` · `amount` · `paymentType` 또는 실패 · 취소 `code` · `message` · `orderId` — 처리하면 주소에서 지우고 `#/vod/order/<주문번호>` 로) · 카카오 로그인 `?vodlogin=ok|linked|deny|dup|taken|other|blocked|fail` — 화면이 읽고 나서 주소에서 지워요 (`ROUTE.dropQuery`).
 
-**바깥 서비스에 등록된 주소 (바뀌면 바로 장애):** 카카오 로그인 Redirect URI `/api/vod-kakao` · 포트원 결제 · 웹훅 `/api/vod-pay` · 무통장 입금 확인 웹훅 `/api/vod-bank` · `doinggo.doogoclass.com` → `/doinggo` 넘기기(vercel.json).
+**바깥 서비스에 등록된 주소 (바뀌면 바로 장애):** 카카오 로그인 Redirect URI `/api/vod-kakao` · 토스 결제창 돌아오는 주소 `/` · 토스 웹훅 `/api/vod-pay?hook=toss` · 무통장 입금 확인 웹훅 `/api/vod-bank` · `doinggo.doogoclass.com` → `/doinggo` 넘기기(vercel.json).
 
 ## 기준선에서 찾아 고친 것 (2026-11-03)
 

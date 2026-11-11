@@ -3403,7 +3403,7 @@
   const VD_ST = { on: ["판매 중", "ok"], soon: ["오픈 예정", "info"], hidden: ["숨김", "mute"] };
   // ready: 카드 · 간편결제 창만 열고 끝내지 않은 주문 · failed: 결제가 안 된 주문 — 예전에는 ‘결제 완료’로 보였어요 (4단계 결제 시험에서 찾음 · 매출에는 원래 안 들어가요)
   const VD_OST = { paid: ["결제 완료", "ok"], pending: ["입금 대기", "warn"], refunded: ["환불", "mute"], canceled: ["주문 취소", "mute"], ready: ["결제 안 끝남", "mute"], failed: ["결제 안 됨", "mute"] };
-  const VD_PAY = { card: "카드", kakao: "카카오페이", toss: "토스페이", naver: "네이버페이", transfer: "계좌이체", vbank: "가상계좌", bank: "무통장", free: "무료", point: "쿠폰 · 포인트" };
+  const VD_PAY = { card: "카드", transfer: "계좌이체", vbank: "가상계좌", easy: "간편결제", phone: "휴대폰", tp: "토스페이먼츠", kakao: "카카오페이", toss: "토스페이", naver: "네이버페이", bank: "무통장", free: "무료", point: "쿠폰 · 포인트" };
   // 강사 · 코치 화면은 회원 문서를 받지 않아요(서버가 주문의 이름만 가려서 보냄) → 주문의 주문자 이름으로 보여요
   const vdMember = (id) => VD().members.find((m) => m.id === id) || vdBuyer(id);
   const vdBuyer = (id) => { const o = id && VD().orders.find((x) => x.mid === id && x.buyer && x.buyer.name); return o ? { id, name: o.buyer.name, phone: o.buyer.phone || "", email: "", masked: true } : null; };
@@ -3507,12 +3507,14 @@
           (o.status === "pending" && Date.now() > vdDue(o) ? pill("입금 기한 지남", "warn") + " " : "") + (o.status === "pending" && o.method === "vbank" ? pill("가상계좌 입금 대기", "info") + btn("주문 취소", "vda-cancel", "a-btn-ghost a-btn-sm", ' data-id="' + esc(o.id) + '"') : o.status === "pending" ? btn("입금 확인", "vda-paid", "a-btn-primary a-btn-sm", ' data-id="' + esc(o.id) + '"') + btn("주문 취소", "vda-cancel", "a-btn-ghost a-btn-sm", ' data-id="' + esc(o.id) + '"') : o.status === "paid" && o.amount > 0 ? btn(o.refundReq ? "환불 처리" : "환불", "vda-refund", o.refundReq ? "a-btn-primary a-btn-sm" : "a-btn-ghost a-btn-sm", ' data-id="' + esc(o.id) + '"') : o.status === "paid" ? btn("신청 취소", "vda-cancel0", "a-btn-ghost a-btn-sm", ' data-id="' + esc(o.id) + '"') : "") + "</td></tr>"; }).join("") +
         "</tbody></table></div>" : emptyBox("inbox", "조건에 맞는 주문이 없어요.")) + "</section>";
   }
-  // 포트원(PG)으로 결제한 주문 (카드 · 간편결제 · 계좌이체 · 가상계좌)
-  const VD_PG = ["card", "kakao", "naver", "toss", "transfer", "vbank"];
+  // PG(토스페이먼츠 · 예전 포트원 시절 시험 결제 포함)로 결제한 주문 (카드 · 계좌이체 · 가상계좌)
+  const VD_PG = ["card", "transfer", "vbank", "easy", "phone", "tp", "kakao", "naver", "toss"];
   const vdIsPg = (o) => VD_PG.indexOf(o.method) >= 0 && !(o.pg && o.pg.st === "mock");
-  // 포트원 결제인지는 주문 기록으로 정해요 — 예전에는 결제 설정(vod-config)을 받았는지로 정해서, 스토어를 거치지 않고 연 마스터 화면에서는
-  // 카드 결제를 포트원 취소 없이 ‘환불’로 저장했어요 (2026-11-04 시험 결제에서 찾음 · 서버도 막아요: vodaccess PG_LOCK)
+  // PG 결제인지는 주문 기록으로 정해요 — 예전에는 결제 설정(vod-config)을 받았는지로 정해서, 스토어를 거치지 않고 연 마스터 화면에서는
+  // 카드 결제를 PG 취소 없이 ‘환불’로 저장했어요 (2026-11-04 시험 결제에서 찾음 · 서버도 막아요: vodaccess PG_LOCK) — 환불은 늘 서버(/api/vod-pay refund)로
   const vdPgReal = (o) => !!(vdSrv() && vdIsPg(o) && (o.paymentId || (o.pg || {}).paymentId));
+  /** 토스페이먼츠로 결제한 주문 (서버가 토스에 자동 취소 · ‘토스 결제 조회’) — 예전 포트원 시절 시험 결제는 기록만 */
+  const vdToss = (o) => !!(o && o.pg && o.pg.pv === "toss" && o.pg.paymentKey);
   const vdAcctTxt = (a) => (a ? [VX().bankName(a.bank), a.number, a.holder].filter(Boolean).join(" ") : "");
   /** 주문 · 결제 상세 (주문번호를 누르면) */
   function vdOrderModal(o) {
@@ -3529,27 +3531,28 @@
           (o.rs ? row("온드미디어 RS", "- " + won(Math.floor(X.rsOf(o) * vdKeep(o) / 10) * 10) + "<br><small>판매가 × (1 − PG " + (Number(o.rs.pg) || 0) + "%) × " + (Number(o.rs.rate) || 0) + "% · 나누기 전에 먼저 빼요</small>") : "") +
           (sh != null ? row("정산", sh + "% · 강사 몫 " + won(vdInsAmt(o))) : "") + (o.amount > 0 && (o.status === "paid" || o.status === "refunded") ? row("PG 수수료 (추정)", won(vdFee(o))) : "") + "</table></section>" +
         (o.ship ? '<section><h4>종이책 배송</h4><table class="od-t">' + row("배송 상태", pill((X.SHIP_ST[X.shipStOf(o)] || X.SHIP_ST.ready)[0], vsTone(X.shipStOf(o)))) + row("수량", (Number(o.qty) || 1) + "권") + row("배송비", o.shipFee ? won(o.shipFee) : "무료") + row("받는 분", esc(o.ship.name || "") + " · " + esc(o.ship.phone || "")) + row("주소", (o.ship.zip ? "(" + esc(o.ship.zip) + ") " : "") + esc((o.ship.addr1 || "") + " " + (o.ship.addr2 || ""))) + row("요청사항", esc(o.ship.memo || "")) + row("송장", o.ship.inv ? esc(o.ship.carrier || "") + ' <span class="num">' + esc(o.ship.inv) + "</span>" + (X.trackUrl(o) ? ' <a class="a-link" href="' + esc(X.trackUrl(o)) + '" target="_blank" rel="noopener">배송 조회</a>' : "") : "") + row("보낸 날", t(o.ship.shipAt)) + row("배송 완료", t(X.shipDoneAt(o)) + (X.shipStOf(o) === "done" && !o.ship.doneAt ? " (자동)" : "")) + (X.claimOf(o) ? row("취소 · 반품 · 교환", pill(X.claimTxt(X.claimOf(o)), X.claimOf(o).st === "req" ? "bad" : "mute") + " " + esc(X.claimOf(o).why || "") + (X.claimOf(o).note ? "<br><small>반려 · " + esc(X.claimOf(o).note) + "</small>" : "")) : "") + (boCash(o) ? row("현금영수증", esc(boCash(o))) : "") + "</table></section>" : "") +
-        '<section><h4>결제</h4><table class="od-t">' + row("결제수단", esc(VD_PAY[o.method] || o.method)) + row("결제 일시", t(o.paidAt)) + (pid ? row("포트원 결제 ID", '<span class="num od-id">' + esc(pid) + "</span>") : "") + (pg.txId ? row("거래 ID", '<span class="num od-id">' + esc(pg.txId) + "</span>") : "") +
+        '<section><h4>결제</h4><table class="od-t">' + row("결제수단", esc(VD_PAY[o.method] || o.method)) + row("결제 일시", t(o.paidAt)) + (pid ? row("결제 ID (주문 ID)", '<span class="num od-id">' + esc(pid) + "</span>") : "") + (pg.paymentKey ? row("토스 결제 키", '<span class="num od-id">' + esc(pg.paymentKey) + "</span>") : "") + (pg.card ? row("카드", esc(pg.card) + (pg.approveNo ? " · 승인 " + esc(pg.approveNo) : "")) : "") + (pg.easy ? row("간편결제", esc(pg.easy)) : "") + (pg.bank ? row("이체 은행", esc(pg.bank)) : "") + (pg.depErr ? row("입금 오류", "<b>토스가 입금 오류로 알렸어요</b> · 토스 결제 조회로 확인해 주세요") : "") +
           (pg.receiptUrl ? row("영수증", '<a class="a-link" href="' + esc(pg.receiptUrl) + '" target="_blank" rel="noopener">영수증 열기</a>') : "") +
           (o.method === "bank" ? row("입금자명", esc(vdDep(o))) + (o.bankTo ? row("입금 계좌", esc([o.bankTo.bank, o.bankTo.account, o.bankTo.holder].filter(Boolean).join(" "))) : "") + (o.status === "pending" ? row("입금 기한", t(vdDue(o))) : "") + (o.depositBy ? row("입금 확인", esc(o.depositBy)) : "") : "") +
           (vb ? row("가상계좌", esc([X.bankName(vb.bank), vb.account, vb.holder].filter(Boolean).join(" "))) + (o.status === "pending" ? row("입금 기한", t(vb.dueAt || vdDue(o))) : "") : "") +
           (o.status === "canceled" ? row("주문 취소", t(o.canceledAt) + (o.canceledBy || o.cancelBy ? " · " + esc(o.canceledBy || o.cancelBy) : "")) : "") + "</table></section>" +
         (o.status === "refunded" ? '<section><h4>환불</h4><table class="od-t">' + row("환불 일시", t(o.refundedAt)) + row("환불 금액", "<b>" + won(vdRefAmt(o)) + "</b>" + (vdRefAmt(o) < o.amount ? " (부분 환불)" : "")) + row("사유", esc([o.refundWhy, o.refundMemo].filter(Boolean).join(" · "))) + row("처리", esc(o.refundBy || "")) +
-          (pg.cancel && pg.cancel.id ? row("포트원 취소 ID", '<span class="num od-id">' + esc(pg.cancel.id) + "</span>") : "") + (rp ? row("계좌 환불", esc(vdAcctTxt(rp)) + (rp.amount ? " · " + won(rp.amount) : "") + "<br>" + (rp.st === "done" ? "송금 완료 · " + t(rp.doneAt) : "<b>송금 대기</b>")) : "") + "</table></section>" : "") +
+          (pg.cancel && pg.cancel.id ? row("취소 거래 키", '<span class="num od-id">' + esc(pg.cancel.id) + "</span>") : "") + (rp ? row("계좌 환불", esc(vdAcctTxt(rp)) + (rp.amount ? " · " + won(rp.amount) : "") + "<br>" + (rp.st === "done" ? "송금 완료 · " + t(rp.doneAt) : "<b>송금 대기</b>")) : "") + "</table></section>" : "") +
         (o.refundReq && o.status === "paid" ? '<section><h4>환불 요청</h4><table class="od-t">' + row("요청", esc(vdRqTxt(o))) + (o.refundReq.acct ? row("환불 받을 계좌", esc(vdAcctTxt(o.refundReq.acct))) : "") + "</table></section>" : "") +
       '</div><div id="od-pg" class="od-pg"></div>';
     openModal("주문 " + o.no, body,
-      (vdPgReal(o) ? btn(icon("refresh", "sm") + "포트원 결제 조회", "vda-pginfo", "a-btn-ghost", ' data-id="' + esc(o.id) + '"') : "") + '<span class="a-spacer"></span>' +
+      (vdPgReal(o) && vdToss(o) ? btn(icon("refresh", "sm") + "토스 결제 조회", "vda-pginfo", "a-btn-ghost", ' data-id="' + esc(o.id) + '"') : "") + '<span class="a-spacer"></span>' +
       (o.status === "pending" && o.method !== "vbank" ? btn("입금 확인", "vda-paid", "a-btn-primary", ' data-id="' + esc(o.id) + '"') : "") +
       (o.status === "paid" && o.amount > 0 ? btn(o.refundReq ? "환불 처리" : "환불", "vda-refund", o.refundReq ? "a-btn-primary" : "a-btn-ghost", ' data-id="' + esc(o.id) + '"') : "") +
       (rp && rp.st === "wait" ? btn("송금 완료", "vda-rfsent", "a-btn-primary", ' data-id="' + esc(o.id) + '"') : "") + btn("닫기", "modal-close"), "lg");
   }
-  const PG_ST = { PAID: ["결제 완료", "ok"], VIRTUAL_ACCOUNT_ISSUED: ["가상계좌 발급 · 입금 대기", "info"], CANCELLED: ["전액 취소", "mute"], PARTIAL_CANCELLED: ["부분 취소", "warn"], FAILED: ["결제 실패", "bad"], READY: ["결제 전", "mute"], PAY_PENDING: ["결제 확인 중", "info"] };
-  /** 포트원 결제 조회 결과 (서버가 포트원에 다시 물어본 값) */
+  const PG_ST = { DONE: ["결제 완료", "ok"], WAITING_FOR_DEPOSIT: ["가상계좌 발급 · 입금 대기", "info"], CANCELED: ["전액 취소", "mute"], PARTIAL_CANCELED: ["부분 취소", "warn"], ABORTED: ["결제 실패", "bad"], EXPIRED: ["시간 만료", "mute"], READY: ["결제 전", "mute"], IN_PROGRESS: ["인증 끝 · 승인 전", "info"] };
+  const VA_RF = { PENDING: "환불 진행 중", COMPLETED: "환불 완료", FAILED: "환불 실패", PARTIAL_FAILED: "일부 환불 실패" };
+  /** 토스 결제 조회 결과 (서버가 토스페이먼츠에 다시 물어본 값) */
   function vdPgInfoHtml(pay) {
     const st = PG_ST[pay.status] || [pay.status, "mute"], a = pay.amount || {}, m = pay.method || {};
     const mt = m.type === "card" ? "카드 " + [m.name, m.number, m.approval ? "승인 " + m.approval : "", m.months > 1 ? m.months + "개월 할부" : "일시불"].filter(Boolean).join(" · ") : m.type === "easy" ? "간편결제 " + [m.provider, m.sub].filter(Boolean).join(" · ") : m.type === "transfer" ? "계좌이체 " + (m.bank ? VX().bankName(m.bank) : "") : m.type === "vbank" ? "가상계좌 " + [VX().bankName(m.bank), m.account, m.holder].filter(Boolean).join(" ") : "";
-    return '<h4>포트원 결제 상태 ' + pill(st[0], st[1]) + '</h4><table class="od-t">' + (mt ? "<tr><th>결제수단</th><td>" + esc(mt) + "</td></tr>" : "") +
+    return '<h4>토스페이먼츠 결제 상태 ' + pill(st[0], st[1]) + '</h4><table class="od-t">' + (mt ? "<tr><th>결제수단</th><td>" + esc(mt) + (m.type === "vbank" && VA_RF[m.refund] ? " · " + VA_RF[m.refund] : "") + "</td></tr>" : "") +
       "<tr><th>결제 금액</th><td>" + won(a.total || 0) + (a.cancelled ? " · 취소 " + won(a.cancelled) + " · 남은 금액 " + won((a.total || 0) - a.cancelled) : "") + "</td></tr>" +
       (pay.receiptUrl ? '<tr><th>영수증</th><td><a class="a-link" href="' + esc(pay.receiptUrl) + '" target="_blank" rel="noopener">영수증 열기</a></td></tr>' : "") +
       ((pay.cancellations || []).length ? "<tr><th>취소 내역</th><td>" + pay.cancellations.map((c) => won(c.amount) + " · " + esc(c.reason || "") + (c.at ? " · " + esc(String(c.at).slice(0, 10)) : "")).join("<br>") + "</td></tr>" : "") + "</table>";
@@ -3898,7 +3901,7 @@
         return '<li><div class="fin-bh"><b>' + esc(x[1]) + '</b><span class="num">' + won(v.amt) + " · " + v.n + "건</span></div>" + '<span class="fin-bar"><i style="width:' + p + '%"></i></span><small>' + p + "%</small></li>"; }).join("") + "</ul>" : emptyBox("coins", "이 달 판매가 없어요.")) + "</section>";
   }
   function finFeeModal() {
-    openModal("결제수단별 수수료율", '<form id="fin-fee-form" class="a-form" novalidate><p class="a-muted">PG(포트원 · 카드사) 계약서의 수수료율을 적으면 매출 리포트의 PG 수수료 · 플랫폼 이익이 그 기준으로 다시 계산돼요. 실제 수수료는 PG 정산 내역이 기준이에요.</p>' +
+    openModal("결제수단별 수수료율", '<form id="fin-fee-form" class="a-form" novalidate><p class="a-muted">PG(토스페이먼츠 · 카드사) 계약서의 수수료율을 적으면 매출 리포트의 PG 수수료 · 플랫폼 이익이 그 기준으로 다시 계산돼요. 실제 수수료는 PG 정산 내역이 기준이에요.</p>' +
       '<div class="fin-fee-g">' + VD_PAY_KEYS.filter((x) => x[0] !== "free").map((x) => { const r = vdFeeRate(x[0]); return '<div class="fin-fee-r"><b>' + esc(x[1]) + '</b><label><input class="a-input a-sm" name="p-' + x[0] + '" type="number" min="0" max="20" step="0.01" value="' + r[0] + '"><span>%</span></label><label><input class="a-input a-sm" name="w-' + x[0] + '" type="number" min="0" max="10000" step="10" value="' + r[1] + '"><span>원/건</span></label></div>'; }).join("") + "</div>" +
       '<p class="a-error" id="fin-fee-err"></p></form>', btn("기본값으로", "fin-fee-def", "a-btn-ghost") + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="fin-fee-form">저장</button>', "md");
   }
@@ -4908,7 +4911,7 @@
           '<div class="a-form-row"><div class="a-field"><label for="vda-rb">재수강 할인 (%)</label><input class="a-input" id="vda-rb" name="rebuyPct" type="number" min="1" max="90" value="' + esc(VX().rebuySet().pct) + '"><label class="a-check vda-rb-on"><input type="checkbox" name="rebuyOn"' + (VX().rebuySet().on ? " checked" : "") + '><span>켜기 · 수강 기간이 끝난 강의를 다시 사면 6개월 · 12개월 수강권을 자동 할인</span></label><small class="a-muted">할인된 금액이 정산 기준이라 할인은 강사 : 플랫폼 정산 비율(기본 5 : 5)대로 함께 나눠요 · 쿠폰과는 함께 쓰지 않아요 · 주문 · 정산에는 ‘재결제’로 보여요 (예전 1년 연장권 대신)</small></div><div class="a-field"><label for="vda-ash">부가 상품 강사 정산 비율 (%)</label><input class="a-input" id="vda-ash" name="addonShare" type="number" min="0" max="100" value="' + esc(s.addonShare == null ? 50 : s.addonShare) + '"><small class="a-muted">1:1 코칭권 · TEA TIME (강사가 직접 시간을 쓰는 상품)</small></div></div>' +
           '<div class="a-form-row"><div class="a-field"><label for="vda-cn">1:1 코칭권 횟수</label><input class="a-input" id="vda-cn" name="coachN" type="number" min="1" max="50" value="' + esc((s.coach || {}).n || 5) + '"></div><div class="a-field"><label for="vda-cd">코칭권 사용 기간 (일)</label><input class="a-input" id="vda-cd" name="coachDays" type="number" min="7" max="730" value="' + esc((s.coach || {}).days || 180) + '"></div><div class="a-field"><label for="vda-cp">코칭권 가격 (원)</label><input class="a-input" id="vda-cp" name="coachPrice" type="number" min="0" step="1000" value="' + esc((s.coach || {}).price || 150000) + '"></div></div>' +
           '<div class="a-form-row"><div class="a-field"><label for="vda-tm">TEA TIME 시간 (분)</label><input class="a-input" id="vda-tm" name="teaMin" type="number" min="15" max="240" step="15" value="' + esc((s.tea || {}).min || 60) + '"></div><div class="a-field"><label for="vda-tp">TEA TIME 가격 (원)</label><input class="a-input" id="vda-tp" name="teaPrice" type="number" min="0" step="1000" value="' + esc((s.tea || {}).price || 99000) + '"></div></div>' +
-          '<p class="a-muted p-small">' + icon("alert", "xs") + (vdSrv() ? " 무통장 입금은 계좌를 넣고 저장하면 바로 결제 화면에 열려요 (비우면 기수 입금 계좌). 카드 · 간편결제는 PG 심사가 끝나고 포트원 키를 넣으면 열려요." : " 시안이라 카드 · 간편결제는 바로 ‘결제 완료’로 기록돼요. 정식 오픈 때 PG(토스페이먼츠 등)를 연결하면 실제 결제 · 자동 환불이 돼요.") + "</p>" +
+          '<p class="a-muted p-small">' + icon("alert", "xs") + (vdSrv() ? " 무통장 입금은 계좌를 넣고 저장하면 바로 결제 화면에 열려요 (비우면 기수 입금 계좌). 카드 · 계좌이체 · 가상계좌는 토스페이먼츠 심사가 끝나고 키를 넣으면 열려요." : " 시안이라 카드 · 간편결제는 바로 ‘결제 완료’로 기록돼요. 정식 오픈 때 PG(토스페이먼츠 등)를 연결하면 실제 결제 · 자동 환불이 돼요.") + "</p>" +
           '<div class="a-form-actions"><button class="a-btn a-btn-primary" type="submit">설정 저장</button></div></form></section></div>' + vdHelpCard();
   }
   /* 고객센터 FAQ · 공지: 스토어 마이페이지 › 고객센터에 보여요 (FAQ를 처음 고치면 기본 FAQ를 복사해서 시작해요) */
@@ -4920,11 +4923,12 @@
       '<h4 class="vda-mem-h">자주 묻는 질문 ' + faq.length + "개" + (mine ? "" : ' <small class="a-muted">(기본값 · 고치면 그때부터 내 FAQ로 바뀌어요)</small>') + '</h4><ul class="vda-help-l">' + faq.map((f, i) => '<li><span class="vda-help-cat">' + esc(f[0]) + "</span><b>" + esc(f[1]) + '</b><button type="button" class="a-icon-btn sm" data-action="vda-faq-mv" data-i="' + i + '" data-dir="-1" aria-label="위로"' + (i === 0 ? " disabled" : "") + ">" + icon("arrowUp", "sm") + "</button>" + btn("고치기", "vda-faq-edit", "a-btn-ghost a-btn-sm", ' data-i="' + i + '"') + btn("삭제", "vda-faq-del", "a-btn-ghost a-btn-sm", ' data-i="' + i + '"') + "</li>").join("") + "</ul></section>";
   }
   const vdFaqMine = () => { const v = VD(); if (!Array.isArray(v.helpFaq) || !v.helpFaq.length) v.helpFaq = DB.clone(VX().HELP_FAQ_DEF); return v.helpFaq; };
-  /** 환불 창 안내: 어떻게 돌려주는지 (포트원 결제 취소 · 가상계좌 계좌 환불 · 무통장 직접 송금) */
+  /** 환불 창 안내: 어떻게 돌려주는지 (토스 결제 취소 · 가상계좌 계좌 환불 · 무통장 직접 송금) */
   function vdRefHow(o) {
     const X = VX(), acct = (o.refundReq && o.refundReq.acct) || (o.claim && o.claim.acct) || null;
-    if (vdPgReal(o) && o.method !== "vbank") return '<p class="vr-how ok">' + icon("shieldCheck", "xs") + " <span><b>포트원으로 바로 결제 취소돼요.</b> 포트원 사이트에 들어가지 않아도 돼요. 카드는 카드사에 따라 3~7영업일, 간편결제 · 계좌이체는 보통 바로 돌아가요.</span></p>";
-    if (o.method === "vbank") return '<div class="vr-how">' + icon("coins", "xs") + " <span><b>가상계좌 결제는 회원 계좌로 돌려줘요.</b> " + (vdPgReal(o) ? "포트원이 아래 계좌로 환불해요 (영업일 1~2일 · PG 가상계좌 환불 서비스 필요)." : "아래 계좌로 직접 송금해 주세요.") + "</span></div>" + '<div class="a-field"><label>환불 계좌' + (acct ? " <small>(회원이 요청에 적은 계좌)</small>" : "") + "</label>" + X.acctFields(acct) + "</div>";
+    if (vdPgReal(o) && !vdToss(o) && o.method !== "bank") return '<p class="vr-how">' + icon("alert", "xs") + " <span>예전(포트원) 시험 결제라 환불 기록만 남아요. 실제 돈이 오갔다면 따로 돌려줘야 해요.</span></p>";
+    if (vdPgReal(o) && o.method !== "vbank") return '<p class="vr-how ok">' + icon("shieldCheck", "xs") + " <span><b>토스페이먼츠로 바로 결제 취소돼요.</b> 토스 상점관리자에 들어가지 않아도 돼요. 카드는 매입 전이면 바로, 매입 뒤 · 부분 취소는 3~4영업일, 계좌이체는 바로 돌아가요.</span></p>";
+    if (o.method === "vbank") return '<div class="vr-how">' + icon("coins", "xs") + " <span><b>가상계좌 결제는 회원 계좌로 돌려줘요.</b> " + (vdPgReal(o) ? "토스페이먼츠가 아래 계좌로 환불해요 (취소 후 영업일 2일)." : "아래 계좌로 직접 송금해 주세요.") + "</span></div>" + '<div class="a-field"><label>환불 계좌' + (acct ? " <small>(회원이 요청에 적은 계좌)</small>" : "") + "</label>" + X.acctFields(acct) + "</div>";
     if (o.method === "bank") return '<div class="vr-how">' + icon("coins", "xs") + " <span><b>무통장 입금은 아래 계좌로 직접 송금해 주세요.</b> 환불 처리 뒤 ‘환불 · 취소 관리 › 계좌 송금 대기’에서 송금 완료를 눌러요.</span></div>" + '<div class="a-field"><label>환불 계좌' + (acct ? " <small>(회원이 요청에 적은 계좌)</small>" : "") + "</label>" + X.acctFields(acct) + "</div>";
     return '<p class="vr-how">' + icon("alert", "xs") + " <span>결제(PG) 연결 전이라 환불 기록만 남아요. 실제 돈은 따로 돌려줘야 해요.</span></p>";
   }
@@ -4938,7 +4942,7 @@
       '<div class="a-field"><label for="vr-why">환불 사유</label><select class="a-input" id="vr-why" name="why">' + WHY.map((w) => "<option" + (w === pre ? " selected" : "") + ">" + w + "</option>").join("") + "</select></div></div>" +
       '<div class="a-field"><label for="vr-memo">메모 <small>(선택)</small></label><input class="a-input" id="vr-memo" name="memo" maxlength="120"' + (c ? ' value="' + esc(X.claimTxt(c) + " · " + (c.why || "")) + '"' : "") + "></div>" +
       vdRefHow(o) + '<p class="a-error" id="vr-error"></p></form>',
-      btn("취소", "modal-close") + '<button class="a-btn a-btn-danger" type="submit" form="vda-ref-form">' + (vdPgReal(o) ? "포트원으로 환불하기" : o.method === "bank" ? "환불 처리 (송금 대기로)" : "환불 완료로 바꾸기") + "</button>", "md");
+      btn("취소", "modal-close") + '<button class="a-btn a-btn-danger" type="submit" form="vda-ref-form">' + (vdPgReal(o) ? "토스페이먼츠로 환불하기" : o.method === "bank" ? "환불 처리 (송금 대기로)" : "환불 완료로 바꾸기") + "</button>", "md");
   }
   /** 반려: 요청을 claim(no)로 옮기고 사유를 남겨요 — 회원이 다시 요청할 수 있어요 */
   function saveBoNo(f) {
@@ -4955,7 +4959,7 @@
     // 함께 결제한 코칭권: 쓴 횟수만큼 빼고 환불
     const grpAmt = (x) => { const used = x.coach ? Number(x.coach.used) || 0 : 0, per = x.coach && x.coach.n ? Math.round(x.amount / x.coach.n) : 0; return x.coach ? Math.max(0, x.amount - used * per) : x.amount; };
     const grp = f.withGrp && f.withGrp.checked ? v.orders.filter((x) => x.grp === o.no && x.status === "paid") : [];
-    const real = !!(vdPgReal(o) && o.pg && o.pg.paymentId); // 포트원 결제 주문은 늘 포트원 취소를 거쳐요 (설정을 받았는지와 상관없이)
+    const real = vdPgReal(o); // PG 결제 주문은 늘 서버 환불(토스 취소 · 예전 포트원 시험 결제는 기록만)을 거쳐요 (설정을 받았는지와 상관없이)
     const by = (staffMe() || {}).name || "ADMIN";
     // 무통장 · 가상계좌: 돌려줄 계좌 (금액이 0원이면 필요 없어요)
     let acct = null;
@@ -4977,15 +4981,15 @@
       commit((amt < o.amount ? "부분 환불(" + won(amt) + ")" : "환불") + "을 처리했어요.");
     };
     if (!real) return apply(null);
-    // 정식 서버: 포트원 결제 취소가 성공한 주문만 환불 완료로 바꿔요 (실패하면 그대로 두고 알려 드려요)
+    // 정식 서버: 토스 결제 취소가 성공한 주문만 환불 완료로 바꿔요 (실패하면 그대로 두고 알려 드려요)
     if (f.dataset.busy) return;
-    f.dataset.busy = "1"; errEl.textContent = "포트원에 결제 취소를 요청하고 있어요…";
+    f.dataset.busy = "1"; errEl.textContent = "토스페이먼츠에 결제 취소를 요청하고 있어요…";
     const jobs = [[o.no, amt]].concat(grp.map((x) => [x.no, grpAmt(x)])), okNos = [];
     jobs.reduce((pr, j) => pr.then(() => VX().payApi("refund", Object.assign({ no: j[0], amount: j[1], reason: f.why.value }, acct && o.method === "vbank" ? { refundAccount: acct } : {})).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "결제 취소에 실패했어요."); okNos.push(j[0]); })), Promise.resolve())
       .then(() => apply(okNos), (e) => {
         delete f.dataset.busy;
-        if (okNos.length) { apply(okNos); toast("일부만 취소됐어요. 포트원에서 확인해 주세요.", "warn"); return; }
-        errEl.textContent = String(e.message) + " 포트원 콘솔에서 결제 상태를 확인해 주세요.";
+        if (okNos.length) { apply(okNos); toast("일부만 취소됐어요. 토스 상점관리자에서 확인해 주세요.", "warn"); return; }
+        errEl.textContent = String(e.message);
       });
   }
   function saveVsProfile(f) {
@@ -6004,7 +6008,7 @@
         v.settings.ship = { autoDays: n("autoDays", 1, 14, 3), outDays: n("outDays", 1, 14, 2), carrier: f.carrier.value, returnFee: n("returnFee", 0, 100000, 6000), returnAddr: f.returnAddr.value.trim().slice(0, 120) };
         commit("배송 설정을 저장했어요."); break;
       }
-      case "vda-pginfo": { const o = O(); if (!o) break; const box = document.getElementById("od-pg"); if (box) box.innerHTML = '<p class="a-muted">포트원에 결제 상태를 물어보는 중…</p>';
+      case "vda-pginfo": { const o = O(); if (!o) break; const box = document.getElementById("od-pg"); if (box) box.innerHTML = '<p class="a-muted">토스페이먼츠에 결제 상태를 물어보는 중…</p>';
         VX().payApi("pgInfo", { no: o.no }).then((r) => { const b = document.getElementById("od-pg"); if (!r || !r.ok) { if (b) b.innerHTML = '<p class="a-error">' + esc((r && r.message) || "조회하지 못했어요.") + "</p>"; return; } if (b) b.innerHTML = vdPgInfoHtml(r.pay); if (r.synced) DB.remote.refresh().then(() => { toast(r.synced); render(); }); }, () => { const b = document.getElementById("od-pg"); if (b) b.innerHTML = '<p class="a-error">서버에 닿지 못했어요.</p>'; }); break; }
       case "vda-rfsent": { const o = O(); if (!o || !o.refundPay || o.refundPay.st !== "wait") break; confirmModal("계좌 송금 완료", esc((vdMember(o.mid) || {}).name || "") + " 님께 <b>" + won(o.refundPay.amount || vdRefAmt(o)) + "</b>을<br>" + esc(vdAcctTxt(o.refundPay)) + " 계좌로 송금했나요?", "송금 완료", false, () => { Object.assign(o.refundPay, { st: "done", doneAt: Date.now(), by: (staffMe() || {}).name || "ADMIN" }); commit(o.no + " 환불 송금을 완료로 기록했어요."); }); break; }
       case "vda-paid": { const o = O(); if (!o) break; if (o.method === "vbank") { toast("가상계좌는 입금되면 자동 확인돼요.", "warn"); break; } confirmModal("입금 확인", esc((vdMember(o.mid) || {}).name || "") + " 님 · " + esc(o.title) + "<br>입금자명 <b>" + esc(vdDep(o)) + "</b> · <b>" + won(vdGrpAmt(o)) + "</b> 입금을 확인했나요? " + (o.ship ? "확인하면 ‘신규 주문’으로 넘어가요." : "확인하면 바로 수강할 수 있어요."), "입금 확인", false, () => { if (vdSrv()) { vdBankAct("bankOk", o.grp || o.no, (o.grp || o.no) + (o.ship ? " 입금을 확인했어요. 신규 주문으로 넘어갔어요." : " 입금을 확인했어요. 회원이 바로 수강할 수 있어요.")); return; } o.status = "paid"; o.paidAt = Date.now(); o.depositBy = (staffMe() || {}).name || "ADMIN"; if (o.share == null) o.share = vdShare(o); v.orders.filter((x) => x.grp === o.no && x.status === "pending").forEach((x) => { x.status = "paid"; x.paidAt = o.paidAt; }); commit((o.ship ? "입금을 확인했어요 · 신규 주문" : "입금을 확인했어요.")); }); break; }
@@ -6023,7 +6027,7 @@
           vdRefHow(o) +
           (v.orders.some((x) => x.grp === o.no && x.status === "paid") ? '<label class="a-check vr-grp"><input type="checkbox" name="withGrp" checked><span>함께 결제한 ' + v.orders.filter((x) => x.grp === o.no && x.status === "paid").map((x) => esc(X.optTxt(x) || x.title) + " (" + won(x.amount) + ")").join(", ") + "도 같이 환불 <small class=\"a-muted\">강의를 환불하면 두잉고 강의실이 닫혀 코칭권을 쓸 수 없어요 · 쓴 횟수만큼 빼고 환불해요</small></span></label>" : "") +
           '<p class="a-error" id="vr-error"></p></form>',
-          btn("취소", "modal-close") + '<button class="a-btn a-btn-danger" type="submit" form="vda-ref-form">' + (vdPgReal(o) ? "포트원으로 환불하기" : o.method === "bank" ? "환불 처리 (송금 대기로)" : "환불 완료로 바꾸기") + "</button>", "md"); break; }
+          btn("취소", "modal-close") + '<button class="a-btn a-btn-danger" type="submit" form="vda-ref-form">' + (vdPgReal(o) ? "토스페이먼츠로 환불하기" : o.method === "bank" ? "환불 처리 (송금 대기로)" : "환불 완료로 바꾸기") + "</button>", "md"); break; }
       case "vda-stc": { const st = vdStmt(d.k, d.m); confirmModal("정산 확정", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 정산을 확정할까요?<br><b>지급액 " + won(st.pay) + "</b> (" + (st.biz ? "사업자 · 부가세 포함" : "개인 · 3.3% 원천징수 뒤") + ")<br><small>확정하면 강사센터 › 판매 정산에 ‘이번 달 정산 명세서’로 열리고(메뉴에 새 명세서 표시), 이후 환불은 다음 달 정산에서 차감돼요.</small>", "정산 확정", false, () => { const snap = Object.assign({}, st); delete snap.rec; const r = vdPayout(d.k, d.m); if (r) Object.assign(r, { st: "confirmed", confirmedAt: Date.now(), snap }); else v.payouts.push({ key: d.k, ym: d.m, st: "confirmed", confirmedAt: Date.now(), snap }); commit(vdYMtxt(d.m) + " 정산을 확정했어요."); }); break; }
       case "vda-sti": { const r = vdPayout(d.k, d.m); if (r) { Object.assign(r, { st: "invoiced", invoiceAt: Date.now() }); commit("세금계산서 받음으로 기록했어요."); } break; }
       case "vda-pay": { const r = vdPayout(d.k, d.m), st = vdStmt(d.k, d.m); confirmModal("정산 지급 완료", esc(st.name) + " · " + esc(vdYMtxt(d.m)) + " 판매분 <b>" + won(st.pay) + "</b>을 지급했나요?", "지급 완료", false, () => { if (r) Object.assign(r, { st: "paid", at: todayStr(), amount: st.pay }); else v.payouts.push({ key: d.k, ym: d.m, st: "paid", at: todayStr(), amount: st.pay }); commit(vdYMtxt(d.m) + " 정산을 지급 완료로 바꿨어요."); }); break; }
@@ -6680,10 +6684,10 @@
 
   /* ---------- v19: 환불 · 취소 관리 ----------
    * 환불 규정(마스터가 숫자로 정함) → 스토어 · 상세 · 결제 · FAQ 문구와 회원 ‘바로 취소’ 판단이 같은 값을 써요.
-   * 정식 서버 + 포트원이 연결되면 회원 바로 취소 · 마스터 환불이 카드 결제를 자동으로 취소해요 (지금 시안은 기록만). */
+   * 정식 서버 + 토스페이먼츠가 연결되면 회원 바로 취소 · 마스터 환불이 카드 · 계좌이체 · 가상계좌 결제를 자동으로 취소해요 (지금 시안은 기록만). */
   const RF_KIND = { instant: ["회원 바로 취소", "ok"], partial: ["부분 환불", "warn"], master: ["마스터 환불", "info"] };
   const rfKindOf = (o) => (o.refundKind ? o.refundKind : o.refundAmount != null && o.refundAmount < o.amount ? "partial" : "master");
-  const rfPg = (o) => (o.refundPay ? (o.refundPay.st === "done" ? pill("계좌 송금 완료", "ok") : pill("계좌 송금 대기", "warn")) : o.method === "bank" ? pill("계좌 환불 · 기록만", "mute") : !o.pg ? pill("수동 처리", "mute") : o.pg.cancel && o.pg.cancel.st === "requested" ? pill(o.method === "vbank" ? "가상계좌 환불 진행 중" : "포트원 취소 진행 중", "warn") : o.pg.st === "done" || (o.pg.cancel && o.pg.cancel.id) ? pill(o.method === "vbank" ? "가상계좌 환불 완료" : "포트원 취소 완료", "ok") : o.pg.st === "fail" ? pill("포트원 취소 실패", "bad") : pill("시안 · 실제 취소 없음", "mute"));
+  const rfPg = (o) => (o.refundPay ? (o.refundPay.st === "done" ? pill("계좌 송금 완료", "ok") : pill("계좌 송금 대기", "warn")) : o.method === "bank" ? pill("계좌 환불 · 기록만", "mute") : !o.pg ? pill("수동 처리", "mute") : o.pg.cancel && o.pg.cancel.st === "requested" ? pill(o.method === "vbank" ? "가상계좌 환불 진행 중" : "PG 취소 진행 중", "warn") : o.pg.cancel && o.pg.cancel.st === "failed" ? pill("가상계좌 환불 실패", "bad") : o.pg.st === "done" || (o.pg.cancel && o.pg.cancel.id) ? pill(o.method === "vbank" ? "가상계좌 환불 완료" : "PG 취소 완료", "ok") : o.pg.st === "fail" ? pill("PG 취소 실패", "bad") : pill("시안 · 실제 취소 없음", "mute"));
   /* ---------- 종이책 주문 · 배송 관리 ----------
    * 입금 대기(무통장) → 신규 주문(결제 완료) → 배송 준비(발주 확인) → 배송 중(택배사 + 송장) → 배송 완료(직접 누르거나, 보낸 뒤 정한 날이 지나면 자동)
    * 취소 · 반품 · 교환: 회원 요청 → 승인(수거 중) → 환불(반품 · 취소) 또는 교환 상품 발송 · 반려 (교보문고처럼 책이 돌아와 확인한 뒤 환불)
@@ -6957,8 +6961,9 @@
         wait.map((o) => '<tr><td class="vda-nw">' + esc(DB.date.toStr(new Date(o.refundedAt))) + '</td><td class="vda-nw">' + esc(nm(o)) + "</td><td>" + esc(o.title) + '<small class="a-memo num">' + esc(o.no) + '</small></td><td class="right num"><b>' + won(o.refundPay.amount || vdRefAmt(o)) + "</b></td><td>" + esc(vdAcctTxt(o.refundPay)) + '</td><td class="right">' + btn("송금 완료", "vda-rfsent", "a-btn-primary a-btn-sm", ' data-id="' + esc(o.id) + '"') + "</td></tr>").join("") + "</tbody></table></div></section>" : "") +
       '<section class="a-card crm-card"><div class="a-card-head"><h2>환불 · 취소 내역</h2><p class="a-muted">최근 50건 · 회원 바로 취소와 마스터 환불을 모두 보여요</p></div>' +
         (refd.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>환불일</th><th>회원</th><th>클래스</th><th class="right">결제 · 환불</th><th>방식</th><th>결제 취소 · 송금</th><th>강사 정산 반영</th><th>사유 · 처리</th></tr></thead><tbody>' + refd.slice(0, 50).map((o) => { const k = RF_KIND[rfKindOf(o)], st0 = vdRfSettle(o); return '<tr><td class="vda-nw">' + esc(o.refundedAt ? DB.date.toStr(new Date(o.refundedAt)) : "-") + '</td><td class="vda-nw"><a class="a-link" href="#/center/master/vod-crm/' + esc(o.mid) + '">' + esc(nm(o)) + "</a></td><td>" + esc(o.title) + '<small class="a-memo num">' + esc(o.no) + '</small></td><td class="right num">' + won(o.amount) + '<small class="a-memo"><b>' + won(o.refundAmount != null ? o.refundAmount : o.amount) + " 환불</b></small></td><td>" + pill(k[0], k[1]) + "</td><td>" + rfPg(o) + "</td><td><small>" + esc(st0.t) + '</small><small class="a-memo">' + esc(vdKeyName(vdKey(o))) + " 정산 - " + won(st0.ins) + "</small></td><td>" + esc(o.refundWhy || "-") + '<small class="a-memo">' + esc(o.refundBy || "") + "</small></td></tr>"; }).join("") + "</tbody></table></div>" : emptyBox("refresh", "아직 환불 내역이 없어요.")) + "</section>" +
-      '<section class="a-card crm-card rf-pg"><div class="a-card-head"><h2>결제(PG) 연결</h2>' + (pgOn ? pill("포트원 연결됨", "ok") : pill("시안 · 연결 전", "warn")) + "</div>" +
-        "<p>" + (pgOn ? "회원 바로 취소 · 마스터 환불을 누르면 포트원으로 카드 결제가 자동 취소돼요. 부분 환불은 그 금액만큼만 취소해요." : "지금은 시안이라 환불 · 취소 기록만 남고 실제 카드 결제는 취소되지 않아요. 정식 서버에 포트원 키를 넣으면 같은 버튼이 카드 결제를 자동으로 취소해요.") + "</p></section>";
+      '<section class="a-card crm-card rf-pg"><div class="a-card-head"><h2>결제(PG) 연결</h2>' + (pgOn ? pill("토스페이먼츠 연결됨", "ok") : pill("시안 · 연결 전", "warn")) + "</div>" +
+        "<p>" + (pgOn ? "회원 바로 취소 · 마스터 환불을 누르면 토스페이먼츠로 결제가 자동 취소돼요 (가상계좌는 적은 환불 계좌로 · 영업일 2일). 부분 환불은 그 금액만큼만 취소해요." : "지금은 시안이라 환불 · 취소 기록만 남고 실제 결제는 취소되지 않아요. 정식 서버에 토스페이먼츠 키를 넣으면 같은 버튼이 결제를 자동으로 취소해요.") + "</p>" +
+        (pgOn && X.payOpts ? '<p class="a-muted p-small">결제 화면에 열린 결제수단: <b>' + esc(X.payOpts().filter((z) => !z[3]).map((z) => z[2]).join(" · ")) + "</b><br>토스 결제수단은 Vercel 환경 변수 TOSS_METHODS 로 바꿔요 (예: card,transfer,vbank,naver,kakao — 네이버페이 · 카카오페이는 토스페이먼츠에서 승인된 뒤에 넣어요).</p>" : "") + "</section>";
   }
   function saveVodRfPolicy() {
     const f = document.getElementById("vda-rf-form"); if (!f) return;
@@ -8481,7 +8486,7 @@
     });
   }
   function mount() {
-    // 결제 설정(포트원 · 카카오 연결 여부)을 미리 받아 둬요 — 스토어를 거치지 않고 바로 연 강사센터 · 마스터 화면에서도 (화면 나눠 받기 뒤로는 늘 이렇게 열려요)
+    // 결제 설정(토스페이먼츠 · 카카오 연결 여부)을 미리 받아 둬요 — 스토어를 거치지 않고 바로 연 강사센터 · 마스터 화면에서도 (화면 나눠 받기 뒤로는 늘 이렇게 열려요)
     if (window.VOD && window.VOD.loadCfg) window.VOD.loadCfg();
     root.innerHTML = ""; render(); window.scrollTo(0, 0);
   }

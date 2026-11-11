@@ -225,9 +225,11 @@ BEGIN RETURN NULLIF(t, '')::numeric; EXCEPTION WHEN others THEN RETURN NULL; END
 CREATE OR REPLACE FUNCTION app.ms_ts(t text) RETURNS timestamptz LANGUAGE sql IMMUTABLE AS $$ SELECT to_timestamp(app.try_num(t) / 1000.0) $$;
 
 -- ---------- 사람이 읽는 보기 (읽기만) ----------
+DROP VIEW IF EXISTS app.v_orders;
+
 CREATE OR REPLACE VIEW app.v_orders WITH (security_invoker = true) AS
 SELECT d->>'no' AS "주문번호", d->>'mid' AS "회원 id", d #>> '{buyer,name}' AS "구매자", d->>'pid' AS "상품 id", d->>'title' AS "강의", d->>'kind' AS "종류",
-  app.try_num(d->>'amount') AS "결제 금액", app.try_num(d->>'list') AS "정가", d->>'method' AS "결제 수단", d->>'status' AS "상태", d #>> '{pg,st}' AS "포트원 상태",
+  app.try_num(d->>'amount') AS "결제 금액", app.try_num(d->>'list') AS "정가", d->>'method' AS "결제 수단", d->>'status' AS "상태", d #>> '{pg,st}' AS "PG 상태",
   app.ms_ts(d->>'at') AS "주문 시각", app.ms_ts(d->>'paidAt') AS "결제 시각",
   d->>'refundKind' AS "환불 종류", app.try_num(d->>'refundAmount') AS "환불 금액", app.ms_ts(d->>'refundedAt') AS "환불 시각", COALESCE(d->>'demo', '') = 'true' AS "체험", x.k AS "문서 키"
 FROM (SELECT DISTINCT ON (k) k, v::json AS d FROM (SELECT k, v, ver FROM app.docs WHERE kind = 'vo' AND v IS NOT NULL UNION ALL SELECT k, v, ver FROM app.orders WHERE v IS NOT NULL) s ORDER BY k, ver DESC) x;
@@ -295,7 +297,7 @@ COMMENT ON COLUMN app.orders.method IS '결제 수단';
 
 COMMENT ON COLUMN app.orders.status IS '상태 (ready · paid · refunded · failed …)';
 
-COMMENT ON COLUMN app.orders.payment_id IS '포트원 결제 id';
+COMMENT ON COLUMN app.orders.payment_id IS '결제 id (토스 orderId)';
 
 COMMENT ON COLUMN app.orders.grp IS '묶음 주문의 대표 주문번호';
 
@@ -311,13 +313,13 @@ COMMENT ON COLUMN app.orders.refund_kind IS '환불 종류';
 
 COMMENT ON COLUMN app.orders.demo IS '체험 주문';
 
-COMMENT ON TABLE app.payments IS '2부 B2 · 결제(포트원) — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)';
+COMMENT ON TABLE app.payments IS '2부 B2 · 결제(토스페이먼츠) — 한 줄 = 문서 하나 (v = 화면이 쓰는 문서 글자 그대로 · 나머지 열은 v 에서 꺼낸 값)';
 
 COMMENT ON COLUMN app.payments.k IS '문서 키';
 
 COMMENT ON COLUMN app.payments.v IS '문서 JSON (지운 문서는 비어 있어요)';
 
-COMMENT ON COLUMN app.payments.payment_id IS '포트원 결제 id';
+COMMENT ON COLUMN app.payments.payment_id IS '결제 id (토스 orderId)';
 
 COMMENT ON COLUMN app.payments.mid IS '회원 id';
 

@@ -14,6 +14,7 @@ const crypto = require("crypto");
 const store = require("./store");
 const COACH = require("../../coach-perms");
 const PR = require("../../shared/price"); // 다짐 쿠폰 규칙 (화면과 같은 공용 모듈 · 2026-11-08)
+const RF = require("../../shared/refund"); // 환불 계좌 은행 코드 (토스페이먼츠 · 2026-11)
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const mask = (n) => { n = String(n || ""); return n ? n.slice(0, 1) + "OO" : "회원"; };
@@ -165,8 +166,9 @@ function fixSelfOrder(o, n) {
   if (out.status === "paid" && n.refundReq && !out.refundReq && !(out.claim && out.claim.st === "pick")) {
     out.refundReq = { at: Date.now(), why: str(n.refundReq.why, 40), text: str(n.refundReq.text, 1000) };
     if (out.ship) { const st = out.ship.st || "ready", pre = st === "ready" || st === "prep"; out.refundReq.kind = pre ? "cancel" : n.refundReq.kind === "exchange" ? "exchange" : "return"; }
-    const a = n.refundReq.acct;
-    if ((out.method === "bank" || out.method === "vbank") && a && typeof a === "object" && /^[A-Z_]{2,40}$/.test(String(a.bank || ""))) out.refundReq.acct = { bank: String(a.bank), number: str(a.number, 30).replace(/[^0-9]/g, ""), holder: str(a.holder, 20).trim() };
+    // 환불 받을 계좌: 은행은 토스페이먼츠 은행 코드(두 자리)로 — 예전(포트원 시절) 영문 · 금융결제원 세 자리 코드도 토스 코드로 바꿔 저장 (2026-11)
+    const a = n.refundReq.acct, bk = a && typeof a === "object" ? RF.bankCode(a.bank) : "";
+    if ((out.method === "bank" || out.method === "vbank") && bk) out.refundReq.acct = { bank: bk, number: str(a.number, 30).replace(/[^0-9]/g, ""), holder: str(a.holder, 20).trim() };
   }
   if (out.status === "paid" && out.refundReq && n.refundReq === undefined) delete out.refundReq;
   // 종이책 배송지: 보내기 전(결제 완료 · 입금 대기 · 상품 준비 전)이면 회원이 바꿀 수 있어요 — 배송 상태 · 송장은 마스터만
@@ -191,17 +193,17 @@ function fixStaffTea(o, n, canCancel) {
   return out;
 }
 const REVIEW_STAFF = ["reply", "replyAt", "replyBy", "hidden", "best", "pin"];
-/* 포트원으로 결제한 주문(카드 · 간편결제 · 계좌이체 · 가상계좌): 결제 · 환불 상태는 포트원을 거치는 /api/vod-pay(환불 · 바로 취소 · 입금 전 취소)로만 바뀌어요.
- * 화면 저장(sync)으로는 상태 · 금액 · 환불 금액 · 결제 정보가 바뀌지 않아요 — 메모 · 배송 · 클레임 같은 다른 칸은 그대로 저장돼요.
- * (2026-11-04 시험 결제에서 찾음: 결제 설정을 아직 못 받은 마스터 화면이 카드 결제를 포트원 취소 없이 ‘환불’로 저장했어요 · 4단계) */
-const PG_LOCK = ["paymentId", "status", "amount", "paidAt", "refundedAt", "refundAmount", "refundKind", "pg", "vbank", "dueAt", "canceledAt"];
+/* PG(토스페이먼츠 · 예전 포트원 시절 시험 결제 포함)로 결제한 주문(카드 · 계좌이체 · 가상계좌): 결제 · 환불 상태는 토스를 거치는 /api/vod-pay(환불 · 바로 취소 · 입금 전 취소)로만 바뀌어요.
+ * 화면 저장(sync)으로는 상태 · 결제수단 · 금액 · 환불 금액 · 결제 정보가 바뀌지 않아요 — 메모 · 배송 · 클레임 같은 다른 칸은 그대로 저장돼요.
+ * (2026-11-04 시험 결제에서 찾음: 결제 설정을 아직 못 받은 마스터 화면이 카드 결제를 PG 취소 없이 ‘환불’로 저장했어요 · 4단계) */
+const PG_LOCK = ["paymentId", "status", "method", "amount", "paidAt", "refundedAt", "refundAmount", "refundKind", "pg", "vbank", "dueAt", "canceledAt", "rfLock", "rfBy"];
 //  · 서버가 결제창을 연 주문(결제 안 끝남 · 결제 안 됨 · 결제 완료 · 가상계좌 발급)이 모두 해당 — 시안 화면이 만든 ‘시험 결제’(pg.st mock)는 빼요
-const isPgOrder = (o) => !!(o && o.paymentId && require("./portone").PG_METHOD_KEYS.indexOf(o.method) >= 0 && !(o.pg && (o.pg.st === "mock" || o.pg.st === "free")));
+const isPgOrder = (o) => !!(o && o.paymentId && require("./toss").PG_METHOD_KEYS.indexOf(o.method) >= 0 && !(o.pg && (o.pg.st === "mock" || o.pg.st === "free")));
 function writer(K, ids, creating, ctx) {
   const me = vodMid(ids), master = isMaster(ids);
   if (master) {
     if (K.type === "vstat") return null;
-    if (K.type === "vm") return { fix: (o, n) => keepServer(o, n, ["pwHash", "paidPays", "orderNos", "kakaoId"]) };
+    if (K.type === "vm") return { fix: (o, n) => keepServer(o, n, ["pwHash", "paidPays", "orderNos", "kakaoId", "tossCk"]) };
     if (K.type === "vo") return { fix: (o, n) => keepServer(o, n, isPgOrder(o) ? PG_LOCK : ["paymentId"]) };
     return { fix: (o, n) => n };
   }

@@ -1,9 +1,9 @@
 "use client";
 /* 주문 · 결제 (#/vod/checkout/<클래스>?item=coach|tea · ?plan= · ?coach=1 · ?qty=) — 예전 vod.js pageCheckout(id) 를 React 로 (Next.js 전환 4-4)
  * 돈이 걸린 화면이라 계산 · 결제는 하나도 새로 만들지 않았어요:
- *  · 결제 금액 다시 계산 · 표시(coPaint) · 수강권 고르기(planSync) · 폼 안 바꾸기(formChange) · 결제(doPay → 포트원 결제창 · 무통장 · 0원 · 서버가 금액 다시 계산)는 예전 함수 그대로
+ *  · 결제 금액 다시 계산 · 표시(coPaint) · 수강권 고르기(planSync) · 폼 안 바꾸기(formChange) · 결제(doPay → 토스페이먼츠 결제창 · 무통장 · 0원 · 서버가 금액 다시 계산)는 예전 함수 그대로
  *  · 수강권 줄 · 배송지 · 무통장 안내 상자는 아직 예전 HTML (Raw) */
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Shell from "./Shell.jsx";
 import Icon from "../lib/Icon.jsx";
 import Raw, { RawOne } from "../lib/Raw.jsx";
@@ -47,7 +47,11 @@ function Form({ p, m, k, qs, onRules }) {
   const agree1 = bk ? "수량 · 배송지" : k === "course" ? (X.isEvent(p) ? "일정 · 장소" : <>수강 기간 ({sel ? <><span data-co-plan="">{sel.label}</span> 수강권</> : X.accessTxt(p)})</>) : k === "extend" ? "연장 기간 (365일 · " + fmtFull(newEnd) + "까지)" : k === "coach" ? "코칭권 횟수 (" + c.n + "회) · 사용 기간 (" + c.days + "일)" : "TEA TIME은 강사님 확정 후 일정이 정해지는 것";
   const rf = X.rfSet();
   const agree2 = bk ? "보내기 전에는 바로 취소되고, 받은 날부터 7일 안에 반품할 수 있어요 (단순 변심은 왕복 배송비 구매자 부담)." : k === "coach" ? "질문을 남기기 전 7일 이내는 전액, 쓴 뒤에는 남은 횟수만큼 환불돼요." : k === "tea" ? "확정 전 · 확정 3일 전까지 전액, 1~2일 전 50% 환불되고 당일 · 불참은 환불되지 않아요." : X.typeOf(p) === "ebook" ? "전자책을 내려받으면 청약철회가 제한돼요." : X.isEvent(p) ? "강의 " + rf.eventDays + "일 전까지는 전액, 1~2일 전은 50% 환불되고 당일 · 불참은 환불되지 않아요." : "결제 후 " + rf.days + "일 이내 · 강의를 듣기 전이면 마이페이지에서 바로 100% 취소돼요. 강의를 재생하거나 자료를 내려받으면 그 부분은 청약철회가 제한될 수 있어요.";
-  const opts = pr > 0 ? X.payOpts() : [], first = (opts.find((y) => !y[3]) || [])[0], tot0 = pr + (coachOn ? c.price : 0) + (bk ? sf : 0);
+  const opts = pr > 0 ? X.payOpts() : [], first = X.payFirst(opts), tot0 = pr + (coachOn ? c.price : 0) + (bk ? sf : 0);
+  // 결제 설정(vod-config)이 그린 뒤에 오면 다시 그려요 — 결제 수단 목록이 설정에 따라 달라요 (새로 고침 · 카카오 로그인에서 돌아온 바로 그때 · 예전 화면 payReflow 와 같게)
+  //  목록이 바뀌면 결제 수단 칸을 새로 그려요(key) — 처음 골라 둔 수단(defaultChecked)이 새 목록대로 (카드)
+  const [, setCfgN] = useState(0);
+  useEffect(() => { let on = true; if (X.loadCfg) X.loadCfg().then(() => { if (on) setCfgN((n) => n + 1); }); return () => { on = false; }; }, [X]);
   // 그린 뒤: 결제 금액 다시 계산 · 표시 (예전 render 의 coPaint) — 다시 그릴 때마다
   useEffect(() => { if (ref.current) X.coPaint(ref.current); });
   // 안쪽 예전 버튼들: 수량 · 포인트 전액 · 주소 찾기 · 계좌 복사 · 환불 규정
@@ -80,8 +84,8 @@ function Form({ p, m, k, qs, onRules }) {
         {pr > 0 ? <><section className="vd-co-box"><h2>{bk && !cps.length ? "포인트" : "할인 · 쿠폰"}</h2><div className="vd-co-f">{k === "course" && (!bk || cps.length) && !rbC ? <label className="w">쿠폰 <small>사용 가능 {cps.length}장 · 보유 {all}장</small><select name="coupon" key={cps.map((y) => y.x.id).join(",") || "none"} defaultValue={cps.length ? cps[0].x.id : undefined}><option value="">쿠폰 쓰지 않기</option>{cps.map((y) => <option key={y.x.id} value={y.x.id}>{y.c.name + " (-" + won(y.off) + ")"}</option>)}</select></label> : null}
             <label className="w">포인트 <small>보유 {pts.toLocaleString()}P · 1P = 1원</small><span className="vd-co-pt"><input name="points" type="number" min="0" max={pts} step="100" inputMode="numeric" defaultValue="0" disabled={!pts} /><button type="button" className="vd-btn vd-btn-o vd-btn-sm" data-v="pt-all" disabled={!pts}>전액 사용</button></span></label></div>
             {bk ? <p className="vd-muted vd-co-hint">도서정가제에 따라 종이책에는 책 전용 쿠폰(예: 첫 책 1,000원 할인)만 쓸 수 있고, 할인은 정가의 10%까지예요. 포인트는 쓸 수 있어요.</p> : k !== "course" ? <p className="vd-muted vd-co-hint">1:1 코칭권 · TEA TIME에는 쿠폰을 쓸 수 없어요. 포인트는 쓸 수 있어요.</p> : rbC ? <p className="vd-muted vd-co-hint">재수강 할인은 쿠폰과 함께 쓸 수 없어요. 포인트는 쓸 수 있어요.</p> : !cps.length ? <p className="vd-muted vd-co-hint">이 상품에 쓸 수 있는 쿠폰이 없어요. <a className="vd-link" href="#/vod/my/coupons">쿠폰 등록하기</a></p> : coachOn || c ? <p className="vd-muted vd-co-hint">쿠폰은 수강권 금액에만 적용돼요.</p> : null}</section>
-          <section className="vd-co-box" data-co-pay=""><h2>결제 수단</h2><div className="vd-pay-opts">{opts.map((z) => <label key={z[0]} className={"vd-pay-opt" + (z[3] ? " off" : "")}><input type="radio" name="method" value={z[0]} disabled={!!z[3]} defaultChecked={z[0] === first} /><span><Icon n={z[1]} c="sm" />{z[2]}{z[3] ? <em>{z[3]}</em> : null}</span></label>)}</div>
-            {opts.every((z) => z[3]) ? <p className="vd-co-bank vd-co-wait"><Icon n="alert" c="xs" /><span>결제 준비 중이에요. 곧 카드 · 간편결제 · 무통장 입금으로 결제할 수 있어요.</span></p> : null}<RawOne html={X.bankBox(b, m, bk ? "book" : k)} /></section></> : null}
+          <section className="vd-co-box" data-co-pay="" key={"pay:" + opts.map((z) => z[0] + (z[3] ? "!" : "")).join()}><h2>결제 수단</h2><div className="vd-pay-opts">{opts.map((z) => <Fragment key={z[0]}><label className={"vd-pay-opt" + (z[3] ? " off" : "")}><input type="radio" name="method" value={z[0]} disabled={!!z[3]} defaultChecked={z[0] === first} /><span>{z[2]}{z[1] === "np" ? <i className="vd-pay-bd vd-pay-np" aria-hidden="true"><b>N</b>Pay</i> : z[1] === "kp" ? <i className="vd-pay-bd vd-pay-kp" aria-hidden="true"><b></b>pay</i> : null}{z[3] ? <em>{z[3]}</em> : null}</span></label>{!z[3] && X.paySub(z[0], z[0] === first) ? <RawOne html={X.paySub(z[0], z[0] === first)} /> : null}</Fragment>)}</div>
+            {opts.every((z) => z[3]) ? <p className="vd-co-bank vd-co-wait"><Icon n="alert" c="xs" /><span>결제 준비 중이에요. 곧 카드 · 계좌이체 · 가상계좌 · 무통장 입금으로 결제할 수 있어요.</span></p> : null}{X.payNote() ? <RawOne html={X.payNote()} /> : null}<RawOne html={X.bankBox(b, m, bk ? "book" : k)} /></section></> : null}
         <div className="vd-co-agrees"><label className="vd-agree vd-agree-all"><input type="checkbox" data-agree-all="" /><span><b>아래 내용을 모두 확인했고 동의해요</b></span></label>
           <label className="vd-agree"><input type="checkbox" name="agree" data-agree-req="" /><span>(필수) 주문 상품 · {agree1} · 결제 금액을 확인했어요</span></label>
           <label className="vd-agree"><input type="checkbox" name="agree2" data-agree-req="" /><span>(필수) <button type="button" className="vd-link" data-v="refund">환불 규정</button>을 확인했어요. {agree2}<small>{bk ? "전자상거래법 제17조 · 받은 날부터 7일 이내 청약철회 (책을 훼손하면 제한돼요)" : "전자상거래법 제17조 제2항 제5호 · 디지털 콘텐츠 제공이 시작되면 청약철회가 제한될 수 있어요"}</small></span></label>

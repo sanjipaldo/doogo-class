@@ -29,17 +29,20 @@ async function giveBack(o) {
   const at = Date.now();
   await V.update(V.K.member(o.mid), (m) => { if (!m) return undefined; if (o.pointOff) { m.points = (Number(m.points) || 0) + o.pointOff; (m.pointLog = m.pointLog || []).push({ at, amt: o.pointOff, why: "주문 취소 · 포인트 돌려받음 (" + o.no + ")" }); } if (o.mcid) { const c = (m.coupons || []).find((x) => x.id === o.mcid); if (c) { c.usedAt = null; c.orderNo = ""; } } return m; });
 }
-/** 입금 전 주문 취소 (회원 · 마스터) — 자동 입금 확인(페이액션)에 등록한 주문이면 맞추기에서도 빼요 */
-async function drop(o, by) {
+/** 입금 전 주문 취소 (회원 · 마스터 · 토스에서 이미 취소됨 opt.pgDone) — 자동 입금 확인(페이액션)에 등록한 주문이면 맞추기에서도 빼요
+ *  → { ok: true } · 가상계좌가 그 사이 입금됐으면 { ok: false, paid: true, pay, message } (취소하지 않고 결제 완료로 맞춰요) · 토스가 계좌를 닫지 못하면 { ok: false, message } */
+async function drop(o, by, opt) {
   if (o.pg && o.pg.pa === "ok") await require("./payaction").exclude(o.no).catch((e) => console.error("[bank] payaction exclude", o.no, e.message));
-  // 가상계좌는 발급 계좌를 닫아요. 닫히지 않으면 그 사이 입금됐는지 포트원에 물어 — 입금됐으면 취소하지 않고 결제 완료로 돌려요
-  if (o.method === "vbank" && o.paymentId && o.pg && o.pg.st === "issued") {
-    const po = require("./portone");
-    if (po.on()) {
-      try { await po.closeVirtualAccount(o.paymentId); } catch (e) {
-        console.error("[bank] vbank close", o.no, e.message);
-        const pay = await po.getPayment(o.paymentId).catch(() => null);
-        if (pay && pay.status === "PAID") return { ok: false, paid: true, message: "방금 가상계좌 입금이 확인돼 주문을 취소하지 않았어요." };
+  // 가상계좌는 토스에서 결제를 취소해 발급 계좌를 닫아요 (입금 전에는 환불 계좌 없이 전액 취소). 취소가 안 되면 그 사이 입금됐는지 토스에 물어 — 입금됐으면 취소하지 않아요
+  if (o.method === "vbank" && !(opt && opt.pgDone) && o.pg && o.pg.st === "issued" && o.pg.paymentKey) {
+    const toss = require("./toss");
+    if (toss.on()) {
+      // 멱등키는 쓰지 않아요 — 토스는 같은 멱등키의 첫 응답(오류도)을 15일 동안 그대로 돌려줘서, 한 번 실패하면 다시 눌러도 계속 실패해요. 두 번 취소돼도 ALREADY_CANCELED_PAYMENT 라 안전해요
+      try { await toss.cancel(o.pg.paymentKey, { reason: "입금 전 주문 취소 (" + String(by || "").slice(0, 20) + ")" }); } catch (e) {
+        console.error("[bank] vbank close", o.no, e.status || "", e.code || "", e.message);
+        const pay = await toss.get(o.pg.paymentKey).catch(() => null);
+        if (pay && pay.status === "DONE") return { ok: false, paid: true, pay, message: "방금 가상계좌 입금이 확인돼 주문을 취소하지 않았어요." };
+        if (!(pay && pay.status === "CANCELED") && e.code !== "ALREADY_CANCELED_PAYMENT") return { ok: false, message: "가상계좌를 닫지 못했어요. 잠시 뒤 다시 시도해 주세요." };
       }
     }
   }
@@ -56,7 +59,7 @@ async function confirm(no, by, extra) {
   if (!o) return { ok: false, message: "주문을 찾지 못했어요." };
   if (o.status === "paid") return { ok: true, already: true, no: o.no, orders: [] };
   if (o.status !== "pending") return { ok: false, message: "입금 대기 주문이 아니에요. (" + o.status + ")" };
-  if (o.method === "vbank") return { ok: false, message: "가상계좌는 회원이 입금하면 포트원이 알려 줘서 자동으로 확인돼요." };
+  if (o.method === "vbank") return { ok: false, message: "가상계좌는 회원이 입금하면 토스페이먼츠가 알려 줘서 자동으로 확인돼요." };
   const at = Date.now(), done = [];
   for (const n of await groupNos(o)) {
     const prev = await V.get(V.K.order(n));

@@ -900,11 +900,11 @@
    *      사업자: 250만 원 지급(세금계산서 250만 원) · 개인: 250만 ÷ 1.1 = 227만 2,727원 − 3.3% → 219만 7,737원 지급
    *  예전 기준(gross · net · supply)은 이미 확정한 명세서를 그때 기준 그대로 보여 줄 때만 써요 */
   const TAX_MODES = { std: "판매가 − RS − PG 수수료 기준 (사업자 세금계산서 · 개인 3.3%)", gross: "판매 총액 세금계산서 (예전)", net: "정산액 세금계산서 (예전)", supply: "공급가액 기준 (예전)" };
-  /* 환불 받을 계좌의 은행 — 포트원 표준 은행 코드(가상계좌 환불에 그대로 보내요) · 화면 이름 */
-  const BANKS = [["KOOKMIN", "국민은행"], ["SHINHAN", "신한은행"], ["WOORI", "우리은행"], ["HANA", "하나은행"], ["NONGHYUP", "NH농협은행"], ["LOCAL_NONGHYUP", "지역농축협"], ["IBK", "기업은행"], ["KAKAO", "카카오뱅크"], ["TOSS", "토스뱅크"], ["K_BANK", "케이뱅크"], ["KDB", "산업은행"], ["SUHYUP", "수협은행"], ["POST", "우체국"], ["KFCC", "새마을금고"], ["SHINHYUP", "신협"], ["SAVINGS_BANK", "저축은행"], ["BUSAN", "부산은행"], ["KYONGNAM", "경남은행"], ["DAEGU", "아이엠뱅크(대구)"], ["KWANGJU", "광주은행"], ["JEONBUK", "전북은행"], ["JEJU", "제주은행"], ["STANDARD_CHARTERED", "SC제일은행"], ["CITI", "한국씨티은행"], ["NFCF", "산림조합"]];
-  const bankName = (code) => (BANKS.find((x) => x[0] === code) || [code, code || ""])[1];
+  /* 환불 받을 계좌의 은행 — 토스페이먼츠 은행 코드(두 자리 · 가상계좌 환불에 그대로 보내요) · 화면 이름 (shared/refund.js 공용 · 2026-11 포트원에서 바꿈)
+   * 예전 영문 코드로 저장된 계좌도 이름이 나와요 (bankName · acctFields 가 토스 코드로 맞춰요) */
+  const BANKS = window.DCS.refund.BANKS, bankName = window.DCS.refund.bankName, bankCodeOf = window.DCS.refund.bankCode;
   /** 환불 계좌 칸 (회원 환불 요청 · 마스터 환불 창 같이) */
-  const acctFields = (a, pre) => { a = a || {}; pre = pre || "ra"; return '<div class="ra-f"><select name="' + pre + 'Bank" aria-label="은행"><option value="">은행 고르기</option>' + BANKS.map((x) => '<option value="' + x[0] + '"' + (a.bank === x[0] ? " selected" : "") + ">" + x[1] + "</option>").join("") + '</select><input name="' + pre + 'No" inputmode="numeric" maxlength="30" placeholder="계좌번호 (- 없이)" value="' + esc(a.number || "") + '" aria-label="계좌번호"><input name="' + pre + 'Holder" maxlength="20" placeholder="예금주" value="' + esc(a.holder || "") + '" aria-label="예금주"></div>'; };
+  const acctFields = (a, pre) => { a = a || {}; pre = pre || "ra"; return '<div class="ra-f"><select name="' + pre + 'Bank" aria-label="은행"><option value="">은행 고르기</option>' + BANKS.map((x) => '<option value="' + x[0] + '"' + (bankCodeOf(a.bank) === x[0] ? " selected" : "") + ">" + x[1] + "</option>").join("") + '</select><input name="' + pre + 'No" inputmode="numeric" maxlength="30" placeholder="계좌번호 (- 없이)" value="' + esc(a.number || "") + '" aria-label="계좌번호"><input name="' + pre + 'Holder" maxlength="20" placeholder="예금주" value="' + esc(a.holder || "") + '" aria-label="예금주"></div>'; };
   /** 환불 계좌 읽기 → { bank, number, holder } 또는 오류 문구 */
   const acctRead = (f, pre) => { pre = pre || "ra"; const g = (n) => String((f.elements.namedItem(pre + n) || {}).value || "").trim(); const a = { bank: g("Bank"), number: g("No").replace(/[^0-9]/g, ""), holder: g("Holder").replace(/\s+/g, " ") };
     if (!a.bank || !BANKS.some((x) => x[0] === a.bank)) return { err: "환불 받을 은행을 골라 주세요." };
@@ -1096,15 +1096,32 @@
   }
   const likeTxt = (n) => (n >= 10 ? Math.floor(n / 10) * 10 + "+" : String(n));
   const nextNo = () => { const d = new Date(), ymd = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); return "DC" + ymd + String(V().orders.length + 1).padStart(3, "0") + String(Math.floor(Math.random() * 90 + 10)); };
-  /** 결제 수단 [값, 아이콘, 이름, 막힌 이유] — 정식 서버: 포트원 채널이 있는 것만 · 무통장은 계좌를 넣었을 때만 */
+  /** 결제 수단 [값, 배지(np 네이버페이 · kp 카카오페이), 이름, 막힌 이유] — 세로 목록 · 순서는 탈잉처럼 (2026-11):
+   *  실시간 계좌이체 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 입금 · 무통장 입금 — 처음엔 카드를 골라 둬요 (payFirst)
+   *  정식 서버: 토스페이먼츠 키가 있을 때 서버가 연 것만 (TOSS_METHODS · 결제창형 키면 토스 창에서 고르는 한 칸) · 무통장은 계좌를 넣었을 때만
+   *  네이버페이 · 카카오페이를 열면 카드 칸 이름이 ‘카드/간편결제’(토스페이 · 페이코 같은 다른 간편결제도 그 창에서) */
+  const PAY_OPT = { transfer: ["transfer", "", "실시간 계좌이체"], naver: ["naver", "np", "네이버페이"], kakao: ["kakao", "kp", "카카오페이"], card: ["card", "", "신용 · 체크카드"], vbank: ["vbank", "", "가상계좌 입금"], tp: ["tp", "", "카드 · 계좌이체 · 가상계좌"] };
+  const PAY_ORD = ["transfer", "naver", "kakao", "card", "vbank", "tp"];
   function payOpts() {
-    const L = [["card", "coins", "신용 · 체크카드"], ["kakao", "message", "카카오페이"], ["toss", "coins", "토스페이"], ["bank", "building", "무통장 입금"]];
-    if (!SRV()) return L;
-    const ch = (CFG && CFG.portone && CFG.portone.channels) || {}, bk = bankInfo().real;
-    const extra = [ch.transfer ? ["transfer", "building", "실시간 계좌이체"] : null, ch.vbank ? ["vbank", "building", "가상계좌"] : null].filter(Boolean);
-    if (extra.length) L.splice(3, 0, ...extra);
-    return L.map((z) => z[0] === "bank" ? (bk ? z : z.concat("준비 중")) : ch[z[0]] ? z : z.concat("PG 심사 중")).filter((z) => !(z[3] && z[0] !== "card" && z[0] !== "bank"));
+    const bankO = ["bank", "", "무통장 입금"], T = SRV() ? CFG && CFG.toss : null;
+    const ms = SRV() ? (T && T.methods) || [] : ["transfer", "naver", "kakao", "card", "vbank"], ks = PAY_ORD.filter((k) => ms.indexOf(k) >= 0);
+    const easy = ks.indexOf("naver") >= 0 || ks.indexOf("kakao") >= 0, o = ks.map((k) => (k === "card" && easy ? ["card", "", "카드/간편결제"] : PAY_OPT[k]));
+    if (!SRV()) return o.concat([bankO]);
+    return (o.length ? o : [PAY_OPT.card.concat("PG 심사 중")]).concat([bankInfo().real ? bankO : bankO.concat("준비 중")]);
   }
+  /** 처음 골라 둘 결제 수단 — 카드(탈잉처럼) · 카드가 없으면 열린 첫 수단 */
+  const payFirst = (opts) => { const ok = (opts || payOpts()).filter((y) => !y[3]); return ((ok.find((y) => y[0] === "card") || ok[0]) || [])[0] || ""; };
+  /** 간편결제 배지 (네이버페이 N Pay · 카카오페이 pay) — 글자로 그린 표시 (그림 파일 없이) */
+  const payBadge = (b) => (b === "np" ? '<i class="vd-pay-bd vd-pay-np" aria-hidden="true"><b>N</b>Pay</i>' : b === "kp" ? '<i class="vd-pay-bd vd-pay-kp" aria-hidden="true"><b></b>pay</i>' : "");
+  /** 고른 결제 수단 바로 아래 안내 (카드 할부 · 가상계좌 입금 기한) — 그 수단을 고르면 펼쳐져요 (formChange) */
+  function paySub(k, on) {
+    const h = Number(SRV() && CFG && CFG.toss && CFG.toss.vbankHours) || 72, due = h % 24 ? h + "시간" : h / 24 + "일";
+    const t = k === "card" ? [icon("creditCard", "xs") + "할부 개월 수는 다음 결제창에서 고를 수 있어요.", "고르지 않으면 일시불로 결제돼요. (할부는 5만 원 이상 결제부터)", "카드사별 무이자 혜택은 결제창의 ‘(무)’ 표시를 확인해 주세요."]
+      : k === "vbank" ? [icon("building", "xs") + "결제하기를 누르면 내 입금 계좌가 바로 만들어져요.", due + " 안에 입금하면 확인되는 대로 바로 이용할 수 있어요.", "입금 계좌는 주문 · 결제 내역에서도 다시 볼 수 있어요."] : null;
+    return t ? '<div class="vd-pay-sub' + (on ? " on" : "") + '" data-pay-note="' + k + '"><b>' + t[0] + "</b><ul><li>" + t[1] + "</li><li>" + t[2] + "</li></ul></div>" : "";
+  }
+  /** 결제 수단 아래 안내 — 운영 사이트에 토스 시험 키(심사 중)면 ‘실제로 결제되지 않아요’ (예전 화면 · React 같이) */
+  const payNote = () => (SRV() && CFG && CFG.toss && CFG.toss.live ? '<p class="vd-co-bank vd-co-wait vd-co-tptest">' + icon("alert", "xs") + "<span>지금은 토스페이먼츠 심사 중이라 카드 · 간편결제 · 계좌이체 · 가상계좌는 <b>시험 결제창</b>만 열리고 실제로 결제되지 않아요. 바로 구매하려면 무통장 입금을 골라 주세요.</span></p>" : "");
   /** 무통장 계좌: VOD 설정 → 비어 있으면 기수 입금 계좌. real = 실제로 넣은 계좌 (정식 서버는 이때만 무통장을 열어요) */
   const bankInfo = () => {
     const s = V().settings || {}, b = DB.billingInfo ? DB.billingInfo() : {}, x = s.bank && s.account ? s : b.bank && b.account ? b : null;
@@ -1919,7 +1936,7 @@
     list.forEach((x) => { if (x.tea) x.tea.st = "cancel"; Object.assign(x, { status: "refunded", refundedAt: at, refundAmount: x.amount, refundKind: "instant", refundWhy: x === o ? "회원 바로 취소 (" + (x.paidAt ? Math.max(1, Math.ceil((at - x.paidAt) / 864e5)) : 1) + "일째 · 들은 강의 " + usedOf(x.mid, x.pid) + "개)" : "함께 결제한 상품 같이 취소", refundBy: "회원", pg: pg || { st: "mock", at } }); if (r.restore) restoreOrder(x); delete x.refundReq; });
     save(); return list.reduce((a, x) => a + x.amount, 0);
   }
-  /** 정식 서버 + 포트원이 연결돼 있으면 서버가 결제를 취소하고(가상계좌 · 무통장은 acct 환불 계좌로), 시안에서는 이 브라우저에만 기록해요 */
+  /** 정식 서버 + 토스페이먼츠가 연결돼 있으면 서버가 결제를 취소하고(가상계좌 · 무통장은 acct 환불 계좌로), 시안에서는 이 브라우저에만 기록해요 */
   function rfCancel(o, acct) {
     const body = Object.assign({ no: o.no }, acct ? { refundAccount: acct } : {});
     if (SRV()) return window.VOD.payApi("cancel", body).then((r) => { if (!r || !r.ok) throw new Error((r && r.message) || "취소하지 못했어요."); return DB.remote.refresh().then(() => r.amount); });
@@ -1927,7 +1944,7 @@
     return Promise.resolve(rfApply(o, { st: "mock", at: now() }, acct));
   }
   /** 바로 취소 팝업의 돌려받는 길 안내 (카드 · 가상계좌 · 무통장) */
-  const rfNowNote = (o, q) => ((q || instantOf(o)).way === "bank" ? "적어 주신 계좌로 영업일 3일 안에 보내 드려요." : (q || instantOf(o)).way === "vbank" ? "적어 주신 계좌로 포트원이 돌려드려요 (영업일 1~2일)." : "카드 승인 취소는 카드사에 따라 3~5영업일 걸려요.");
+  const rfNowNote = (o, q) => ((q || instantOf(o)).way === "bank" ? "적어 주신 계좌로 영업일 3일 안에 보내 드려요." : (q || instantOf(o)).way === "vbank" ? "적어 주신 계좌로 토스페이먼츠가 돌려드려요 (영업일 2일)." : "카드 승인 취소는 카드사에 따라 3~5영업일 걸려요.");
   /** 바로 취소한 뒤 알림 문구 (결제 방법마다 돌려받는 길이 달라요) */
   const rfDoneMsg = (o, amt) => won(amt) + (o.method === "bank" ? " 환불을 접수했어요. 적어 주신 계좌로 영업일 3일 안에 보내 드려요." : o.method === "vbank" ? "을 환불했어요. 적어 주신 계좌로 돌아가요." : "을 환불했어요. 카드사에 따라 3~5영업일 안에 돌아와요.") + (o.pg && o.pg.st === "mock" ? " (시안 · 실제 취소 없음)" : "");
   function refundTbl() {
@@ -2584,9 +2601,10 @@
       '<p class="vd-auth-note">' + icon("alert", "xs") + "두잉고 기수 수강생 계정과는 따로예요. 기수 수강생은 위 <a href=\"#/vod/" + (signup ? "signup" : "login") + "?tab=dg\" data-v=\"svc\" data-k=\"dg\">‘두잉고’ 탭</a>에서 로그인해 주세요.</p></div>");
   }
 
-  /* ================= v19 외부 연결: 포트원(PG) 결제 · 카카오 로그인 · Cloudflare Turnstile =================
+  /* ================= v19 외부 연결: 토스페이먼츠(PG) 결제 · 카카오 로그인 · Cloudflare Turnstile =================
    * 정식 서버(Vercel)에서는 /api/vod-config 가 ‘무엇이 연결됐는지’만 알려 줘요 (비밀 값은 절대 화면으로 오지 않아요).
-   *  - 포트원: 상점 ID · 채널 키가 있으면 결제 버튼이 포트원 결제창을 열고, 결제 뒤 서버가 포트원에 다시 물어 금액을 확인해요.
+   *  - 토스페이먼츠 (2026-11 포트원에서 바꿈): 클라이언트 키가 있으면 결제 버튼이 토스 결제창을 열고, 결제창에서 돌아오면(successUrl)
+   *    서버가 자기가 계산해 둔 금액과 같은지 보고 토스에 승인을 요청해요 (api/_lib/toss.js).
    *  - 카카오: 서버에 키가 있으면 ‘카카오로 1초 만에’가 진짜 카카오 동의 화면으로 가요.
    * 서버가 없거나(시안 · 미리보기) 키가 없으면 지금처럼 체험 화면으로 동작해요. */
   let CFG = null, cfgP = null;
@@ -2596,7 +2614,7 @@
     if (!cfgP) cfgP = fetch("/api/vod-config", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).then((j) => { CFG = j && j.cfg ? j.cfg : null; return CFG; }, () => null);
     return cfgP;
   }
-  const payServer = () => !!(remoteOn() && CFG && CFG.portone && CFG.portone.storeId);
+  const payServer = () => !!(remoteOn() && CFG && CFG.toss && CFG.toss.ck);
   const kakaoServer = () => !!(remoteOn() && CFG && CFG.kakao);
   const tsKey = () => (remoteOn() && CFG && CFG.turnstile) || "";
   const srvOn = () => !!(remoteOn() && CFG && CFG.auth);
@@ -2639,12 +2657,12 @@
     if (sm.points != null) { m.points = Number(sm.points) || 0; if (Array.isArray(sm.pointLog)) m.pointLog = sm.pointLog.slice(); }
     m.lastLoginAt = now(); m.seenAt = now(); setMe(m.id); save(); return m;
   }
-  /* 결제창: 정식 → 포트원 V2 (서버가 금액을 정하고 확인) · 시안 → 체험 결제창 */
-  const PG_NAME = { card: "신용 · 체크카드", kakao: "카카오페이", toss: "토스페이", naver: "네이버페이", transfer: "실시간 계좌이체", vbank: "가상계좌" };
+  /* 결제창: 정식 → 토스페이먼츠 (서버가 금액을 정하고 승인) · 시안 → 체험 결제창 */
+  const PG_NAME = { card: "신용 · 체크카드", transfer: "실시간 계좌이체", vbank: "가상계좌", tp: "카드 · 계좌이체 · 가상계좌", kakao: "카카오페이", toss: "토스페이", naver: "네이버페이" };
   function pgOpen(x) {
-    if (SRV() && !payServer()) return Promise.reject(new Error("카드 · 간편결제는 PG 심사가 끝나면 열려요. 지금은 무통장 입금으로 결제해 주세요."));
+    if (SRV() && !payServer()) return Promise.reject(new Error("카드 · 계좌이체 · 가상계좌는 PG 심사가 끝나면 열려요. 지금은 무통장 입금으로 결제해 주세요."));
     return payServer() ? pgReal(x) : new Promise((ok) => {
-      modal("결제하기", '<div class="vd-modal-b vd-pgm"><p class="vd-pgm-tag">' + icon("shieldCheck", "xs") + "<span>시안 결제창이에요. 실제로는 이 자리에 <b>포트원 결제창</b>(카드사 · 간편결제 화면)이 열려요.</span></p>" +
+      modal("결제하기", '<div class="vd-modal-b vd-pgm"><p class="vd-pgm-tag">' + icon("shieldCheck", "xs") + "<span>시안 결제창이에요. 실제로는 이 자리에 <b>" + (x.method === "naver" || x.method === "kakao" ? esc(PG_NAME[x.method]) + " 결제 화면" : "토스페이먼츠 결제창") + "</b>" + (x.method === "naver" || x.method === "kakao" ? "" : "(카드사 · 은행 화면)") + "이 열려요.</span></p>" +
         '<div class="vd-pgm-sum"><small>' + esc(x.title) + '</small><b>' + won(x.amount) + "</b><span>" + esc(PG_NAME[x.method] || "결제") + "</span></div>" +
         '<div class="vd-pgm-card" aria-hidden="true"><i></i><span>**** **** **** 1234</span><em>체험용 카드</em></div>' +
         '<div class="vd-pgm-a"><button type="button" class="vd-btn vd-btn-o" data-v="pg-no">결제 취소</button><button type="button" class="vd-btn vd-btn-p" data-v="pg-ok">' + won(x.amount) + " 결제하기</button></div>" +
@@ -2653,30 +2671,62 @@
     });
   }
   let pgWait = null;
+  // 결제창으로 넘어가는 동안 이 브라우저에 기억해요 — 결제창에서 취소하면 토스가 주문 id(orderId)를 안 보내서, 돌아왔을 때 어느 주문인지 알려고
+  const TP_KEY = "dc_tpay";
+  const tpRemember = (v) => { try { if (v) sessionStorage.setItem(TP_KEY, JSON.stringify(v)); else sessionStorage.removeItem(TP_KEY); } catch (e) { /* 기억만 못 해요 */ } };
+  const tpRecall = () => { try { const v = JSON.parse(sessionStorage.getItem(TP_KEY) || "null"); return v && v.id && Date.now() - (v.at || 0) < 3 * 36e5 ? v : null; } catch (e) { return null; } };
+  /** 토스페이먼츠 결제창 (공식 v2 SDK · https://js.tosspayments.com/v2/standard)
+   *  ck 키(결제창 · 구버전): 고른 결제수단 창을 바로 열어요 — card(카드 · 간편결제 통합결제창) · transfer(퀵계좌이체) · vbank(가상계좌 · 입금 기한)
+   *                          naver · kakao: 간편결제 자체창 (card.flowMode DIRECT · easyPay NAVERPAY · KAKAOPAY) — 네이버페이 · 카카오페이 결제 화면이 바로 떠요
+   *  gck 키(결제창형): 토스 창이 떠서 그 안에서 결제수단을 골라요 (paymentRequest 이벤트 → requestPayment)
+   *  결과는 언제나 successUrl · failUrl(이 사이트 첫 화면 ?paymentKey&orderId&amount · ?code&message)로 돌아와 pgReturn 이 서버에 승인을 맡겨요 */
   async function pgReal(x) {
     const prep = await payApi("prepare", x.req);
     if (!prep || !prep.ok) throw new Error((prep && prep.message) || "결제를 준비하지 못했어요.");
     if (prep.free) return { server: prep };
-    await loadJs("https://cdn.portone.io/v2/browser-sdk.js");
-    const ch = CFG.portone.channels || {}, easy = { kakao: "KAKAOPAY", toss: "TOSSPAY", naver: "NAVERPAY" }[x.method];
-    const acc = x.method === "transfer" || x.method === "vbank";
-    const req = { storeId: CFG.portone.storeId, channelKey: ch[easy || acc ? x.method : "card"] || ch.card, paymentId: prep.paymentId, orderName: prep.orderName, totalAmount: prep.amount, currency: "KRW", payMethod: easy ? "EASY_PAY" : x.method === "transfer" ? "TRANSFER" : x.method === "vbank" ? "VIRTUAL_ACCOUNT" : "CARD",
-      customer: { fullName: x.buyer.name || undefined, phoneNumber: x.buyer.phone || undefined, email: x.buyer.email || undefined }, redirectUrl: location.origin + "/?pay=" + encodeURIComponent(prep.paymentId) + "#/vod/order/" + encodeURIComponent(prep.no) };
-    if (easy) req.easyPay = { easyPayProvider: easy };
-    // 가상계좌: 입금 기한(시간) — 서버 설정 (기본 72시간)
-    if (x.method === "vbank") req.virtualAccount = { accountExpiry: { validHours: Number(CFG.portone.vbankHours) || 72 } };
-    const res = await window.PortOne.requestPayment(req);
-    if (!res || res.code) { payApi("abort", { paymentId: prep.paymentId, code: res && res.code }); return null; }
-    const done = await payApi("complete", { paymentId: prep.paymentId });
-    if (!done || !done.ok) throw new Error((done && done.message) || "결제를 확인하지 못했어요. 고객센터로 알려 주세요.");
-    return { server: done, paymentId: prep.paymentId, txId: res.txId || "" };
+    await loadJs("https://js.tosspayments.com/v2/standard");
+    if (typeof window.TossPayments !== "function") throw new Error("결제창을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+    const T = CFG.toss, tp = window.TossPayments(T.ck), back = location.origin + "/", ck = prep.customerKey || window.TossPayments.ANONYMOUS;
+    const tel = String(x.buyer.phone || "").replace(/[^0-9]/g, ""), amount = { currency: "KRW", value: prep.amount };
+    const base = { orderId: prep.paymentId, orderName: prep.orderName, successUrl: back, failUrl: back, customerName: String(x.buyer.name || "").slice(0, 100) || undefined, customerEmail: String(x.buyer.email || "").slice(0, 100) || undefined, customerMobilePhone: /^\d{8,15}$/.test(tel) ? tel : undefined };
+    tpRemember({ id: prep.paymentId, no: prep.no, at: Date.now() });
+    try {
+      if (T.mode === "widget") {
+        const w = tp.widgets({ customerKey: ck });
+        await w.setAmount(amount);
+        const pw = await w.renderPaymentWindow({ orderName: prep.orderName, variantKey: { paymentMethod: T.variant || "DEFAULT", agreement: "AGREEMENT" } });
+        await new Promise((ok, no) => {
+          pw.on("paymentRequest", () => { w.requestPayment(base).then(ok, no); });
+          pw.on("cancel", () => no(Object.assign(new Error("cancel"), { code: "USER_CANCEL" })));
+        });
+      } else {
+        const ez = { naver: "NAVERPAY", kakao: "KAKAOPAY" }[x.method], req = Object.assign({ method: { card: "CARD", transfer: "TRANSFER", vbank: "VIRTUAL_ACCOUNT" }[x.method] || "CARD", amount }, base);
+        if (req.method === "CARD") req.card = ez ? { flowMode: "DIRECT", easyPay: ez } : { flowMode: "DEFAULT" };
+        if (req.method === "VIRTUAL_ACCOUNT") req.virtualAccount = { validHours: Number(T.vbankHours) || 72 };
+        await tp.payment({ customerKey: ck }).requestPayment(req);
+      }
+    } catch (e) {
+      // 결제창을 닫았거나 열지 못했어요 → 결제 대기 주문을 실패로 (주문이 남지 않게) · 닫은 건 조용히
+      tpRemember(null);
+      payApi("abort", { paymentId: prep.paymentId, code: String((e && e.code) || "ERROR").slice(0, 40) });
+      if (e && /USER_CANCEL|PAY_PROCESS_CANCELED/.test(String(e.code || ""))) return null;
+      throw new Error((e && e.message) || "결제창을 열지 못했어요. 잠시 후 다시 시도해 주세요.");
+    }
+    return new Promise(() => {}); // 결제창이 successUrl 로 넘어가요 → 돌아오면 pgReturn
   }
-  /** 휴대폰 결제(다른 창으로 갔다 돌아옴): 주소의 ?pay= 를 보고 서버에 결제 확인을 마저 해요 */
+  /** 결제창에서 돌아오면(successUrl · failUrl) 서버에 승인을 맡겨요 — ?paymentKey · orderId · amount (성공) · ?code · message · orderId (실패 · 취소) */
   function pgReturn() {
-    const q = new URLSearchParams(location.search), pid = q.get("pay"); if (!pid || !remoteOn()) return;
-    ROUTE.dropQuery(["pay", "paymentId", "code", "message", "pgCode", "pgMessage", "transactionType", "txId"]); // 포트원이 붙여 보내는 값
-    if (q.get("code")) { payApi("abort", { paymentId: pid, code: q.get("code") }); toast("결제를 마치지 못했어요. 다시 시도해 주세요.", "warn"); return; }
-    payApi("complete", { paymentId: pid }).then((d) => { if (d && d.ok) { DB.remote.refresh().then(() => { render(); toast(d.vbank ? "가상계좌 발급! 입금하면 바로 이용해요." : "결제를 확인했어요."); }); } else toast((d && d.message) || "결제를 확인하지 못했어요. 고객센터로 알려 주세요.", "warn"); });
+    const q = new URLSearchParams(location.search), pk = q.get("paymentKey"), oid = q.get("orderId") || "", code = q.get("code"), mine = /^pay_[A-Za-z0-9_=-]{4,60}$/.test(oid), saved = tpRecall();
+    if (!remoteOn() || !((pk && mine) || (code && (mine || saved)))) return;
+    ROUTE.dropQuery(["paymentKey", "orderId", "amount", "paymentType", "code", "message"]); // 토스가 붙여 보내는 값
+    tpRemember(null);
+    const pid = mine ? oid : saved.id;
+    if (!pk) { payApi("abort", { paymentId: pid, code: String(code).slice(0, 40) }); toast(code === "PAY_PROCESS_CANCELED" ? "결제를 취소했어요. 주문은 만들어지지 않았어요." : String(q.get("message") || "결제를 마치지 못했어요. 다시 시도해 주세요.").slice(0, 120), "warn"); return; }
+    toast("결제를 확인하고 있어요…");
+    payApi("complete", { paymentId: pid, paymentKey: pk, amount: Number(q.get("amount")) }).then((d) => {
+      if (d && d.ok) { DB.remote.refresh().then(() => { if (d.no) ROUTE.hash = "#/vod/order/" + d.no; render(); toast(d.vbank ? "가상계좌 발급! 입금하면 바로 이용해요." : "결제를 확인했어요."); }); }
+      else { DB.remote.refresh().then(() => render()); toast((d && d.message) || "결제를 확인하지 못했어요. 고객센터로 알려 주세요.", "warn"); }
+    });
   }
   let pgDone = null;
   /** 카카오: 서버 로그인에서 돌아오면(?vodlogin=ok) 서버의 회원 정보로 로그인 */
@@ -2857,7 +2907,7 @@
       (pr > 0 ? '<section class="vd-co-box"><h2>' + (bk && !cps.length ? "포인트" : "할인 · 쿠폰") + '</h2><div class="vd-co-f">' + (k === "course" && (!bk || cps.length) && !rbC ? '<label class="w">쿠폰 <small>사용 가능 ' + cps.length + "장 · 보유 " + all + '장</small><select name="coupon"><option value="">쿠폰 쓰지 않기</option>' + cps.map((y, i) => '<option value="' + esc(y.x.id) + '"' + (i === 0 ? " selected" : "") + ">" + esc(y.c.name) + " (-" + won(y.off) + ")</option>").join("") + "</select></label>" : "") +
           '<label class="w">포인트 <small>보유 ' + pts.toLocaleString() + 'P · 1P = 1원</small><span class="vd-co-pt"><input name="points" type="number" min="0" max="' + pts + '" step="100" inputmode="numeric" value="0"' + (pts ? "" : " disabled") + '><button type="button" class="vd-btn vd-btn-o vd-btn-sm" data-v="pt-all"' + (pts ? "" : " disabled") + ">전액 사용</button></span></label></div>" +
           (bk ? '<p class="vd-muted vd-co-hint">도서정가제에 따라 종이책에는 책 전용 쿠폰(예: 첫 책 1,000원 할인)만 쓸 수 있고, 할인은 정가의 10%까지예요. 포인트는 쓸 수 있어요.</p>' : k !== "course" ? '<p class="vd-muted vd-co-hint">1:1 코칭권 · TEA TIME에는 쿠폰을 쓸 수 없어요. 포인트는 쓸 수 있어요.</p>' : rbC ? '<p class="vd-muted vd-co-hint">재수강 할인은 쿠폰과 함께 쓸 수 없어요. 포인트는 쓸 수 있어요.</p>' : !cps.length ? '<p class="vd-muted vd-co-hint">이 상품에 쓸 수 있는 쿠폰이 없어요. <a class="vd-link" href="#/vod/my/coupons">쿠폰 등록하기</a></p>' : coachOn || c ? '<p class="vd-muted vd-co-hint">쿠폰은 수강권 금액에만 적용돼요.</p>' : "") + "</section>" +
-        '<section class="vd-co-box" data-co-pay><h2>결제 수단</h2><div class="vd-pay-opts">' + payOpts().map((z, i, all) => '<label class="vd-pay-opt' + (z[3] ? " off" : "") + '"><input type="radio" name="method" value="' + z[0] + '"' + (z[3] ? " disabled" : "") + (z[0] === (all.find((y) => !y[3]) || [])[0] ? " checked" : "") + "><span>" + icon(z[1], "sm") + z[2] + (z[3] ? "<em>" + z[3] + "</em>" : "") + "</span></label>").join("") + '</div>' + (payOpts().every((z) => z[3]) ? '<p class="vd-co-bank vd-co-wait">' + icon("alert", "xs") + "<span>결제 준비 중이에요. 곧 카드 · 간편결제 · 무통장 입금으로 결제할 수 있어요.</span></p>" : "") + bankBox(b, m, bk ? "book" : k) + "</section>" : "") +
+        '<section class="vd-co-box" data-co-pay><h2>결제 수단</h2><div class="vd-pay-opts">' + payOpts().map((z, i, all) => '<label class="vd-pay-opt' + (z[3] ? " off" : "") + '"><input type="radio" name="method" value="' + z[0] + '"' + (z[3] ? " disabled" : "") + (z[0] === payFirst(all) ? " checked" : "") + "><span>" + z[2] + payBadge(z[1]) + (z[3] ? "<em>" + z[3] + "</em>" : "") + "</span></label>" + (z[3] ? "" : paySub(z[0], z[0] === payFirst(all)))).join("") + '</div>' + (payOpts().every((z) => z[3]) ? '<p class="vd-co-bank vd-co-wait">' + icon("alert", "xs") + "<span>결제 준비 중이에요. 곧 카드 · 계좌이체 · 가상계좌 · 무통장 입금으로 결제할 수 있어요.</span></p>" : "") + payNote() + bankBox(b, m, bk ? "book" : k) + "</section>" : "") +
       '<div class="vd-co-agrees"><label class="vd-agree vd-agree-all"><input type="checkbox" data-agree-all><span><b>아래 내용을 모두 확인했고 동의해요</b></span></label>' +
         '<label class="vd-agree"><input type="checkbox" name="agree" data-agree-req><span>(필수) 주문 상품 · ' + agree1 + " · 결제 금액을 확인했어요</span></label>" +
         '<label class="vd-agree"><input type="checkbox" name="agree2" data-agree-req><span>(필수) <button type="button" class="vd-link" data-v="refund">환불 규정</button>을 확인했어요. ' + agree2 + "<small>" + (bk ? "전자상거래법 제17조 · 받은 날부터 7일 이내 청약철회 (책을 훼손하면 제한돼요)" : "전자상거래법 제17조 제2항 제5호 · 디지털 콘텐츠 제공이 시작되면 청약철회가 제한될 수 있어요") + "</small></span></label>" +
@@ -2916,7 +2966,7 @@
   }
   /** 결제 화면 무통장 안내: 계좌(복사) · 예금주 · 입금 기한 · 입금자명 — 무통장을 고르면 펼쳐져요 */
   function bankBox(b, m, k) {
-    const first = (payOpts().find((y) => !y[3]) || [])[0] === "bank", days = Number(V().settings.payDays) || 3;
+    const first = payFirst() === "bank", days = Number(V().settings.payDays) || 3;
     return '<div class="vd-co-bank' + (first ? " on" : "") + '" data-bank-note><dl class="vd-bank-dl"><div><dt>입금 계좌</dt><dd><b>' + esc(b.bank) + ' <span class="vd-accno">' + esc(b.account) + '</span></b><button type="button" class="vd-copy" data-v="copy" data-t="' + esc(String(b.account).replace(/[^0-9-]/g, "")) + '">계좌 복사</button></dd></div><div><dt>예금주</dt><dd>' + esc(b.holder) + "</dd></div><div><dt>입금 기한</dt><dd>주문 후 " + days + "일 안</dd></div></dl>" +
       '<label class="vd-co-dep">입금자명 <small>통장에 찍히는 이름</small><input name="depositor" value="' + esc(String(m.name || "").replace(/\s+/g, "")) + '" maxlength="20" autocomplete="off"></label>' +
       '<div class="vd-co-cash"><b>현금영수증</b><div class="vd-co-cash-o">' + [["", "신청 안 함"], ["p", "소득공제용"], ["b", "지출증빙용"]].map((x, i) => '<label><input type="radio" name="cashType" value="' + x[0] + '"' + (i === 0 ? " checked" : "") + "><span>" + x[1] + "</span></label>").join("") + '</div><input name="cashNo" inputmode="numeric" maxlength="13" placeholder="휴대폰 번호 (- 없이)" value="' + esc(String(m.phone || "").replace(/[^0-9]/g, "")) + '" aria-label="현금영수증 번호" hidden><small data-cash-note hidden>입금이 확인되면 발급해 드려요. 도서 구입비는 소득공제용으로 신청하면 도서 · 공연비 소득공제에 들어갈 수 있어요.</small></div>' +
@@ -3242,7 +3292,7 @@
   }
 
   /* ---------- 결제 영수증 (실제 강의 영수증처럼: 공급자 · 구매자 · 결제 내역 · 공급가액/부가세 · 결제 정보 · 직인) ---------- */
-  const PAYN = { card: "신용 · 체크카드", kakao: "카카오페이", toss: "토스페이", naver: "네이버페이", transfer: "실시간 계좌이체", vbank: "가상계좌", bank: "무통장 입금", free: "무료", point: "포인트 전액" };
+  const PAYN = { card: "신용 · 체크카드", transfer: "실시간 계좌이체", vbank: "가상계좌", easy: "간편결제", phone: "휴대폰", tp: "토스페이먼츠", kakao: "카카오페이", toss: "토스페이", naver: "네이버페이", bank: "무통장 입금", free: "무료", point: "포인트 전액" };
   function rcptGroup(o) {
     const all = V().orders, head = o.grp ? all.find((x) => x.no === o.grp) || o : o;
     return [head].concat(all.filter((x) => x !== head && x.grp === head.no && x.status !== "canceled"));
@@ -4129,7 +4179,7 @@
   document.addEventListener("change", (e) => { if (isActive()) formChange(e); });
   /** 폼 안 바꾸기(결제수단 · 현금영수증 · 쿠폰 · 포인트 · 배송 요청사항 · 동의) — 예전 화면 · React 화면(4-4)이 같이 써요 */
   function formChange(e) {
-    if (e.target.name === "method") { const n = document.querySelector("[data-bank-note]"); if (n) n.classList.toggle("on", e.target.value === "bank"); }
+    if (e.target.name === "method") { const n = document.querySelector("[data-bank-note]"); if (n) n.classList.toggle("on", e.target.value === "bank"); document.querySelectorAll("[data-pay-note]").forEach((x) => x.classList.toggle("on", x.dataset.payNote === e.target.value)); }
     if (e.target.name === "cashType") { const f = e.target.form, inp = f && f.cashNo, nt = f && f.querySelector("[data-cash-note]"); if (inp) { inp.hidden = !e.target.value; inp.placeholder = e.target.value === "b" ? "사업자등록번호 10자리 (- 없이)" : "휴대폰 번호 (- 없이)"; if (e.target.value === "b") inp.value = ""; } if (nt) nt.hidden = !e.target.value; }
     if (e.target.name === "coupon" || e.target.name === "points" || e.target.name === "plan" || e.target.name === "coach" || e.target.name === "qty") { const f = e.target.closest("[data-vd-pay]"); if (f) coPaint(f); }
     // 배송 요청사항 ‘직접 적기’를 고르면 입력 칸이 열려요
@@ -4199,8 +4249,8 @@
     if (SRV()) { if (ship && f.ssave && f.ssave.checked) save(); srvPay(f, { p, k, r, method, bn, bp, m, ship, cash: cr && cr.v }); return; }
     if (!m.name && bn) m.name = bn;
     if (!m.phone && bp) m.phone = bp;
-    // 카드 · 간편결제는 결제창(포트원)을 먼저 — 결제가 끝난 뒤에만 주문을 만들어요 (창을 닫으면 주문 없음)
-    if (!f.__pg && /^(card|kakao|toss|naver)$/.test(method) && r.tot > 0) {
+    // 카드 · 계좌이체 · 가상계좌는 결제창을 먼저 (시안: 체험 결제창) — 결제가 끝난 뒤에만 주문을 만들어요 (창을 닫으면 주문 없음)
+    if (!f.__pg && /^(card|transfer|vbank|tp|kakao|toss|naver)$/.test(method) && r.tot > 0) {
       const btn = f.querySelector("button[type=submit]");
       if (btn) btn.disabled = true;
       const req = { pid: p.id, kind: k, plan: r.plan ? r.plan.d : null, coach: !!r.coach, mcid: r.y && r.cp ? r.y.x.id : "", points: r.pt || 0, method, qty: r.qty, ship, buyer: { name: bn || m.name, phone: bp || m.phone || "" }, tea: k === "tea" ? { d1: f.d1.value, d2: f.d2.value, slot: f.slot.value, mode: f.mode.value, topic: f.topic.value.trim().slice(0, 500) } : null, expect: r.tot };
@@ -4234,12 +4284,12 @@
     save();
     ROUTE.hash = "#/vod/order/" + o.no;
   }
-  /** 정식 서버 결제: 금액 · 쿠폰 · 포인트는 서버가 다시 계산 → 카드 · 간편결제는 포트원 결제창, 무통장 · 0원은 바로 주문 → 서버 데이터 다시 받기 */
+  /** 정식 서버 결제: 금액 · 쿠폰 · 포인트는 서버가 다시 계산 → 카드 · 계좌이체 · 가상계좌 · 네이버페이 · 카카오페이는 토스페이먼츠 결제창(돌아오면 pgReturn 이 승인), 무통장 · 0원은 바로 주문 → 서버 데이터 다시 받기 */
   function srvPay(f, x) {
     const { p, k, r, method, bn, bp, m, ship, cash } = x, err = document.getElementById("vd-pay-err"), btn = f.querySelector("button[type=submit]");
     if (!(CFG && CFG.auth)) { err.textContent = "결제를 잠시 준비 중이에요. 운영 상담 채널로 문의해 주세요."; return; }
-    const card = /^(card|kakao|toss|naver|transfer|vbank)$/.test(method) && r.tot > 0;
-    if (card && !payServer()) { err.textContent = "카드 · 간편결제는 PG 심사가 끝나면 열려요. 지금은 무통장 입금으로 결제해 주세요."; return; }
+    const card = /^(card|transfer|vbank|naver|kakao|tp)$/.test(method) && r.tot > 0;
+    if (card && !payServer()) { err.textContent = "카드 · 계좌이체 · 가상계좌는 PG 심사가 끝나면 열려요. 지금은 무통장 입금으로 결제해 주세요."; return; }
     const buyer = { name: bn || m.name, phone: bp || m.phone || "" }, depositor = method === "bank" && f.depositor ? f.depositor.value.replace(/\s+/g, "") : "";
     if (method === "bank" && r.tot > 0 && !depositor) { err.textContent = "입금자명을 적어 주세요. 통장에 찍히는 이름이에요."; if (f.depositor) f.depositor.focus(); return; }
     const req = { pid: p.id, depositor, kind: k, plan: r.plan ? r.plan.d : null, coach: !!r.coach, mcid: r.y && r.cp ? r.y.x.id : "", points: r.pt || 0, method, ch: chOf(p), rs: k === "course" ? rsFor(p.id) : null, buyer, qty: r.qty, ship: ship || null, cashRcpt: cash || null, tea: k === "tea" ? { d1: f.d1.value, d2: f.d2.value, slot: f.slot.value, mode: f.mode.value, topic: f.topic.value.trim().slice(0, 500) } : null, expect: r.tot };
@@ -4406,7 +4456,7 @@
     // 로그인 · 가입 · 두잉고 강의실 고르기 (4-4)
     authReady, doAuth, doDgLogin, kakaoStart, dgList, dgCard,
     // 주문 · 결제 (4-4)
-    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, bankBox, shipBox, planRow, doPay,
+    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, payFirst, paySub, payNote, bankBox, shipBox, planRow, doPay,
     // VOD 강의실 · 전자책 · 입장 안내 (4-4)
     logStudy, eventTime, cdTxt, vimeoSrc,
     // 스토어 공개 화면
@@ -4427,5 +4477,12 @@
     abUi: (o) => { if (o && o.slide !== undefined) ui.abSlide = o.slide; if (o && o.paused !== undefined) ui.abPaused = o.paused; return { slide: ui.abSlide || 0, paused: !!ui.abPaused }; }, allView, listView, ALL_TABN, allUrl, SORTS, GSEC, railInfo, railStep, railEnds, dragWire,
     // 강사진 검색어 · 분야 (다시 그려도 · 다른 화면에 다녀와도 남아요 — 예전 화면과 같은 값)
     tpg: (q, c) => { if (q !== undefined) tpgQ = q; if (c !== undefined) tpgC = c; return { q: tpgQ, c: tpgC }; } });
-  window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };
+  /** 결제 설정(vod-config)이 화면을 그린 뒤에 오면 결제 화면을 다시 그려요 — 결제 수단 목록이 설정(토스 키 · 결제수단)에 따라 달라서
+   *  (새로 고침 · 카카오 로그인에서 돌아온 바로 그때 ‘PG 심사 중’만 보이던 것 · 2026-11-11) — 목록이 같으면 그대로 (적던 칸을 지우지 않아요) */
+  function payReflow() {
+    const f = root.querySelector("form[data-vd-pay]"), box = f && f.querySelector("[data-co-pay]"); if (!box) return;
+    const have = Array.from(box.querySelectorAll("input[name=method]")).map((x) => x.value + (x.disabled ? "!" : "")).join(), want = payOpts().map((z) => z[0] + (z[3] ? "!" : "")).join();
+    if (have !== want) render();
+  }
+  window.VodApp = { mount() { loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); payReflow(); }); root.innerHTML = ""; ui.anim = true; ui.path = pathOf(); render(); if (ui.booted) toTop(); else window.scrollTo(0, 0); ui.booted = true; if (isMy(ui.path)) myNavFocus(); }, render() { const p = pathOf(), moved = p !== ui.path, keep = moved && isMy(p) && isMy(ui.path) ? myKeep() : null; ui.path = p; ui.anim = true; render(); if (keep) myRestore(keep); else { if (moved) toTop(); if (moved && isMy(p)) myNavFocus(); } if (CFG) tsMount(); } };
 })();

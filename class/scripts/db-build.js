@@ -72,17 +72,22 @@ const init = require("../api/_lib/init");
     ar.lines.forEach((l) => console.log("[db] " + l + " (비교만)"));
   }
   if (!process.env.MASTER_PASSWORD) console.warn("[db] 주의: MASTER_PASSWORD 환경변수가 없어 마스터 로그인이 막혀 있어요.");
-  // 포트원 결제 연결 확인 (4단계 4-2): 키가 있으면 없는 결제를 한 번 조회해 상점 아이디 · API Secret 이 맞는지만 봐요 (빌드는 멈추지 않아요 · 키 값은 안 적어요)
+  // 토스페이먼츠 결제 연결 확인 (2026-11 포트원에서 바꿈): 키가 있으면 없는 결제를 한 번 조회해 시크릿 키가 맞는지만 봐요 (빌드는 멈추지 않아요 · 키 값은 안 적어요)
   try {
-    const pc = await require("../api/_lib/portone").check();
-    if (pc.why !== "off") console.log("[pay] 포트원 연결 " + (pc.ok ? "확인: 됐어요 (상점 아이디 · API Secret 맞음)" : "확인 실패: " + (pc.why === "unauthorized" ? "API Secret 이 틀렸거나 만료됐어요 — 포트원 › 식별코드 · API Keys 에서 새로 발급해 Vercel 에 다시 넣어 주세요" : pc.why)) + " · 결제수단 채널: " + (pc.channels.join(", ") || "없음"));
-    // 결제 대조: 최근 포트원 결제 30건을 주문과 하나씩 맞춰 봐요 (읽기만 · 주문 번호 · 상태 · 금액만 적어요)
-    if (pc.ok) {
-      const au = await require("../api/_lib/payaudit").audit(30);
-      console.log("[pay] 결제 대조: 포트원 결제 " + au.checked + "건 — 맞음 " + au.ok + " · 결제 안 끝남 " + au.open + " · 확인 필요 " + au.bad);
-      au.rows.filter((r) => r.verdict !== "open").slice(0, 12).forEach((r) => console.log("[pay]   " + (r.verdict === "ok" ? "맞음" : "확인 필요") + " " + r.no + " · " + r.method + " · 주문 " + (r.status || "-") + " · 포트원 " + (r.pg || "-") + " · " + (r.amount != null ? r.amount + "원" : "") + " · " + r.why));
+    const tc = await require("../api/_lib/toss").check();
+    if (tc.why !== "off") {
+      console.log("[pay] 토스페이먼츠 연결 " + (tc.ok ? "확인: 됐어요 (시크릿 키 맞음)" : "확인 실패: " + (tc.why === "unauthorized" ? "시크릿 키가 틀렸거나 만료됐어요 — 토스페이먼츠 개발자센터 › API 키에서 확인해 Vercel 에 다시 넣어 주세요" : tc.why)) +
+        " · " + (tc.mode === "widget" ? "결제창형(토스 창에서 결제수단 고르기)" : "결제창(구버전 · 결제수단: " + (tc.methods.join(", ") || "없음") + ")") + " · " + (tc.test ? "시험 키" : "라이브 키"));
+      if (tc.pair === "mismatch") console.warn("[pay] 주의: 클라이언트 키와 시크릿 키가 한 세트가 아니에요 (ck ↔ sk · gck ↔ gsk · test ↔ live) — 결제창이 열리지 않을 수 있어요");
+      if (tc.test && prod) console.warn("[pay] 주의: 운영에 시험 키예요 — 결제창은 열리지만(토스 심사용) 승인은 하지 않아요. 심사가 끝나면 라이브 키로 바꿔 주세요");
     }
-  } catch (e) { console.log("[pay] 포트원 연결 확인을 못 했어요 (빌드는 계속)"); }
+    // 결제 대조: 최근 토스 결제 30건을 주문과 하나씩 맞춰 봐요 (읽기만 · 주문 번호 · 상태 · 금액만 적어요)
+    if (tc.ok) {
+      const au = await require("../api/_lib/payaudit").audit(30);
+      console.log("[pay] 결제 대조: 토스 결제 " + au.checked + "건 — 맞음 " + au.ok + " · 결제 안 끝남 " + au.open + " · 확인 필요 " + au.bad);
+      au.rows.filter((r) => r.verdict !== "open").slice(0, 12).forEach((r) => console.log("[pay]   " + (r.verdict === "ok" ? "맞음" : "확인 필요") + " " + r.no + " · " + r.method + " · 주문 " + (r.status || "-") + " · 토스 " + (r.pg || "-") + " · " + (r.amount != null ? r.amount + "원" : "") + " · " + r.why));
+    }
+  } catch (e) { console.log("[pay] 토스페이먼츠 연결 확인을 못 했어요 (빌드는 계속)"); }
   if (!prod && !staging) { console.log("[db] 미리보기 배포라 데이터는 바꾸지 않아요."); return; }
   if (staging) {
     const MARK = "__staging-db__";

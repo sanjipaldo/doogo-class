@@ -1,12 +1,12 @@
 /* 온드미디어 RS 서버 테스트 — 계정(비밀번호 해시) · 로그인 · 볼 수 있는 범위 · 홍보 링크 주문 RS 기록 · 자기 정보 고치기
- *   node scripts/media-test.js   (class/ 에서) — 저장소는 임시 SQLite 파일, 포트원은 가짜 응답 */
+ *   node scripts/media-test.js   (class/ 에서) — 저장소는 임시 SQLite 파일, 토스페이먼츠는 가짜 응답 */
 "use strict";
 const fs = require("fs"), path = require("path"), os = require("os");
 const ROOT = path.join(__dirname, ".."), TMP = fs.mkdtempSync(path.join(os.tmpdir(), "mdtest-"));
 fs.cpSync(path.join(ROOT, "api"), path.join(TMP, "class/api"), { recursive: true });
 fs.cpSync(path.join(ROOT, "data.js"), path.join(TMP, "class/data.js")); fs.cpSync(path.join(ROOT, "db.js"), path.join(TMP, "class/db.js")); fs.cpSync(path.join(ROOT, "coach-perms.js"), path.join(TMP, "class/coach-perms.js")); fs.cpSync(path.join(ROOT, "shared"), path.join(TMP, "class/shared"), { recursive: true });
 fs.symlinkSync(path.join(ROOT, "..", "node_modules"), path.join(TMP, "node_modules"), "dir");
-Object.assign(process.env, { CLASS_SQLITE: path.join(TMP, "t.db"), SESSION_SECRET: "test-session", VOD_SERVER_AUTH: "1", MASTER_PASSWORD: "master-test", PORTONE_STORE_ID: "store-test", PORTONE_API_SECRET: "ps-test", PORTONE_CHANNEL_CARD: "channel-key-card" });
+Object.assign(process.env, { CLASS_SQLITE: path.join(TMP, "t.db"), SESSION_SECRET: "test-session", VOD_SERVER_AUTH: "1", MASTER_PASSWORD: "master-test", TOSS_CLIENT_KEY: "test_ck_mdtest", TOSS_SECRET_KEY: "test_sk_mdtest" });
 const API = (n) => require(path.join(TMP, "class/api", n + ".js"));
 const store = require(path.join(TMP, "class/api/_lib/store.js"));
 
@@ -14,10 +14,18 @@ const PG = {};
 global.fetch = async (url, opt) => {
   opt = opt || {}; const u = new URL(url);
   const J = (status, j) => ({ ok: status < 300, status, json: async () => j, text: async () => JSON.stringify(j) });
-  if (u.host === "api.portone.io") { const id = decodeURIComponent(u.pathname.split("/")[2] || ""); return PG[id] ? J(200, PG[id]) : J(404, { type: "PAYMENT_NOT_FOUND" }); }
+  // 가짜 토스페이먼츠: 승인(confirm) · 결제 키 조회만 (PG[orderId] = 결제창 인증이 끝난 결제)
+  if (u.host === "api.tosspayments.com") {
+    const b = opt.body ? JSON.parse(opt.body) : {};
+    if (u.pathname === "/v1/payments/confirm") { const p = PG[b.orderId]; if (!p || p.paymentKey !== b.paymentKey || p.totalAmount !== b.amount) return J(404, { code: "NOT_FOUND_PAYMENT_SESSION", message: "결제 진행 데이터가 없어요" }); p.status = "DONE"; return J(200, p); }
+    const p = Object.keys(PG).map((k) => PG[k]).find((x) => x.paymentKey === decodeURIComponent(u.pathname.split("/")[3] || ""));
+    return p ? J(200, p) : J(404, { code: "NOT_FOUND_PAYMENT", message: "존재하지 않는 결제 정보 입니다." });
+  }
   return J(404, {});
 };
-const paidLike = (pid, total) => { PG[pid] = { id: pid, status: "PAID", storeId: "store-test", transactionId: "tx_" + pid, currency: "KRW", amount: { total, paid: total, cancelled: 0 }, method: { type: "PaymentMethodCard" } }; };
+const paidLike = (pid, total) => { PG[pid] = { paymentKey: "tpk_" + pid, orderId: pid, status: "IN_PROGRESS", method: "카드", totalAmount: total, balanceAmount: total, currency: "KRW", card: { issuerCode: "41", number: "1234****", installmentPlanMonths: 0 }, receipt: { url: "https://r/" + pid } }; };
+/** 결제창에서 돌아왔을 때 보내는 승인 요청 */
+const cpl = (pid) => ({ action: "complete", paymentId: pid, paymentKey: "tpk_" + pid, amount: PG[pid] ? PG[pid].totalAmount : 0 });
 // 쿠키 상자를 사람마다 따로 (마스터 · 온드미디어 A · B · 회원 · 강사)
 function client() {
   const jar = {};
@@ -104,7 +112,7 @@ const metaNow = async () => ((await store.getDoc("meta")) || {}).v || {};
   const pay = ((await store.getDoc("vpay:" + p1)) || {}).v, coachNo = pay.nos.find((n) => n !== no1), oc = ((await store.getDoc("vo:" + coachNo)) || {}).v;
   ok(oc && oc.kind === "coach" && !oc.rs, "함께 산 코칭권에는 RS 없음", oc);
   paidLike(p1, pay.total);
-  r = await U.call("vod-pay", { body: { action: "complete", paymentId: p1 } });
+  r = await U.call("vod-pay", { body: cpl(p1) });
   ok(r.json.ok, "결제 완료", r.json);
   o1 = ((await store.getDoc("vo:" + no1)) || {}).v;
   ok(o1.status === "paid" && o1.rs && o1.rs.mid === "md-a", "결제 완료 뒤에도 RS 그대로", o1.rs);
@@ -113,7 +121,7 @@ const metaNow = async () => ((await store.getDoc("meta")) || {}).v || {};
   r = await U2.call("vod-pay", { body: { action: "prepare", pid: "v10", kind: "course", method: "card", rs: { c: "mny001", p: "v10", at: now - 864e5 } } });
   let o2 = ((await store.getDoc("vo:" + r.json.no)) || {}).v;
   ok(o2.rs && o2.rs.mid === "md-b" && o2.rs.rate === 10, "전자책 · 머니콘텐츠 (구독자 10만 미만) 10%", o2.rs);
-  paidLike(r.json.paymentId, r.json.amount); await U2.call("vod-pay", { body: { action: "complete", paymentId: r.json.paymentId } });
+  paidLike(r.json.paymentId, r.json.amount); await U2.call("vod-pay", { body: cpl(r.json.paymentId) });
   const no2 = r.json.no;
 
   const noRs = async (label, body) => { const x = await U2.call("vod-pay", { body: Object.assign({ action: "prepare", kind: "course", method: "card" }, body) }); const o = x.json.ok ? ((await store.getDoc("vo:" + x.json.no)) || {}).v : null; ok(x.json.ok && o && !o.rs, label, x.json.ok ? o && o.rs : x.json); };

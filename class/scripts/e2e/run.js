@@ -17,7 +17,7 @@ const path = require("path");
 const L = require("./lib");
 const F = require("./fixture");
 
-const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "files", "onboard", "split", "react", "reactdg", "reactct", "reactpm"].filter((n) => fs.existsSync(path.join(__dirname, "specs", n + ".js")));
+const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "files", "onboard", "split", "react", "reactdg", "reactct", "reactpm", "pay"].filter((n) => fs.existsSync(path.join(__dirname, "specs", n + ".js")));
 
 (async () => {
   const want = process.argv.slice(2).filter((a) => !a.startsWith("-"));
@@ -49,7 +49,7 @@ const SPECS = ["routes", "logins", "store", "classroom", "center", "idle", "file
     if (remote && !spec.readOnly && process.env.E2E_WRITE !== "1") { console.log("- " + name + " · " + spec.title + " — 건너뜀 (데이터를 써요 · E2E_WRITE=1)"); continue; }
     const db = remote ? null : path.join(work, name + ".db");
     if (db) fs.copyFileSync(fx.db, db);
-    const srv = remote ? { base: remote, stop: async () => {} } : await L.startServer(db);
+    const srv = remote ? { base: remote, stop: async () => {} } : await L.startServer(db, spec.env ? { env: spec.env } : undefined); // spec.env: 그 시험만의 서버 설정 (예: pay — 시험용 토스 키)
     const run = L.makeRun(name, shots);
     const t0 = Date.now();
     try {

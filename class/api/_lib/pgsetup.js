@@ -54,9 +54,11 @@ const src = (kind) => AREA_OF[kind]
   : "(SELECT k, v::json AS d FROM app.docs WHERE kind = '" + kind + "' AND v IS NOT NULL) x";
 const yes = (f) => "COALESCE(d->>'" + f + "', '') = 'true'";
 const VIEWS = [
+  // 2026-11 토스페이먼츠로 바꾸며 열 이름 ‘포트원 상태’ → ‘PG 상태’ — 열 이름은 CREATE OR REPLACE 로 못 바꿔서 지우고 다시 만들어요 (읽기만 하는 보기라 안전)
+  "DROP VIEW IF EXISTS app.v_orders",
   `CREATE OR REPLACE VIEW app.v_orders WITH (security_invoker = true) AS
 SELECT d->>'no' AS "주문번호", d->>'mid' AS "회원 id", d #>> '{buyer,name}' AS "구매자", d->>'pid' AS "상품 id", d->>'title' AS "강의", d->>'kind' AS "종류",
-  app.try_num(d->>'amount') AS "결제 금액", app.try_num(d->>'list') AS "정가", d->>'method' AS "결제 수단", d->>'status' AS "상태", d #>> '{pg,st}' AS "포트원 상태",
+  app.try_num(d->>'amount') AS "결제 금액", app.try_num(d->>'list') AS "정가", d->>'method' AS "결제 수단", d->>'status' AS "상태", d #>> '{pg,st}' AS "PG 상태",
   app.ms_ts(d->>'at') AS "주문 시각", app.ms_ts(d->>'paidAt') AS "결제 시각",
   d->>'refundKind' AS "환불 종류", app.try_num(d->>'refundAmount') AS "환불 금액", app.ms_ts(d->>'refundedAt') AS "환불 시각", ${yes("demo")} AS "체험", x.k AS "문서 키"
 FROM ${src("vo")}`,

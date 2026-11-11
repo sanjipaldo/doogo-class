@@ -2519,6 +2519,7 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 .rf-foot { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .rf-foot p { margin: 0; max-width: 640px; }
 .rf-pg p { margin: 0; font-size: 14px; color: var(--m-charcoal); }
+.rf-pg p + p { margin-top: 8px; font-size: 13px; }
 @media (max-width: 1100px) { .rf-grid { grid-template-columns: minmax(0, 1fr); } .rf-now { margin-left: 0; } }
 
 /* 무통장 입금 확인 카드 (VOD 매출 · 주문) */

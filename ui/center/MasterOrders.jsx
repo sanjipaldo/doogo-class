@@ -48,8 +48,9 @@ export function MasterVodRefund({ n }) {
       {refd.length ? <div className="a-table-wrap"><table className="a-table"><thead><tr><th>환불일</th><th>회원</th><th>클래스</th><th className="right">결제 · 환불</th><th>방식</th><th>결제 취소 · 송금</th><th>강사 정산 반영</th><th>사유 · 처리</th></tr></thead><tbody>{refd.slice(0, 50).map((o) => { const k = A.RF_KIND[A.rfKindOf(o)], st0 = A.vdRfSettle(o); return (
         <tr key={o.id}><td className="vda-nw">{o.refundedAt ? day(o.refundedAt) : "-"}</td><Who o={o} /><Title o={o} /><td className="right num">{won(o.amount)}<small className="a-memo"><b>{won(o.refundAmount != null ? o.refundAmount : o.amount)} 환불</b></small></td><td><Pill cls={k[1]}>{k[0]}</Pill></td><td><Isl html={A.rfPg(o)} /></td><td><small>{st0.t}</small><small className="a-memo">{A.vdKeyName(A.vdKey(o)) + " 정산 - " + A.won(st0.ins)}</small></td><td>{o.refundWhy || "-"}<small className="a-memo">{o.refundBy || ""}</small></td></tr>); })}</tbody></table></div>
         : <Empty ic="refresh">아직 환불 내역이 없어요.</Empty>}</section>
-    <section className="a-card crm-card rf-pg"><div className="a-card-head"><h2>결제(PG) 연결</h2>{pgOn ? <Pill cls="ok">포트원 연결됨</Pill> : <Pill cls="warn">시안 · 연결 전</Pill>}</div>
-      <p>{pgOn ? "회원 바로 취소 · 마스터 환불을 누르면 포트원으로 카드 결제가 자동 취소돼요. 부분 환불은 그 금액만큼만 취소해요." : "지금은 시안이라 환불 · 취소 기록만 남고 실제 카드 결제는 취소되지 않아요. 정식 서버에 포트원 키를 넣으면 같은 버튼이 카드 결제를 자동으로 취소해요."}</p></section>
+    <section className="a-card crm-card rf-pg"><div className="a-card-head"><h2>결제(PG) 연결</h2>{pgOn ? <Pill cls="ok">토스페이먼츠 연결됨</Pill> : <Pill cls="warn">시안 · 연결 전</Pill>}</div>
+      <p>{pgOn ? "회원 바로 취소 · 마스터 환불을 누르면 토스페이먼츠로 결제가 자동 취소돼요 (가상계좌는 적은 환불 계좌로 · 영업일 2일). 부분 환불은 그 금액만큼만 취소해요." : "지금은 시안이라 환불 · 취소 기록만 남고 실제 결제는 취소되지 않아요. 정식 서버에 토스페이먼츠 키를 넣으면 같은 버튼이 결제를 자동으로 취소해요."}</p>
+      {pgOn && X.payOpts ? <p className="a-muted p-small">결제 화면에 열린 결제수단: <b>{X.payOpts().filter((z) => !z[3]).map((z) => z[2]).join(" · ")}</b><br />토스 결제수단은 Vercel 환경 변수 TOSS_METHODS 로 바꿔요 (예: card,transfer,vbank,naver,kakao — 네이버페이 · 카카오페이는 토스페이먼츠에서 승인된 뒤에 넣어요).</p> : null}</section>
   </>;
 }
 

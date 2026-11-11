@@ -3,7 +3,7 @@
  *  vm:<회원ID>        회원 (비밀번호는 scrypt 로 바꿔 저장 · 쿠폰 · 포인트는 서버가 기준)
  *  vme:<이메일>       이메일 → 회원ID          vmk:<카카오 회원번호> → 회원ID
  *  vo:<주문번호>      주문 (ready 결제 대기 → paid → refunded · failed)
- *  vpay:<paymentId>   포트원 결제 → 주문번호들
+ *  vpay:<paymentId>   결제 묶음 → 주문번호들 (paymentId = 토스 orderId · paymentKey · 가상계좌 웹훅 검증 값 secret 은 여기에만)
  *  vp:<회원ID>        진도 { 상품ID: { seen: {강의: 시각}, done: {강의: true}, mat: 자료 내려받은 횟수 } } — 환불 판단에 써요
  *  vcat               카탈로그 (마스터가 올린 클래스 가격 · 쿠폰 · 설정 · 환불 규정)
  *

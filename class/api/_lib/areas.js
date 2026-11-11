@@ -57,7 +57,7 @@ const TABLES = [
     ["amount", "int", (v) => num(v.amount), "결제 금액(원)"],
     ["method", "text", (v) => txt(v.method), "결제 수단"],
     ["status", "text", (v) => txt(v.status), "상태 (ready · paid · refunded · failed …)"],
-    ["payment_id", "text", (v) => txt(v.paymentId), "포트원 결제 id"],
+    ["payment_id", "text", (v) => txt(v.paymentId), "결제 id (토스 orderId)"],
     ["grp", "text", (v) => txt(v.grp), "묶음 주문의 대표 주문번호"],
     ["ordered_at", "time", (v) => num(v.at != null ? v.at : v.createdAt), "주문 시각(한국 시간)"],
     ["paid_at", "time", (v) => num(v.paidAt), "결제 시각(한국 시간)"],
@@ -66,8 +66,8 @@ const TABLES = [
     ["refund_kind", "text", (v) => txt(v.refundKind), "환불 종류"],
     ["demo", "bool", (v) => !!v.demo, "체험 주문"]
   ] },
-  { area: "B2", table: "payments", label: "결제(포트원)", prefix: "vpay:", index: ["mid"], cols: [
-    ["payment_id", "text", (v, k) => after(k, "vpay:"), "포트원 결제 id"],
+  { area: "B2", table: "payments", label: "결제(토스페이먼츠)", prefix: "vpay:", index: ["mid"], cols: [
+    ["payment_id", "text", (v, k) => after(k, "vpay:"), "결제 id (토스 orderId)"],
     ["mid", "text", (v) => txt(v.mid), "회원 id"],
     ["total", "int", (v) => num(v.total), "합계(원)"],
     ["at", "time", (v) => num(v.at), "시각(한국 시간)"],
