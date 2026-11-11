@@ -90,6 +90,31 @@ module.exports = {
     const vo = ((ords && ords.orders) || []).find((o) => o.paymentId === oid) || {};
     await run.check(/결제를 취소했어요/.test(back.toast) && !/code=/.test(back.url) && !back.saved && vo.status === "failed" && vo.failCode === "PAY_PROCESS_CANCELED",
       "결제창에서 취소하고 돌아오면 안내 · 주소의 토스 값은 지우고 · 결제 대기 주문은 ‘결제 안 됨’", { back, vo: { st: vo.status, code: vo.failCode } }, page);
+    // 무통장 + 현금영수증 신청 → 마스터 입금 확인 → 주문 목록 ‘현금영수증’ 탭 · 상세 ‘발급 대기’ → ‘발급 완료’ (2026-11-11)
+    await L.reactCookie(page, base, "off"); await L.open(page, base, "/vod/checkout/v8");
+    const mk = await page.evaluate(() => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid: "v8", kind: "course", plan: 365, method: "bank", depositor: "체험회원", cashRcpt: { type: "p", no: "010-1234-5678" } }) }).then((r) => r.json()));
+    const mp = await L.newPage(browser);
+    run.watch(mp, "마스터 현금영수증");
+    await FL.master(mp, base, info);
+    const paid = await mp.evaluate((no) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "bankOk", no }) }).then((r) => r.json()), mk.no);
+    const ms = {};
+    for (const mode of ["off", "all"]) {
+      await L.reactCookie(mp, base, mode);
+      await L.open(mp, base, "/center/master/vod"); await mp.waitForTimeout(400);
+      await mp.click("[data-action=vda-of][data-k=cash]"); await mp.waitForTimeout(300);
+      ms[mode] = { shape: await L.domShape(mp), rows: await mp.$$eval(".vda-table tbody tr", (x) => x.map((t) => t.textContent.replace(/\s+/g, " "))), tab: await L.text(mp, "[data-action=vda-of][data-k=cash]") };
+    }
+    const dm = L.shapeDiff(ms.off.shape, ms.all.shape);
+    await run.check(mk.ok && paid.ok && ms.off.rows.length === 1 && /현금영수증 발급 대기/.test(ms.off.rows[0]) && /1/.test(ms.off.tab) && !dm,
+      "마스터 주문 목록: ‘현금영수증’ 탭에 발급할 주문 · ‘현금영수증 발급 대기’ 표시 (예전 화면 = React 화면)", { mk: mk.no, paid: paid.ok, rows: ms.off.rows, tab: ms.off.tab, dm }, mp);
+    await mp.click(".vda-table [data-action=vda-od]"); await mp.waitForTimeout(400);
+    const md0 = await mp.evaluate(() => { const m = document.querySelector(".a-modal"); return { txt: m ? m.textContent.replace(/\s+/g, " ") : "", btn: !!document.querySelector(".a-modal [data-action=vda-cash-done]") }; });
+    await mp.click(".a-modal [data-action=vda-cash-done]"); await mp.waitForTimeout(600);
+    const md1 = await mp.evaluate(() => { const m = document.querySelector(".a-modal"); return { txt: m ? m.textContent.replace(/\s+/g, " ") : "", btn: !!document.querySelector(".a-modal [data-action=vda-cash-done]") }; });
+    const srvO = await mp.evaluate((no) => fetch("/api/bootstrap", { credentials: "same-origin" }).then((r) => r.json()).then((j) => { const d = (j.docs || []).find((x) => x[0] === "vo:" + no); return d && d[1].cashRcpt; }), mk.no);
+    await run.check(/현금영수증소득공제 · 010-1234-5678 · 109,000원 · 발급 대기/.test(md0.txt) && md0.btn && /발급 완료/.test(md1.txt) && !md1.btn && srvO && srvO.done > 0 && /현금영수증 발급 완료로 표시했어요/.test(await L.toasts(mp)),
+      "주문 상세: 현금영수증 용도 · 번호 · 금액 · 발급 대기 + ‘현금영수증 발급 완료’ → 발급 완료로 서버에 저장", { md0: md0.txt.slice(0, 600), md1: md1.txt.slice(0, 300), srvO }, mp);
+    await mp.context().close();
     await page.context().close();
   }
 };

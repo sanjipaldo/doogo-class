@@ -17,6 +17,16 @@ async function info() {
   const x = s.bank && s.account ? s : bl.bank && bl.account ? bl : null;
   return x ? { bank: String(x.bank).slice(0, 20), account: String(x.account).slice(0, 40), holder: String(x.holder || s.holder || bl.holder || "").slice(0, 30), days: Math.min(14, Math.max(1, Number(s.payDays) || 3)) } : null;
 }
+/** 새 무통장 주문을 받는지 — 마스터 › 정산 · 입금 설정 ‘무통장 입금 받기’(settings.bankMode · 2026-11-11 · 결제 화면 vod.js bankOpen 과 같은 규칙)
+ *  auto(기본): 토스페이먼츠 라이브 키가 들어가면 받지 않아요 (가상계좌가 대신) · on: 늘 받기 · off: 받지 않기
+ *  이미 들어온 무통장 주문(입금 확인 · 입금 전 취소 · 환불 송금)은 이 값과 상관없이 처리돼요 */
+function openOf(s) {
+  const m = s && s.bankMode;
+  if (m === "on" || m === "off") return m === "on";
+  const T = require("./toss");
+  return !(T.on() && !T.testKey());
+}
+async function open() { const r = await store.getDoc("meta"); return openOf((((r && r.v) || {}).vod || {}).settings || {}); }
 /** 이름 비교용: 띄어쓰기 · 괄호 · 점 빼고 소문자 (은행 앱마다 ‘홍길동’ · ‘홍 길동’ · ‘(주)두고’ 처럼 달라서) */
 const nameKey = (x) => String(x || "").replace(/[\s()（）[\].,·_-]/g, "").toLowerCase();
 
@@ -112,4 +122,4 @@ async function link(id, no, by) {
   return r;
 }
 
-module.exports = { info, nameKey, groupNos, giveBack, drop, confirm, pendingGroups, match, log, link, remember };
+module.exports = { info, open, openOf, nameKey, groupNos, giveBack, drop, confirm, pendingGroups, match, log, link, remember };

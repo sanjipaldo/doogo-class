@@ -3109,6 +3109,49 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "코치 대시보드(LIVE): 핵심 업무 카드 기수 관리 · 수강생 관리 · 과제 검수 · 1:1 요청 답변(맡은 것만) · ‘내가 맡은 메뉴’ 칸 없음 · 주차 일정 · 수강생 진행 현황 · 머리글 강의 제목 · 운영팀 상담 버튼 한 줄 가운데 (실제 화면은 e2e reactdg 1-21)");
   }
 
+  {
+    console.log("35) 무통장 입금 받기 스위치 (자동 · 늘 받기 · 받지 않기) · 현금영수증 신청 (2026-11-11)");
+    const BKL = require(path.join(TMP, "class/api/_lib/bank.js")), keepK = { c: process.env.TOSS_CLIENT_KEY, s: process.env.TOSS_SECRET_KEY };
+    const live = (on) => { if (on) Object.assign(process.env, { TOSS_CLIENT_KEY: "live_ck_x", TOSS_SECRET_KEY: "live_sk_x" }); else Object.assign(process.env, { TOSS_CLIENT_KEY: keepK.c, TOSS_SECRET_KEY: keepK.s }); };
+    ok(BKL.openOf({}) === true && BKL.openOf({ bankMode: "off" }) === false && (live(true), !BKL.openOf({}) && BKL.openOf({ bankMode: "on" }) && !BKL.openOf({ bankMode: "x" })) && (live(false), BKL.openOf({ bankMode: "weird" })),
+      "규칙: 자동은 토스 시험 키 · 키 없음이면 받기 · 라이브 키면 안 받기 / 늘 받기 · 받지 않기는 그대로 / 모르는 값은 자동");
+    const setMode = async (mode) => { useJar({ dc_a: auth.sign({ r: "master" }) }); const j0 = await boot(), mt = docOf(j0, "meta"); mt.vod.settings = Object.assign({}, mt.vod.settings, { bank: "국민은행", account: "123-456", holder: "(주)두고홀딩스" }, mode ? { bankMode: mode } : {}); if (!mode) delete mt.vod.settings.bankMode; return sync([{ k: "meta", base: verOf(j0, "meta"), put: mt }]); };
+    await setMode(null);
+    useJar({}); await store.rlClear(["vip:1.2.3.4"]);
+    r = await call("vod-auth", { body: { action: "signup", email: "bk35@example.com", pw: "test1234a", pw2: "test1234a", name: "무OO", phone: "010-0000-3535", agree: true } });
+    const memJ = saveJar();
+    const prep = (cash) => call("vod-pay", { body: Object.assign({ action: "prepare", pid: "v5", kind: "course", plan: 365, method: "bank", depositor: "무OO" }, cash ? { cashRcpt: cash } : {}) });
+    r = await prep({ type: "p", no: "010-1234-5678" });
+    const no35 = r.json.no;
+    ok(r.json.ok && r.json.bank && (await store.getDoc("vo:" + no35)).v.cashRcpt.type === "p" && (await store.getDoc("vo:" + no35)).v.cashRcpt.no === "01012345678", "자동 · 토스 시험 키(심사 중): 무통장 주문 받기 · 현금영수증(소득공제 · 숫자만) 주문에 남김", r.json);
+    live(true);
+    r = await prep();
+    ok(r.status === 409 && /무통장/.test(r.json.message), "자동 · 토스 라이브 키: 새 무통장 주문은 막아요 (가상계좌로)", r.json);
+    r = await call("vod-pay", { body: { action: "cancelPending", no: no35 } });
+    ok(r.json.ok && (await store.getDoc("vo:" + no35)).v.status === "canceled", "막혀 있어도 이미 들어온 무통장 주문은 회원이 입금 전 취소할 수 있어요", r.json);
+    await setMode("on"); useJar(memJ);
+    r = await prep({ type: "b", no: "123-45-67890" });
+    const no35b = r.json.no;
+    ok(r.json.ok && r.json.bank && (await store.getDoc("vo:" + no35b)).v.cashRcpt.no === "1234567890", "늘 받기: 라이브 키여도 무통장 주문 받기 (지출증빙 사업자번호)", r.json);
+    await setMode("off"); useJar(memJ);
+    live(false);
+    r = await prep();
+    ok(r.status === 409 && /무통장/.test(r.json.message), "받지 않기: 시험 키여도 새 무통장 주문은 막아요", r.json);
+    useJar({ dc_a: auth.sign({ r: "master" }) });
+    r = await call("vod-pay", { body: { action: "bankOk", no: no35b } });
+    const o35 = (await store.getDoc("vo:" + no35b)).v;
+    ok(r.json.ok && o35.status === "paid" && o35.cashRcpt.type === "b", "받지 않기여도 이미 들어온 무통장 주문은 마스터가 입금 확인 (현금영수증 신청은 그대로)", { r: r.json, st: o35.status });
+    // 마스터가 홈택스에서 발급한 뒤 ‘발급 완료’ 표시 (화면 저장 — 무통장 주문은 결제 칸 잠금 대상이 아니에요)
+    const j35 = await boot();
+    r = await sync([{ k: "vo:" + no35b, base: verOf(j35, "vo:" + no35b), ops: [{ p: ["cashRcpt", "done"], v: Date.now() }] }]);
+    ok(r.results && !r.results[0].error && (await store.getDoc("vo:" + no35b)).v.cashRcpt.done > 0, "마스터: 현금영수증 ‘발급 완료’ 표시 저장", r);
+    await setMode(null); useJar({});
+    const vj = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), aj = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mo = fs.readFileSync(path.join(ROOT, "../ui/center/MasterOrders.jsx"), "utf8");
+    ok(/function bankOpen\(\) \{\s*const m = \(V\(\)\.settings \|\| \{\}\)\.bankMode;\s*if \(m === "on" \|\| m === "off"\) return m === "on";\s*return !\(SRV\(\) && CFG && CFG\.toss && CFG\.toss\.ck && !CFG\.toss\.test\);/.test(vj) && /concat\(bankOpen\(\) \? \[bankInfo\(\)\.real \? bankO : bankO\.concat\("준비 중"\)\] : \[\]\)/.test(vj) &&
+      /function vdCash\(o\)/.test(aj) && /\["cash", "현금영수증"\]/.test(aj) && /"현금영수증 발급", "무통장 주문의 현금영수증을/.test(aj) && /"현금영수증 용도", "현금영수증 번호", "현금영수증 금액", "현금영수증 상태"/.test(aj) && /A\.vdCash\(o\)/.test(mo),
+      "화면: 결제 화면 무통장은 같은 규칙(자동 · 늘 · 안 받기)으로 보이고 숨겨요 · 마스터 주문 목록(현금영수증 탭 · 표시) · 상세 · 엑셀 · 대시보드 할 일에 현금영수증 신청");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

@@ -197,6 +197,8 @@ async function prepare(res, m, b) {
     if (isPgMethod(method) && !(toss.on() && toss.methods().indexOf(method) >= 0)) return fail(res, 409, toss.on() ? "이 결제수단은 아직 열리지 않았어요. 다른 결제 방법을 골라 주세요." : "카드 · 계좌이체 · 가상계좌는 PG 심사가 끝나면 열려요. 지금은 무통장 입금으로 결제해 주세요.");
     if (!isPgMethod(method) && method !== "bank") return fail(res, 400, "결제 방법을 골라 주세요.");
   }
+  // 무통장 입금: 마스터 ‘무통장 입금 받기’ — 자동이면 토스 라이브 키가 들어간 뒤로는 받지 않아요 (가상계좌로) · 이미 들어온 무통장 주문은 그대로 처리돼요
+  if (q.total > 0 && method === "bank" && !(await BM.open())) return fail(res, 409, "지금은 무통장 입금을 받지 않아요. 가상계좌나 다른 결제 방법을 골라 주세요.");
   const bank = q.total > 0 && method === "bank", bk = bank ? await BM.info() : null;
   if (bank && !bk) return fail(res, 409, "무통장 입금 계좌가 아직 준비되지 않았어요. 고객센터로 문의해 주세요.");
   // 입금자명: 자동 입금 확인이 이 이름 + 금액으로 주문을 찾아요 (비우면 주문자 이름)

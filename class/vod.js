@@ -1106,8 +1106,16 @@
     const bankO = ["bank", "", "무통장 입금"], T = SRV() ? CFG && CFG.toss : null;
     const ms = SRV() ? (T && T.methods) || [] : ["transfer", "naver", "kakao", "card", "vbank"], ks = PAY_ORD.filter((k) => ms.indexOf(k) >= 0);
     const easy = ks.indexOf("naver") >= 0 || ks.indexOf("kakao") >= 0, o = ks.map((k) => (k === "card" && easy ? ["card", "", "카드/간편결제"] : PAY_OPT[k]));
-    if (!SRV()) return o.concat([bankO]);
-    return (o.length ? o : [PAY_OPT.card.concat("PG 심사 중")]).concat([bankInfo().real ? bankO : bankO.concat("준비 중")]);
+    if (!SRV()) return o.concat(bankOpen() ? [bankO] : []);
+    return (o.length ? o : [PAY_OPT.card.concat("PG 심사 중")]).concat(bankOpen() ? [bankInfo().real ? bankO : bankO.concat("준비 중")] : []);
+  }
+  /** 무통장 입금을 지금 받는지 — 마스터 › 정산 · 입금 설정 ‘무통장 입금 받기’(settings.bankMode · 2026-11-11)
+   *  auto(기본): 토스페이먼츠 라이브 키가 들어가면 받지 않아요 (가상계좌가 대신 — 입금 확인 · 현금영수증 · 환불을 토스가 해요) · on: 늘 받기 · off: 받지 않기
+   *  서버(api/_lib/bank.js open)도 같은 규칙으로 새 무통장 주문을 막아요 · 이미 들어온 무통장 주문(입금 대기 · 환불 송금)은 그대로 처리돼요 */
+  function bankOpen() {
+    const m = (V().settings || {}).bankMode;
+    if (m === "on" || m === "off") return m === "on";
+    return !(SRV() && CFG && CFG.toss && CFG.toss.ck && !CFG.toss.test);
   }
   /** 처음 골라 둘 결제 수단 — 카드(탈잉처럼) · 카드가 없으면 열린 첫 수단 */
   const payFirst = (opts) => { const ok = (opts || payOpts()).filter((y) => !y[3]); return ((ok.find((y) => y[0] === "card") || ok[0]) || [])[0] || ""; };
@@ -1121,7 +1129,7 @@
     return t ? '<div class="vd-pay-sub' + (on ? " on" : "") + '" data-pay-note="' + k + '"><b>' + t[0] + "</b><ul><li>" + t[1] + "</li><li>" + t[2] + "</li></ul></div>" : "";
   }
   /** 결제 수단 아래 안내 — 운영 사이트에 토스 시험 키(심사 중)면 ‘실제로 결제되지 않아요’ (예전 화면 · React 같이) */
-  const payNote = () => (SRV() && CFG && CFG.toss && CFG.toss.live ? '<p class="vd-co-bank vd-co-wait vd-co-tptest">' + icon("alert", "xs") + "<span>지금은 토스페이먼츠 심사 중이라 카드 · 간편결제 · 계좌이체 · 가상계좌는 <b>시험 결제창</b>만 열리고 실제로 결제되지 않아요. 바로 구매하려면 무통장 입금을 골라 주세요.</span></p>" : "");
+  const payNote = () => (SRV() && CFG && CFG.toss && CFG.toss.live ? '<p class="vd-co-bank vd-co-wait vd-co-tptest">' + icon("alert", "xs") + "<span>지금은 토스페이먼츠 심사 중이라 카드 · 간편결제 · 계좌이체 · 가상계좌는 <b>시험 결제창</b>만 열리고 실제로 결제되지 않아요." + (bankOpen() ? " 바로 구매하려면 무통장 입금을 골라 주세요." : "") + "</span></p>" : "");
   /** 무통장 계좌: VOD 설정 → 비어 있으면 기수 입금 계좌. real = 실제로 넣은 계좌 (정식 서버는 이때만 무통장을 열어요) */
   const bankInfo = () => {
     const s = V().settings || {}, b = DB.billingInfo ? DB.billingInfo() : {}, x = s.bank && s.account ? s : b.bank && b.account ? b : null;
@@ -4456,7 +4464,7 @@
     // 로그인 · 가입 · 두잉고 강의실 고르기 (4-4)
     authReady, doAuth, doDgLogin, kakaoStart, dgList, dgCard,
     // 주문 · 결제 (4-4)
-    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, payFirst, paySub, payNote, bankBox, shipBox, planRow, doPay,
+    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, payFirst, paySub, payNote, bankOpen, bankBox, shipBox, planRow, doPay,
     // VOD 강의실 · 전자책 · 입장 안내 (4-4)
     logStudy, eventTime, cdTxt, vimeoSrc,
     // 스토어 공개 화면

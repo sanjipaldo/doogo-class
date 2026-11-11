@@ -174,8 +174,9 @@ function CarePage() {
 }
 function Orders() {
   const A = ADM(), DB = DBX(), X = A.VX(), won = A.won, ui = A.ui, v = A.VD(), f = ui.vdOf || "all", q = (ui.vdOq || "").trim().toLowerCase(), om = ui.vdOm || "";
-  const isF = (o, k) => k === "all" || (k === "refreq" ? o.status === "paid" && !!o.refundReq : o.status === k), cnt = (k) => v.orders.filter((o) => isF(o, k)).length, ex = A.vdExpired();
+  const isF = (o, k) => k === "all" || (k === "refreq" ? o.status === "paid" && !!o.refundReq : k === "cash" ? !!(A.vdCash(o) && A.vdCash(o).todo) : o.status === k), cnt = (k) => v.orders.filter((o) => isF(o, k)).length, ex = A.vdExpired();
   const pms = A.VD_PAY_KEYS.filter((x) => v.orders.some((o) => A.vdPayKey(o) === x[0])), M = (o) => A.vdMember(o.mid) || {};
+  const tabs = [["all", "전체"], ["pending", "입금 대기"], ["paid", "결제 완료"], ["refreq", "환불 요청"]].concat(v.orders.some((o) => A.vdCash(o)) ? [["cash", "현금영수증"]] : []).concat([["refunded", "환불"], ["canceled", "취소"]]);
   const list = v.orders.filter((o) => isF(o, f) && (!om || A.vdPayKey(o) === om) && (!q || (o.no + " " + o.title + " " + (M(o).name || "") + " " + (M(o).email || "")).toLowerCase().indexOf(q) >= 0)).sort((a, b) => b.at - a.at);
   const id = (o) => ({ "data-id": o.id });
   const Manage = ({ o }) => <>{o.status === "pending" && Date.now() > A.vdDue(o) ? <><Pill cls="warn">입금 기한 지남</Pill> </> : null}
@@ -183,7 +184,7 @@ function Orders() {
       : o.status === "pending" ? <><Btn action="vda-paid" cls="a-btn-primary a-btn-sm" {...id(o)}>입금 확인</Btn><Btn action="vda-cancel" cls="a-btn-ghost a-btn-sm" {...id(o)}>주문 취소</Btn></>
       : o.status === "paid" && o.amount > 0 ? <Btn action="vda-refund" cls={o.refundReq ? "a-btn-primary a-btn-sm" : "a-btn-ghost a-btn-sm"} {...id(o)}>{o.refundReq ? "환불 처리" : "환불"}</Btn>
       : o.status === "paid" ? <Btn action="vda-cancel0" cls="a-btn-ghost a-btn-sm" {...id(o)}>신청 취소</Btn> : null}</>;
-  return <section className="a-card"><div className="a-toolbar"><div className="a-tabs">{[["all", "전체"], ["pending", "입금 대기"], ["paid", "결제 완료"], ["refreq", "환불 요청"], ["refunded", "환불"], ["canceled", "취소"]].map((t) => <button key={t[0]} type="button" className={"a-tab" + (f === t[0] ? " on" : "") + (t[0] === "refreq" && cnt("refreq") ? " a-tab-warn" : "")} data-action="vda-of" data-k={t[0]}>{t[1]} <span className="num">{cnt(t[0])}</span></button>)}</div>
+  return <section className="a-card"><div className="a-toolbar"><div className="a-tabs">{tabs.map((t) => <button key={t[0]} type="button" className={"a-tab" + (f === t[0] ? " on" : "") + ((t[0] === "refreq" || t[0] === "cash") && cnt(t[0]) ? " a-tab-warn" : "")} data-action="vda-of" data-k={t[0]}>{t[1]} <span className="num">{cnt(t[0])}</span></button>)}</div>
       {ex.length ? <Btn action="vda-cancel-exp" cls="a-btn-ghost a-btn-sm"><Icon n="x" c="sm" />입금 기한 지난 주문 {ex.length}건 한 번에 취소</Btn> : null}
       <div className="a-filters"><select key={om} className="a-input a-sm" id="vda-om" aria-label="결제수단" defaultValue={om}><option value="">모든 결제수단</option>{pms.map((x) => <option key={x[0]} value={x[0]}>{x[1]}</option>)}</select>
         <div className="a-search"><Icon n="search" c="sm" /><input className="a-input a-sm" id="vda-oq" type="search" placeholder="주문번호 · 회원 · 클래스" defaultValue={ui.vdOq || ""} /></div></div></div>
@@ -191,7 +192,7 @@ function Orders() {
       const m = M(o), st = A.VD_OST[o.status] || A.VD_OST.paid, opt = X.optTxt(o);
       return <tr key={o.id}><td className="vda-nw">{DB.date.fmtStamp ? DB.date.fmtStamp(o.at) : new Date(o.at).toLocaleString("ko-KR")}</td><td className="vda-nw"><button type="button" className="vda-ono num" data-action="vda-od" data-id={o.id} title="결제 상세">{o.no}</button></td><td className="vda-nw"><b>{m.name || "탈퇴 회원"}</b><small className="a-memo">{m.email || ""}</small></td>
         <td>{o.title}{opt ? <small className="a-memo">{opt + (o.grp ? " · " + o.grp + " 함께 결제" : "")}</small> : null}<Isl html={A.vdRsTag(o)} /><Isl html={A.vdRbTag(o)} />{o.refundReq && o.status === "paid" ? <small className="a-memo a-memo-red">{A.vdRqTxt(o)}</small> : null}{o.canceledBy === "member" && o.status === "canceled" ? <small className="a-memo">회원이 직접 취소</small> : null}</td>
-        <td className="vda-nw">{A.VD_PAY[o.method] || o.method}{o.refundPay && o.refundPay.st === "wait" ? <small className="a-memo a-memo-red">환불 송금 대기</small> : null}</td>
+        <td className="vda-nw">{A.VD_PAY[o.method] || o.method}{o.refundPay && o.refundPay.st === "wait" ? <small className="a-memo a-memo-red">환불 송금 대기</small> : null}{A.vdCash(o) ? <small className={"a-memo" + (A.vdCash(o).todo ? " a-memo-red" : "")}>{"현금영수증 " + A.vdCash(o).txt}</small> : null}</td>
         <td className="right num"><b>{won(o.amount)}</b>{o.couponOff || o.pointOff ? <small className="a-memo">{(o.couponOff ? "쿠폰 -" + won(o.couponOff) : "") + (o.couponOff && o.pointOff ? " · " : "") + (o.pointOff ? "포인트 -" + won(o.pointOff) : "")}</small> : null}</td>
         <td><Pill cls={st[1]}>{st[0]}</Pill></td><td className="right"><Manage o={o} /></td></tr>; })}</tbody></table></div>
       : <Empty ic="inbox">조건에 맞는 주문이 없어요.</Empty>}</section>;
