@@ -43,7 +43,7 @@ export function PartnerHome() {
   return <>
     <Head title="패밀리센터" sub={p.name + " 패밀리님, 소개해 주신 강사님의 기수가 열릴 때마다 수익이 쌓여요."} />
     {nt ? <a className={"p-notice-bar" + (ntNew ? " new" : "")} href="#/center/partner/notices"><span className="p-notice-ic"><Icon n="megaphone" c="sm" /></span>{ntNew ? <i className="p-new">N</i> : null}<b>{nt.title}</b><time>{ffAt(nt.at)}</time><Icon n="chevRight" c="sm" /></a> : null}
-    <section className="p-hero"><span className="p-3d" aria-hidden="true"><i className="c1">%</i><i className="c2">₩</i><i className="c3" /><i className="ring" /></span><div className="p-hero-l"><span className="p-hero-k"><Icon n="handshake" c="sm" />DOOGO FAMILY</span>
+    <section className="p-hero"><span className="p-3d" aria-hidden="true"><i className="c1">%</i><i className="c2">₩</i><i className="c3" /><i className="ring" /></span><div className="p-hero-l"><span className="p-hero-k"><Icon n="handshake" c="sm" />DOINGGO FAMILY</span>
         <h2>내 RS <b>{myRs}%</b></h2><p>소개한 강사님이 두잉고에 기수 이용료를 입금하면, <b>공급가액(부가세 제외)의 {myRs}%</b>가 패밀리님 수익이에요.{perIns ? " (강사님별로 다른 RS가 정해진 경우 그 비율로 계산돼요)" : ""}</p></div>
       <div className="p-hero-r"><small>내 추천 링크</small><div className="p-ref"><code>{ref}</code><Copy v={ref} label="복사" cls="a-btn-light a-btn-sm" /></div><span>추천 코드 <b>{p.code || p.loginId}</b> · 이 링크로 들어온 입점 문의는 패밀리님 소개로 기록돼요.</span></div></section>
     <div className="a-kpis">

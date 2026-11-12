@@ -188,12 +188,12 @@
     const coachTab = loginTab === "coach", ins = loginTab === "instructor" || coachTab, partnerTab = loginTab === "partner";
     document.title = (coachTab ? "코치센터" : ins ? "강사센터" : partnerTab ? "패밀리센터" : "마스터 관리자") + " · 로그인";
     const L = partnerTab
-      ? { theme: "red", tag: "패밀리센터", eyebrow: "DOOGO FAMILY", h: "소개한 강사님의 기수가<br><em>내 수익</em>이 되는 곳", sub: "강사님을 두잉고에 소개하면, 강사님이 기수를 열 때마다 이용료의 RS가 패밀리님 수익으로 쌓여요. 수익 · 지급일을 한눈에 확인하세요.", icons: ["handshake", "coins", "users", "award"], label: "FAMILY", title: "패밀리 로그인", lead: "두잉고에서 받은 아이디와 비밀번호로 로그인하세요." }
+      ? { theme: "red", tag: "패밀리센터", eyebrow: "DOINGGO FAMILY", h: "소개한 강사님의 기수가<br><em>내 수익</em>이 되는 곳", sub: "강사님을 두잉고에 소개하면, 강사님이 기수를 열 때마다 이용료의 RS가 패밀리님 수익으로 쌓여요. 수익 · 지급일을 한눈에 확인하세요.", icons: ["handshake", "coins", "users", "award"], label: "FAMILY", title: "패밀리 로그인", lead: "두잉고에서 받은 아이디와 비밀번호로 로그인하세요." }
       : coachTab
       ? { theme: "green", tag: "코치", eyebrow: "DOINGGO COACH WORKSPACE", h: "과제 피드백과<br><em>1:1 문의</em>를 한 곳에서", sub: "강사님이 맡긴 메뉴에서 수강생 과제를 검수하고, 문의에 답하고, 진행 상황을 챙길 수 있습니다.", icons: ["checks", "message", "users", "award"], label: "COACH", title: "코치 로그인", lead: "강사님이 등록해 준 이름과 전화번호 뒷자리로 로그인하세요." }
       : ins
       ? { theme: "red", tag: "강사센터", eyebrow: "DOINGGO INSTRUCTOR CENTER", h: "수강생 관리부터<br><em>커리큘럼까지</em> 한 곳에서", sub: "기수별 수강생 승인, 과제 검수, 강의 영상과 일정 업로드를 간편하게 운영할 수 있습니다.", icons: ["users", "play", "calendar", "settings"], label: "INSTRUCTOR", title: "강사 로그인", lead: "강사 이름과 전화번호 뒷자리로 로그인하세요." }
-      : { theme: "dark", tag: "마스터", eyebrow: "DOINGGO MASTER CONSOLE", h: "강사 플랫폼을<br><em>분양하고 관리</em>하세요", sub: "새 강사 플랫폼 개설, 운영 중지, 강사센터 대신 접속과 전체 수강생 현황을 한 곳에서 봅니다.", icons: ["store", "layers", "users", "shieldCheck"], label: "MASTER", title: "마스터 · 패밀리 로그인", lead: "관리자 계정 · 패밀리(영업 · 온드미디어) 계정으로 로그인하세요." };
+      : { theme: "dark", tag: "마스터", eyebrow: "DOINGGO MASTER CONSOLE", h: "강사 플랫폼을<br><em>분양하고 관리</em>하세요", sub: "새 강사 플랫폼 개설, 운영 중지, 강사센터 대신 접속과 전체 수강생 현황을 한 곳에서 봅니다.", icons: ["store", "layers", "users", "shieldCheck"], label: "MASTER", title: "마스터 · 패밀리 로그인", lead: "관리자 · 두잉고 패밀리 · 온드미디어 계정으로 로그인하세요." };
     root.innerHTML =
       '<main class="adm a-login a-login-' + L.theme + '">' +
         '<section class="a-login-brand">' + window.loginArt(L.theme, L.icons) +
@@ -213,7 +213,7 @@
               '<button type="button" role="tab" aria-selected="' + !ins + '" class="' + (!ins ? "on" : "") + '" data-action="login-tab" data-tab="master">' + icon("shieldCheck", "sm") + "마스터 · 패밀리</button>" +
             "</div>" +
             '<form id="a-login-form" class="a-form" novalidate>' +
-              '<div class="a-field"><label for="al-id">' + (coachTab ? "코치 이름" : ins ? "강사 이름" : "아이디") + '</label><div class="a-input-icon">' + icon("user", "sm") + '<input class="a-input" id="al-id" name="uid" autocomplete="' + (ins ? "name" : "username") + '" placeholder="' + (coachTab ? "예: 김하나" : ins ? "예: 문원오" : partnerTab ? "예: partner" : "관리자 · 패밀리 아이디") + '"></div></div>' +
+              '<div class="a-field"><label for="al-id">' + (coachTab ? "코치 이름" : ins ? "강사 이름" : "아이디") + '</label><div class="a-input-icon">' + icon("user", "sm") + '<input class="a-input" id="al-id" name="uid" autocomplete="' + (ins ? "name" : "username") + '" placeholder="' + (coachTab ? "예: 김하나" : ins ? "예: 문원오" : partnerTab ? "예: partner" : "관리자 · 패밀리 · 온드미디어 아이디") + '"></div></div>' +
               '<div class="a-field"><label for="al-pw">' + (ins ? "전화번호 뒷자리" : "비밀번호") + '</label><div class="a-input-icon">' + icon("lock", "sm") + '<input class="a-input" id="al-pw" name="pw" type="password"' + (ins ? ' inputmode="numeric" maxlength="4" placeholder="숫자 4자리"' : partnerTab ? ' inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="숫자 비밀번호"' : ' autocomplete="current-password" placeholder="비밀번호"') + '>' +
                 '<button type="button" class="a-eye" data-action="toggle-pw" aria-label="보기">' + icon("eye", "sm") + "</button></div>" +
                 '<small class="a-field-note">' + (ins ? "휴대폰 번호 뒷자리 4자리" : partnerTab ? "" : "") + "</small></div>" +
@@ -7491,7 +7491,7 @@
     const nt = affNoticeList()[0], ntNew = nt && nt.at > (p.noticeSeen || 0);
     return head("패밀리센터", esc(p.name) + " 패밀리님, 소개해 주신 강사님의 기수가 열릴 때마다 수익이 쌓여요.") +
       (nt ? '<a class="p-notice-bar' + (ntNew ? " new" : "") + '" href="#/center/partner/notices"><span class="p-notice-ic">' + icon("megaphone", "sm") + "</span>" + (ntNew ? '<i class="p-new">N</i>' : "") + "<b>" + esc(nt.title) + "</b><time>" + fmtFull(DB.date.toStr(new Date(nt.at))) + "</time>" + icon("chevRight", "sm") + "</a>" : "") +
-      '<section class="p-hero"><span class="p-3d" aria-hidden="true"><i class="c1">%</i><i class="c2">₩</i><i class="c3"></i><i class="ring"></i></span><div class="p-hero-l"><span class="p-hero-k">' + icon("handshake", "sm") + "DOOGO FAMILY</span>" +
+      '<section class="p-hero"><span class="p-3d" aria-hidden="true"><i class="c1">%</i><i class="c2">₩</i><i class="c3"></i><i class="ring"></i></span><div class="p-hero-l"><span class="p-hero-k">' + icon("handshake", "sm") + "DOINGGO FAMILY</span>" +
         '<h2>내 RS <b>' + myRs + '%</b></h2><p>소개한 강사님이 두잉고에 기수 이용료를 입금하면, <b>공급가액(부가세 제외)의 ' + myRs + "%</b>가 패밀리님 수익이에요." + ((p.instructors || []).some((l) => l.rs !== null && l.rs !== undefined && l.rs !== "") ? " (강사님별로 다른 RS가 정해진 경우 그 비율로 계산돼요)" : "") + "</p></div>" +
         '<div class="p-hero-r"><small>내 추천 링크</small><div class="p-ref"><code>' + esc(refUrl(p)) + '</code>' + btn(icon("link", "sm") + "복사", "aff-copy", "a-btn-light a-btn-sm", ' data-v="' + esc(refUrl(p)) + '"') + '</div><span>추천 코드 <b>' + esc(p.code || p.loginId) + "</b> · 이 링크로 들어온 입점 문의는 패밀리님 소개로 기록돼요.</span></div></section>" +
       '<div class="a-kpis">' +
@@ -7991,7 +7991,7 @@
     ["계정", [["media/settings", "내 정보 · 정산 계좌", "settings"]]]
   ];
   function mdHello(a) {
-    return '<section class="a-card md-hello"><div class="md-hello-l"><span class="md-av">' + icon("monitorPlay") + "</span><div><small>DOOGO FAMILY · 온드미디어 RS</small><h2>" + esc(mdName(a)) + ' 님, 안녕하세요</h2><p class="a-muted">내 홍보 링크로 VOD가 팔리면 판매가의 RS가 쌓여요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.</p></div></div>' +
+    return '<section class="a-card md-hello"><div class="md-hello-l"><span class="md-av">' + icon("monitorPlay") + "</span><div><small>DOOGO CLASS · 온드미디어 RS</small><h2>" + esc(mdName(a)) + ' 님, 안녕하세요</h2><p class="a-muted">내 홍보 링크로 VOD가 팔리면 판매가의 RS가 쌓여요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.</p></div></div>' +
       '<div class="md-hello-r"><span class="md-rate"><b>RS ' + mdRate(a) + "%</b><small>" + esc(mdRateWhy(a)) + "</small></span>" + (a.url ? '<a class="a-btn a-btn-ghost a-btn-sm" href="' + esc(a.url) + '" target="_blank" rel="noopener">' + icon("play", "sm") + "내 채널</a>" : "") + "</div></section>";
   }
   function pageMediaHome() {
