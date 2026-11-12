@@ -20,7 +20,7 @@ export function MdOrderTable({ list, master, empty }) {
 }
 function Hello({ a }) {
   const A = ADM();
-  return <section className="a-card md-hello"><div className="md-hello-l"><span className="md-av"><Icon n="monitorPlay" /></span><div><small>DOOGO CLASS 온드미디어 · RS 파트너스</small><h2>{A.mdName(a)} 님, 안녕하세요</h2><p className="a-muted">내 홍보 링크로 VOD가 팔리면 판매가의 RS가 쌓여요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.</p></div></div>
+  return <section className="a-card md-hello"><div className="md-hello-l"><span className="md-av"><Icon n="monitorPlay" /></span><div><small>DOOGO FAMILY · 온드미디어 RS</small><h2>{A.mdName(a)} 님, 안녕하세요</h2><p className="a-muted">내 홍보 링크로 VOD가 팔리면 판매가의 RS가 쌓여요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.</p></div></div>
     <div className="md-hello-r"><span className="md-rate"><b>RS {A.mdRate(a)}%</b><small>{A.mdRateWhy(a)}</small></span>{a.url ? <a className="a-btn a-btn-ghost a-btn-sm" href={a.url} target="_blank" rel="noopener"><Icon n="play" c="sm" />내 채널</a> : null}</div></section>;
 }
 

@@ -12,6 +12,7 @@ const { send, body, handler, ip } = require("./_lib/http");
 const store = require("./_lib/store");
 const auth = require("./_lib/auth");
 const MD = require("./_lib/media");
+const FD = require("./_lib/familydemo");
 const COACH = require("../coach-perms");
 const DEMO = require("./_lib/demoreset");
 
@@ -97,6 +98,8 @@ async function accountLogin(req, res, tab, id, pw) {
   if (pt) {
     if (pt.status !== "active") return send(res, 200, { error: "paused-partner" });
     await clear(nameKey);
+    // 체험 영업 패밀리(partner / partner)는 들어올 때마다 처음 상태로 (_lib/familydemo.js · 실패해도 로그인은 그대로)
+    if (pt.demo === true) await FD.reset("partner", pt.id).catch(() => false);
     auth.setCookie(req, res, "admin", auth.sign({ r: "partner", pid: pt.id }));
     return send(res, 200, { ok: true, role: "partner", pid: pt.id, name: pt.name || "" });
   }
@@ -106,6 +109,7 @@ async function accountLogin(req, res, tab, id, pw) {
     if (md.status !== "active") return send(res, 200, { error: "paused-media" });
     await clear(nameKey);
     await touchMedia(md.id).catch(() => {});
+    if (md.demo === true) await FD.reset("media", md.id).catch(() => false);
     auth.setCookie(req, res, "admin", auth.sign({ r: "media", md: md.id }));
     return send(res, 200, { ok: true, role: "media", mdid: md.id, name: md.name || md.channel || "" });
   }
@@ -208,7 +212,13 @@ module.exports = handler(["POST"], async (req, res) => {
   if (b.action === "logout") {
     const w = b.which === "admin" ? ["admin"] : b.which === "student" ? ["student"] : ["student", "admin"];
     // 체험(테스트) 계정은 나갈 때(자동 로그아웃 포함)도 처음 상태로 — 쿠키를 지우기 전에 누구인지 봐요
-    if (w.indexOf("student") >= 0) { const ids = await auth.identify(req).catch(() => null); if (ids && ids.student) await DEMO.resetDemo(ids.student.iid, ids.student.sid).catch(() => false); }
+    // 패밀리 체험 계정(영업 패밀리 partner · 온드미디어 owned)도 나갈 때 처음 상태로 (_lib/familydemo.js)
+    const ids = await auth.identify(req).catch(() => null);
+    if (ids && ids.student && w.indexOf("student") >= 0) await DEMO.resetDemo(ids.student.iid, ids.student.sid).catch(() => false);
+    if (ids && w.indexOf("admin") >= 0) {
+      if (ids.partner) await FD.reset("partner", ids.partner.pid).catch(() => false);
+      if (ids.media) await FD.reset("media", ids.media.id).catch(() => false);
+    }
     w.forEach((x) => auth.setCookie(req, res, x, ""));
     // 어디서 로그아웃하든(스토어 · 두잉고 강의실 · 강사센터) DOOGO CLASS 회원 로그인도 같이 풀어요 — 강의실 · 강사센터에서 로그아웃해도 스토어에 ‘체험회원님’이 남던 것
     if (b.which === "all") require("./_lib/vod").logout(req, res);

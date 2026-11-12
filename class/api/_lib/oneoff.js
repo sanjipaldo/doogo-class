@@ -520,6 +520,27 @@ function storeChoiToYuna(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 패밀리 체험 계정 (2026-11-12 · 대표님 요청) ----------
+ * 영업 패밀리 partner / partner · 온드미디어 owned / owned 를 만들어요 (_lib/familydemo.js — 로그인 · 로그아웃 때 처음 상태로).
+ * 이미 있으면 그대로 · 같은 아이디(partner · owned)를 운영자 · 패밀리 · 온드미디어 다른 계정이 쓰고 있으면 그 계정은 만들지 않고 결과에 적어요 */
+function familyDemo(get) {
+  const meta = get("meta");
+  if (!isObj(meta)) return { writes: {}, result: { skipped: "meta 없음" }, retry: true };
+  const A = require("./auth"), FD = require("./familydemo"), n = (v) => A.koToKeys(String(v || "").replace(/\s+/g, "")).toLowerCase();
+  const staff = Array.isArray(meta.staff) ? meta.staff : [], aff = Array.isArray(meta.affiliates) ? meta.affiliates : [], md = Array.isArray(meta.media) ? meta.media : [];
+  const taken = (login, id) => staff.concat(aff, md).some((x) => isObj(x) && x.id !== id && (n(x.loginId) === login || (aff.indexOf(x) >= 0 && n(x.name) === login)));
+  const result = {}, at = Date.now();
+  let affOut = aff, mdOut = md;
+  if (aff.some((x) => isObj(x) && x.id === FD.AFF_ID)) result.partner = "이미 있어요";
+  else if (taken(FD.AFF_LOGIN, FD.AFF_ID)) result.partner = "아이디 partner 를 다른 계정이 써서 만들지 않았어요";
+  else { affOut = aff.concat([FD.affAccount(at)]); result.partner = "만듦 (partner)"; }
+  if (md.some((x) => isObj(x) && x.id === FD.MD_ID)) result.media = "이미 있어요";
+  else if (taken(FD.MD_LOGIN, FD.MD_ID) || md.some((x) => isObj(x) && String(x.code || "").toLowerCase() === "owndemo")) result.media = "아이디 owned 또는 링크 코드 owndemo 를 다른 계정이 써서 만들지 않았어요";
+  else { mdOut = md.concat([FD.mdAccount(at)]); result.media = "만듦 (owned)"; }
+  if (affOut === aff && mdOut === md) return { writes: {}, result };
+  return { writes: { meta: Object.assign({}, meta, { affiliates: affOut, media: mdOut }) }, result };
+}
+
 /* 위에서부터 차례로 (앞 작업 결과를 뒤 작업이 본다) */
 /* ---------- 온드미디어 첫 계정 doogomd ----------
  * 비밀번호는 공개 저장소라 코드에 두지 않고, Vercel 환경 변수 MEDIA_INIT_PW 에서 읽어 해시로만 저장해요.
@@ -1216,6 +1237,7 @@ const OPS = [
   { id: "2026-11-10-moon3-w5-online", note: "문대표 3기 5주차: 12/15(화) 19:00~22:00 온라인 강의로 (12/19 토요일 강의 없음) · 녹화본 업로드 12/16 · 과제 마감 12/18 · 겹치는 12/15 특별 일정 지우기", run: moon3W5Online },
   { id: "2026-11-10-book-coupon", note: "첫 책 1,000원 할인 쿠폰(회원마다 한 장 · 기한 없음 · 전자책 · 종이책) 만들기 · 이미 가입한 회원에게 한 장씩 · 문대표 종이책은 정가 15,900원 그대로(쿠폰으로 18,400원)", run: bookCoupon },
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
+  { id: "2026-11-12-family-demo", note: "패밀리 체험 계정 만들기: 영업 패밀리 partner / partner · 온드미디어 owned / owned (로그인 · 로그아웃할 때 처음 상태로 · 비밀번호는 못 바꿈 · 체험 링크 주문엔 RS 없음) — 이미 있거나 아이디가 겹치면 건너뜀", run: familyDemo },
 ];
 
-module.exports = { OPS, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

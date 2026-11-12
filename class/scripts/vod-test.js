@@ -2980,7 +2980,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "배포 때 한 번: 모든 강사의 체험 계정 기록을 처음으로 (문대표 · 다른 강사) · 수료 체험 계정 · 일반 수강생은 그대로");
     const au52 = fs.readFileSync(path.join(ROOT, "api/auth.js"), "utf8"), ap52 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
     ok(/if \(s\.demo === true\) await DEMO\.resetDemo\(iid, s\.id\)/.test(au52) && au52.indexOf("await DEMO.resetDemo(iid, s.id)") < au52.indexOf('auth.setCookie(req, res, "student", auth.sign') &&
-      /const ids = await auth\.identify\(req\)\.catch\(\(\) => null\); if \(ids && ids\.student\) await DEMO\.resetDemo\(ids\.student\.iid, ids\.student\.sid\)/.test(au52) &&
+      /const ids = await auth\.identify\(req\)\.catch\(\(\) => null\);\s+if \(ids && ids\.student && w\.indexOf\("student"\) >= 0\) await DEMO\.resetDemo\(ids\.student\.iid, ids\.student\.sid\)/.test(au52) &&
       au52.indexOf("await DEMO.resetDemo(ids.student.iid") < au52.indexOf('w.forEach((x) => auth.setCookie(req, res, x, ""))') && /const isOpen = \(w\) => \(!!me && !!me\.demo && !preview\) \|\|/.test(ap52),
       "수강생 로그인(쿠키 주기 전) · 로그아웃(쿠키 지우기 전 · 자동 로그아웃 포함)에서 처음으로 · 체험 계정은 일정과 상관없이 모든 주차가 열려요 (실제 동작은 e2e reactdg 1-16)");
   }

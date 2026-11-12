@@ -1,5 +1,5 @@
 "use client";
-/* 강사센터 · 코치센터 · 마스터 · 파트너센터 · 온드미디어 센터 React 화면 (Next.js 전환 6단계) — 화면 키 ct-*(class/shared/screens.js)는 모두 이 틀로 와요
+/* 강사센터 · 코치센터 · 마스터 · 패밀리센터 · 온드미디어 센터 React 화면 (Next.js 전환 6단계) — 화면 키 ct-*(class/shared/screens.js)는 모두 이 틀로 와요
  *  · 그리기 전에 세션 · 로그인 · 역할별 주소는 예전 계산 그대로 (ADM.prep — ui/App.jsx 가 불러서 ADM.last 에 둬요)
  *  · 버튼(data-action) · 폼 · 팝업은 예전 admin.js 이벤트가 그대로 받아요 — 끝에 부르는 render() 가 React 에 다시 그리라고 알려요
  *  · 그린 뒤: 표 칸 이름(휴대폰 카드) · 대화창 · 영상 길이 · 알림 · 창 제목 (예전 render 끝부분) */
@@ -59,12 +59,12 @@ export default function Center({ n, h }) {
     document.title = A.pageTitle(p.area, p.master);
   }, [n, h]); // eslint-disable-line react-hooks/exhaustive-deps
   if (p.login) return <CenterLogin />;
-  // 파트너센터 · 온드미디어 센터: 모르는 메뉴는 예전처럼 홈으로
+  // 패밀리센터 · 온드미디어 센터: 모르는 메뉴는 예전처럼 홈으로
   const r = p.r, k0 = p.k0 || "", Page = p.area === "partner" ? PPAGES[r.parts[1] || ""] || PPAGES[""] : p.area === "media" ? MDPAGES[r.parts[1] || ""] || MDPAGES[""]
     : p.area !== "center" ? null : p.master ? (p.offTrack ? null : r.parts[2] ? (r.parts[1] === "vod-crm" ? CrmMember : r.parts[1] === "vod-classes" ? VdEditor : null) : MPAGES[r.parts[1] || ""]) // 주소 셋째 칸: 회원 상세 · 클래스 세팅
     : p.offTrack ? TrackOff : PAGES[k0]; // 지금 탭에 없는 메뉴 주소 → 다른 탭 메뉴 안내
   const strip = p.area === "center" && !p.master && !p.offTrack && A.TRK() === "vod" && A.VP_PAGES.indexOf(k0) >= 0;
-  // 강사센터 · 마스터 · 파트너센터 · 온드미디어 센터 화면은 모두 React — 남은 경우(마스터가 다른 탭 메뉴 주소로 온 때)만 예전 본문 HTML 그대로 (React 틀 안에)
+  // 강사센터 · 마스터 · 패밀리센터 · 온드미디어 센터 화면은 모두 React — 남은 경우(마스터가 다른 탭 메뉴 주소로 온 때)만 예전 본문 HTML 그대로 (React 틀 안에)
   if (!Page) return <Shell r={r} pageHtml={A.legacyPage(p)} />;
   // 운영자 계정은 다시 그릴 때마다 본문을 새로 그려요 (숨긴 칸이 남은 채로 React 가 고쳐 그리지 않게 — 예전 화면이 통째로 다시 그리던 것과 같은 결과)
   return <Shell r={r}>{strip ? <Isl html={A.vpidStrip()} /> : null}<Page key={staff ? "st" + n : "pg"} r={r} n={n} /></Shell>;

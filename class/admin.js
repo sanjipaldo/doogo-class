@@ -186,14 +186,14 @@
   function renderLogin() {
     if (document.body.dataset.react) { if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
     const coachTab = loginTab === "coach", ins = loginTab === "instructor" || coachTab, partnerTab = loginTab === "partner";
-    document.title = (coachTab ? "코치센터" : ins ? "강사센터" : partnerTab ? "파트너센터" : "마스터 관리자") + " · 로그인";
+    document.title = (coachTab ? "코치센터" : ins ? "강사센터" : partnerTab ? "패밀리센터" : "마스터 관리자") + " · 로그인";
     const L = partnerTab
-      ? { theme: "red", tag: "파트너센터", eyebrow: "DOINGGO PARTNERS", h: "소개한 강사님의 기수가<br><em>내 수익</em>이 되는 곳", sub: "강사님을 두잉고에 소개하면, 강사님이 기수를 열 때마다 이용료의 RS가 파트너님 수익으로 쌓여요. 수익 · 지급일을 한눈에 확인하세요.", icons: ["handshake", "coins", "users", "award"], label: "PARTNER", title: "파트너 로그인", lead: "두잉고에서 받은 아이디와 비밀번호로 로그인하세요." }
+      ? { theme: "red", tag: "패밀리센터", eyebrow: "DOOGO FAMILY", h: "소개한 강사님의 기수가<br><em>내 수익</em>이 되는 곳", sub: "강사님을 두잉고에 소개하면, 강사님이 기수를 열 때마다 이용료의 RS가 패밀리님 수익으로 쌓여요. 수익 · 지급일을 한눈에 확인하세요.", icons: ["handshake", "coins", "users", "award"], label: "FAMILY", title: "패밀리 로그인", lead: "두잉고에서 받은 아이디와 비밀번호로 로그인하세요." }
       : coachTab
       ? { theme: "green", tag: "코치", eyebrow: "DOINGGO COACH WORKSPACE", h: "과제 피드백과<br><em>1:1 문의</em>를 한 곳에서", sub: "강사님이 맡긴 메뉴에서 수강생 과제를 검수하고, 문의에 답하고, 진행 상황을 챙길 수 있습니다.", icons: ["checks", "message", "users", "award"], label: "COACH", title: "코치 로그인", lead: "강사님이 등록해 준 이름과 전화번호 뒷자리로 로그인하세요." }
       : ins
       ? { theme: "red", tag: "강사센터", eyebrow: "DOINGGO INSTRUCTOR CENTER", h: "수강생 관리부터<br><em>커리큘럼까지</em> 한 곳에서", sub: "기수별 수강생 승인, 과제 검수, 강의 영상과 일정 업로드를 간편하게 운영할 수 있습니다.", icons: ["users", "play", "calendar", "settings"], label: "INSTRUCTOR", title: "강사 로그인", lead: "강사 이름과 전화번호 뒷자리로 로그인하세요." }
-      : { theme: "dark", tag: "마스터", eyebrow: "DOINGGO MASTER CONSOLE", h: "강사 플랫폼을<br><em>분양하고 관리</em>하세요", sub: "새 강사 플랫폼 개설, 운영 중지, 강사센터 대신 접속과 전체 수강생 현황을 한 곳에서 봅니다.", icons: ["store", "layers", "users", "shieldCheck"], label: "MASTER", title: "마스터 · 파트너 로그인", lead: "관리자 계정 · 파트너 계정 · 온드미디어(YouTube 채널) 계정으로 로그인하세요." };
+      : { theme: "dark", tag: "마스터", eyebrow: "DOINGGO MASTER CONSOLE", h: "강사 플랫폼을<br><em>분양하고 관리</em>하세요", sub: "새 강사 플랫폼 개설, 운영 중지, 강사센터 대신 접속과 전체 수강생 현황을 한 곳에서 봅니다.", icons: ["store", "layers", "users", "shieldCheck"], label: "MASTER", title: "마스터 · 패밀리 로그인", lead: "관리자 계정 · 패밀리(영업 · 온드미디어) 계정으로 로그인하세요." };
     root.innerHTML =
       '<main class="adm a-login a-login-' + L.theme + '">' +
         '<section class="a-login-brand">' + window.loginArt(L.theme, L.icons) +
@@ -210,10 +210,10 @@
             '<div class="a-seg" role="tablist">' +
               '<button type="button" role="tab" aria-selected="' + (ins && !coachTab) + '" class="' + (ins && !coachTab ? "on" : "") + '" data-action="login-tab" data-tab="instructor">' + icon("user", "sm") + "강사</button>" +
               '<button type="button" role="tab" aria-selected="' + coachTab + '" class="' + (coachTab ? "on" : "") + '" data-action="login-tab" data-tab="coach">' + icon("checks", "sm") + "코치</button>" +
-              '<button type="button" role="tab" aria-selected="' + !ins + '" class="' + (!ins ? "on" : "") + '" data-action="login-tab" data-tab="master">' + icon("shieldCheck", "sm") + "마스터 · 파트너</button>" +
+              '<button type="button" role="tab" aria-selected="' + !ins + '" class="' + (!ins ? "on" : "") + '" data-action="login-tab" data-tab="master">' + icon("shieldCheck", "sm") + "마스터 · 패밀리</button>" +
             "</div>" +
             '<form id="a-login-form" class="a-form" novalidate>' +
-              '<div class="a-field"><label for="al-id">' + (coachTab ? "코치 이름" : ins ? "강사 이름" : "아이디") + '</label><div class="a-input-icon">' + icon("user", "sm") + '<input class="a-input" id="al-id" name="uid" autocomplete="' + (ins ? "name" : "username") + '" placeholder="' + (coachTab ? "예: 김하나" : ins ? "예: 문원오" : partnerTab ? "예: partner" : "관리자 · 파트너 · 온드미디어 아이디") + '"></div></div>' +
+              '<div class="a-field"><label for="al-id">' + (coachTab ? "코치 이름" : ins ? "강사 이름" : "아이디") + '</label><div class="a-input-icon">' + icon("user", "sm") + '<input class="a-input" id="al-id" name="uid" autocomplete="' + (ins ? "name" : "username") + '" placeholder="' + (coachTab ? "예: 김하나" : ins ? "예: 문원오" : partnerTab ? "예: partner" : "관리자 · 패밀리 아이디") + '"></div></div>' +
               '<div class="a-field"><label for="al-pw">' + (ins ? "전화번호 뒷자리" : "비밀번호") + '</label><div class="a-input-icon">' + icon("lock", "sm") + '<input class="a-input" id="al-pw" name="pw" type="password"' + (ins ? ' inputmode="numeric" maxlength="4" placeholder="숫자 4자리"' : partnerTab ? ' inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="숫자 비밀번호"' : ' autocomplete="current-password" placeholder="비밀번호"') + '>' +
                 '<button type="button" class="a-eye" data-action="toggle-pw" aria-label="보기">' + icon("eye", "sm") + "</button></div>" +
                 '<small class="a-field-note">' + (ins ? "휴대폰 번호 뒷자리 4자리" : partnerTab ? "" : "") + "</small></div>" +
@@ -231,14 +231,14 @@
     const id = f.uid.value.trim(), pw = f.pw.value.trim();
     const err = document.getElementById("al-error");
     err.textContent = "";
-    // 파트너: ‘마스터 · 파트너’ 탭에서 아이디 + 비밀번호
-    // 정식 서버에서는 파트너 · 운영자 계정도 서버가 확인해요 (이 브라우저에는 계정 목록이 없어요)
+    // 패밀리: ‘마스터 · 패밀리’ 탭에서 아이디 + 비밀번호
+    // 정식 서버에서는 패밀리 · 운영자 계정도 서버가 확인해요 (이 브라우저에는 계정 목록이 없어요)
     if (!DB.remote.on && (loginTab === "partner" || (loginTab === "master" && id.toUpperCase() !== "ADMIN"))) {
       const pp = findPartnerLogin(id, pw);
       if (pp) { partnerSignIn(pp, err); return; }
       const mm = findMediaLogin(id, pw);
       if (mm) { mediaSignIn(mm, err); return; }
-      if (loginTab === "partner") { err.textContent = "등록된 파트너 정보와 일치하지 않아요. 아이디와 비밀번호를 확인해 주세요."; return; }
+      if (loginTab === "partner") { err.textContent = "등록된 패밀리 정보와 일치하지 않아요. 아이디와 비밀번호를 확인해 주세요."; return; }
     }
     if (DB.remote.on) { serverLogin(f, id, pw, err); return; }
     if (loginTab === "master") {
@@ -279,7 +279,7 @@
     "locked-day": "오늘 여러 번 틀려서 로그인이 막혔어요. 24시간 뒤에 다시 시도하거나 두고클래스 운영팀에 알려 주세요.",
     "master-disabled": "마스터 비밀번호가 아직 설정되지 않았어요. Vercel 환경변수 MASTER_PASSWORD 를 설정해 주세요.",
     "paused-staff": "사용이 중지된 운영자 계정이에요. 최고 관리자에게 문의해 주세요.",
-    "paused-partner": "사용이 중지된 파트너 계정이에요. 두잉고 담당자에게 문의해 주세요.",
+    "paused-partner": "사용이 중지된 패밀리 계정이에요. 두잉고 담당자에게 문의해 주세요.",
     "paused-media": "사용이 중지된 온드미디어 계정이에요. 두고클래스 담당자에게 문의해 주세요.",
     input: "이름과 전화번호 뒷자리 4자리를 확인해 주세요."
   };
@@ -289,7 +289,7 @@
     DB.remote.login({ action: "admin", tab: loginTab, id, pw, iid: iid || undefined }).then((r) => {
       if (r.choose && Array.isArray(r.courses) && r.courses.length) { coachPick = { id, pw, tab: loginTab, name: r.name || "", courses: r.courses }; coachPickModal(r.courses, "", coachPick.name); return; }
       if (r.error) {
-        err.textContent = LOGIN_ERR[r.error] || (loginTab === "master" ? "아이디 또는 비밀번호가 맞지 않아요." : loginTab === "partner" ? "등록된 파트너 정보와 일치하지 않아요. 아이디와 비밀번호를 확인해 주세요." : loginTab === "coach" ? "등록된 코치 정보와 일치하지 않아요. 이름과 뒷자리를 확인해 주세요." : "등록된 강사 정보와 일치하지 않아요. 이름과 뒷자리를 확인해 주세요. (코치는 ‘코치’ 탭)");
+        err.textContent = LOGIN_ERR[r.error] || (loginTab === "master" ? "아이디 또는 비밀번호가 맞지 않아요." : loginTab === "partner" ? "등록된 패밀리 정보와 일치하지 않아요. 아이디와 비밀번호를 확인해 주세요." : loginTab === "coach" ? "등록된 코치 정보와 일치하지 않아요. 이름과 뒷자리를 확인해 주세요." : "등록된 강사 정보와 일치하지 않아요. 이름과 뒷자리를 확인해 주세요. (코치는 ‘코치’ 탭)");
         return;
       }
       return DB.remote.refresh().then(() => {
@@ -299,7 +299,7 @@
         DB.session.setAdmin(S);
         const next = DB.store.get("moonclass:after-login", ""); DB.store.remove("moonclass:after-login");
         ROUTE.hash = r.role === "master" ? "#/center/master" : r.role === "partner" ? "#/center/partner" : r.role === "media" ? "#/center/media" : r.role === "instructor" && next && /^#\/center\/(?!master)/.test(next) ? next : "#/center";
-        toast(r.role === "master" ? (r.staffId ? r.name + "님, 운영자로 로그인했어요." : "마스터 관리자로 로그인했어요.") : r.role === "partner" ? r.name + " 파트너님, 환영합니다!" : r.role === "media" ? (r.name || "온드미디어") + " 님, 환영합니다!" : r.name + (r.role === "coach" ? " 코치님, 환영합니다!" + (picked ? " · " + picked : "") : " 강사님, 환영합니다!"));
+        toast(r.role === "master" ? (r.staffId ? r.name + "님, 운영자로 로그인했어요." : "마스터 관리자로 로그인했어요.") : r.role === "partner" ? r.name + " 패밀리님, 환영합니다!" : r.role === "media" ? (r.name || "온드미디어") + " 님, 환영합니다!" : r.name + (r.role === "coach" ? " 코치님, 환영합니다!" + (picked ? " · " + picked : "") : " 강사님, 환영합니다!"));
       });
     }).catch(() => { err.textContent = "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요."; }).then(() => { if (btn) btn.disabled = false; });
   }
@@ -435,7 +435,7 @@
   const customPages = (iid) => DB.menuConfig(iid).items.filter((x) => DB.isCustom(x.key) && x.type !== "link");
   const allRequests = () => DB.data.instructors.flatMap((ins) => DB.requests(ins.id).filter((x) => !DB.isVodStudent(x.s)).map((x) => Object.assign({ ins }, x))).sort((a, b) => b.q.at - a.q.at);
   const masterNavRaw = () => [
-    ["운영", [["master", "대시보드", "grid"], ["master/billing", "기수 신청 · 매출", "coins", DB.bills().filter((b) => DB.billState(b) === "requested").length], ["master/rs", "파트너스 관리", "link", (() => { let n = 0; affList().forEach((p) => affMonths(p).forEach((g) => { if (!g.po && todayStr() >= g.payDate) n++; })); return n; })()], ["master/instructors", "강사 플랫폼 관리", "store"], ["master/contracts", "강사 계약 · 서류", "file", contractAlerts() || ""], ["master/menus", "메뉴 · 색상 설정", "sliders"], ["master/site", "첫 화면 · 사업자 정보", "building"]]],
+    ["운영", [["master", "대시보드", "grid"], ["master/billing", "기수 신청 · 매출", "coins", DB.bills().filter((b) => DB.billState(b) === "requested").length], ["master/rs", "영업 패밀리 관리", "link", (() => { let n = 0; affList().forEach((p) => affMonths(p).forEach((g) => { if (!g.po && todayStr() >= g.payDate) n++; })); return n; })()], ["master/instructors", "강사 플랫폼 관리", "store"], ["master/contracts", "강사 계약 · 서류", "file", contractAlerts() || ""], ["master/menus", "메뉴 · 색상 설정", "sliders"], ["master/site", "첫 화면 · 사업자 정보", "building"]]],
     ["학사 관리", [["master/plan", "기수 · 일정 설계", "layers"], ["master/calendar", "전체 기수 일정", "calendar"], ["master/health", "플랫폼 현황", "activity"], ["master/sla", "과제 검수 · 응답", "clock", slaRows().reduce((a, r) => a + r.late.length, 0) || ""], ["master/certs", "수료 관리", "award"], ["master/students", "전체 수강생", "users"]]],
     ["지원", [["master/partners", "강사 입점 문의", "handshake", (() => { const a = masterInqAlerts(); return a.inq + a.msg || ""; })()], ["master/reports", "오류 신고 모아보기", "bug", allRequests().filter((x) => !x.q.answer).length], ["master/notices", "강사 공지", "megaphone"]]],
     ["시스템", [["master/staff", "운영자 · 활동 기록", "shieldCheck"], ["master/data", "데이터 관리", "database"]]]
@@ -472,7 +472,7 @@
     const on = side.querySelector(".a-nav.on");
     if (on) { const a = on.getBoundingClientRect(), b = side.getBoundingClientRect(); if (a.top < b.top + 8 || a.bottom > b.bottom - 8) side.scrollTop += a.top - b.top - b.height / 2 + a.height / 2; }
   }
-  /** 이 센터(지금 탭)의 대시보드 주소 — 왼쪽 메뉴 첫 칸 (강사 · 코치 · 마스터 · 파트너 · 온드미디어 · 운영자는 열린 첫 메뉴) */
+  /** 이 센터(지금 탭)의 대시보드 주소 — 왼쪽 메뉴 첫 칸 (강사 · 코치 · 마스터 · 패밀리 · 온드미디어 · 운영자는 열린 첫 메뉴) */
   const homeOf = (groups) => { const f = groups && groups[0] && groups[0][1] && groups[0][1][0]; return "#/center" + (f && f[0] ? "/" + f[0] : ""); };
   /** 코치센터 머리글: 맡은 강의 제목 (2026-11-10) */
   const coachCourse = () => (isCoach() && INS() ? String(((C() || {}).brand || {}).courseTitle || "") : "");
@@ -493,7 +493,7 @@
           '<button class="a-icon-btn a-menu" type="button" data-action="toggle-nav" aria-label="메뉴">' + icon("menu") + "</button>" +
           // 로고 · 옆의 ‘강사센터’ 글자 모두 이 센터(지금 탭)의 대시보드로 (2026-11-10 · 예전엔 로고가 두잉고 첫 화면으로 갔어요)
           // 관리 영역 탭이 DOOGO CLASS 면 로고도 DOOGO CLASS (마스터 · 강사 · 코치 — 탭이 있는 센터 모두 · 2026-11-06)
-          (() => { const dcL = master ? MT() === "dc" : !!ins && TRK() === "vod"; return '<span class="a-logo"><a class="a-logo-home' + (dcL ? " a-logo-dc" : "") + '" href="' + homeOf(groups) + '" title="대시보드로" aria-label="대시보드로">' + (dcL ? '<img class="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">' : window.doogoClassLock("hm-lock-xs")) + '</a>'; })() + '<a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "파트너센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + (coachCourse() ? '<span class="a-top-course a-hide-sm" title="' + esc(coachCourse()) + '">' + esc(coachCourse()) + "</span>" : "") + "</span>" +
+          (() => { const dcL = master ? MT() === "dc" : !!ins && TRK() === "vod"; return '<span class="a-logo"><a class="a-logo-home' + (dcL ? " a-logo-dc" : "") + '" href="' + homeOf(groups) + '" title="대시보드로" aria-label="대시보드로">' + (dcL ? '<img class="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS">' : window.doogoClassLock("hm-lock-xs")) + '</a>'; })() + '<a class="a-logo-role" href="#/center' + (partner ? "/partner" : media ? "/media" : master ? "/master" : "") + '">' + (partner ? "패밀리센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : isCoach() ? "코치센터" : "강사센터") + "</a>" + (ins ? (isCoach() && myCoachCourses().length > 1 ? '<button type="button" class="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기">' + icon("swap", "xs") + "<span>" + esc(ins.displayName) + "</span>" + icon("chevDown", "xs") + "</button>" : '<em class="a-hide-sm">' + esc(ins.displayName) + "</em>") : "") + (coachCourse() ? '<span class="a-top-course a-hide-sm" title="' + esc(coachCourse()) + '">' + esc(coachCourse()) + "</span>" : "") + "</span>" +
           '<div class="a-top-right">' +
             (ins ? '<span class="a-chip a-hide-sm' + (TRK() === "vod" ? " a-chip-vod" : "") + '">' + (TRK() === "vod" ? "DOOGO CLASS · VOD 수강생 " + VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? esc(co.name) + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음") + "</span>" +
               // 수강생에게 보이는 화면 미리 보기 버튼 — 이름은 PC · 휴대폰 모두 ‘수강생 화면’ (VOD 탭은 PC ‘VOD 수강생 화면’ · 2026-11-06)
@@ -501,11 +501,11 @@
             (() => {
               let n = 0, href = "", tip = "";
               if (partner) { const ni = affInqNew(PM), nn = affNoticeNew(PM); n = ni + nn; href = ni || !nn ? "#/center/partner/inquiries" : "#/center/partner/notices"; tip = n ? "입점 문의 새 소식 " + ni + "건 · 새 공지 " + nn + "건" : "새 알림이 없어요"; }
-              else if (master && staffCan("master/partners")) { const a = masterInqAlerts(); n = a.inq + a.msg; href = "#/center/master/partners"; tip = n ? "파트너 새 메시지 " + a.msg + "건 · 새 입점 문의 " + a.inq + "건" : "새 알림이 없어요"; }
+              else if (master && staffCan("master/partners")) { const a = masterInqAlerts(); n = a.inq + a.msg; href = "#/center/master/partners"; tip = n ? "패밀리 새 메시지 " + a.msg + "건 · 새 입점 문의 " + a.inq + "건" : "새 알림이 없어요"; }
               if (!href) return "";
               return '<a class="a-bell' + (n ? " on" : "") + '" href="' + href + '" title="' + esc(tip) + '" aria-label="알림: ' + esc(tip) + '"' + (master && n ? ' data-action="bell-go"' : "") + ">" + icon("bell", "sm") + (n ? "<b>" + (n > 99 ? "99+" : n) + "</b>" : "") + "</a>";
             })() +
-            (() => { const u = partner ? [PM.name, "파트너", "handshake", "pt"] : media ? [mdName(MDM), "온드미디어 · RS " + mdRate(MDM) + "%", "monitorPlay", "pt"] : S.role === "master" ? (staffMe() ? [staffMe().name, staffRoleName(staffMe()) + " · 운영자", "shieldCheck", "ms st"] : ["ADMIN", master ? "마스터 관리자" : "마스터 · 대신 보기", "shieldCheck", "ms"]) : isCoach() ? [((ME_COACH() || {}).name || "코치"), "코치", "checks", "co"] : [ins.name, "강사", "user", "in"];
+            (() => { const u = partner ? [PM.name, "영업 패밀리", "handshake", "pt"] : media ? [mdName(MDM), "온드미디어 · RS " + mdRate(MDM) + "%", "monitorPlay", "pt"] : S.role === "master" ? (staffMe() ? [staffMe().name, staffRoleName(staffMe()) + " · 운영자", "shieldCheck", "ms st"] : ["ADMIN", master ? "마스터 관리자" : "마스터 · 대신 보기", "shieldCheck", "ms"]) : isCoach() ? [((ME_COACH() || {}).name || "코치"), "코치", "checks", "co"] : [ins.name, "강사", "user", "in"];
               return '<span class="a-user a-user-' + u[3] + ' a-hide-sm"><span class="a-user-av">' + icon(u[2], "sm") + '</span><span class="a-user-t"><b>' + esc(u[0]) + (u[3] === "ms" ? "" : " 님") + "</b><small>" + esc(u[1]) + '</small></span><i class="a-user-dot" aria-hidden="true"></i></span>'; })() +
             btn(icon("logout", "sm") + '<span class="a-hide-sm">로그아웃</span>', "logout", "a-btn-outline a-btn-sm a-logout") +
           "</div>" +
@@ -2330,7 +2330,7 @@
   const INQ_TODO = ["new", "seen", "contact"];
   /** 처리할 일: 새 접수 · 열람 · 상담 중 + 계약 완료인데 아직 강사센터 계정을 안 만든 문의(새 강사) — 등록까지 끝나야 목록에서 빠져요 (2026-11-06) */
   const inqTodo = (x) => { const st = x.status || "new"; return INQ_TODO.indexOf(st) >= 0 || (st === "done" && !x.addTo && !inqAcc(x)); };
-  /** 상태 바꾸기 (누가 · 언제 기록 남김 → 처리 기록 · 파트너센터 진행 단계에 날짜로 보여요) */
+  /** 상태 바꾸기 (누가 · 언제 기록 남김 → 처리 기록 · 패밀리센터 진행 단계에 날짜로 보여요) */
   function setInqStatus(x, st) {
     if ((x.status || "new") === st) return;
     x.status = st; (x.log = x.log || []).push({ st, at: Date.now(), by: whoAmI() });
@@ -2476,7 +2476,7 @@
   };
   function inqTrack(x) {
     const st = x.status || "new", hold = st === "hold", fail = st === "fail", been = (k) => (x.log || []).some((e) => e.st === k);
-    // 5단계(VOD 강사 등록 · 플랫폼 오픈): 계정이 정말 있을 때만 끝 — 마스터 화면은 지워진 계정을 알아보고, 파트너센터는 예전처럼 연결 표시(iid)로
+    // 5단계(VOD 강사 등록 · 플랫폼 오픈): 계정이 정말 있을 때만 끝 — 마스터 화면은 지워진 계정을 알아보고, 패밀리센터는 예전처럼 연결 표시(iid)로
     const reg = !!x.iid && (!!x.addTo || !!DB.instructor(x.iid) || !(S && S.role === "master"));
     const lv = st === "new" ? 0 : st === "seen" ? 1 : st === "contact" ? 2 : st === "done" ? (reg ? 5 : 3) : fail ? 3 : been("contact") ? 2 : 1;
     // 계약 안 됨: 4단계를 ‘계약 안 됨(✕)’로 바꿔 보여 주고, 5단계는 흐리게
@@ -2485,13 +2485,13 @@
     return '<ol class="p-track' + (hold ? " hold" : "") + (fail ? " fail" : "") + '" style="--n:5">' + steps.map((s, i) => '<li class="' + (i < lv ? "done" : i === lv ? "now" : "") + '"><i>' + (fail && i === lv ? icon("x", "xs") : i < lv || (i === lv && i === 4) ? icon("check", "xs") : i + 1) + "</i><b>" + s[0] + "</b><small>" + (s[1] && i <= lv ? fmtMD(DB.date.toStr(new Date(s[1]))) : hold && i === lv ? "보류" : "") + "</small></li>").join("") + "</ol>";
   }
 
-  /** 파트너 ↔ 두잉고 1:1 대화 — 카카오톡과 같은 짜임(프로필 · 이름 · 말풍선 꼬리 · 같은 분 묶음 · 날짜선 · 안 읽음 1 · 시간), 색은 두잉고 */
+  /** 패밀리 ↔ 두잉고 1:1 대화 — 카카오톡과 같은 짜임(프로필 · 이름 · 말풍선 꼬리 · 같은 분 묶음 · 날짜선 · 안 읽음 1 · 시간), 색은 두잉고 */
   const ktTime = (ms) => { const d = new Date(ms), h = d.getHours(); return (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + ":" + String(d.getMinutes()).padStart(2, "0"); };
   const ktDay = (ms) => { const d = new Date(ms); return d.getFullYear() + "년 " + (d.getMonth() + 1) + "월 " + d.getDate() + "일 " + "일월화수목금토"[d.getDay()] + "요일"; };
   const ktMin = (ms) => Math.floor(ms / 60000);
   function inqThread(x, me) {
     const list = x.thread || [], pa = inqAff(x);
-    const otherName = me === "partner" ? "두잉고 담당자" : (pa ? pa.name + " 파트너" : "소개 파트너");
+    const otherName = me === "partner" ? "두잉고 담당자" : (pa ? pa.name + " 패밀리" : "소개 패밀리");
     const otherSeen = (me === "partner" ? x.mSeen : x.pSeen) || 0, mySeen = (me === "partner" ? x.pSeen : x.mSeen) || 0;
     const av = (by, name) => (by === "master" ? '<span class="kt-av kt-av-dg" aria-hidden="true">두</span>' : '<span class="kt-av" aria-hidden="true">' + esc(String(name || "파").slice(0, 1)) + "</span>");
     let rows = "", day = "";
@@ -2504,11 +2504,11 @@
       const unread = mine && m.at > otherSeen, fresh = !mine && m.at > mySeen;
       rows += '<li class="kt-row ' + (mine ? "me" : "you") + (cont ? " cont" : " first") + (fresh ? " fresh" : "") + '">' +
         (mine ? "" : cont ? '<span class="kt-av-sp"></span>' : av(m.by, m.name)) +
-        '<div class="kt-col">' + (!mine && !cont ? '<b class="kt-name">' + esc(m.by === "master" ? "두잉고 담당자" : m.name || "파트너") + "</b>" : "") +
+        '<div class="kt-col">' + (!mine && !cont ? '<b class="kt-name">' + esc(m.by === "master" ? "두잉고 담당자" : m.name || "패밀리") + "</b>" : "") +
           '<div class="kt-line"><p class="kt-bubble">' + esc(m.text) + '</p><span class="kt-meta">' + (unread ? '<i class="kt-unread" title="상대가 아직 안 읽었어요">1</i>' : "") + (last ? "<time>" + ktTime(m.at) + "</time>" : "") + "</span></div></div></li>";
     });
     return '<div class="kt" data-kt="' + esc(x.id) + '">' +
-      '<div class="kt-head">' + av(me === "partner" ? "master" : "partner", pa ? pa.name : "파") + '<div class="kt-head-t"><b>' + esc(otherName) + "</b><small>" + (me === "partner" ? "진행 상황을 묻거나 강사님에 대해 알려 주세요" : esc(x.name) + " 님 입점 문의 · 파트너센터에 바로 보여요") + '</small></div><span class="kt-count">' + icon("message", "xs") + list.length + "</span></div>" +
+      '<div class="kt-head">' + av(me === "partner" ? "master" : "partner", pa ? pa.name : "파") + '<div class="kt-head-t"><b>' + esc(otherName) + "</b><small>" + (me === "partner" ? "진행 상황을 묻거나 강사님에 대해 알려 주세요" : esc(x.name) + " 님 입점 문의 · 패밀리센터에 바로 보여요") + '</small></div><span class="kt-count">' + icon("message", "xs") + list.length + "</span></div>" +
       '<div class="kt-body"><ul class="kt-list" aria-live="polite">' + (rows || '<li class="kt-empty">' + icon("message") + "<span>아직 나눈 대화가 없어요.<br>첫 메시지를 보내 보세요.</span></li>") + "</ul>" +
         '<button type="button" class="kt-down" data-action="kt-down" aria-label="최신 메시지로 이동">' + icon("chevDown", "sm") + "</button></div>" +
       '<div class="kt-input"><textarea rows="1" maxlength="1000" data-inq-say="' + esc(x.id) + '" placeholder="메시지 입력" aria-label="' + esc(otherName) + '에게 메시지 입력"></textarea>' +
@@ -2548,7 +2548,7 @@
     if (f === "todo" || f === "new" || f === "seen" || f === "contact") shown.sort((a, b) => (a.at || 0) - (b.at || 0)); // 처리할 일은 오래된 것부터
     const nextId = (todo.slice().sort((a, b) => (a.at || 0) - (b.at || 0))[0] || {}).id;
     const tabBtn = (t) => '<button type="button" class="a-tab' + (f === t[0] ? " on" : "") + '" data-action="' + (only ? "vr-tab" : "inq-tab") + '" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + t[2] + "</span></button>";
-    const tabs = (unread.length ? [["msg", "새 메시지", unread.reduce((a, x) => a + msgUnreadM(x), 0)]] : []).concat([["todo", "처리할 일", todo.length], ["all", "전체", all.length]]).concat(only ? [] : [["aff", "파트너 소개", all.filter((x) => inqAff(x)).length], ["vod", "두고 파트너스", all.filter(isVod).length]]).map(tabBtn).join("");
+    const tabs = (unread.length ? [["msg", "새 메시지", unread.reduce((a, x) => a + msgUnreadM(x), 0)]] : []).concat([["todo", "처리할 일", todo.length], ["all", "전체", all.length]]).concat(only ? [] : [["aff", "패밀리 소개", all.filter((x) => inqAff(x)).length], ["vod", "두고 파트너스", all.filter(isVod).length]]).map(tabBtn).join("");
     // 진행 흐름: 새 접수 › 열람 › 상담 중 › 계약 완료 · 계약 안 됨 · 보류 (누르면 그 상태만)
     const cnt = (k) => all.filter((x) => (x.status || "new") === k).length;
     const flow = '<ol class="a-inq-flow" aria-label="처리 단계별 건수">' + INQ_STATUS.map((s, i) => '<li class="' + s[2] + (i > 2 ? " end" : "") + '"><button type="button" class="' + (f === s[0] ? "on" : "") + '" data-action="' + (only ? "vr-tab" : "inq-tab") + '" data-k="' + s[0] + '"><small>' + (i < 3 ? "0" + (i + 1) : i < 5 ? "결과" : "잠시 멈춤") + "</small><b>" + s[1] + "</b><em>" + cnt(s[0]) + "</em></button></li>").join("") + "</ol>";
@@ -2563,14 +2563,14 @@
         '<span class="a-inq-tags">' + (next ? '<span class="a-pill a-inq-next">' + icon("arrowRight", "xs") + "다음 차례</span>" : "") +
           (isVod(x) && !(only && inqIsPt(x)) ? '<span class="a-pill inq-vod">' + icon(inqIsPt(x) ? "handshake" : "monitorPlay", "xs") + (inqIsPt(x) ? "두고 파트너스" : "DOOGO CLASS 강사 모집") + "</span>" : "") +
           (x.addTo ? '<span class="a-pill inq-add">' + icon("lock", "xs") + "기존 강사 · " + (x.want === "vod" ? "DOOGO CLASS" : "LIVE 두잉고") + " 열기 신청</span>" : "") +
-          (pa ? '<span class="a-pill p-aff-pill">' + icon("handshake", "xs") + esc(pa.name) + " 파트너 소개</span>" : "") + (un ? '<span class="a-pill inq-new-msg">' + icon("bell", "xs") + "새 메시지 " + un + "</span>" : "") + pill(st[1], st[2]) + "</span>" +
+          (pa ? '<span class="a-pill p-aff-pill">' + icon("handshake", "xs") + esc(pa.name) + " 패밀리 소개</span>" : "") + (un ? '<span class="a-pill inq-new-msg">' + icon("bell", "xs") + "새 메시지 " + un + "</span>" : "") + pill(st[1], st[2]) + "</span>" +
         '<span class="a-inq-when">' + fmtStamp(x.at) + "<small>" + (inqTodo(x) ? ago(x.at) : (x.ref ? "추천 코드 " + esc(x.ref) : "")) + "</small></span>" + '<span class="a-inq-chev">' + icon("chevDown", "sm") + "</span></button>";
       if (!open) return '<article class="a-inq a-inq2' + (next ? " is-next" : "") + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '">' + row + "</article>";
       return '<article class="a-inq a-inq2 open' + (next ? " is-next" : "") + (un ? " has-msg" : "") + '" data-inq="' + esc(x.id) + '"' + (un ? ' data-unread="1"' : "") + ">" + row + '<div class="a-inq-body">' +
         inqTrack(x) +
         '<dl class="a-inq-info"><div><dt>이메일</dt><dd><a href="mailto:' + esc(x.email) + '">' + esc(x.email) + "</a></dd></div><div><dt>연락처</dt><dd><a href=\"tel:" + esc(String(x.phone || "").replace(/[^0-9+]/g, "")) + '">' + esc(x.phone) + "</a></dd></div>" +
           "<div><dt>강의 · 활동하는 곳</dt><dd>" + esc(String(x.where || "").replace(/^\[[^\]]*\]\s*/, "") || "-") + "</dd></div><div><dt>대표 채널 · 포트폴리오</dt><dd>" + link(x.link) + "</dd></div>" +
-          (x.ref || x.byPartner ? "<div><dt>추천</dt><dd>" + (x.ref ? "추천 코드 " + esc(x.ref) : "") + (x.byPartner ? (x.ref ? " · " : "") + "파트너가 직접 추천" : "") + "</dd></div>" : "") + "</dl>" +
+          (x.ref || x.byPartner ? "<div><dt>추천</dt><dd>" + (x.ref ? "추천 코드 " + esc(x.ref) : "") + (x.byPartner ? (x.ref ? " · " : "") + "패밀리가 직접 추천" : "") + "</dd></div>" : "") + "</dl>" +
         '<div class="a-inq-block"><b>어떤 강의인가요</b><p>' + esc(x.course) + "</p></div>" +
         (x.form ? '<div class="a-inq-block a-inq-pt"><b>' + icon("handshake", "xs") + "두고 파트너스 지원서</b><dl class=\"a-inq-info\">" + inqFormRows(x.form).map((r) => "<div" + (r[2] ? ' class="wide"' : "") + "><dt>" + r[0] + "</dt><dd>" + r[1] + "</dd></div>").join("") + "</dl></div>" : "") +
         (x.message ? '<div class="a-inq-block"><b>남긴 말</b><p>' + esc(x.message) + "</p></div>" : "") +
@@ -2578,26 +2578,26 @@
         '<div class="a-inq-proc"><b>처리 상태</b><div class="a-inq-sbs" role="group" aria-label="처리 상태 바꾸기">' + INQ_STATUS.map((s) => '<button type="button" class="a-inq-sb ' + s[2] + (s[0] === cur ? " on" : "") + '" data-action="inq-st" data-id="' + esc(x.id) + '" data-st="' + s[0] + '" aria-pressed="' + (s[0] === cur) + '">' + (s[0] === cur ? icon("check", "xs") : "") + s[1] + "</button>").join("") + "</div></div>" +
         inqRegHtml(x) +
         '<div class="a-inq-ctl"><div class="a-inq-sels">' +
-          '<label class="a-inq-st"><span>소개 파트너</span><select class="a-input a-sm" data-inq-aff="' + esc(x.id) + '"><option value="none">없음</option>' + affList().map((p) => '<option value="' + esc(p.id) + '"' + (pa && pa.id === p.id ? " selected" : "") + ">" + esc(p.name) + " (" + esc(p.code || p.loginId) + ")</option>").join("") + "</select></label></div>" +
+          '<label class="a-inq-st"><span>소개 패밀리</span><select class="a-input a-sm" data-inq-aff="' + esc(x.id) + '"><option value="none">없음</option>' + affList().map((p) => '<option value="' + esc(p.id) + '"' + (pa && pa.id === p.id ? " selected" : "") + ">" + esc(p.name) + " (" + esc(p.code || p.loginId) + ")</option>").join("") + "</select></label></div>" +
           '<textarea class="a-input" rows="2" data-inq-memo="' + esc(x.id) + '" placeholder="메모 (예: 11/03 통화 · 다음 주 미팅) — 마스터만 봐요" aria-label="메모">' + esc(x.memo || "") + "</textarea>" +
           '<div class="a-row-actions">' + (x.addTo ? (() => { const ai = DB.instructor(x.addTo), w = x.want === "vod" ? "vod" : "live"; return !ai ? "" : DB.tracksOf(ai)[w] ? pill(TRACK_TAB[w] + " 열림", "ok") : cur !== "fail" ? btn(icon("lock", "sm") + (w === "vod" ? "DOOGO CLASS 열어 주기" : "LIVE 두잉고 열어 주기"), "inq-open-track", "a-btn-primary a-btn-sm", ' data-id="' + esc(x.id) + '"') : ""; })()
             : "") + btn(icon("check", "sm") + "메모 저장", "inq-memo", "a-btn-outline a-btn-sm", ' data-id="' + esc(x.id) + '"') + btn(icon("trash", "sm") + "삭제", "inq-del", "a-btn-ghost a-btn-sm danger", ' data-id="' + esc(x.id) + '"') + "</div></div>" +
         inqLogHtml(x) + "</div></article>";
     };
-    // 화면에 1.5초 이상 보인 카드의 파트너 메시지는 읽음으로 (메뉴 · 종 숫자가 줄어요)
+    // 화면에 1.5초 이상 보인 카드의 패밀리 메시지는 읽음으로 (메뉴 · 종 숫자가 줄어요)
     if (unread.length) setTimeout(markInqSeen, 300);
     const latest = unread.map((x) => ({ x, m: (x.thread || []).filter((m) => m.by === "partner").slice(-1)[0] })).sort((a, b) => b.m.at - a.m.at)[0];
-    const alertBar = latest ? '<div class="inq-alert">' + '<span class="inq-alert-ic">' + icon("bell", "sm") + "</span><div><b>파트너가 보낸 새 메시지 " + unread.reduce((a, x) => a + msgUnreadM(x), 0) + "건</b><span>" + esc(latest.m.name || "파트너") + " → " + esc(latest.x.name) + " 님 문의 · “" + esc(String(latest.m.text).slice(0, 60)) + "” · " + fmtStamp(latest.m.at) + "</span></div>" + btn("바로 보기", "inq-jump", "a-btn-dark a-btn-sm", ' data-id="' + esc(latest.x.id) + '"') + "</div>" : "";
+    const alertBar = latest ? '<div class="inq-alert">' + '<span class="inq-alert-ic">' + icon("bell", "sm") + "</span><div><b>패밀리가 보낸 새 메시지 " + unread.reduce((a, x) => a + msgUnreadM(x), 0) + "건</b><span>" + esc(latest.m.name || "패밀리") + " → " + esc(latest.x.name) + " 님 문의 · “" + esc(String(latest.m.text).slice(0, 60)) + "” · " + fmtStamp(latest.m.at) + "</span></div>" + btn("바로 보기", "inq-jump", "a-btn-dark a-btn-sm", ' data-id="' + esc(latest.x.id) + '"') + "</div>" : "";
     const xlBtn = all.length ? btn(icon("download", "sm") + "엑셀로 내려받기", "inq-xl", "a-btn-outline", ' data-only="' + (only || "") + '" data-f="' + esc(f) + '"') : "";
     return (only
       ? head("두고 파트너스 지원", "DOOGO CLASS ‘두고 파트너스’ 지원서(www.doogoclass.com/vod/partners)와 예전 ‘강사 모집’ 팝업으로 들어온 지원이 여기에 차곡차곡 쌓여요. 서버에 저장되고 마스터만 봐요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. (메모는 마스터만 봐요)",
           xlBtn + '<a class="a-btn a-btn-ghost" href="#/vod/partners" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "지원 페이지 열기</a>")
-      : head("강사 입점 문의", "두잉고 첫 화면의 ‘강사 입점 문의’와 DOOGO CLASS ‘두고 파트너스’ 지원서로 들어온 신청이에요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. 파트너 추천 링크로 들어온 문의는 상태 · 1:1 대화가 그 파트너의 파트너센터에도 함께 보여요. (메모는 마스터만 봐요)",
+      : head("강사 입점 문의", "두잉고 첫 화면의 ‘강사 입점 문의’와 DOOGO CLASS ‘두고 파트너스’ 지원서로 들어온 신청이에요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. 패밀리 추천 링크로 들어온 문의는 상태 · 1:1 대화가 그 패밀리의 패밀리센터에도 함께 보여요. (메모는 마스터만 봐요)",
           xlBtn + '<a class="a-btn a-btn-ghost" href="#/partner" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "문의 화면 열기</a>")) +
       alertBar +
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" + flow +
         (f === "todo" && shown.length ? '<p class="a-inq-hint">' + icon("help", "xs") + "들어온 순서대로 위에서부터 처리해 주세요. 줄을 누르면 지원서가 펼쳐지고, 처음 펼치면 ‘열람’으로 바뀌어요.</p>" : "") +
-        (shown.length ? '<div class="a-stack a-inq-list">' + shown.map(card).join("") + "</div>" : emptyBox("handshake", f === "all" ? (only ? "아직 들어온 두고 파트너스 지원이 없어요." : "아직 들어온 입점 문의가 없어요.") : f === "todo" ? "처리할 지원이 없어요. 모두 처리했어요!" : f === "msg" ? "안 읽은 파트너 메시지가 없어요." : "이 상태의 지원이 없어요.")) + "</section>";
+        (shown.length ? '<div class="a-stack a-inq-list">' + shown.map(card).join("") + "</div>" : emptyBox("handshake", f === "all" ? (only ? "아직 들어온 두고 파트너스 지원이 없어요." : "아직 들어온 입점 문의가 없어요.") : f === "todo" ? "처리할 지원이 없어요. 모두 처리했어요!" : f === "msg" ? "안 읽은 패밀리 메시지가 없어요." : "이 상태의 지원이 없어요.")) + "</section>";
   }
   /** 입점 문의 · 두고 파트너스 지원 엑셀 — 지금 보고 있는 탭 그대로 (지원서 칸 · 상태 · 메모까지) */
   function inqXl(only, f) {
@@ -2605,7 +2605,7 @@
     const noOf = {}; all.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((x, i) => { noOf[x.id] = i + 1; });
     const list = all.filter((x) => !f || f === "all" || (f === "todo" ? inqTodo(x) : f === "msg" ? msgUnreadM(x) > 0 : f === "aff" ? !!inqAff(x) : f === "vod" ? inqIsVod(x) : (x.status || "new") === f));
     if (!list.length) { toast("내려받을 지원이 없어요."); return; }
-    const head = ["접수 번호", "접수 일시", "구분", "상태", "열람 일시", "마지막 처리", "성함", "활동명", "연락처", "이메일", "연락받기 편한 시간", "강의 분야", "열고 싶은 클래스", "클래스 주제", "수강 대상", "어떤 강의인가요", "커리큘럼 초안", "강사 소개 · 이력", "직접 낸 결과", "강의 경험", "강의 자료 준비", "촬영 방식", "원하는 오픈 시기", "희망 판매가", "강의 · 활동하는 곳", "채널 주소", "다른 주소", "채널 규모", "알게 된 곳", "남긴 말", "추천 코드", "소개 파트너", "메모", "처리 기록"];
+    const head = ["접수 번호", "접수 일시", "구분", "상태", "열람 일시", "마지막 처리", "성함", "활동명", "연락처", "이메일", "연락받기 편한 시간", "강의 분야", "열고 싶은 클래스", "클래스 주제", "수강 대상", "어떤 강의인가요", "커리큘럼 초안", "강사 소개 · 이력", "직접 낸 결과", "강의 경험", "강의 자료 준비", "촬영 방식", "원하는 오픈 시기", "희망 판매가", "강의 · 활동하는 곳", "채널 주소", "다른 주소", "채널 규모", "알게 된 곳", "남긴 말", "추천 코드", "소개 패밀리", "메모", "처리 기록"];
     const p2 = (n) => String(n).padStart(2, "0"), full = (t) => { const d = new Date(t); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); };
     const stName = (k) => (INQ_STATUS.find((s) => s[0] === k) || [k, k])[1];
     const rows = [head].concat(list.map((x) => {
@@ -3011,7 +3011,7 @@
     toast("CSV 파일을 내려받았어요.");
   }
   // 새 신청이 들어오면 마스터 화면에 한 번 알린다 (왼쪽 메뉴 숫자 · 대시보드 알림과 함께)
-  /** 입점 문의 카드가 화면에 1.5초 이상 보이면 파트너 메시지를 읽음으로 */
+  /** 입점 문의 카드가 화면에 1.5초 이상 보이면 패밀리 메시지를 읽음으로 */
   let inqIO = null;
   function markInqSeen() {
     if (inqIO) inqIO.disconnect();
@@ -3037,7 +3037,7 @@
     if (nav) { let b = nav.querySelector(".a-nav-num, span + span"); if (b && !n) b.remove(); else if (b) b.textContent = n; }
     const bell = document.querySelector(".a-bell"); if (bell) { const b = bell.querySelector("b"); if (!n) { bell.classList.remove("on"); if (b) b.remove(); } else if (b) b.textContent = n; }
   }
-  /** 파트너가 보낸 새 메시지 알림 (처음 한 번만 토스트) */
+  /** 패밀리가 보낸 새 메시지 알림 (처음 한 번만 토스트) */
   function notifyPartnerMsgs() {
     if (!staffCan("master/partners")) return;
     const seen = DB.store.get("moonclass:pmsg-seen", []) || [];
@@ -3046,7 +3046,7 @@
     if (!fresh.length) return;
     DB.store.set("moonclass:pmsg-seen", seen.concat(fresh.map((f) => f.k)).slice(-300));
     const f = fresh.slice().sort((a, b) => b.m.at - a.m.at)[0];
-    setTimeout(() => toast("🔔 " + (f.m.name || "파트너") + " 파트너 새 메시지" + (fresh.length > 1 ? " 외 " + (fresh.length - 1) + "건" : "")), 400);
+    setTimeout(() => toast("🔔 " + (f.m.name || "패밀리") + " 패밀리 새 메시지" + (fresh.length > 1 ? " 외 " + (fresh.length - 1) + "건" : "")), 400);
   }
   function notifyPartnerSide() {
     const p = affMe(); if (!p) return;
@@ -3330,7 +3330,7 @@
     DB.data.content[nid].brand.themeSet = true;
     // 메뉴 기본값도 지금(마스터가 저장할 때) 같이 만들어 둬요 — 나중에 다른 화면이 채우면 그 화면 계정으로는 저장이 막혀요
     DB.menuConfig(nid); DB.menuConfig(nid + "@vod");
-    // 두고 파트너스 지원서에서 만들었으면 그 지원은 ‘계약 완료 · VOD 강사 등록’으로 + 소개 파트너의 ‘내 강사’에 자동 연결
+    // 두고 파트너스 지원서에서 만들었으면 그 지원은 ‘계약 완료 · VOD 강사 등록’으로 + 소개 패밀리의 ‘내 강사’에 자동 연결
     const inq = f.dataset.inq && findInq(f.dataset.inq);
     if (inq) {
       setInqStatus(inq, "done"); inq.iid = nid; inq.openedAt = Date.now();
@@ -3379,7 +3379,7 @@
       if (f.invoiced.checked) b.invoiceAt = todayStr();
       DB.saveBill(b);
     }
-    // 입점 문의에서 만들었으면 그 문의는 ‘계약 성사 · 플랫폼 오픈’으로 + 소개 파트너의 ‘내 강사’에 자동 연결
+    // 입점 문의에서 만들었으면 그 문의는 ‘계약 성사 · 플랫폼 오픈’으로 + 소개 패밀리의 ‘내 강사’에 자동 연결
     const inq = f.dataset.inq && findInq(f.dataset.inq);
     if (inq) {
       setInqStatus(inq, "done"); inq.iid = nid; inq.openedAt = Date.now();
@@ -4684,7 +4684,7 @@
     const coOpen = DB.data.instructors.reduce((a, ins) => a + DB.requests(ins.id).filter((x) => DB.isVodStudent(x.s) && !x.q.answer).length, 0), teaReq = X.teasOf(null, null).filter((o) => o.status === "paid" && (o.tea || {}).st === "req").length;
     const mix = [["6개월 수강권", (o) => X.kindOf(o) === "course" && Number(o.days) === 180 && !o.rebuy], ["12개월 수강권", (o) => X.kindOf(o) === "course" && Number(o.days) === 365 && !o.rebuy], ["재수강 (재결제)", (o) => X.kindOf(o) === "course" && !!o.rebuy], ["예전 3년 수강권 · 1년 연장권", (o) => (X.kindOf(o) === "course" && Number(o.days) === 1095) || X.kindOf(o) === "extend"], ["1:1 코칭권", (o) => X.kindOf(o) === "coach"], ["TEA TIME", (o) => X.kindOf(o) === "tea"]].map((x) => { const os = mon.filter(x[1]); return [x[0], os.length, vdSum(os)]; });
     const alarmN = v.products.filter((p) => p.status === "soon").reduce((s, p) => s + vdAlarmOf(p.id).length, 0);
-    const todo = [[pend.length, "입금 확인 대기", "무통장 주문 입금을 확인해 주세요", "#/center/master/vod"], [vdRefReqs().length, "환불 요청", "회원 · 강사가 요청한 환불을 처리해 주세요", "#/center/master/vod?of=refreq"], [vdRefWait().length, "환불 계좌 송금", "바로 취소한 무통장 주문을 회원 계좌로 송금해 주세요", "#/center/master/vod-refund"], [vdCashTodo().length, "현금영수증 발급", "무통장 주문의 현금영수증을 홈택스에서 발급하고 ‘발급 완료’를 눌러 주세요", "#/center/master/vod?of=cash"], [vdShipAll().filter((o) => o.status === "paid" && ["ready", "prep"].indexOf(VX().shipStOf(o)) >= 0).length, "보낼 종이책", "신규 주문 · 배송 준비 중인 종이책을 보내 주세요", "#/center/master/vod-ship"], [vdShipAll().filter(boClaimOn).length, "종이책 취소 · 반품 · 교환", "회원 요청을 승인 · 환불 · 반려해 주세요", "#/center/master/vod-ship"], [alarmN, "오픈 알림 신청", "오픈 예정 클래스 알림 신청자에게 오픈 소식 · 쿠폰을 보내요", "#/center/master/vod-classes"], [coOpen, "답변 대기 1:1 코칭 질문", "강사별 코칭 질문 답변이 밀리지 않았는지 확인해요", "#/center/master/vod?tab=care"], [teaReq, "TEA TIME 일정 확정 대기", "강사가 희망 날짜를 보고 확정해야 해요", "#/center/master/vod?tab=care"], [iqOpen.length, "답변 대기 1:1 문의", "고객센터 문의에 답해 주세요", "#/center/master/vod-inquiries"], [rec, "새 두고 파트너스 지원", "파트너 강사 지원서를 확인하고 연락해 주세요", "#/center/master/vod-recruit"], [v.products.filter((p) => p.status === "soon").length, "오픈 예정 클래스", "오픈 일정 · 알림 신청 수를 확인해요", "#/center/master/vod-classes"]];
+    const todo = [[pend.length, "입금 확인 대기", "무통장 주문 입금을 확인해 주세요", "#/center/master/vod"], [vdRefReqs().length, "환불 요청", "회원 · 강사가 요청한 환불을 처리해 주세요", "#/center/master/vod?of=refreq"], [vdRefWait().length, "환불 계좌 송금", "바로 취소한 무통장 주문을 회원 계좌로 송금해 주세요", "#/center/master/vod-refund"], [vdCashTodo().length, "현금영수증 발급", "무통장 주문의 현금영수증을 홈택스에서 발급하고 ‘발급 완료’를 눌러 주세요", "#/center/master/vod?of=cash"], [vdShipAll().filter((o) => o.status === "paid" && ["ready", "prep"].indexOf(VX().shipStOf(o)) >= 0).length, "보낼 종이책", "신규 주문 · 배송 준비 중인 종이책을 보내 주세요", "#/center/master/vod-ship"], [vdShipAll().filter(boClaimOn).length, "종이책 취소 · 반품 · 교환", "회원 요청을 승인 · 환불 · 반려해 주세요", "#/center/master/vod-ship"], [alarmN, "오픈 알림 신청", "오픈 예정 클래스 알림 신청자에게 오픈 소식 · 쿠폰을 보내요", "#/center/master/vod-classes"], [coOpen, "답변 대기 1:1 코칭 질문", "강사별 코칭 질문 답변이 밀리지 않았는지 확인해요", "#/center/master/vod?tab=care"], [teaReq, "TEA TIME 일정 확정 대기", "강사가 희망 날짜를 보고 확정해야 해요", "#/center/master/vod?tab=care"], [iqOpen.length, "답변 대기 1:1 문의", "고객센터 문의에 답해 주세요", "#/center/master/vod-inquiries"], [rec, "새 두고 파트너스 지원", "패밀리 강사 지원서를 확인하고 연락해 주세요", "#/center/master/vod-recruit"], [v.products.filter((p) => p.status === "soon").length, "오픈 예정 클래스", "오픈 일정 · 알림 신청 수를 확인해요", "#/center/master/vod-classes"]];
     return head("DOOGO CLASS 대시보드", "VOD 스토어의 주문 · 매출 · 회원 · 1:1 문의를 한눈에 봐요. 두잉고(강사 플랫폼) 운영은 왼쪽 위 ‘두잉고’ 탭에서 해요.", vdStoreBtn("#/vod", "스토어 미리보기")) +
       '<div class="a-kpis a-kpis-5">' +
         kpi("오늘 결제", todayO.length + "건", won(vdSum(todayO)), "#/center/master/vod", todayO.length ? "ok" : "") +
@@ -7019,7 +7019,7 @@
   /* ---------- 활동 기록 (누가 · 언제 · 무엇을) ---------- */
   function whoAmI() {
     if (!S) return "-";
-    if (S.role === "partner") { const p = affOf(S.partnerId); return (p ? p.name : "파트너") + " (파트너)"; }
+    if (S.role === "partner") { const p = affOf(S.partnerId); return (p ? p.name : "패밀리") + " (영업 패밀리)"; }
     if (S.role === "media") { const m = mdMe(); return (m ? mdName(m) : "온드미디어") + " (온드미디어)"; }
     if (S.role === "master") { const st = staffMe(); return st ? st.name + " (" + staffRoleName(st) + ")" : "ADMIN"; }
     if (S.role === "coach") return "코치";
@@ -7051,7 +7051,7 @@
       if (!Array.isArray(d.adminLog) || !d.adminLog.length) d.adminLog = [
         { at: Date.parse("2026-10-24T09:20:00"), who: "김매니저 (운영 매니저)", staffId: "st-demo1", msg: "이도윤 님 입점 문의를 ‘상담 중’으로 바꿨어요." },
         { at: Date.parse("2026-10-21T10:02:00"), who: "박정산 (정산 담당)", staffId: "st-demo2", msg: "로직메이커 2기 이용료 입금 확인 · 세금계산서 발행" },
-        { at: Date.parse("2026-10-10T11:30:00"), who: "ADMIN", staffId: "admin", msg: "하지원 파트너 · 2026년 9월 RS 지급 완료 처리" },
+        { at: Date.parse("2026-10-10T11:30:00"), who: "ADMIN", staffId: "admin", msg: "하지원 패밀리 · 2026년 9월 RS 지급 완료 처리" },
         { at: Date.parse("2026-09-20T10:00:00"), who: "ADMIN", staffId: "admin", msg: "초이 플랫폼을 만들었어요." }
       ];
       DB.save();
@@ -7316,7 +7316,7 @@
     const shown = logs.filter((l) => f === "all" || l.staffId === f), lp = pageSlice("log", shown, 10);
     const menuName = {}; masterNavRaw().concat(masterDcNavRaw()).forEach((g) => g[1].forEach((it) => { menuName[it[0]] = it[1]; }));
     return head("운영자 계정 · 활동 기록", "두잉고 운영을 함께하는 직원 계정을 만들고, 맡은 일에 맞게 메뉴 권한을 나눠요. 누가 언제 무엇을 바꿨는지 활동 기록이 자동으로 남아요.", btn(icon("userPlus", "sm") + "운영자 추가", "st-new", "a-btn-primary")) +
-      '<section class="a-card"><div class="a-card-head"><h2>운영자</h2><span class="a-muted">' + (list.length + 1) + "명 · ‘마스터 · 파트너’ 탭에서 로그인해요</span></div>" + '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>이름</th><th>아이디</th><th>역할</th><th>열린 메뉴</th><th>최근 로그인</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
+      '<section class="a-card"><div class="a-card-head"><h2>운영자</h2><span class="a-muted">' + (list.length + 1) + "명 · ‘마스터 · 패밀리’ 탭에서 로그인해요</span></div>" + '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>이름</th><th>아이디</th><th>역할</th><th>열린 메뉴</th><th>최근 로그인</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
         '<tr class="st-owner"><td><span class="st-av ms">' + icon("shieldCheck", "xs") + "</span><b>최고 관리자</b></td><td><code>ADMIN</code></td><td>" + pill("최고 관리자", "info") + '</td><td><small class="a-muted">모든 메뉴 · 운영자 관리</small></td><td>-</td><td>' + pill("사용 중", "ok") + '</td><td class="right"></td></tr>' +
         list.map((st) => '<tr><td><span class="st-av">' + esc(st.name.slice(0, 1)) + "</span><b>" + esc(st.name) + "</b></td><td><code>" + esc(st.loginId) + "</code></td><td>" + esc(staffRoleName(st)) + '</td><td><span class="ct-docs">' + (st.perms || []).slice(0, 4).map((k) => '<span class="ct-doc on">' + esc(menuName[k] || k) + "</span>").join("") + ((st.perms || []).length > 4 ? '<span class="ct-doc">+' + ((st.perms || []).length - 4) + "</span>" : "") + "</span></td><td>" + (st.lastLoginAt ? fmtStamp(st.lastLoginAt) : "-") + "</td><td>" + pill(st.status === "active" ? "사용 중" : "중지", st.status === "active" ? "ok" : "mute") + '</td><td class="right">' + btn("수정", "st-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(st.id) + '"') + btn(st.status === "active" ? "중지" : "재개", "st-toggle", "a-btn-text a-btn-sm", ' data-id="' + esc(st.id) + '"') + "</td></tr>").join("") +
         "</tbody></table></div></section>" +
@@ -7350,19 +7350,19 @@
     if (!old) STAFF().push(st);
     commit((old ? "운영자 정보를 고쳤어요: " : "운영자를 추가했어요: ") + st.name);
   }
-  /* ================= 파트너센터 (영업 파트너 RS) =================
-   * 파트너가 소개한 강사님이 두잉고에 기수 이용료를 입금하면 → 공급가액(부가세 제외) × RS% 가 파트너 수익으로 확정.
-   * 매월 말 마감 → 다음 달 ‘지급일’에 지급. RS% · 지급일 · 파트너 계정 · 담당 강사는 모두 마스터 ‘파트너스 관리’에서 정한다.
-   * 파트너 로그인: 아이디 + 비밀번호 (마스터가 정하고, 파트너센터에서 바꿀 수 있음)
+  /* ================= 패밀리센터 (영업 패밀리 RS) =================
+   * 패밀리가 소개한 강사님이 두잉고에 기수 이용료를 입금하면 → 공급가액(부가세 제외) × RS% 가 패밀리 수익으로 확정.
+   * 매월 말 마감 → 다음 달 ‘지급일’에 지급. RS% · 지급일 · 패밀리 계정 · 담당 강사는 모두 마스터 ‘영업 패밀리 관리’에서 정한다.
+   * 패밀리 로그인: 아이디 + 비밀번호 (마스터가 정하고, 패밀리센터에서 바꿀 수 있음)
    * 지금은 이 브라우저 저장(시안) — 서버 저장은 정식 반영 때 붙인다 */
   function AFF() {
     const d = DB.data;
     if (!d.affSettings) d.affSettings = { rs: 20, payDay: 10 };
     if (!d.affPayouts) d.affPayouts = {};
-    // 정식 서버에서는 예시 파트너(아이디 = 비밀번호) · 예시 이용료 기록을 만들지 않아요 (시안에서만 예시)
+    // 정식 서버에서는 예시 패밀리(아이디 = 비밀번호) · 예시 이용료 기록을 만들지 않아요 (시안에서만 예시)
     if (!Array.isArray(d.affiliates) && DB.remote.on) d.affiliates = [];
     if (!Array.isArray(d.affiliates)) {
-      d.affiliates = [{ id: "aff-demo", name: "하지원", loginId: "partner", pw: "partner", phone: "010-0000-2186", code: "HAJIWON", rs: null, status: "active", bank: "국민은행", account: "000000-00-000000", holder: "하지원", memo: "예시 파트너 계정", createdAt: "2026-09-01",
+      d.affiliates = [{ id: "aff-demo", name: "하지원", loginId: "partner", pw: "partner", phone: "010-0000-2186", code: "HAJIWON", rs: null, status: "active", bank: "국민은행", account: "000000-00-000000", holder: "하지원", memo: "예시 패밀리 계정", createdAt: "2026-09-01",
         instructors: [{ iid: "logic", rs: 25, since: "2026-09-10" }, { iid: "choi", rs: null, since: "2026-09-20" }] }];
       // 예시 이용료 기록 (이 강사님들 기록이 없을 때만) — 입금 · 기수 오픈 흐름이 보이게
       const has = (iid) => DB.bills(iid).length > 0;
@@ -7400,7 +7400,7 @@
     return bizDay(ny + "-" + String(nm).padStart(2, "0") + "-" + String(day).padStart(2, "0"));
   }
   const AFF_ST = { expected: ["입금 대기 · 예상", "mute"], scheduled: ["지급 예정", "info"], due: ["지급 대기", "warn"], done: ["지급 완료", "ok"] };
-  /** 파트너 수익 줄 (소개한 강사의 이용료 기록마다 한 줄) */
+  /** 패밀리 수익 줄 (소개한 강사의 이용료 기록마다 한 줄) */
   function affRows(p) {
     const today = todayStr();
     const since = (b) => { const l = affLink(p, b.instructorId); if (!l || !l.since) return true; const dt = b.paidAt || (b.requestedAt ? DB.date.toStr(new Date(b.requestedAt)) : today); return String(dt).slice(0, 10) >= l.since; };
@@ -7432,18 +7432,18 @@
   const dLeft = (d) => { const n = Math.round((parseDate(d) - parseDate(todayStr())) / 864e5); return n > 0 ? "D-" + n : n === 0 ? "오늘" : n + "일 지남"; };
   const affInsCell = (iid) => { const x = DB.instructor(iid), b = ((DB.content(iid) || {}).brand) || {}; return '<span class="p-ins">' + (b.photo ? '<img src="' + esc(b.photo) + '" alt="">' : "<i>" + esc(((x || {}).displayName || "?").slice(0, 1)) + "</i>") + "<b>" + esc(x ? x.displayName : "삭제된 강사") + "</b></span>"; };
   const monthKo = (m) => Number(m.slice(5, 7)) + "월";
-  /** 입점 문의 ↔ 파트너 (마스터가 직접 지정 > 추천 코드) */
+  /** 입점 문의 ↔ 패밀리 (마스터가 직접 지정 > 추천 코드) */
   const affOfRef = (ref) => (ref ? affList().find((p) => [p.code, p.loginId].some((c) => c && String(c).toLowerCase() === String(ref).toLowerCase())) || null : null);
   function inqAff(q) { if (q.affId === "none") return null; return (q.affId && affOf(q.affId)) || affOfRef(q.ref); }
   const affInqs = (p) => DB.inquiries().filter((q) => { const a = inqAff(q); return a && a.id === p.id; });
   const inqUpdated = (q) => Math.max(q.at || 0, ...(q.log || []).map((e) => e.at), ...(q.thread || []).filter((m) => m.by === "master").map((m) => m.at));
-  /** 마스터가 아직 안 읽은 파트너 메시지 */
+  /** 마스터가 아직 안 읽은 패밀리 메시지 */
   const msgUnreadM = (q) => (q.thread || []).filter((m) => m.by === "partner" && m.at > (q.mSeen || 0)).length;
   const masterInqAlerts = () => { const qs = DB.inquiries(); return { inq: qs.filter((x) => (x.status || "new") === "new").length, msg: qs.reduce((a, q) => a + msgUnreadM(q), 0), qs }; };
   const affInqNew = (p) => affInqs(p).filter((q) => inqUpdated(q) > (q.pSeen || 0)).length;
   const maskPhone = (v) => String(v || "").replace(/(\d{2,3})[-\s]?(\d{3,4})[-\s]?(\d{4})/, (m, a, b, c) => a + "-" + "*".repeat(b.length) + "-" + c) || "-";
   const maskMail = (v) => { const m = String(v || "").split("@"); return m.length === 2 ? m[0].slice(0, 2) + "***@" + m[1] : "-"; };
-  /** 예시 입점 문의 (하지원 파트너 추천 링크로 들어온 3건) — 한 번만 */
+  /** 예시 입점 문의 (하지원 패밀리 추천 링크로 들어온 3건) — 한 번만 */
   function seedAffInq() {
     const d = DB.data; if (d.affInqSeeded || DB.remote.on) return; d.affInqSeeded = true;
     const T = (s) => Date.parse(s);
@@ -7461,26 +7461,26 @@
   }
   const refUrl = (p) => ROUTE.abs("#/partner?ref=" + encodeURIComponent(p.code || p.loginId));
 
-  /* ---------- 파트너 로그인 ---------- */
+  /* ---------- 패밀리 로그인 ---------- */
   function findPartnerLogin(id, pw) {
     const n = (v) => String(v || "").replace(/\s+/g, "").toLowerCase();
     return affList().find((p) => (n(p.loginId) === n(id) || n(p.name) === n(id)) && String(p.pw) === String(pw).trim()) || null;
   }
   function partnerSignIn(p, err) {
-    if (p.status !== "active") { err.textContent = "사용이 중지된 파트너 계정이에요. 두잉고 담당자에게 문의해 주세요."; return; }
+    if (p.status !== "active") { err.textContent = "사용이 중지된 패밀리 계정이에요. 두잉고 담당자에게 문의해 주세요."; return; }
     S = { role: "partner", partnerId: p.id };
     DB.session.setAdmin(S); DB.store.remove("moonclass:after-login");
     p.lastLoginAt = Date.now(); DB.save();
-    ROUTE.hash = "#/center/partner"; toast(p.name + " 파트너님, 환영합니다!");
+    ROUTE.hash = "#/center/partner"; toast(p.name + " 패밀리님, 환영합니다!");
   }
   const partnerNav = () => { const p = affMe(), ni = p ? affInqNew(p) : 0, nn = p ? affNoticeNew(p) : 0; return [
-    ["파트너센터", [["partner", "대시보드", "grid"], ["partner/inquiries", "입점 문의", "handshake", ni || ""], ["partner/refer", "강사 추천하기", "userPlus"], ["partner/instructors", "내 강사", "users"]]],
+    ["패밀리센터", [["partner", "대시보드", "grid"], ["partner/inquiries", "입점 문의", "handshake", ni || ""], ["partner/refer", "강사 추천하기", "userPlus"], ["partner/instructors", "내 강사", "users"]]],
     ["수익", [["partner/earnings", "수익 내역", "coins"], ["partner/payouts", "정산 · 지급", "calendar"]]],
-    ["홍보 · 소식", [["partner/kit", "홍보 자료", "megaphone"], ["partner/notices", "공지사항", "inbox", nn || ""], ["partner/guide", "파트너 가이드", "help"]]],
+    ["홍보 · 소식", [["partner/kit", "홍보 자료", "megaphone"], ["partner/notices", "공지사항", "inbox", nn || ""], ["partner/guide", "패밀리 가이드", "help"]]],
     ["계정", [["partner/settings", "내 정보 · 비밀번호", "settings"]]]
   ]; };
 
-  /* ---------- 파트너센터 화면 ---------- */
+  /* ---------- 패밀리센터 화면 ---------- */
   function pagePartnerHome() {
     const p = affMe(), s = affSum(p), myRs = (p.rs !== null && p.rs !== undefined && p.rs !== "") ? Number(p.rs) : affDefRs();
     // 최근 6개월 막대
@@ -7489,11 +7489,11 @@
     const max = Math.max(1, ...months.map((m) => byM[m] || 0));
     const steps = [["handshake", "강사님 소개", "추천 링크 · 코드로 연결"], ["store", "두잉고 입점", "상담 후 플랫폼 세팅"], ["coins", "기수 이용료 입금", "강사님이 다음 기수를 열면"], ["check", "내 수익 확정", "공급가액 × RS%"], ["calendar", "다음 달 " + AFF().affSettings.payDay + "일 지급", "등록한 계좌로 입금"]];
     const nt = affNoticeList()[0], ntNew = nt && nt.at > (p.noticeSeen || 0);
-    return head("파트너센터", esc(p.name) + " 파트너님, 소개해 주신 강사님의 기수가 열릴 때마다 수익이 쌓여요.") +
+    return head("패밀리센터", esc(p.name) + " 패밀리님, 소개해 주신 강사님의 기수가 열릴 때마다 수익이 쌓여요.") +
       (nt ? '<a class="p-notice-bar' + (ntNew ? " new" : "") + '" href="#/center/partner/notices"><span class="p-notice-ic">' + icon("megaphone", "sm") + "</span>" + (ntNew ? '<i class="p-new">N</i>' : "") + "<b>" + esc(nt.title) + "</b><time>" + fmtFull(DB.date.toStr(new Date(nt.at))) + "</time>" + icon("chevRight", "sm") + "</a>" : "") +
-      '<section class="p-hero"><span class="p-3d" aria-hidden="true"><i class="c1">%</i><i class="c2">₩</i><i class="c3"></i><i class="ring"></i></span><div class="p-hero-l"><span class="p-hero-k">' + icon("handshake", "sm") + "DOINGGO PARTNERS</span>" +
-        '<h2>내 RS <b>' + myRs + '%</b></h2><p>소개한 강사님이 두잉고에 기수 이용료를 입금하면, <b>공급가액(부가세 제외)의 ' + myRs + "%</b>가 파트너님 수익이에요." + ((p.instructors || []).some((l) => l.rs !== null && l.rs !== undefined && l.rs !== "") ? " (강사님별로 다른 RS가 정해진 경우 그 비율로 계산돼요)" : "") + "</p></div>" +
-        '<div class="p-hero-r"><small>내 추천 링크</small><div class="p-ref"><code>' + esc(refUrl(p)) + '</code>' + btn(icon("link", "sm") + "복사", "aff-copy", "a-btn-light a-btn-sm", ' data-v="' + esc(refUrl(p)) + '"') + '</div><span>추천 코드 <b>' + esc(p.code || p.loginId) + "</b> · 이 링크로 들어온 입점 문의는 파트너님 소개로 기록돼요.</span></div></section>" +
+      '<section class="p-hero"><span class="p-3d" aria-hidden="true"><i class="c1">%</i><i class="c2">₩</i><i class="c3"></i><i class="ring"></i></span><div class="p-hero-l"><span class="p-hero-k">' + icon("handshake", "sm") + "DOOGO FAMILY</span>" +
+        '<h2>내 RS <b>' + myRs + '%</b></h2><p>소개한 강사님이 두잉고에 기수 이용료를 입금하면, <b>공급가액(부가세 제외)의 ' + myRs + "%</b>가 패밀리님 수익이에요." + ((p.instructors || []).some((l) => l.rs !== null && l.rs !== undefined && l.rs !== "") ? " (강사님별로 다른 RS가 정해진 경우 그 비율로 계산돼요)" : "") + "</p></div>" +
+        '<div class="p-hero-r"><small>내 추천 링크</small><div class="p-ref"><code>' + esc(refUrl(p)) + '</code>' + btn(icon("link", "sm") + "복사", "aff-copy", "a-btn-light a-btn-sm", ' data-v="' + esc(refUrl(p)) + '"') + '</div><span>추천 코드 <b>' + esc(p.code || p.loginId) + "</b> · 이 링크로 들어온 입점 문의는 패밀리님 소개로 기록돼요.</span></div></section>" +
       '<div class="a-kpis">' +
         kpi("다음 지급 예정", won(s.nextAmt), s.nextDate ? fmtFull(s.nextDate) + " 지급 · " + dLeft(s.nextDate) : "예정된 지급이 없어요", "#/center/partner/payouts", s.nextAmt ? "ok" : "") +
         kpi("이번 달 확정 수익", won(s.thisMonth), todayStr().slice(5, 7).replace(/^0/, "") + "월 입금 확인분", "#/center/partner/earnings") +
@@ -7549,7 +7549,7 @@
   function pagePartnerInstructors() {
     const p = affMe(), rows = affRows(p);
     const st = (iid) => { const bs = DB.bills(iid).filter((b) => !b.canceledAt); return bs.some((b) => b.cohortId) ? pill("기수 운영 중", "ok") : bs.length ? pill("기수 신청 중", "info") : pill("입점 준비", "mute"); };
-    return head("내 강사", "파트너님이 소개해서 두잉고에 입점한 강사님이에요. 강사님이 기수를 열 때마다 RS 수익이 생겨요.") +
+    return head("내 강사", "패밀리님이 소개해서 두잉고에 입점한 강사님이에요. 강사님이 기수를 열 때마다 RS 수익이 생겨요.") +
       '<section class="a-card">' + ((p.instructors || []).length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>강사</th><th>연결일</th><th class="num">RS</th><th class="num">입금된 기수</th><th class="num">누적 이용료 (공급가액)</th><th class="num">내 누적 수익</th><th class="num">입금 대기 예상</th><th>상태</th></tr></thead><tbody>' +
         p.instructors.map((l) => { const r = rows.filter((x) => x.b.instructorId === l.iid), paid = r.filter((x) => x.month); return "<tr><td>" + affInsCell(l.iid) + "</td><td>" + (l.since ? fmtFull(l.since) : "-") + '</td><td class="num">' + affRate(p, l.iid) + '%</td><td class="num">' + paid.length + '개</td><td class="num">' + won(paid.reduce((a, x) => a + x.m.supply, 0)) + '</td><td class="num"><b class="p-amt">' + won(paid.reduce((a, x) => a + x.amt, 0)) + '</b></td><td class="num">' + won(r.filter((x) => !x.month).reduce((a, x) => a + x.amt, 0)) + "</td><td>" + st(l.iid) + "</td></tr>"; }).join("") +
         "</tbody></table></div>" : emptyBox("users", "아직 연결된 강사님이 없어요. 강사님 연결은 두잉고 담당자가 확인 후 등록해 드려요.")) + "</section>";
@@ -7594,7 +7594,7 @@
           '<button class="a-btn a-btn-primary" type="submit">저장</button></form></section>' +
       "</div>";
   }
-  /* ---------- 파트너센터 추가 메뉴: 강사 추천하기 · 홍보 자료 · 공지사항 · 파트너 가이드 · 정산서 ----------
+  /* ---------- 패밀리센터 추가 메뉴: 강사 추천하기 · 홍보 자료 · 공지사항 · 패밀리 가이드 · 정산서 ----------
    * 정산 유형: 개인(사업소득 3.3% 원천징수: 소득세 3% + 지방소득세 0.3%, 10원 미만 버림) / 사업자(세금계산서 발행, 원천징수 없음) */
   const TAX = { personal: { label: "개인 · 사업소득 3.3% 원천징수", short: "개인 (3.3%)" }, business: { label: "사업자 · 세금계산서 발행", short: "사업자 (세금계산서)" } };
   const affTaxKey = (p) => (p && p.taxType === "business" ? "business" : "personal");
@@ -7608,7 +7608,7 @@
     if (!Array.isArray(d.affNotices)) {
       d.affNotices = [
         { id: "an-1", title: "11월 RS 지급일 안내", body: "10월에 입금 확인된 강사님 이용료의 RS는 11월 10일(화)에 등록하신 계좌로 지급돼요.\n‘내 정보’에서 지급 계좌를 한 번 더 확인해 주세요.", pinned: true, at: Date.parse("2026-10-26T10:00:00") },
-        { id: "an-2", title: "‘강사 추천하기’ 메뉴가 생겼어요", body: "추천 링크를 보내기 어려운 강사님은 ‘강사 추천하기’에 직접 남겨 주세요. 파트너님 소개로 바로 기록되고, 진행 상황은 ‘입점 문의’에서 볼 수 있어요.", pinned: false, at: Date.parse("2026-10-20T09:00:00") },
+        { id: "an-2", title: "‘강사 추천하기’ 메뉴가 생겼어요", body: "추천 링크를 보내기 어려운 강사님은 ‘강사 추천하기’에 직접 남겨 주세요. 패밀리님 소개로 바로 기록되고, 진행 상황은 ‘입점 문의’에서 볼 수 있어요.", pinned: false, at: Date.parse("2026-10-20T09:00:00") },
         { id: "an-3", title: "홍보할 때 꼭 지켜 주세요", body: "‘무조건 수익 보장’ 같은 과장된 표현이나, 두잉고 공식 직원처럼 소개하는 것은 삼가 주세요. 문구가 필요하면 ‘홍보 자료’의 문구를 그대로 써 주세요.", pinned: false, at: Date.parse("2026-10-02T09:00:00") }
       ];
       DB.save();
@@ -7618,11 +7618,11 @@
   const affNoticeList = () => AFFN().slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.at - a.at);
   const affNoticeNew = (p) => (p ? AFFN().filter((n) => n.at > (p.noticeSeen || 0)).length : 0);
 
-  /* 강사 추천하기: 파트너가 직접 강사님 정보를 남기면 ‘입점 문의’로 들어가요 (파트너 소개로 기록) */
+  /* 강사 추천하기: 패밀리가 직접 강사님 정보를 남기면 ‘입점 문의’로 들어가요 (패밀리 소개로 기록) */
   function pagePartnerRefer() {
     const p = affMe(), mine = affInqs(p).filter((q) => q.byPartner);
     const f = (id, label, attrs, req) => '<div class="a-field"><label for="pl-' + id + '">' + label + (req ? ' <b class="p-req">*</b>' : "") + '</label><input class="a-input" id="pl-' + id + '" name="' + id + '"' + (attrs || "") + "></div>";
-    return head("강사 추천하기", "추천 링크를 보내기 어려운 강사님은 여기에 직접 남겨 주세요. 파트너님 소개로 바로 기록되고, 두잉고 담당자가 연락드려요.") +
+    return head("강사 추천하기", "추천 링크를 보내기 어려운 강사님은 여기에 직접 남겨 주세요. 패밀리님 소개로 바로 기록되고, 두잉고 담당자가 연락드려요.") +
       '<div class="p-grid p-grid-r">' +
         '<section class="a-card"><div class="a-card-head"><h2>강사님 정보</h2></div><form id="aff-lead-form" class="a-form" novalidate>' +
           '<div class="a-form-row">' + f("name", "강사님 성함", ' maxlength="30" placeholder="예: 김민지"', true) + f("phone", "연락처", ' inputmode="tel" maxlength="20" placeholder="010-0000-0000"', true) + "</div>" +
@@ -7634,7 +7634,7 @@
           '<p class="a-error" id="pl-error"></p><button class="a-btn a-btn-primary" type="submit">' + icon("send", "sm") + "추천 보내기</button></form></section>" +
         '<div class="a-stack">' +
           '<section class="a-card"><div class="a-card-head"><h2>추천하면 이렇게 진행돼요</h2></div><ol class="p-steps p-steps-v">' +
-            [["send", "추천 접수", "파트너님 소개로 바로 기록"], ["headset", "두잉고 상담", "담당자가 강사님께 연락"], ["check", "계약 완료", "‘입점 문의’에 진행 상황 표시"], ["coins", "RS 수익", "기수 이용료 입금 시 확정"]].map((x, i) => '<li><span class="p-step-ic">' + icon(x[0], "sm") + "</span><em>STEP " + (i + 1) + "</em><b>" + x[1] + "</b><small>" + x[2] + "</small></li>").join("") + "</ol></section>" +
+            [["send", "추천 접수", "패밀리님 소개로 바로 기록"], ["headset", "두잉고 상담", "담당자가 강사님께 연락"], ["check", "계약 완료", "‘입점 문의’에 진행 상황 표시"], ["coins", "RS 수익", "기수 이용료 입금 시 확정"]].map((x, i) => '<li><span class="p-step-ic">' + icon(x[0], "sm") + "</span><em>STEP " + (i + 1) + "</em><b>" + x[1] + "</b><small>" + x[2] + "</small></li>").join("") + "</ol></section>" +
           '<section class="a-card"><div class="a-card-head"><h2>내가 직접 추천한 강사님</h2><a class="a-link" href="#/center/partner/inquiries">입점 문의 ' + icon("arrowRight", "xs") + "</a></div>" +
             (mine.length ? '<ul class="p-inq-mini">' + mine.slice(0, 5).map((q) => { const st = inqStatus(q); return '<li><span class="a-avatar">' + esc((q.name || "?").slice(0, 1)) + "</span><b>" + esc(q.name) + "</b><small>" + fmtStamp(q.at) + "</small>" + pill(st[1], st[2]) + "</li>"; }).join("") + "</ul>" : emptyBox("userPlus", "아직 직접 추천한 강사님이 없어요.")) + "</section>" +
         "</div>" +
@@ -7672,7 +7672,7 @@
     ];
   }
   function pagePartnerKitHtml(p, url, T) {
-    return head("홍보 자료", "강사님께 두잉고를 소개할 때 쓰는 자료예요. 아래 링크 · QR · 문구로 들어온 입점 문의는 모두 파트너님 소개로 기록돼요.") +
+    return head("홍보 자료", "강사님께 두잉고를 소개할 때 쓰는 자료예요. 아래 링크 · QR · 문구로 들어온 입점 문의는 모두 패밀리님 소개로 기록돼요.") +
       '<div class="p-grid p-grid-r">' +
         '<section class="a-card p-kit-link"><div class="a-card-head"><h2>내 추천 링크 · QR</h2></div>' +
           '<div class="p-kit-qr"><div id="p-qr" class="p-qr" aria-label="추천 링크 QR 코드"></div><div class="p-kit-qr-r"><small>추천 코드</small><b>' + esc(p.code || p.loginId) + '</b><div class="p-ref p-ref-light"><code>' + esc(url) + "</code>" + btn(icon("link", "sm") + "복사", "aff-copy", "a-btn-dark a-btn-sm", ' data-v="' + esc(url) + '"') + "</div>" +
@@ -7687,7 +7687,7 @@
           '<a class="p-asset" href="assets/home/og-doinggo.jpg" download="doinggo-banner.jpg"><img src="assets/home/og-doinggo.jpg" alt="두잉고 소개 배너"><span>' + icon("download", "xs") + "소개 배너 (1200×630)</span></a>" +
           '<a class="p-asset p-asset-logo" href="assets/brand/doinggo-en.svg" download="doinggo-logo.svg"><img src="assets/brand/doinggo-en.svg" alt="doinggo 로고"><span>' + icon("download", "xs") + "doinggo 로고 (SVG)</span></a></div></section>" +
         '<section class="a-card"><div class="a-card-head"><h2>홍보할 때 지켜 주세요</h2></div><ul class="p-rules">' +
-          ["‘무조건 수익 보장’ · ‘누구나 월 1,000만 원’ 같은 과장된 표현은 쓰지 않아요", "두잉고 직원 · 공식 대리점처럼 소개하지 않아요 (‘두잉고 파트너’로 소개해 주세요)", "강사님 연락처는 본인 동의를 받은 뒤에만 남겨 주세요", "이용료 · 계약 조건은 두잉고 담당자가 직접 안내해요"].map((x) => "<li>" + icon("check", "xs") + x + "</li>").join("") + "</ul></section>" +
+          ["‘무조건 수익 보장’ · ‘누구나 월 1,000만 원’ 같은 과장된 표현은 쓰지 않아요", "두잉고 직원 · 공식 대리점처럼 소개하지 않아요 (‘두고 패밀리’로 소개해 주세요)", "강사님 연락처는 본인 동의를 받은 뒤에만 남겨 주세요", "이용료 · 계약 조건은 두잉고 담당자가 직접 안내해요"].map((x) => "<li>" + icon("check", "xs") + x + "</li>").join("") + "</ul></section>" +
       "</div>";
   }
   function drawAffQr() {
@@ -7699,36 +7699,36 @@
     s.addEventListener("load", draw, { once: true });
   }
 
-  /* 공지사항 (두잉고 → 파트너) */
+  /* 공지사항 (두잉고 → 패밀리) */
   function pagePartnerNotices() {
     const p = affMe(), list = affNoticeList(), seen = p.noticeSeen || 0;
     setTimeout(() => { const me = affMe(); if (me && affNoticeNew(me)) { me.noticeSeen = Date.now(); DB.save(); navBadgeGone('.a-nav[href="#/center/partner/notices"] span + span'); } }, 1200);
-    return head("공지사항", "두잉고가 파트너님께 알려 드리는 소식이에요. 지급 일정 · 정책 변경 · 새 기능을 여기서 알려 드려요.") +
+    return head("공지사항", "두잉고가 패밀리님께 알려 드리는 소식이에요. 지급 일정 · 정책 변경 · 새 기능을 여기서 알려 드려요.") +
       '<section class="a-card">' + (list.length ? '<ul class="p-notices">' + list.map((n) => '<li class="' + (n.pinned ? "pin" : "") + '"><details' + (n.at > seen || n.pinned ? " open" : "") + "><summary>" + (n.pinned ? '<span class="a-pill dark">고정</span>' : "") + (n.at > seen ? '<i class="p-new">N</i>' : "") + "<b>" + esc(n.title) + "</b><time>" + fmtFull(DB.date.toStr(new Date(n.at))) + "</time>" + icon("chevDown", "sm") + '</summary><p>' + esc(n.body) + "</p></details></li>").join("") + "</ul>" : emptyBox("megaphone", "아직 공지가 없어요.")) + "</section>";
   }
 
-  /* 파트너 가이드 · 자주 묻는 질문 */
+  /* 패밀리 가이드 · 자주 묻는 질문 */
   function pagePartnerGuide() {
     const p = affMe(), set = AFF().affSettings, rs = (p.rs !== null && p.rs !== undefined && p.rs !== "") ? Number(p.rs) : affDefRs();
     const fee = 990000, supply = Math.round(fee / 1.1), amt = Math.round(supply * rs / 100), n = affNet(p, amt);
     const faq = AFF_FAQ;
     return pagePartnerGuideHtml(p, set, rs, fee, supply, amt, n, faq);
   }
-  /** 파트너 가이드 자주 묻는 질문 — 예전 화면 · React 화면이 같이 써요 */
+  /** 패밀리 가이드 자주 묻는 질문 — 예전 화면 · React 화면이 같이 써요 */
   const AFF_FAQ = [
-      ["추천은 언제 ‘내 소개’로 인정되나요?", "내 추천 링크(또는 추천 코드)로 들어와 입점 문의를 남기거나, ‘강사 추천하기’로 직접 등록하면 바로 파트너님 소개로 기록돼요. 같은 강사님을 다른 경로로 먼저 소개받은 경우에는 먼저 기록된 쪽이 인정돼요."],
+      ["추천은 언제 ‘내 소개’로 인정되나요?", "내 추천 링크(또는 추천 코드)로 들어와 입점 문의를 남기거나, ‘강사 추천하기’로 직접 등록하면 바로 패밀리님 소개로 기록돼요. 같은 강사님을 다른 경로로 먼저 소개받은 경우에는 먼저 기록된 쪽이 인정돼요."],
       ["RS는 얼마 동안 받나요?", "연결된 강사님이 두잉고를 쓰는 동안, 기수 이용료가 입금될 때마다 계속 RS가 생겨요. (계약 조건이 따로 있으면 그 조건을 따라요)"],
       ["강사님이 환불하면 어떻게 되나요?", "강사님 이용료가 환불되면 그 건의 RS도 함께 취소돼요. 이미 지급했다면 다음 정산에서 빼고 지급해요."],
-      ["세금은 어떻게 처리되나요?", "개인 파트너는 사업소득으로 3.3%(소득세 3% + 지방소득세 0.3%)를 떼고 지급해요. 사업자 파트너는 세금계산서를 발행해 주시면 원천징수 없이 지급해요. 정산 유형은 두잉고 담당자가 정해 드려요."],
+      ["세금은 어떻게 처리되나요?", "개인 패밀리는 사업소득으로 3.3%(소득세 3% + 지방소득세 0.3%)를 떼고 지급해요. 사업자 패밀리는 세금계산서를 발행해 주시면 원천징수 없이 지급해요. 정산 유형은 두잉고 담당자가 정해 드려요."],
       ["지급 계좌를 바꾸고 싶어요", "‘내 정보 · 비밀번호’에서 언제든 바꿀 수 있어요. 지급일 3일 전까지 바꾼 계좌로 지급돼요."],
       ["계약이 성사되지 않으면요?", "‘입점 문의’에 ‘계약 안 됨’으로 표시되고 RS는 생기지 않아요. 나중에 다시 진행되면 상태가 바뀌고 RS도 정상적으로 생겨요."]
   ];
   function pagePartnerGuideHtml(p, set, rs, fee, supply, amt, n, faq) {
-    return head("파트너 가이드", "RS가 어떻게 계산되고 언제 지급되는지, 자주 묻는 질문을 모았어요.") +
+    return head("패밀리 가이드", "RS가 어떻게 계산되고 언제 지급되는지, 자주 묻는 질문을 모았어요.") +
       '<div class="p-grid">' +
         '<section class="a-card"><div class="a-card-head"><h2>RS 계산 예시</h2><span class="a-muted">내 RS ' + rs + "% 기준</span></div>" +
           '<div class="p-calc"><div><small>강사님 1인 수강료 (= 기수 이용료)</small><b>' + won(fee) + '</b></div><span>→</span><div><small>공급가액 (부가세 제외)</small><b>' + won(supply) + '</b></div><span>× ' + rs + '%</span><div class="hl"><small>내 RS 수익</small><b>' + won(amt) + "</b></div></div>" +
-          (affTaxKey(p) === "personal" ? '<p class="a-muted p-small">개인 파트너는 3.3% (' + won(n.tax) + ")를 떼고 <b>" + won(n.net) + "</b>이 지급돼요.</p>" : '<p class="a-muted p-small">사업자 파트너는 세금계산서 발행 후 ' + won(amt) + "이 지급돼요.</p>") + "</section>" +
+          (affTaxKey(p) === "personal" ? '<p class="a-muted p-small">개인 패밀리는 3.3% (' + won(n.tax) + ")를 떼고 <b>" + won(n.net) + "</b>이 지급돼요.</p>" : '<p class="a-muted p-small">사업자 패밀리는 세금계산서 발행 후 ' + won(amt) + "이 지급돼요.</p>") + "</section>" +
         '<section class="a-card"><div class="a-card-head"><h2>지급 일정</h2></div><ol class="p-steps p-steps-v">' +
           [["calendar", "매월 1일 ~ 말일", "강사님 이용료 입금 확인분을 모아요"], ["file", "다음 달 초", "정산서가 ‘정산 · 지급’에 올라와요"], ["coins", "다음 달 " + set.payDay + "일", "등록한 계좌로 지급 (주말 · 공휴일이면 다음 영업일)"]].map((x, i) => '<li><span class="p-step-ic">' + icon(x[0], "sm") + "</span><em>STEP " + (i + 1) + "</em><b>" + x[1] + "</b><small>" + x[2] + "</small></li>").join("") + "</ol></section>" +
       "</div>" +
@@ -7740,20 +7740,20 @@
     const g = affMonths(p).find((x) => x.month === month); if (!g) return;
     const n = affNet(p, g.total), personal = affTaxKey(p) === "personal";
     openModal(g.month.slice(0, 4) + "년 " + monthKo(g.month) + " RS 정산서",
-      '<div class="p-stmt" id="p-stmt"><div class="p-stmt-h"><div>' + window.doogoClassLock("hm-lock-xs") + "<b>파트너 RS 정산서</b></div><span>발행 " + fmtFull(todayStr()) + "</span></div>" +
-        '<dl class="p-stmt-info"><div><dt>파트너</dt><dd>' + esc(p.name) + " (" + esc(p.code || p.loginId) + ")</dd></div><div><dt>정산 기간</dt><dd>" + g.month + "-01 ~ " + g.month + "-" + String(new Date(Number(g.month.slice(0, 4)), Number(g.month.slice(5, 7)), 0).getDate()).padStart(2, "0") + "</dd></div><div><dt>정산 유형</dt><dd>" + TAX[affTaxKey(p)].label + "</dd></div><div><dt>지급일</dt><dd>" + fmtFull(g.payDate) + (g.po ? " (지급 완료)" : "") + "</dd></div><div><dt>지급 계좌</dt><dd>" + (p.account ? esc((p.bank || "") + " " + p.account + " · " + (p.holder || p.name)) : "미등록") + "</dd></div></dl>" +
+      '<div class="p-stmt" id="p-stmt"><div class="p-stmt-h"><div>' + window.doogoClassLock("hm-lock-xs") + "<b>패밀리 RS 정산서</b></div><span>발행 " + fmtFull(todayStr()) + "</span></div>" +
+        '<dl class="p-stmt-info"><div><dt>패밀리</dt><dd>' + esc(p.name) + " (" + esc(p.code || p.loginId) + ")</dd></div><div><dt>정산 기간</dt><dd>" + g.month + "-01 ~ " + g.month + "-" + String(new Date(Number(g.month.slice(0, 4)), Number(g.month.slice(5, 7)), 0).getDate()).padStart(2, "0") + "</dd></div><div><dt>정산 유형</dt><dd>" + TAX[affTaxKey(p)].label + "</dd></div><div><dt>지급일</dt><dd>" + fmtFull(g.payDate) + (g.po ? " (지급 완료)" : "") + "</dd></div><div><dt>지급 계좌</dt><dd>" + (p.account ? esc((p.bank || "") + " " + p.account + " · " + (p.holder || p.name)) : "미등록") + "</dd></div></dl>" +
         '<table class="a-table p-stmt-t"><thead><tr><th>강사</th><th>기수</th><th>입금일</th><th class="num">공급가액</th><th class="num">RS</th><th class="num">수익</th></tr></thead><tbody>' +
           g.rows.map((x) => "<tr><td>" + esc(insName(x.b.instructorId)) + "</td><td>" + esc(x.b.cohortName || "") + "</td><td>" + fmtFull(x.b.paidAt) + '</td><td class="num">' + won(x.m.supply) + '</td><td class="num">' + x.rate + '%</td><td class="num">' + won(x.amt) + "</td></tr>").join("") +
         "</tbody></table>" +
         '<dl class="p-stmt-sum"><div><dt>RS 수익 합계</dt><dd>' + won(g.total) + "</dd></div>" + (personal ? "<div><dt>소득세 (3%)</dt><dd>- " + won(n.income) + "</dd></div><div><dt>지방소득세 (0.3%)</dt><dd>- " + won(n.local) + "</dd></div>" : "<div><dt>세금계산서</dt><dd>발행 필요 (원천징수 없음)</dd></div>") + '<div class="tot"><dt>실지급액</dt><dd>' + won(n.net) + "</dd></div></dl>" +
-        '<p class="p-stmt-foot">(주)두고홀딩스 · 두잉고 파트너스 · 문의는 파트너센터 ‘입점 문의’ 1:1 대화 또는 담당자에게 해 주세요.</p></div>',
+        '<p class="p-stmt-foot">(주)두고홀딩스 · 두고 패밀리 · 문의는 패밀리센터 ‘입점 문의’ 1:1 대화 또는 담당자에게 해 주세요.</p></div>',
       btn("닫기", "modal-close") + btn(icon("download", "sm") + "PDF로 내려받기", "stmt-print", "a-btn-primary"), "md");
   }
 
-  /* 마스터: 파트너 공지 */
+  /* 마스터: 패밀리 공지 */
   function affNoticeForm(n) {
     const isNew = !n; n = n || { title: "", body: "", pinned: false };
-    openModal(isNew ? "파트너 공지 쓰기" : "파트너 공지 수정",
+    openModal(isNew ? "패밀리 공지 쓰기" : "패밀리 공지 수정",
       '<form id="an-form" class="a-form" data-id="' + esc(n.id || "") + '" novalidate><div class="a-field"><label for="an-title">제목</label><input class="a-input" id="an-title" name="title" maxlength="60" value="' + esc(n.title) + '"></div>' +
         '<div class="a-field"><label for="an-body">내용</label><textarea class="a-input" id="an-body" name="body" rows="6" maxlength="2000">' + esc(n.body) + "</textarea></div>" +
         '<label class="a-check"><input type="checkbox" name="pinned"' + (n.pinned ? " checked" : "") + "><span>맨 위에 고정</span></label><p class=\"a-error\" id=\"an-error\"></p></form>",
@@ -7766,11 +7766,13 @@
     const list = AFFN(), old = f.dataset.id ? list.find((x) => x.id === f.dataset.id) : null;
     if (old) Object.assign(old, { title, body, pinned: f.pinned.checked });
     else list.push({ id: DB.uid("an"), title, body, pinned: f.pinned.checked, at: Date.now() });
-    commit(old ? "파트너 공지를 고쳤어요." : "파트너 공지를 올렸어요.");
+    commit(old ? "패밀리 공지를 고쳤어요." : "패밀리 공지를 올렸어요.");
   }
   const PPAGES = { "": pagePartnerHome, inquiries: pagePartnerInquiries, refer: pagePartnerRefer, kit: pagePartnerKit, notices: pagePartnerNotices, guide: pagePartnerGuide, instructors: pagePartnerInstructors, earnings: pagePartnerEarnings, payouts: pagePartnerPayouts, settings: pagePartnerSettings };
   function saveAffPw(f) {
     const p = affMe(), err = document.getElementById("ap-error"), cur = f.cur.value.trim(), nw = f.nw.value.trim();
+    // 체험 영업 패밀리(partner) — 서버도 비밀번호를 바꾸지 않아요 (api/_lib/familydemo.js)
+    if (p.demo === true) { err.textContent = "체험 계정은 비밀번호를 바꿀 수 없어요. 다른 설정은 로그아웃하면 처음 상태로 돌아가요."; return; }
     if (cur !== String(p.pw)) { err.textContent = "지금 비밀번호가 맞지 않아요."; return; }
     if (nw.length < 4 || nw.length > 40 || /\s/.test(nw)) { err.textContent = "새 비밀번호는 띄어쓰기 없이 4자 이상으로 정해 주세요."; return; }
     if (nw !== f.nw2.value.trim()) { err.textContent = "새 비밀번호 확인이 달라요."; return; }
@@ -7780,7 +7782,7 @@
     const p = affMe(); ["phone", "bank", "holder", "account"].forEach((k) => { p[k] = f[k].value.trim(); }); commit("지급 계좌 · 연락처를 저장했어요.");
   }
 
-  /* ---------- 마스터 · 파트너스 관리 ---------- */
+  /* ---------- 마스터 · 영업 패밀리 관리 ---------- */
   function pageMasterRS() {
     const list = affList(), set = AFF().affSettings;
     const all = list.map((p) => ({ p, s: affSum(p) }));
@@ -7788,47 +7790,47 @@
     list.forEach((p) => affMonths(p).forEach((g) => { if (!g.po) queue.push({ p, g }); }));
     queue.sort((a, b) => a.g.payDate.localeCompare(b.g.payDate));
     const refs = DB.inquiries().filter((q) => inqAff(q));
-    return head("파트너스 관리", "영업 파트너 계정을 만들고, 소개한 강사님과 RS 비율을 정해요. 강사님 이용료 입금이 확인되면 공급가액 × RS%가 파트너 수익으로 자동 계산돼요.", btn(icon("plus", "sm") + "파트너 추가", "aff-new", "a-btn-primary")) +
+    return head("영업 패밀리 관리", "영업 패밀리 계정을 만들고, 소개한 강사님과 RS 비율을 정해요. 강사님 이용료 입금이 확인되면 공급가액 × RS%가 패밀리 수익으로 자동 계산돼요.", btn(icon("plus", "sm") + "패밀리 추가", "aff-new", "a-btn-primary")) +
       '<div class="a-kpis">' +
-        kpi("활동 중인 파트너", list.filter((p) => p.status === "active").length + "명", "연결된 강사 " + list.reduce((a, p) => a + (p.instructors || []).length, 0) + "명", "#/center/master/rs") +
+        kpi("활동 중인 패밀리", list.filter((p) => p.status === "active").length + "명", "연결된 강사 " + list.reduce((a, p) => a + (p.instructors || []).length, 0) + "명", "#/center/master/rs") +
         kpi("지급할 금액 (세후)", won(queue.reduce((a, x) => a + affNet(x.p, x.g.total).net, 0)), queue.length ? "가장 빠른 지급일 " + fmtFull(queue[0].g.payDate) : "지급할 정산이 없어요", "#/center/master/rs", queue.some((x) => todayStr() >= x.g.payDate) ? "warn" : "") +
         kpi("입금 대기 예상 RS", won(all.reduce((a, x) => a + x.s.expected, 0)), "강사 이용료 입금 전", "#/center/master/rs") +
         kpi("누적 지급액", won(all.reduce((a, x) => a + x.s.paidOut, 0)), "지급 완료 처리한 금액", "#/center/master/rs") +
       "</div>" +
-        '<section class="a-card"><div class="a-card-head"><h2>파트너</h2><span class="a-muted">' + list.length + "명</span></div>" + (list.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>파트너</th><th>아이디</th><th class="num">기본 RS</th><th>담당 강사 (RS)</th><th class="num">누적 수익</th><th class="num">미지급</th><th>상태</th><th></th></tr></thead><tbody>' +
+        '<section class="a-card"><div class="a-card-head"><h2>패밀리</h2><span class="a-muted">' + list.length + "명</span></div>" + (list.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>패밀리</th><th>아이디</th><th class="num">기본 RS</th><th>담당 강사 (RS)</th><th class="num">누적 수익</th><th class="num">미지급</th><th>상태</th><th></th></tr></thead><tbody>' +
           all.map(({ p, s }) => "<tr><td><b>" + esc(p.name) + "</b><br><small class=\"a-muted\">" + esc(p.phone || "") + "</small></td><td><code>" + esc(p.loginId) + '</code></td><td class="num">' + (p.rs !== null && p.rs !== undefined && p.rs !== "" ? p.rs + "%" : affDefRs() + '% <small class="a-muted">기본</small>') + "</td><td>" +
             ((p.instructors || []).map((l) => '<span class="p-chip">' + esc(insName(l.iid)) + " " + affRate(p, l.iid) + "%</span>").join("") || '<span class="a-muted">없음</span>') + '</td><td class="num">' + won(s.total) + '</td><td class="num"><b>' + won(s.pending) + "</b></td><td>" + pill(p.status === "active" ? "활동 중" : "중지", p.status === "active" ? "ok" : "mute") + '</td><td class="a-right">' +
             btn("수정", "aff-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(p.id) + '"') + btn(p.status === "active" ? "중지" : "재개", "aff-toggle", "a-btn-text a-btn-sm", ' data-id="' + esc(p.id) + '"') + "</td></tr>").join("") +
-          "</tbody></table></div>" : emptyBox("handshake", "아직 파트너가 없어요. ‘파트너 추가’로 첫 파트너를 만들어 보세요.")) + "</section>" +
+          "</tbody></table></div>" : emptyBox("handshake", "아직 패밀리가 없어요. ‘패밀리 추가’로 첫 패밀리를 만들어 보세요.")) + "</section>" +
       '<div class="p-grid p-grid-r">' +
-        '<section class="a-card"><div class="a-card-head"><h2>지급 처리</h2><span class="a-muted">파트너에게 보낸 뒤 ‘지급 완료’를 눌러 주세요</span></div>' + (queue.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>파트너</th><th>정산 월</th><th class="num">건수</th><th class="num">RS 수익</th><th class="num">보낼 금액</th><th>지급일</th><th>지급 계좌</th><th></th></tr></thead><tbody>' +
+        '<section class="a-card"><div class="a-card-head"><h2>지급 처리</h2><span class="a-muted">패밀리에게 보낸 뒤 ‘지급 완료’를 눌러 주세요</span></div>' + (queue.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>패밀리</th><th>정산 월</th><th class="num">건수</th><th class="num">RS 수익</th><th class="num">보낼 금액</th><th>지급일</th><th>지급 계좌</th><th></th></tr></thead><tbody>' +
         queue.map(({ p, g }) => "<tr><td><b>" + esc(p.name) + "</b></td><td>" + g.month.slice(0, 4) + "년 " + monthKo(g.month) + '</td><td class="num">' + g.rows.length + '건</td><td class="num">' + won(g.total) + '</td><td class="num"><b class="p-amt">' + won(affNet(p, g.total).net) + '</b><small class="a-memo">' + TAX[affTaxKey(p)].short + "</small></td><td>" + fmtFull(g.payDate) + ' <small class="a-muted">' + dLeft(g.payDate) + "</small></td><td>" + (p.account ? esc((p.bank || "") + " " + p.account + " (" + (p.holder || p.name) + ")") : '<span class="a-muted">계좌 미등록</span>') + '</td><td class="a-right">' + btn(icon("check", "sm") + "지급 완료", "aff-pay", "a-btn-primary a-btn-sm", ' data-id="' + esc(p.id) + '" data-m="' + g.month + '"') + "</td></tr>").join("") +
         "</tbody></table></div>" : emptyBox("check", "지급할 정산이 없어요.")) + "</section>" +
         '<section class="a-card"><div class="a-card-head"><h2>RS 기본 설정</h2></div><form id="aff-set-form" class="a-form" novalidate>' +
-          '<div class="a-field"><label for="as-rs">기본 RS (%)</label><input class="a-input" id="as-rs" name="rs" type="number" min="0" max="100" step="0.5" value="' + esc(set.rs) + '"><small class="a-muted">파트너 · 강사님별로 따로 정하지 않으면 이 비율로 계산돼요.</small></div>' +
+          '<div class="a-field"><label for="as-rs">기본 RS (%)</label><input class="a-input" id="as-rs" name="rs" type="number" min="0" max="100" step="0.5" value="' + esc(set.rs) + '"><small class="a-muted">패밀리 · 강사님별로 따로 정하지 않으면 이 비율로 계산돼요.</small></div>' +
           '<div class="a-field"><label for="as-day">지급일 (매월)</label><input class="a-input" id="as-day" name="payDay" type="number" min="1" max="28" value="' + esc(set.payDay) + '"><small class="a-muted">한 달 동안 입금 확인된 이용료의 RS를 다음 달 이 날짜에 지급해요.</small></div>' +
           '<p class="a-muted p-small">계산 기준: 강사님 기수 이용료의 <b>공급가액(부가세 제외)</b> × RS%</p><button class="a-btn a-btn-primary" type="submit">저장</button></form></section>' +
       "</div>" +
-      '<section class="a-card"><div class="a-card-head"><h2>파트너 공지</h2>' + btn(icon("plus", "sm") + "공지 쓰기", "an-new", "a-btn-outline a-btn-sm") + "</div>" + (AFFN().length ? '<ul class="a-items">' + affNoticeList().map((n) => '<li><div class="a-item-main"><b>' + esc(n.title) + "</b><small>" + fmtFull(DB.date.toStr(new Date(n.at))) + " · " + esc(n.body.slice(0, 70)) + "</small></div>" + (n.pinned ? pill("고정", "dark") : "") + '<div class="a-row-actions">' + btn("수정", "an-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(n.id) + '"') + btn("삭제", "an-del", "a-btn-text a-btn-sm danger", ' data-id="' + esc(n.id) + '"') + "</div></li>").join("") + "</ul>" : emptyBox("megaphone", "아직 파트너 공지가 없어요.")) + "</section>" +
-      '<section class="a-card"><div class="a-card-head"><h2>추천 링크로 들어온 입점 문의</h2><span class="a-muted">' + refs.length + "건</span></div>" + (refs.length ? '<ul class="p-refs">' + refs.map((q) => { const owner = inqAff(q), st = inqStatus(q); return "<li><b>" + esc(q.name || "문의") + "</b><span>" + esc(String(q.course || "").slice(0, 40)) + "</span><em>" + (owner ? esc(owner.name) + " 파트너 소개" : "코드 " + esc(q.ref)) + "</em>" + pill(st[1], st[2]) + "<small>" + fmtStamp(q.at) + '</small><a class="a-link" href="#/center/master/partners">보기</a></li>'; }).join("") + "</ul>" : emptyBox("link", "아직 추천 링크로 들어온 문의가 없어요.")) + "</section>";
+      '<section class="a-card"><div class="a-card-head"><h2>패밀리 공지</h2>' + btn(icon("plus", "sm") + "공지 쓰기", "an-new", "a-btn-outline a-btn-sm") + "</div>" + (AFFN().length ? '<ul class="a-items">' + affNoticeList().map((n) => '<li><div class="a-item-main"><b>' + esc(n.title) + "</b><small>" + fmtFull(DB.date.toStr(new Date(n.at))) + " · " + esc(n.body.slice(0, 70)) + "</small></div>" + (n.pinned ? pill("고정", "dark") : "") + '<div class="a-row-actions">' + btn("수정", "an-edit", "a-btn-ghost a-btn-sm", ' data-id="' + esc(n.id) + '"') + btn("삭제", "an-del", "a-btn-text a-btn-sm danger", ' data-id="' + esc(n.id) + '"') + "</div></li>").join("") + "</ul>" : emptyBox("megaphone", "아직 패밀리 공지가 없어요.")) + "</section>" +
+      '<section class="a-card"><div class="a-card-head"><h2>추천 링크로 들어온 입점 문의</h2><span class="a-muted">' + refs.length + "건</span></div>" + (refs.length ? '<ul class="p-refs">' + refs.map((q) => { const owner = inqAff(q), st = inqStatus(q); return "<li><b>" + esc(q.name || "문의") + "</b><span>" + esc(String(q.course || "").slice(0, 40)) + "</span><em>" + (owner ? esc(owner.name) + " 패밀리 소개" : "코드 " + esc(q.ref)) + "</em>" + pill(st[1], st[2]) + "<small>" + fmtStamp(q.at) + '</small><a class="a-link" href="#/center/master/partners">보기</a></li>'; }).join("") + "</ul>" : emptyBox("link", "아직 추천 링크로 들어온 문의가 없어요.")) + "</section>";
   }
   function affForm(p) {
     const isNew = !p;
     p = p || { name: "", loginId: "", pw: "", phone: "", code: "", rs: "", status: "active", bank: "", account: "", holder: "", memo: "", instructors: [] };
     const taken = {}; affList().forEach((x) => { if (x.id !== p.id) (x.instructors || []).forEach((l) => { taken[l.iid] = x.name; }); });
     const fld = (id, label, val, attrs, help) => '<div class="a-field"><label for="af-' + id + '">' + label + '</label><input class="a-input" id="af-' + id + '" name="' + id + '" value="' + esc(val == null ? "" : val) + '"' + (attrs || "") + ">" + (help ? '<small class="a-muted">' + help + "</small>" : "") + "</div>";
-    openModal(isNew ? "파트너 추가" : p.name + " 파트너 수정",
+    openModal(isNew ? "패밀리 추가" : p.name + " 패밀리 수정",
       '<form id="aff-form" class="a-form" data-id="' + esc(p.id || "") + '" novalidate>' +
         '<div class="a-form-row">' + fld("name", "이름", p.name, ' maxlength="20" placeholder="예: 하지원"') + fld("phone", "휴대폰", p.phone, ' inputmode="tel" maxlength="20" placeholder="010-0000-0000"') + "</div>" +
-        '<div class="a-form-row">' + fld("loginId", "로그인 아이디", p.loginId, ' maxlength="30" placeholder="예: partner"') + fld("pw", "비밀번호", p.pw, ' maxlength="40" placeholder="예: partner"', "파트너가 파트너센터에서 바꿀 수 있어요") + "</div>" +
+        '<div class="a-form-row">' + fld("loginId", "로그인 아이디", p.loginId, ' maxlength="30" placeholder="예: partner"') + fld("pw", "비밀번호", p.pw, ' maxlength="40" placeholder="예: partner"', "패밀리가 패밀리센터에서 바꿀 수 있어요") + "</div>" +
         '<div class="a-form-row">' + fld("code", "추천 코드", p.code, ' maxlength="20" placeholder="예: HAJIWON"', "추천 링크 끝에 붙어요") + fld("rs", "RS (%)", p.rs, ' type="number" min="0" max="100" step="0.5" placeholder="비우면 기본 ' + affDefRs() + '%"', "비우면 기본 RS를 따라가요") + "</div>" +
-        '<div class="a-field"><label>담당 강사 · 강사별 RS</label><div class="p-pick">' + DB.data.instructors.map((x) => { const l = affLink(p, x.id); return '<div class="p-pick-row"><label class="p-pick-l"><input type="checkbox" name="ins" value="' + esc(x.id) + '"' + (l ? " checked" : "") + "><b>" + esc(x.displayName) + "</b>" + (taken[x.id] ? '<small class="a-muted">' + esc(taken[x.id]) + " 파트너 담당</small>" : "") + '</label><input class="a-input a-sm" name="rs-' + esc(x.id) + '" type="number" min="0" max="100" step="0.5" value="' + esc(l && l.rs != null ? l.rs : "") + '" placeholder="RS %"><input class="a-input a-sm" name="since-' + esc(x.id) + '" type="date" value="' + esc((l && l.since) || todayStr()) + '"></div>'; }).join("") + '</div><small class="a-muted">강사별 RS를 비우면 파트너 RS(또는 기본 RS)로 계산돼요. 한 강사님은 한 파트너에게만 연결돼요.</small></div>' +
+        '<div class="a-field"><label>담당 강사 · 강사별 RS</label><div class="p-pick">' + DB.data.instructors.map((x) => { const l = affLink(p, x.id); return '<div class="p-pick-row"><label class="p-pick-l"><input type="checkbox" name="ins" value="' + esc(x.id) + '"' + (l ? " checked" : "") + "><b>" + esc(x.displayName) + "</b>" + (taken[x.id] ? '<small class="a-muted">' + esc(taken[x.id]) + " 패밀리 담당</small>" : "") + '</label><input class="a-input a-sm" name="rs-' + esc(x.id) + '" type="number" min="0" max="100" step="0.5" value="' + esc(l && l.rs != null ? l.rs : "") + '" placeholder="RS %"><input class="a-input a-sm" name="since-' + esc(x.id) + '" type="date" value="' + esc((l && l.since) || todayStr()) + '"></div>'; }).join("") + '</div><small class="a-muted">강사별 RS를 비우면 패밀리 RS(또는 기본 RS)로 계산돼요. 한 강사님은 한 패밀리에게만 연결돼요.</small></div>' +
         '<div class="a-form-row">' + fld("bank", "은행", p.bank, ' maxlength="20"') + fld("account", "계좌번호", p.account, ' maxlength="30" inputmode="numeric"') + fld("holder", "예금주", p.holder, ' maxlength="20"') + "</div>" +
         '<div class="a-field"><label for="af-tax">정산 유형</label><select class="a-input" id="af-tax" name="taxType">' + Object.keys(TAX).map((k) => '<option value="' + k + '"' + (affTaxKey(p) === k ? " selected" : "") + ">" + TAX[k].label + "</option>").join("") + '</select><small class="a-muted">개인은 지급할 때 3.3%를 떼고, 사업자는 세금계산서를 받고 전액 지급해요.</small></div>' +
         '<div class="a-field"><label for="af-memo">메모</label><textarea class="a-input" id="af-memo" name="memo" rows="2" maxlength="500">' + esc(p.memo || "") + "</textarea></div>" +
         '<p class="a-error" id="af-error"></p></form>',
       (isNew ? "" : btn(icon("trash", "sm") + "삭제", "aff-del", "a-btn-ghost danger", ' data-id="' + esc(p.id) + '"') + '<span class="a-spacer"></span>') +
-      btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="aff-form">' + (isNew ? "파트너 만들기" : "저장") + "</button>", "md");
+      btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="aff-form">' + (isNew ? "패밀리 만들기" : "저장") + "</button>", "md");
   }
   function saveAff(f) {
     const err = document.getElementById("af-error"), v = (k) => (f[k] ? f[k].value.trim() : "");
@@ -7840,12 +7842,12 @@
     const rs = v("rs"); if (rs !== "" && !(Number(rs) >= 0 && Number(rs) <= 100)) { err.textContent = "RS는 0~100 사이로 적어 주세요."; return; }
     const picked = Array.from(f.querySelectorAll('input[name="ins"]:checked')).map((c) => c.value);
     const clash = picked.find((iid) => affList().some((x) => x.id !== id && affLink(x, iid)));
-    if (clash) { err.textContent = insName(clash) + " 강사님은 이미 다른 파트너에게 연결돼 있어요."; return; }
+    if (clash) { err.textContent = insName(clash) + " 강사님은 이미 다른 패밀리에게 연결돼 있어요."; return; }
     const p = old || { id: DB.uid("aff"), createdAt: todayStr(), status: "active" };
     Object.assign(p, { name: v("name"), phone: v("phone"), loginId: v("loginId"), pw: v("pw"), code: v("code") || v("loginId").toUpperCase(), rs: rs === "" ? null : Number(rs), bank: v("bank"), account: v("account"), holder: v("holder"), memo: v("memo"), taxType: v("taxType") === "business" ? "business" : "personal",
       instructors: picked.map((iid) => { const r = v("rs-" + iid); return { iid, rs: r === "" ? null : Number(r), since: v("since-" + iid) || todayStr() }; }) });
     if (!old) affList().push(p);
-    commit(old ? "파트너 정보를 저장했어요." : "파트너를 만들었어요 · " + p.loginId + " / " + p.pw);
+    commit(old ? "패밀리 정보를 저장했어요." : "패밀리를 만들었어요 · " + p.loginId + " / " + p.pw);
   }
   function saveAffSet(f) {
     const rs = Number(f.rs.value), day = Math.round(Number(f.payDay.value));
@@ -7853,8 +7855,8 @@
     if (!(day >= 1 && day <= 28)) { toast("지급일은 1~28일 사이로 적어 주세요.", "warn"); return; }
     AFF().affSettings = { rs, payDay: day }; commit("RS 기본 설정을 저장했어요.");
   }
-  /* ================= 온드미디어 RS 파트너 (YouTube 채널 팀) =================
-   * 마스터가 계정을 만들고(마스터 › DOOGO CLASS › 온드미디어 RS), 온드미디어는 로그인 화면 ‘마스터 · 파트너’ 탭에서 아이디 + 비밀번호로 들어와요.
+  /* ================= 온드미디어 RS 패밀리 (YouTube 채널 팀) =================
+   * 마스터가 계정을 만들고(마스터 › DOOGO CLASS › 온드미디어 RS), 온드미디어는 로그인 화면 ‘마스터 · 패밀리’ 탭에서 아이디 + 비밀번호로 들어와요.
    * VOD마다 계정별 홍보 링크(/vod/p/<상품>?rs=<코드>)가 있고, 그 링크로 들어와 기간(기본 30일) 안에 산 수강권 주문에 rs 가 남아요(서버가 확인).
    * RS = (판매가 − 환불) × (1 − PG 5%) × RS %(구독자 10만 이상 20% · 미만 10% · 마스터가 직접 정할 수 있음) — 강사 · 두고클래스가 나누기 전에 먼저 빼요.
    * 정산: 매달 1일~말일 판매분을 다음 달 초 마스터가 확정 → 10일(영업일) 지급. 확정 뒤 환불은 다음 달 RS 에서 차감. 개인 3.3% 원천징수 · 사업자 세금계산서.
@@ -7891,7 +7893,7 @@
     if (!d.media.length) {
       const t = Date.now();
       d.media.push(
-        { id: "md-demo1", loginId: "media", pw: "media", code: "dgdemo", name: "두고미디어 (예시)", channel: "두고미디어 YouTube (예시)", url: "https://www.youtube.com/", subs: 128000, rate: "", email: "media@example.com", phone: "010-0000-0000", type: "biz", bizName: "주식회사 두고미디어", bizNo: "", bank: "IBK", account: "000-000000-00-000", holder: "주식회사 두고미디어", memo: "시안 예시 계정 (아이디 media · 비밀번호 media)", status: "active", createdAt: t - 40 * 864e5, demo: true },
+        { id: "md-demo1", loginId: "owned", pw: "owned", code: "dgdemo", name: "두고미디어 (예시)", channel: "두고미디어 YouTube (예시)", url: "https://www.youtube.com/", subs: 128000, rate: "", email: "media@example.com", phone: "010-0000-0000", type: "biz", bizName: "주식회사 두고미디어", bizNo: "", bank: "IBK", account: "000-000000-00-000", holder: "주식회사 두고미디어", memo: "시안 예시 계정 (아이디 media · 비밀번호 media)", status: "active", createdAt: t - 40 * 864e5, demo: true },
         { id: "md-demo2", loginId: "media2", pw: "media2", code: "mcdemo", name: "머니콘텐츠 (예시)", channel: "머니콘텐츠 (예시)", url: "https://www.youtube.com/", subs: 52000, rate: "", email: "", phone: "", type: "person", bizName: "", bizNo: "", bank: "", account: "", holder: "", memo: "시안 예시 계정 (아이디 media2 · 비밀번호 media2)", status: "active", createdAt: t - 20 * 864e5, demo: true });
     }
     const X = VX(), os = VD().orders.filter((o) => o && (o.kind || "course") === "course" && o.status === "paid" && o.paidAt && X.baseOf(o) > 0 && X.rsProduct(vdP(o.pid)) && !o.rs).sort((a, b) => b.paidAt - a.paidAt).slice(0, 8);
@@ -7989,7 +7991,7 @@
     ["계정", [["media/settings", "내 정보 · 정산 계좌", "settings"]]]
   ];
   function mdHello(a) {
-    return '<section class="a-card md-hello"><div class="md-hello-l"><span class="md-av">' + icon("monitorPlay") + "</span><div><small>DOOGO CLASS 온드미디어 · RS 파트너스</small><h2>" + esc(mdName(a)) + ' 님, 안녕하세요</h2><p class="a-muted">내 홍보 링크로 VOD가 팔리면 판매가의 RS가 쌓여요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.</p></div></div>' +
+    return '<section class="a-card md-hello"><div class="md-hello-l"><span class="md-av">' + icon("monitorPlay") + "</span><div><small>DOOGO FAMILY · 온드미디어 RS</small><h2>" + esc(mdName(a)) + ' 님, 안녕하세요</h2><p class="a-muted">내 홍보 링크로 VOD가 팔리면 판매가의 RS가 쌓여요. 매달 1일~말일 판매분을 다음 달 10일에 지급해요.</p></div></div>' +
       '<div class="md-hello-r"><span class="md-rate"><b>RS ' + mdRate(a) + "%</b><small>" + esc(mdRateWhy(a)) + "</small></span>" + (a.url ? '<a class="a-btn a-btn-ghost a-btn-sm" href="' + esc(a.url) + '" target="_blank" rel="noopener">' + icon("play", "sm") + "내 채널</a>" : "") + "</div></section>";
   }
   function pageMediaHome() {
@@ -8147,6 +8149,7 @@
   }
   function saveMdMyPw(f) {
     const a = mdMe(), err = document.getElementById("mdp-error"), pw = f.pw.value.trim(); if (!a) return;
+    if (a.demo === true) { err.textContent = "체험 계정은 비밀번호를 바꿀 수 없어요. 다른 설정은 로그아웃하면 처음 상태로 돌아가요."; return; }
     if (pw.length < 4 || pw.length > 40 || /\s/.test(pw)) { err.textContent = "비밀번호는 띄어쓰기 없이 4~40자로 적어 주세요."; return; }
     if (pw !== f.pw2.value.trim()) { err.textContent = "새 비밀번호가 서로 달라요. 다시 확인해 주세요."; return; }
     a.pw = pw; a.pwAt = Date.now();
@@ -8180,7 +8183,7 @@
     const fld = (n, label, val, attrs, note) => '<div class="a-field"><label for="mdf-' + n + '">' + label + '</label><input class="a-input" id="mdf-' + n + '" name="' + n + '" value="' + esc(val == null ? "" : val) + '"' + (attrs || "") + ">" + (note ? '<small class="a-muted">' + note + "</small>" : "") + "</div>";
     const sold = a.id ? mdOrders(a.id).length : 0;
     openModal(isNew ? "새 온드미디어 계정" : mdName(a) + " 계정 수정", '<form id="md-form" class="a-form" novalidate><input type="hidden" name="acc" value="' + esc(a.id || "") + '">' +
-      '<h4 class="md-h4">로그인</h4><div class="a-form-row">' + fld("loginId", "아이디", a.loginId, ' maxlength="30" autocomplete="off" placeholder="예: doogomd"', "로그인 화면 ‘마스터 · 파트너’ 탭에서 써요") +
+      '<h4 class="md-h4">로그인</h4><div class="a-form-row">' + fld("loginId", "아이디", a.loginId, ' maxlength="30" autocomplete="off" placeholder="예: doogomd"', "로그인 화면 ‘마스터 · 패밀리’ 탭에서 써요") +
         fld("pw", isNew ? "비밀번호" : "새 비밀번호 <small>(바꿀 때만)</small>", "", ' type="text" maxlength="40" autocomplete="off" placeholder="' + (isNew ? "4자 이상" : "비워 두면 그대로") + '"', DB.remote.on ? "서버에 암호화해서 저장돼요 (나중에 볼 수 없어요)" : "") + "</div>" +
       '<h4 class="md-h4">YouTube 채널 · RS</h4><div class="a-form-row">' + fld("channel", "YouTube 채널 이름", a.channel, ' maxlength="60" placeholder="예: 두고미디어 YouTube"') + fld("name", "팀 · 담당자", a.name, ' maxlength="60" placeholder="예: 두고미디어 콘텐츠팀"') + "</div>" +
       '<div class="a-form-row">' + fld("url", "채널 주소", a.url, ' maxlength="200" placeholder="https://www.youtube.com/@…"') + fld("subs", "구독자 수", a.subs, ' type="number" min="0" inputmode="numeric" placeholder="예: 128000"', "구독자 " + manTxt(R.subs) + " 이상 " + R.hi + "% · 미만 " + R.lo + "%") + "</div>" +
@@ -8200,7 +8203,7 @@
     if (!/^[A-Za-z0-9._-]{3,30}$/.test(loginId)) { err.textContent = "아이디는 영문 · 숫자 3~30자로 적어 주세요."; return; }
     if (norm(loginId) === "doogobiz" || norm(loginId) === "admin") { err.textContent = "마스터 아이디와 같은 아이디는 쓸 수 없어요."; return; }
     const staffL = Array.isArray(DB.data.staff) ? DB.data.staff : [], affL = Array.isArray(DB.data.affiliates) ? DB.data.affiliates : [];
-    if (mdList().some((x) => x.id !== id && norm(x.loginId) === norm(loginId)) || staffL.some((x) => x && norm(x.loginId) === norm(loginId)) || affL.some((x) => x && (norm(x.loginId) === norm(loginId) || norm(x.name) === norm(loginId)))) { err.textContent = "이미 쓰는 아이디예요 (운영자 · 파트너 · 온드미디어 아이디는 서로 달라야 해요)."; return; }
+    if (mdList().some((x) => x.id !== id && norm(x.loginId) === norm(loginId)) || staffL.some((x) => x && norm(x.loginId) === norm(loginId)) || affL.some((x) => x && (norm(x.loginId) === norm(loginId) || norm(x.name) === norm(loginId)))) { err.textContent = "이미 쓰는 아이디예요 (운영자 · 패밀리 · 온드미디어 아이디는 서로 달라야 해요)."; return; }
     if (!old && !pw) { err.textContent = "비밀번호를 정해 주세요."; return; }
     if (pw && (pw.length < 4 || pw.length > 40 || /\s/.test(pw))) { err.textContent = "비밀번호는 띄어쓰기 없이 4~40자로 적어 주세요."; return; }
     if (!v("channel") && !v("name")) { err.textContent = "YouTube 채널 이름을 적어 주세요."; return; }
@@ -8441,7 +8444,7 @@
     return { area: "center", master, offTrack, k0, r };
   }
   /** 화면 제목 (역할마다) */
-  const pageTitle = (area, master) => (area === "partner" ? "파트너센터 · 두잉고" : area === "media" ? "온드미디어 센터 · DOOGO CLASS" : (master ? "마스터" : isCoach() ? "코치센터" : "강사센터") + " · 두잉고");
+  const pageTitle = (area, master) => (area === "partner" ? "패밀리센터 · 두잉고" : area === "media" ? "온드미디어 센터 · DOOGO CLASS" : (master ? "마스터" : isCoach() ? "코치센터" : "강사센터") + " · 두잉고");
   function render() {
     // React 화면 틀에서는 예전 화면을 그리지 않고 React 에 다시 그리라고만 알려요 (팝업은 예전처럼 지금 닫아요)
     if (document.body.dataset.react) { closeModal(); if (window.ReactApp && window.ReactApp.redraw) window.ReactApp.redraw(); return; }
@@ -8539,22 +8542,22 @@
       case "aff-edit": affForm(affOf(d.id)); break;
       case "aff-del": {
         const p = affOf(d.id); if (!p) break;
-        // 정산(RS) 기록이 있는 파트너는 지우면 지급 내역이 사라지므로 ‘중지’만 — 기록이 없을 때만 지움
+        // 정산(RS) 기록이 있는 패밀리는 지우면 지급 내역이 사라지므로 ‘중지’만 — 기록이 없을 때만 지움
         const paid = Object.keys(AFF().affPayouts || {}).some((k) => k.indexOf(p.id + ":") === 0), rs = affMonths(p).some((g) => g.total > 0);
-        if (paid || rs) { confirmModal("파트너 삭제", esc(p.name) + " 파트너는 RS 정산 기록이 있어 지울 수 없어요.<br>더 이상 쓰지 않으면 ‘중지’해 주세요. 로그인이 막히고 기록은 그대로 남아요.", p.status === "active" ? "중지하기" : "닫기", false, () => { if (p.status === "active") { p.status = "stopped"; commit(p.name + " 파트너를 중지했어요."); } else closeModal(); }); break; }
-        confirmModal("파트너 삭제", esc(p.name) + " 파트너 계정을 지울까요?<br>바로 로그인할 수 없게 되고, 담당 강사 연결도 풀려요.", "삭제", true, () => { const L = affList(), i = L.findIndex((x) => x.id === p.id); if (i >= 0) L.splice(i, 1); commit(p.name + " 파트너를 지웠어요."); });
+        if (paid || rs) { confirmModal("패밀리 삭제", esc(p.name) + " 패밀리는 RS 정산 기록이 있어 지울 수 없어요.<br>더 이상 쓰지 않으면 ‘중지’해 주세요. 로그인이 막히고 기록은 그대로 남아요.", p.status === "active" ? "중지하기" : "닫기", false, () => { if (p.status === "active") { p.status = "stopped"; commit(p.name + " 패밀리를 중지했어요."); } else closeModal(); }); break; }
+        confirmModal("패밀리 삭제", esc(p.name) + " 패밀리 계정을 지울까요?<br>바로 로그인할 수 없게 되고, 담당 강사 연결도 풀려요.", "삭제", true, () => { const L = affList(), i = L.findIndex((x) => x.id === p.id); if (i >= 0) L.splice(i, 1); commit(p.name + " 패밀리를 지웠어요."); });
         break;
       }
-      case "aff-toggle": { const p = affOf(d.id); if (!p) break; const go = () => { p.status = p.status === "active" ? "stopped" : "active"; commit(p.name + (p.status === "active" ? " 파트너를 다시 활성화했어요." : " 파트너를 중지했어요.")); }; if (p.status === "active") confirmModal("파트너 중지", esc(p.name) + " 파트너를 중지할까요? 바로 로그인할 수 없게 되고, 이미 생긴 RS는 그대로 지급해요.", "중지", true, go); else go(); break; }
-      case "aff-pay": { const p = affOf(d.id); if (!p) break; const g = affMonths(p).find((x) => x.month === d.m); const nt = affNet(p, g ? g.total : 0); confirmModal("지급 완료 처리", esc(p.name) + " 파트너 · " + esc(d.m.slice(0, 4) + "년 " + Number(d.m.slice(5, 7)) + "월") + " 확정분<br>RS " + won(g ? g.total : 0) + (nt.tax ? " − 원천징수 3.3% " + won(nt.tax) : "") + " = <b>보낼 금액 " + won(nt.net) + "</b><br>보냈나요? 지급 완료로 기록하면 이 달 금액이 고정되고, 파트너센터에도 ‘지급 완료’로 보여요.", "지급 완료", false, () => { AFF().affPayouts[p.id + ":" + d.m] = { paidAt: todayStr(), by: "master", amount: g ? g.total : 0, net: nt.net, tax: nt.tax, rows: g ? g.rows.map((x) => ({ bid: x.b.id, rate: x.rate, amt: x.amt })) : [] }; commit("지급 완료로 기록했어요."); }); break; }
-      case "aff-unpay": { const p = affOf(d.id); if (!p) break; confirmModal("지급 완료 취소", esc(p.name) + " 파트너 " + esc(d.m) + " 지급 완료 기록을 취소할까요? (실제로 보내지 않았을 때)", "취소하기", true, () => { delete AFF().affPayouts[p.id + ":" + d.m]; commit("지급 완료 기록을 취소했어요."); }); break; }
+      case "aff-toggle": { const p = affOf(d.id); if (!p) break; const go = () => { p.status = p.status === "active" ? "stopped" : "active"; commit(p.name + (p.status === "active" ? " 패밀리를 다시 활성화했어요." : " 패밀리를 중지했어요.")); }; if (p.status === "active") confirmModal("패밀리 중지", esc(p.name) + " 패밀리를 중지할까요? 바로 로그인할 수 없게 되고, 이미 생긴 RS는 그대로 지급해요.", "중지", true, go); else go(); break; }
+      case "aff-pay": { const p = affOf(d.id); if (!p) break; const g = affMonths(p).find((x) => x.month === d.m); const nt = affNet(p, g ? g.total : 0); confirmModal("지급 완료 처리", esc(p.name) + " 패밀리 · " + esc(d.m.slice(0, 4) + "년 " + Number(d.m.slice(5, 7)) + "월") + " 확정분<br>RS " + won(g ? g.total : 0) + (nt.tax ? " − 원천징수 3.3% " + won(nt.tax) : "") + " = <b>보낼 금액 " + won(nt.net) + "</b><br>보냈나요? 지급 완료로 기록하면 이 달 금액이 고정되고, 패밀리센터에도 ‘지급 완료’로 보여요.", "지급 완료", false, () => { AFF().affPayouts[p.id + ":" + d.m] = { paidAt: todayStr(), by: "master", amount: g ? g.total : 0, net: nt.net, tax: nt.tax, rows: g ? g.rows.map((x) => ({ bid: x.b.id, rate: x.rate, amt: x.amt })) : [] }; commit("지급 완료로 기록했어요."); }); break; }
+      case "aff-unpay": { const p = affOf(d.id); if (!p) break; confirmModal("지급 완료 취소", esc(p.name) + " 패밀리 " + esc(d.m) + " 지급 완료 기록을 취소할까요? (실제로 보내지 않았을 때)", "취소하기", true, () => { delete AFF().affPayouts[p.id + ":" + d.m]; commit("지급 완료 기록을 취소했어요."); }); break; }
       case "aff-tab": ui.affTab = d.k; render(); break;
       case "aff-stmt": { const p = affMe(); if (p) affStatement(p, d.m); break; }
       case "stmt-print": { const el = document.querySelector(".a-modal-body") || document.querySelector(".a-modal"), tt = ((document.querySelector(".a-modal-head h2, .a-modal h2") || {}).textContent || "정산 명세서").trim(); if (window.DGFILE && el) window.DGFILE.pdfBtn(a, el, tt.replace(/[\\/:*?"<>|\s]+/g, "-") + ".pdf", { width: 760, title: tt }, (msg) => toast(msg)); break; }
       case "aff-qr-dl": { const box = document.getElementById("p-qr"); if (!box || !box.dataset.png) { toast("QR을 만드는 중이에요.", "warn"); break; } const l = document.createElement("a"); l.href = box.dataset.png; l.download = "doinggo-qr-" + ((affMe() || {}).code || "partner") + ".gif"; document.body.appendChild(l); l.click(); l.remove(); toast("QR 이미지를 저장했어요."); break; }
       case "an-new": affNoticeForm(); break;
       case "an-edit": affNoticeForm(AFFN().find((x) => x.id === d.id)); break;
-      case "an-del": { const list = AFFN(), i = list.findIndex((x) => x.id === d.id); if (i < 0) break; confirmModal("파트너 공지 삭제", "‘" + esc(list[i].title) + "’ 공지를 삭제할까요?", "삭제", true, () => { list.splice(i, 1); commit("파트너 공지를 삭제했어요."); }); break; }
+      case "an-del": { const list = AFFN(), i = list.findIndex((x) => x.id === d.id); if (i < 0) break; confirmModal("패밀리 공지 삭제", "‘" + esc(list[i].title) + "’ 공지를 삭제할까요?", "삭제", true, () => { list.splice(i, 1); commit("패밀리 공지를 삭제했어요."); }); break; }
       case "aff-copy": { const ok = () => toast(d.msg || "추천 링크를 복사했어요."), no = () => toast("복사하지 못했어요. 길게 눌러 복사해 주세요.", "warn"); if (navigator.clipboard) navigator.clipboard.writeText(d.v).then(ok, no); else no(); break; }
       case "p-inq-tab": ui.pInqTab = d.k; render(); break;
       case "bell-go": e.preventDefault(); if (masterInqAlerts().msg) ui.inqFilter = "msg"; ROUTE.hash = "#/center/master/partners"; render(); break;
@@ -8585,7 +8588,7 @@
         if (partner && (!me || !inqAff(x) || inqAff(x).id !== me.id)) break;
         (x.thread = x.thread || []).push({ by: partner ? "partner" : "master", name: partner ? me.name : "두잉고", text, at: Date.now() });
         if (partner) x.pSeen = Date.now(); else x.mSeen = Date.now();
-        if (!partner) actLog(x.name + " 님 문의 · " + (inqAff(x) ? inqAff(x).name + " 파트너에게" : "파트너에게") + " 메시지를 보냈어요.");
+        if (!partner) actLog(x.name + " 님 문의 · " + (inqAff(x) ? inqAff(x).name + " 패밀리에게" : "패밀리에게") + " 메시지를 보냈어요.");
         DB.saveInquiry(x);
         const box = document.querySelector('.kt[data-kt="' + x.id + '"]');
         if (!box) { render(); break; }
@@ -8646,7 +8649,7 @@
       case "bill-invoice": { const b = findBill(d.id); if (b) invoiceForm(b); break; }
       case "bill-open": { const b = findBill(d.id); if (b) openCohortForm(b); break; }
       case "bill-cancel": { const b = findBill(d.id); if (!b) break; confirmModal("신청 취소 처리", esc(insName(b.instructorId) + " " + b.cohortName) + " 신청을 취소로 바꿀까요?<br>매출 · 달력에서 빠지고, 필요하면 다시 되돌릴 수 있어요.", "취소 처리", true, () => { b.canceledAt = todayStr(); DB.saveBill(b); closeModal(); render(); toast("취소로 바꿨어요."); }); break; }
-      case "bill-refund": { const b = findBill(d.id); if (!b) break; confirmModal("이용료 환불", esc(insName(b.instructorId) + " " + b.cohortName) + " 이용료를 환불 처리할까요?<br>매출 · 파트너 RS에서 빠지고, 열린 기수는 그대로 남아요.", "환불 처리", true, () => { b.canceledAt = todayStr(); b.refundedAt = todayStr(); DB.saveBill(b); closeModal(); render(); toast("환불로 바꿨어요. 매출 · RS에서 빠져요."); }); break; }
+      case "bill-refund": { const b = findBill(d.id); if (!b) break; confirmModal("이용료 환불", esc(insName(b.instructorId) + " " + b.cohortName) + " 이용료를 환불 처리할까요?<br>매출 · 패밀리 RS에서 빠지고, 열린 기수는 그대로 남아요.", "환불 처리", true, () => { b.canceledAt = todayStr(); b.refundedAt = todayStr(); DB.saveBill(b); closeModal(); render(); toast("환불로 바꿨어요. 매출 · RS에서 빠져요."); }); break; }
       case "pw-peek": { const on = a.textContent === "••••"; a.textContent = on ? a.dataset.pw : "••••"; break; }
       case "bill-uncancel": { const b = findBill(d.id); if (!b) break; delete b.canceledAt; DB.saveBill(b); render(); toast("취소를 되돌렸어요."); break; }
       case "bill-del": { const b = findBill(d.id); if (!b) break; confirmModal("이용료 기록 삭제", esc(insName(b.instructorId) + " " + (b.cohortName || "")) + " 기록을 완전히 지울까요?<br>열린 기수는 그대로 남아요. 되돌릴 수 없어요.", "삭제", true, () => { DB.removeBill(b.id); closeModal(); render(); toast("기록을 지웠어요."); }); break; }
@@ -9029,7 +9032,7 @@
     else if (t.matches && t.matches("[data-split-sel]")) dgSplit(t.value);
     else if (t.dataset && t.dataset.logWho) { ui.logWho = t.value; (ui.pg = ui.pg || {}).log = 1; render(); }
     else if (t.dataset && t.dataset.stRole) { const p = (STAFF_ROLES[t.value] || {}).perms || []; if (t.value !== "custom") t.form.querySelectorAll('input[name="perm"]').forEach((c) => { c.checked = p.indexOf(c.value) >= 0; }); }
-    else if (t.dataset && t.dataset.inqAff) { const x = findInq(t.dataset.inqAff); if (x) { x.affId = t.value; DB.saveInquiry(x); render(); toast(t.value === "none" ? "소개 파트너를 지웠어요." : "소개 파트너를 지정했어요."); } }
+    else if (t.dataset && t.dataset.inqAff) { const x = findInq(t.dataset.inqAff); if (x) { x.affId = t.value; DB.saveInquiry(x); render(); toast(t.value === "none" ? "소개 패밀리를 지웠어요." : "소개 패밀리를 지정했어요."); } }
     else if (t.id === "brand-photo-file") { const f = t.files && t.files[0]; t.value = ""; if (f) brandPhotoCompress(f, setBrandPhoto); }
     else if (t.dataset && t.dataset.lpImg) { const f = t.files && t.files[0]; const path = t.dataset.lpImg; t.value = ""; if (f) lpCompress(f, (data) => { lpSet(lpDraft(), path, data); ui.lpDirty = true; render(); }); }
     else if (t.dataset && t.dataset.lpRadio) { lpSet(lpDraft(), t.dataset.lpRadio, t.value); lpChanged(); }

@@ -1,6 +1,6 @@
-/* 파트너센터 · 온드미디어 센터 React 화면 (Next.js 전환 6단계) — 마스터가 화면에서 파트너 · 온드미디어 계정을 만들고,
+/* 패밀리센터 · 온드미디어 센터 React 화면 (Next.js 전환 6단계) — 마스터가 화면에서 패밀리 · 온드미디어 계정을 만들고,
  * 그 계정으로 로그인해 예전 화면(쿠키 dc_next=off)과 React 화면(all)의 #root 구조가 똑같은지 (PC · 휴대폰) + 탭 · 고르기 · 찾기
- *  · 파트너는 ‘강사 추천하기’로 입점 문의를 하나 남겨 문의 카드 · 진행 칸 · 1:1 대화까지 비교
+ *  · 패밀리는 ‘강사 추천하기’로 입점 문의를 하나 남겨 문의 카드 · 진행 칸 · 1:1 대화까지 비교
  *  · Next.js 서버(E2E_SERVER=next)에서만 */
 "use strict";
 const FL = require("./_flows.js");
@@ -21,16 +21,16 @@ async function shapes(page, base, L, list) {
   return { bad, lines };
 }
 module.exports = {
-  title: "파트너센터 · 온드미디어 센터 React 화면 · 예전 화면과 같은 모양",
+  title: "패밀리센터 · 온드미디어 센터 React 화면 · 예전 화면과 같은 모양",
   async run({ base, info, browser, run, L }) {
     if (process.env.E2E_SERVER !== "next" && !process.env.E2E_BASE) { console.log("  (Next.js 서버에서만 — E2E_SERVER=next)"); return; }
     {
       const page = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
-      run.watch(page, "파트너 · 온드미디어 계정 만들기");
+      run.watch(page, "패밀리 · 온드미디어 계정 만들기");
       await FL.master(page, base, info); await L.reactCookie(page, base, "off");
       await L.open(page, base, "/center/master/rs");
       await page.click('[data-action="aff-new"]'); await page.waitForTimeout(300);
-      await page.fill("#af-name", "시험파트너"); await page.fill("#af-phone", "010-1234-5678"); await page.fill("#af-loginId", "e2epartner"); await page.fill("#af-pw", "e2epw1234"); await page.fill("#af-code", "E2EPT");
+      await page.fill("#af-name", "시험패밀리"); await page.fill("#af-phone", "010-1234-5678"); await page.fill("#af-loginId", "e2epartner"); await page.fill("#af-pw", "e2epw1234"); await page.fill("#af-code", "E2EPT");
       { const c = await page.$('#aff-form input[name="ins"]'); if (c) await c.check(); }
       await page.click('#modal-root button[type="submit"][form="aff-form"]'); await page.waitForTimeout(700);
       await L.open(page, base, "/center/master/vod-media");
@@ -43,12 +43,12 @@ module.exports = {
       const PT = ["/center/partner", "/center/partner/inquiries", "/center/partner/refer", "/center/partner/kit", "/center/partner/guide", "/center/partner/instructors", "/center/partner/earnings", "/center/partner/payouts", "/center/partner/settings", "/center/partner/notices"];
       const MD = ["/center/media", "/center/media/links", "/center/media/calendar", "/center/media/orders", "/center/media/payouts", "/center/media/guide", "/center/media/settings"];
       let refDone = false;
-      for (const who of [["e2epartner", PT, "파트너센터"], ["e2emedia", MD, "온드미디어 센터"]]) {
+      for (const who of [["e2epartner", PT, "패밀리센터"], ["e2emedia", MD, "온드미디어 센터"]]) {
         for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
           const pg = await L.newPage(browser, { viewport: vp });
           run.watch(pg, who[2] + " 모양 " + vp.width);
           await FL.adminLogin(pg, base, "master", who[0], "e2epw1234");
-          // 파트너: 한 번만 강사 추천하기로 입점 문의 하나 남겨서 문의 카드 · 진행 칸 · 1:1 대화까지 비교
+          // 패밀리: 한 번만 강사 추천하기로 입점 문의 하나 남겨서 문의 카드 · 진행 칸 · 1:1 대화까지 비교
           if (who[0] === "e2epartner" && !refDone) {
             await L.reactCookie(pg, base, "off"); await L.open(pg, base, "/center/partner/refer");
             await pg.fill("#pl-name", "시험강사"); await pg.fill("#pl-phone", "010-9876-5432"); await pg.fill("#pl-course", "부업 시작 4주 과정 · 직장인 대상");

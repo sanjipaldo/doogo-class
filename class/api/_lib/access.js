@@ -234,7 +234,8 @@ function fixPartnerMeta(o, n, pid) {
   const out = clone(o), mine = (out.affiliates || []).find((x) => x && x.id === pid), sent = n && Array.isArray(n.affiliates) ? n.affiliates.find((x) => x && x.id === pid) : null;
   if (!mine || !sent) return out;
   AFF_SELF.forEach((k) => { if (sent[k] !== undefined) mine[k] = typeof sent[k] === "string" ? sent[k].slice(0, 60) : sent[k]; });
-  if (typeof sent.pw === "string" && sent.pw !== mine.pw && sent.pw.length >= 4 && sent.pw.length <= 40 && !/\s/.test(sent.pw)) { mine.pw = sent.pw; mine.pwChangedAt = Date.now(); }
+  // 체험 영업 패밀리(_lib/familydemo.js)는 비밀번호를 바꿀 수 없어요
+  if (mine.demo !== true && typeof sent.pw === "string" && sent.pw !== mine.pw && sent.pw.length >= 4 && sent.pw.length <= 40 && !/\s/.test(sent.pw)) { mine.pw = sent.pw; mine.pwChangedAt = Date.now(); }
   return out;
 }
 const INQ_IN = ["name", "phone", "email", "where", "course", "link"];

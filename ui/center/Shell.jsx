@@ -1,5 +1,5 @@
 "use client";
-/* 강사센터 · 코치센터 · 마스터 · 파트너센터 · 온드미디어 센터 틀 (예전 admin.js renderShell0 을 React 로 — Next.js 전환 6단계)
+/* 강사센터 · 코치센터 · 마스터 · 패밀리센터 · 온드미디어 센터 틀 (예전 admin.js renderShell0 을 React 로 — Next.js 전환 6단계)
  *  · 머리띠(로고 · 미리보기 · 알림 · 계정 · 로그아웃) · 왼쪽 메뉴(관리 영역 탭 · 메뉴 묶음 · 안내 카드) · 휴대폰 아래 메뉴 · 본문
  *  · 메뉴 열기/닫기 · 탭 · 로그아웃 · 미리보기 같은 버튼은 예전 admin.js 이벤트가 받아요 (data-action) */
 import Icon from "../lib/Icon.jsx";
@@ -10,7 +10,7 @@ function Bell({ partner, master, PM }) {
   const A = ADM();
   let n = 0, href = "", tip = "";
   if (partner) { const ni = A.affInqNew(PM), nn = A.affNoticeNew(PM); n = ni + nn; href = ni || !nn ? "#/center/partner/inquiries" : "#/center/partner/notices"; tip = n ? "입점 문의 새 소식 " + ni + "건 · 새 공지 " + nn + "건" : "새 알림이 없어요"; }
-  else if (master && A.staffCan("master/partners")) { const a = A.masterInqAlerts(); n = a.inq + a.msg; href = "#/center/master/partners"; tip = n ? "파트너 새 메시지 " + a.msg + "건 · 새 입점 문의 " + a.inq + "건" : "새 알림이 없어요"; }
+  else if (master && A.staffCan("master/partners")) { const a = A.masterInqAlerts(); n = a.inq + a.msg; href = "#/center/master/partners"; tip = n ? "패밀리 새 메시지 " + a.msg + "건 · 새 입점 문의 " + a.inq + "건" : "새 알림이 없어요"; }
   if (!href) return null;
   return <a className={"a-bell" + (n ? " on" : "")} href={href} title={tip} aria-label={"알림: " + tip} data-action={master && n ? "bell-go" : undefined}><Icon n="bell" c="sm" />{n ? <b>{n > 99 ? "99+" : n}</b> : null}</a>;
 }
@@ -24,14 +24,14 @@ export default function Shell({ r, children, pageHtml }) {
   if (ins && vod && A.VPID()) DB.vodEnsure(ins.id, A.VPID());
   const co = ins ? DB.currentCohort(ins.id) : null, many = ins && coach && A.myCoachCourses().length > 1;
   const st = A.staffMe();
-  const u = partner ? [PM.name, "파트너", "handshake", "pt"] : media ? [A.mdName(MDM), "온드미디어 · RS " + A.mdRate(MDM) + "%", "monitorPlay", "pt"] : S.role === "master" ? (st ? [st.name, A.staffRoleName(st) + " · 운영자", "shieldCheck", "ms st"] : ["ADMIN", master ? "마스터 관리자" : "마스터 · 대신 보기", "shieldCheck", "ms"]) : coach ? [(A.ME_COACH() || {}).name || "코치", "코치", "checks", "co"] : [ins.name, "강사", "user", "in"];
+  const u = partner ? [PM.name, "영업 패밀리", "handshake", "pt"] : media ? [A.mdName(MDM), "온드미디어 · RS " + A.mdRate(MDM) + "%", "monitorPlay", "pt"] : S.role === "master" ? (st ? [st.name, A.staffRoleName(st) + " · 운영자", "shieldCheck", "ms st"] : ["ADMIN", master ? "마스터 관리자" : "마스터 · 대신 보기", "shieldCheck", "ms"]) : coach ? [(A.ME_COACH() || {}).name || "코치", "코치", "checks", "co"] : [ins.name, "강사", "user", "in"];
   const tOth = (vod ? [["#/center", "grid", "대시보드"], ["#/center/vod-students", "users", "VOD 수강생"], ["#/center/vod", "monitorPlay", "판매"], ["#/center/coaching", "message", "코칭"]] : [["#/center", "grid", "대시보드"], ["#/center/students", "users", "수강생"], ["#/center/reviews", "checks", "과제 검수"], ["#/center/questions", "message", "1:1"]]).filter((x) => { const k = x[0].replace(/^#\/center\/?/, ""); return !k || A.can(k); }).filter((x) => x[0] !== "#/center"), tHalf = Math.floor(tOth.length / 2), tabA = (x) => <a key={x[0]} className="bw-tab" href={x[0]}><Icon n={x[1]} /><span>{x[2]}</span></a>; // 휴대폰 아래 탭: 전체(메뉴) 왼쪽 · 가운데 동그란 홈(대시보드)
   return (
     <div className="adm a-app" id="a-app">
       {S.role === "master" && S.actingAs ? <div className="a-acting"><Icon n="shieldCheck" c="sm" /><span>마스터 권한으로 <b>{ins.name}</b> 강사센터를 보고 있어요.</span><Btn action="stop-acting" cls="a-btn-light a-btn-sm">마스터로 돌아가기</Btn></div> : null}
       <header className={"a-top" + (many ? " has-csw" : "")}>
         <button className="a-icon-btn a-menu" type="button" data-action="toggle-nav" aria-label="메뉴"><Icon n="menu" /></button>
-        <span className="a-logo"><a className={"a-logo-home" + (dcL ? " a-logo-dc" : "")} href={A.homeOf(groups)} title="대시보드로" aria-label="대시보드로">{dcL ? <img className="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" /> : <RawOne html={window.doogoClassLock("hm-lock-xs")} />}</a><a className="a-logo-role" href={"#/center" + (partner ? "/partner" : media ? "/media" : master ? "/master" : "")}>{partner ? "파트너센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : coach ? "코치센터" : "강사센터"}</a>
+        <span className="a-logo"><a className={"a-logo-home" + (dcL ? " a-logo-dc" : "")} href={A.homeOf(groups)} title="대시보드로" aria-label="대시보드로">{dcL ? <img className="a-dc-word" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" /> : <RawOne html={window.doogoClassLock("hm-lock-xs")} />}</a><a className="a-logo-role" href={"#/center" + (partner ? "/partner" : media ? "/media" : master ? "/master" : "")}>{partner ? "패밀리센터" : media ? "온드미디어 센터" : master ? "마스터 관리자" : coach ? "코치센터" : "강사센터"}</a>
           {ins ? (many ? <button type="button" className="a-coach-sw" data-action="coach-switch" title="맡은 다른 강의로 옮기기"><Icon n="swap" c="xs" /><span>{ins.displayName}</span><Icon n="chevDown" c="xs" /></button> : <em className="a-hide-sm">{ins.displayName}</em>) : null}{A.coachCourse() ? <span className="a-top-course a-hide-sm" title={A.coachCourse()}>{A.coachCourse()}</span> : null}</span>
         <div className="a-top-right">
           {ins ? <><span className={"a-chip a-hide-sm" + (vod ? " a-chip-vod" : "")}>{vod ? "DOOGO CLASS · VOD 수강생 " + A.VX().buyersOf(ins.id).filter((b) => b.active).length + "명" : co ? co.name + " · " + DB.STATUS_LABEL[DB.cohortStatus(co)] : "기수 없음"}</span>

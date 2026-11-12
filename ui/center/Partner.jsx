@@ -1,5 +1,5 @@
 "use client";
-/* 파트너센터 (영업 파트너 RS) — #/center/partner/…
+/* 패밀리센터 (영업 패밀리 RS) — #/center/partner/…
  * 예전 admin.js pagePartnerHome · Inquiries · Instructors · Earnings · Payouts · Settings · Refer · Kit · Notices · Guide 를 React 로 (Next.js 전환 6단계)
  *  · 복사 · 탭 · 정산서 · 추천 보내기 · 비밀번호 · 계좌 저장은 예전 admin.js 이벤트가 그대로 받아요
  *  · 입점 문의 · 공지를 열면 예전처럼 잠시 뒤 읽음으로 — 왼쪽 메뉴 숫자는 React 가 다시 그려서 빼요 (‘N’ 표시는 이 화면을 연 동안 그대로)
@@ -41,11 +41,11 @@ export function PartnerHome() {
   const nt = A.affNoticeList()[0], ntNew = nt && nt.at > (p.noticeSeen || 0), ref = A.refUrl(p);
   const perIns = (p.instructors || []).some((l) => l.rs !== null && l.rs !== undefined && l.rs !== "");
   return <>
-    <Head title="파트너센터" sub={p.name + " 파트너님, 소개해 주신 강사님의 기수가 열릴 때마다 수익이 쌓여요."} />
+    <Head title="패밀리센터" sub={p.name + " 패밀리님, 소개해 주신 강사님의 기수가 열릴 때마다 수익이 쌓여요."} />
     {nt ? <a className={"p-notice-bar" + (ntNew ? " new" : "")} href="#/center/partner/notices"><span className="p-notice-ic"><Icon n="megaphone" c="sm" /></span>{ntNew ? <i className="p-new">N</i> : null}<b>{nt.title}</b><time>{ffAt(nt.at)}</time><Icon n="chevRight" c="sm" /></a> : null}
-    <section className="p-hero"><span className="p-3d" aria-hidden="true"><i className="c1">%</i><i className="c2">₩</i><i className="c3" /><i className="ring" /></span><div className="p-hero-l"><span className="p-hero-k"><Icon n="handshake" c="sm" />DOINGGO PARTNERS</span>
-        <h2>내 RS <b>{myRs}%</b></h2><p>소개한 강사님이 두잉고에 기수 이용료를 입금하면, <b>공급가액(부가세 제외)의 {myRs}%</b>가 파트너님 수익이에요.{perIns ? " (강사님별로 다른 RS가 정해진 경우 그 비율로 계산돼요)" : ""}</p></div>
-      <div className="p-hero-r"><small>내 추천 링크</small><div className="p-ref"><code>{ref}</code><Copy v={ref} label="복사" cls="a-btn-light a-btn-sm" /></div><span>추천 코드 <b>{p.code || p.loginId}</b> · 이 링크로 들어온 입점 문의는 파트너님 소개로 기록돼요.</span></div></section>
+    <section className="p-hero"><span className="p-3d" aria-hidden="true"><i className="c1">%</i><i className="c2">₩</i><i className="c3" /><i className="ring" /></span><div className="p-hero-l"><span className="p-hero-k"><Icon n="handshake" c="sm" />DOOGO FAMILY</span>
+        <h2>내 RS <b>{myRs}%</b></h2><p>소개한 강사님이 두잉고에 기수 이용료를 입금하면, <b>공급가액(부가세 제외)의 {myRs}%</b>가 패밀리님 수익이에요.{perIns ? " (강사님별로 다른 RS가 정해진 경우 그 비율로 계산돼요)" : ""}</p></div>
+      <div className="p-hero-r"><small>내 추천 링크</small><div className="p-ref"><code>{ref}</code><Copy v={ref} label="복사" cls="a-btn-light a-btn-sm" /></div><span>추천 코드 <b>{p.code || p.loginId}</b> · 이 링크로 들어온 입점 문의는 패밀리님 소개로 기록돼요.</span></div></section>
     <div className="a-kpis">
       <Kpi label="다음 지급 예정" value={won(s.nextAmt)} sub={s.nextDate ? ff(s.nextDate) + " 지급 · " + A.dLeft(s.nextDate) : "예정된 지급이 없어요"} href="#/center/partner/payouts" tone={s.nextAmt ? "ok" : ""} />
       <Kpi label="이번 달 확정 수익" value={won(s.thisMonth)} sub={today.slice(5, 7).replace(/^0/, "") + "월 입금 확인분"} href="#/center/partner/earnings" />
@@ -100,7 +100,7 @@ export function PartnerInstructors() {
   const A = ADM(), DB = DBX(), won = A.won, p = A.affMe(), rows = A.affRows(p);
   const St = ({ iid }) => { const bs = DB.bills(iid).filter((b) => !b.canceledAt); return bs.some((b) => b.cohortId) ? <Pill cls="ok">기수 운영 중</Pill> : bs.length ? <Pill cls="info">기수 신청 중</Pill> : <Pill cls="mute">입점 준비</Pill>; };
   return <>
-    <Head title="내 강사" sub="파트너님이 소개해서 두잉고에 입점한 강사님이에요. 강사님이 기수를 열 때마다 RS 수익이 생겨요." />
+    <Head title="내 강사" sub="패밀리님이 소개해서 두잉고에 입점한 강사님이에요. 강사님이 기수를 열 때마다 RS 수익이 생겨요." />
     <section className="a-card">{(p.instructors || []).length ? <div className="a-table-wrap"><table className="a-table"><thead><tr><th>강사</th><th>연결일</th><th className="num">RS</th><th className="num">입금된 기수</th><th className="num">누적 이용료 (공급가액)</th><th className="num">내 누적 수익</th><th className="num">입금 대기 예상</th><th>상태</th></tr></thead><tbody>{p.instructors.map((l) => {
       const r = rows.filter((x) => x.b.instructorId === l.iid), paid = r.filter((x) => x.month);
       return <tr key={l.iid}><td><Isl html={A.affInsCell(l.iid)} /></td><td>{l.since ? ff(l.since) : "-"}</td><td className="num">{A.affRate(p, l.iid)}%</td><td className="num">{paid.length}개</td><td className="num">{won(paid.reduce((a, x) => a + x.m.supply, 0))}</td><td className="num"><b className="p-amt">{won(paid.reduce((a, x) => a + x.amt, 0))}</b></td><td className="num">{won(r.filter((x) => !x.month).reduce((a, x) => a + x.amt, 0))}</td><td><St iid={l.iid} /></td></tr>; })}</tbody></table></div>
@@ -163,7 +163,7 @@ export function PartnerRefer({ n }) {
   const A = ADM(), DB = DBX(), p = A.affMe(), mine = A.affInqs(p).filter((q) => q.byPartner);
   const F = ({ id, label, req, ...rest }) => <div className="a-field"><label htmlFor={"pl-" + id}>{label}{req ? <> <b className="p-req">*</b></> : null}</label><input className="a-input" id={"pl-" + id} name={id} {...rest} /></div>;
   return <>
-    <Head title="강사 추천하기" sub="추천 링크를 보내기 어려운 강사님은 여기에 직접 남겨 주세요. 파트너님 소개로 바로 기록되고, 두잉고 담당자가 연락드려요." />
+    <Head title="강사 추천하기" sub="추천 링크를 보내기 어려운 강사님은 여기에 직접 남겨 주세요. 패밀리님 소개로 바로 기록되고, 두잉고 담당자가 연락드려요." />
     <div className="p-grid p-grid-r">
       <section className="a-card"><div className="a-card-head"><h2>강사님 정보</h2></div><form key={n} id="aff-lead-form" className="a-form" noValidate>
         <div className="a-form-row"><F id="name" label="강사님 성함" maxLength={30} placeholder="예: 김민지" req /><F id="phone" label="연락처" inputMode="tel" maxLength={20} placeholder="010-0000-0000" req /></div>
@@ -174,7 +174,7 @@ export function PartnerRefer({ n }) {
         <label className="a-check p-consent"><input type="checkbox" name="agree" /><span>강사님께 두잉고에 연락처를 전달하는 것에 대해 <b>동의를 받았어요</b> (필수)</span></label>
         <p className="a-error" id="pl-error"></p><button className="a-btn a-btn-primary" type="submit"><Icon n="send" c="sm" />추천 보내기</button></form></section>
       <div className="a-stack">
-        <section className="a-card"><div className="a-card-head"><h2>추천하면 이렇게 진행돼요</h2></div><Steps v list={[["send", "추천 접수", "파트너님 소개로 바로 기록"], ["headset", "두잉고 상담", "담당자가 강사님께 연락"], ["check", "계약 완료", "‘입점 문의’에 진행 상황 표시"], ["coins", "RS 수익", "기수 이용료 입금 시 확정"]]} /></section>
+        <section className="a-card"><div className="a-card-head"><h2>추천하면 이렇게 진행돼요</h2></div><Steps v list={[["send", "추천 접수", "패밀리님 소개로 바로 기록"], ["headset", "두잉고 상담", "담당자가 강사님께 연락"], ["check", "계약 완료", "‘입점 문의’에 진행 상황 표시"], ["coins", "RS 수익", "기수 이용료 입금 시 확정"]]} /></section>
         <section className="a-card"><div className="a-card-head"><h2>내가 직접 추천한 강사님</h2><a className="a-link" href="#/center/partner/inquiries">입점 문의 <Icon n="arrowRight" c="xs" /></a></div>
           {mine.length ? <ul className="p-inq-mini">{mine.slice(0, 5).map((q) => { const st = A.inqStatus(q); return <li key={q.id}><span className="a-avatar">{(q.name || "?").slice(0, 1)}</span><b>{q.name}</b><small>{DB.date.fmtStamp(q.at)}</small><Pill cls={st[2]}>{st[1]}</Pill></li>; })}</ul> : <Empty ic="userPlus">아직 직접 추천한 강사님이 없어요.</Empty>}</section>
       </div>
@@ -187,7 +187,7 @@ export function PartnerKit() {
   const A = ADM(), p = A.affMe(), url = A.refUrl(p), T = A.affKitT(p, url);
   useEffect(() => { A.drawAffQr(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <>
-    <Head title="홍보 자료" sub="강사님께 두잉고를 소개할 때 쓰는 자료예요. 아래 링크 · QR · 문구로 들어온 입점 문의는 모두 파트너님 소개로 기록돼요." />
+    <Head title="홍보 자료" sub="강사님께 두잉고를 소개할 때 쓰는 자료예요. 아래 링크 · QR · 문구로 들어온 입점 문의는 모두 패밀리님 소개로 기록돼요." />
     <div className="p-grid p-grid-r">
       <section className="a-card p-kit-link"><div className="a-card-head"><h2>내 추천 링크 · QR</h2></div>
         <div className="p-kit-qr"><Isl html={'<div id="p-qr" class="p-qr" aria-label="추천 링크 QR 코드"></div>'} /><div className="p-kit-qr-r"><small>추천 코드</small><b>{p.code || p.loginId}</b><div className="p-ref p-ref-light"><code>{url}</code><Copy v={url} label="복사" cls="a-btn-dark a-btn-sm" /></div>
@@ -202,7 +202,7 @@ export function PartnerKit() {
         <a className="p-asset" href="assets/home/og-doinggo.jpg" download="doinggo-banner.jpg"><img src="assets/home/og-doinggo.jpg" alt="두잉고 소개 배너" /><span><Icon n="download" c="xs" />소개 배너 (1200×630)</span></a>
         <a className="p-asset p-asset-logo" href="assets/brand/doinggo-en.svg" download="doinggo-logo.svg"><img src="assets/brand/doinggo-en.svg" alt="doinggo 로고" /><span><Icon n="download" c="xs" />doinggo 로고 (SVG)</span></a></div></section>
       <section className="a-card"><div className="a-card-head"><h2>홍보할 때 지켜 주세요</h2></div><ul className="p-rules">
-        {["‘무조건 수익 보장’ · ‘누구나 월 1,000만 원’ 같은 과장된 표현은 쓰지 않아요", "두잉고 직원 · 공식 대리점처럼 소개하지 않아요 (‘두잉고 파트너’로 소개해 주세요)", "강사님 연락처는 본인 동의를 받은 뒤에만 남겨 주세요", "이용료 · 계약 조건은 두잉고 담당자가 직접 안내해요"].map((x, i) => <li key={i}><Icon n="check" c="xs" />{x}</li>)}</ul></section>
+        {["‘무조건 수익 보장’ · ‘누구나 월 1,000만 원’ 같은 과장된 표현은 쓰지 않아요", "두잉고 직원 · 공식 대리점처럼 소개하지 않아요 (‘두고 패밀리’로 소개해 주세요)", "강사님 연락처는 본인 동의를 받은 뒤에만 남겨 주세요", "이용료 · 계약 조건은 두잉고 담당자가 직접 안내해요"].map((x, i) => <li key={i}><Icon n="check" c="xs" />{x}</li>)}</ul></section>
     </div>
   </>;
 }
@@ -216,7 +216,7 @@ export function PartnerNotices() {
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <>
-    <Head title="공지사항" sub="두잉고가 파트너님께 알려 드리는 소식이에요. 지급 일정 · 정책 변경 · 새 기능을 여기서 알려 드려요." />
+    <Head title="공지사항" sub="두잉고가 패밀리님께 알려 드리는 소식이에요. 지급 일정 · 정책 변경 · 새 기능을 여기서 알려 드려요." />
     <section className="a-card">{list.length ? <ul className="p-notices">{list.map((x) => <li key={x.id} className={x.pinned ? "pin" : ""}><details open={x.at > seen || x.pinned || undefined}><summary>{x.pinned ? <span className="a-pill dark">고정</span> : null}{x.at > seen ? <i className="p-new">N</i> : null}<b>{x.title}</b><time>{ffAt(x.at)}</time><Icon n="chevDown" c="sm" /></summary><p>{x.body}</p></details></li>)}</ul>
       : <Empty ic="megaphone">아직 공지가 없어요.</Empty>}</section>
   </>;
@@ -226,11 +226,11 @@ export function PartnerGuide() {
   const A = ADM(), won = A.won, p = A.affMe(), set = A.AFF().affSettings, rs = myRsOf(p);
   const fee = 990000, supply = Math.round(fee / 1.1), amt = Math.round(supply * rs / 100), nn = A.affNet(p, amt);
   return <>
-    <Head title="파트너 가이드" sub="RS가 어떻게 계산되고 언제 지급되는지, 자주 묻는 질문을 모았어요." />
+    <Head title="패밀리 가이드" sub="RS가 어떻게 계산되고 언제 지급되는지, 자주 묻는 질문을 모았어요." />
     <div className="p-grid">
       <section className="a-card"><div className="a-card-head"><h2>RS 계산 예시</h2><span className="a-muted">내 RS {rs}% 기준</span></div>
         <div className="p-calc"><div><small>강사님 1인 수강료 (= 기수 이용료)</small><b>{won(fee)}</b></div><span>→</span><div><small>공급가액 (부가세 제외)</small><b>{won(supply)}</b></div><span>× {rs}%</span><div className="hl"><small>내 RS 수익</small><b>{won(amt)}</b></div></div>
-        {A.affTaxKey(p) === "personal" ? <p className="a-muted p-small">개인 파트너는 3.3% ({won(nn.tax)})를 떼고 <b>{won(nn.net)}</b>이 지급돼요.</p> : <p className="a-muted p-small">사업자 파트너는 세금계산서 발행 후 {won(amt)}이 지급돼요.</p>}</section>
+        {A.affTaxKey(p) === "personal" ? <p className="a-muted p-small">개인 패밀리는 3.3% ({won(nn.tax)})를 떼고 <b>{won(nn.net)}</b>이 지급돼요.</p> : <p className="a-muted p-small">사업자 패밀리는 세금계산서 발행 후 {won(amt)}이 지급돼요.</p>}</section>
       <section className="a-card"><div className="a-card-head"><h2>지급 일정</h2></div><Steps v list={[["calendar", "매월 1일 ~ 말일", "강사님 이용료 입금 확인분을 모아요"], ["file", "다음 달 초", "정산서가 ‘정산 · 지급’에 올라와요"], ["coins", "다음 달 " + set.payDay + "일", "등록한 계좌로 지급 (주말 · 공휴일이면 다음 영업일)"]]} /></section>
     </div>
     <section className="a-card"><div className="a-card-head"><h2>자주 묻는 질문</h2></div><div className="p-faq">{A.AFF_FAQ.map((x, i) => <details key={i}><summary><b>{x[0]}</b><Icon n="chevDown" c="sm" /></summary><p>{x[1]}</p></details>)}</div></section>

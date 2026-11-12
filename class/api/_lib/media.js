@@ -33,7 +33,8 @@ function attach(meta, p, item, raw, now) {
   const code = codeOf(raw.c), at = Number(raw.at) || 0, R = rules(meta), t = now || Date.now();
   if (!code || (raw.p && String(raw.p) !== String(p.id))) return null;
   if (!(at > 0 && at <= t + 6e4 && t - at <= R.days * 864e5)) return null;
-  const acc = ((meta && meta.media) || []).find((x) => x && x.status === "active" && codeOf(x.code) === code);
+  // 체험 온드미디어(demo · _lib/familydemo.js)의 링크로 산 주문에는 RS 를 붙이지 않아요
+  const acc = ((meta && meta.media) || []).find((x) => x && x.status === "active" && x.demo !== true && codeOf(x.code) === code);
   if (!acc) return null;
   return { mid: acc.id, code: codeOf(acc.code), ch: String(acc.channel || acc.name || "").slice(0, 60), rate: rateOf(acc, R), pg: R.pg, at: Math.min(at, t) };
 }
@@ -95,7 +96,8 @@ function fixSelf(o, n, id) {
   });
   if (sent.type === "person" || sent.type === "biz") mine.type = sent.type;
   if ([mine.bank, mine.account, mine.holder].join("|") !== bank0) mine.bankAt = Date.now();
-  if (pwOk(sent.pw)) { mine.pwHash = hashOf(sent.pw); mine.pwAt = Date.now(); }
+  // 체험 온드미디어(_lib/familydemo.js)는 비밀번호를 바꿀 수 없어요
+  if (mine.demo !== true && pwOk(sent.pw)) { mine.pwHash = hashOf(sent.pw); mine.pwAt = Date.now(); }
   return out;
 }
 

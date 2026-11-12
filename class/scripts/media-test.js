@@ -240,6 +240,65 @@ const metaNow = async () => ((await store.getDoc("meta")) || {}).v || {};
   ok(a1.bank === "국민은행" && a1.account === "111" && a1.holder === "첫", "첫 파트너는 그대로", a1);
   ok(mt.media.length === 4 && mt.media.every((x) => x.pwHash), "온드미디어 계정도 그대로", mt.media.length);
 
+  console.log("12) 패밀리 체험 계정 (영업 패밀리 partner · 온드미디어 owned) — 로그인 · 로그아웃 때 처음 상태로");
+  {
+    const FD = require(path.join(TMP, "class/api/_lib/familydemo.js"));
+    let row = await store.getDoc("meta");
+    const op2 = O.familyDemo(() => JSON.parse(JSON.stringify(row.v)));
+    ok(op2.writes.meta && /^만듦/.test(op2.result.partner) && /^만듦/.test(op2.result.media), "일회성 작업: 두 체험 계정을 만듦", op2.result);
+    await store.writeDoc("meta", op2.writes.meta, row.ver);
+    row = await store.getDoc("meta");
+    ok(!Object.keys(O.familyDemo(() => JSON.parse(JSON.stringify(row.v))).writes).length, "다시 돌려도 그대로");
+    ok(!Object.keys(O.familyDemo(() => ({ staff: [{ id: "s", loginId: "Partner" }], affiliates: [], media: [{ id: "m", loginId: "OWNED" }] })).writes).length, "아이디가 다른 계정과 겹치면 만들지 않음");
+    const md0 = row.v.media.find((x) => x.id === FD.MD_ID), af0 = row.v.affiliates.find((x) => x.id === FD.AFF_ID);
+    ok(md0 && md0.pwHash && !("pw" in md0) && md0.demo === true && md0.loginId === "owned", "온드미디어 체험 계정: owned · 비밀번호는 해시로만", md0 && Object.keys(md0));
+    ok(af0 && af0.loginId === "partner" && af0.demo === true && !(af0.instructors || []).length, "영업 패밀리 체험 계정: partner · 담당 강사 없음", af0);
+    // 영업 패밀리: 설정 · 강사 추천 → 로그아웃하면 처음으로 (비밀번호는 못 바꿈)
+    const FP = client();
+    r = await FP.call("auth", { body: { action: "admin", tab: "master", id: "partner", pw: "partner" } });
+    ok(r.json.ok && r.json.role === "partner" && r.json.pid === FD.AFF_ID, "partner / partner 로그인 (마스터 · 패밀리 탭)", r.json);
+    let dq = await FP.docs(), fm = JSON.parse(JSON.stringify(dq.m.meta.v));
+    Object.assign(fm.affiliates[0], { phone: "010-9999-0000", bank: "신한은행", account: "999", holder: "체험", pw: "hacked1", noticeSeen: 123 });
+    await FP.call("sync", { body: { changes: [{ k: "meta", base: dq.m.meta.ver, put: fm }] } });
+    await FP.call("sync", { body: { changes: [{ k: "inq:fdq1", base: 0, put: { name: "추천 강사", phone: "010-1111-2222", course: "쇼핑몰", thread: [{ name: "체험", text: "소개합니다" }] } }] } });
+    let fa = (await metaNow()).affiliates.find((x) => x.id === FD.AFF_ID);
+    ok(fa.bank === "신한은행" && fa.noticeSeen === 123 && fa.pw === "partner", "체험 중: 계좌는 바뀌고 비밀번호는 그대로", fa);
+    const q0 = ((await store.getDoc("inq:fdq1")) || {}).v;
+    ok(q0 && q0.affId === FD.AFF_ID && q0.byPartner === true, "체험 중: 강사 추천(입점 문의)이 들어감", q0);
+    r = await FP.call("auth", { body: { action: "logout", which: "admin" } });
+    let m2 = await metaNow(); fa = m2.affiliates.find((x) => x.id === FD.AFF_ID);
+    ok(r.json.ok && fa.bank === "" && fa.account === "" && fa.holder === "" && fa.phone === "" && fa.noticeSeen === 0 && fa.pw === "partner", "로그아웃: 영업 패밀리 처음 상태로", fa);
+    ok(!((await store.getDoc("inq:fdq1")) || {}).v, "로그아웃: 체험 계정이 남긴 강사 추천 지움");
+    ok(m2.affiliates.find((x) => x.id === "aff-2").bank === "신한은행", "다른 영업 패밀리 계좌는 그대로");
+    // 로그아웃 없이 창을 닫아도 다음 로그인 때 처음으로
+    r = await FP.call("auth", { body: { action: "admin", tab: "master", id: "partner", pw: "partner" } });
+    dq = await FP.docs(); fm = JSON.parse(JSON.stringify(dq.m.meta.v)); fm.affiliates[0].bank = "카카오뱅크";
+    await FP.call("sync", { body: { changes: [{ k: "meta", base: dq.m.meta.ver, put: fm }] } });
+    ok((await metaNow()).affiliates.find((x) => x.id === FD.AFF_ID).bank === "카카오뱅크", "다시 체험: 계좌 바뀜");
+    const FP2 = client();
+    r = await FP2.call("auth", { body: { action: "admin", tab: "partner", id: "partner", pw: "partner" } });
+    ok(r.json.ok && (await metaNow()).affiliates.find((x) => x.id === FD.AFF_ID).bank === "", "다음 로그인: 처음 상태로", r.json);
+    // 온드미디어: 설정 → 로그아웃하면 처음으로 · 비밀번호 못 바꿈
+    const FO = client();
+    r = await FO.call("auth", { body: { action: "admin", tab: "master", id: "owned", pw: "owned" } });
+    ok(r.json.ok && r.json.role === "media" && r.json.mdid === FD.MD_ID, "owned / owned 로그인", r.json);
+    dq = await FO.docs(); fm = JSON.parse(JSON.stringify(dq.m.meta.v));
+    Object.assign(fm.media[0], { phone: "010-8888-0000", email: "x@example.com", bank: "국민은행", account: "123", holder: "체험", bizName: "체험상회", bizNo: "123-45-67890", type: "biz", pw: "newpw99", rate: 99, code: "zzzz" });
+    await FO.call("sync", { body: { changes: [{ k: "meta", base: dq.m.meta.ver, put: fm }] } });
+    let fo = (await metaNow()).media.find((x) => x.id === FD.MD_ID);
+    ok(fo.bank === "국민은행" && fo.type === "biz" && MD.checkLogin(fo, "owned") && !MD.checkLogin(fo, "newpw99") && fo.code === "owndemo", "체험 중: 정보는 바뀌고 비밀번호 · 링크 코드는 그대로", { bank: fo.bank, code: fo.code });
+    r = await FO.call("auth", { body: { action: "logout", which: "all" } });
+    fo = (await metaNow()).media.find((x) => x.id === FD.MD_ID);
+    ok(fo.bank === "" && fo.email === "" && fo.bizName === "" && fo.type === "person" && !fo.bankAt && MD.checkLogin(fo, "owned"), "로그아웃: 온드미디어 처음 상태로", fo);
+    // 체험 홍보 링크로 산 주문에는 RS 를 붙이지 않아요
+    const now = Date.now(), mm = await metaNow(), p5 = { id: "v5", type: "vod", sale: 59000 };
+    ok(MD.attach(mm, p5, { kind: "course", sale: 59000 }, { c: "owndemo", p: "v5", at: now - 1000 }, now) === null, "체험 링크(owndemo) 주문엔 RS 없음");
+    const real = mm.media.find((x) => x.id !== FD.MD_ID && x.status === "active" && x.code);
+    ok(!real || !!MD.attach(mm, p5, { kind: "course", sale: 59000 }, { c: real.code, p: "v5", at: now - 1000 }, now), "실제 계정 링크는 그대로 RS", real && real.code);
+    // 체험 계정이 아닌 계정은 되돌리지 않음
+    ok((await FD.reset("partner", "aff-2")) === false && (await metaNow()).affiliates.find((x) => x.id === "aff-2").bank === "신한은행", "체험 계정이 아니면 되돌리지 않음");
+  }
+
   console.log("\n" + (failN ? "✗ " + failN + "개 실패 · " : "✓ ") + pass + "개 통과");
   process.exit(failN ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
