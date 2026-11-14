@@ -108,7 +108,7 @@ const metaNow = async () => ((await store.getDoc("meta")) || {}).v || {};
   ok(r.json.ok, "결제 준비 (수강권 + 코칭권 · 링크 기록 포함)", r.json);
   const p1 = r.json.paymentId, no1 = r.json.no;
   let o1 = ((await store.getDoc("vo:" + no1)) || {}).v;
-  ok(o1 && o1.rs && o1.rs.mid === "md-a" && o1.rs.rate === 20 && o1.rs.pg === 5 && o1.rs.code === "dgmd26" && o1.rs.ch === "두고미디어 YouTube", "수강권 주문에 RS: 두고미디어 · 구독자 10만 이상 20% · PG 5%", o1 && o1.rs);
+  ok(o1 && o1.rs && o1.rs.mid === "md-a" && o1.rs.rate === 20 && o1.rs.pg === 7.5 && o1.rs.code === "dgmd26" && o1.rs.ch === "두고미디어 YouTube", "수강권 주문에 RS: 두고미디어 · 구독자 10만 이상 20% · PG 7.5%", o1 && o1.rs);
   const pay = ((await store.getDoc("vpay:" + p1)) || {}).v, coachNo = pay.nos.find((n) => n !== no1), oc = ((await store.getDoc("vo:" + coachNo)) || {}).v;
   ok(oc && oc.kind === "coach" && !oc.rs, "함께 산 코칭권에는 RS 없음", oc);
   paidLike(p1, pay.total);

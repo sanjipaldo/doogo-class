@@ -1974,20 +1974,32 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   {
     console.log("26) 공용 모듈: 정산 계산 (화면 vod.js · admin.js · 서버 media.js 가 같은 규칙 · Next.js 전환 2단계)");
     const ST = require(path.join(ROOT, "shared/settle.js")), MD26 = require(path.join(TMP, "class/api/_lib/media.js"));
-    // 1,000만 원 판매(카드 3.3%) · RS 없음 · 강사 50% → 정산 기준액 · 정산액
+    // 1,000만 원 판매 · RS 없음 · 강사 50% → 정산 기준액 · 정산액 (2026-11-15 결제분부터 정산 공제 결제 수수료 고정 7.5% · 실제 PG 수수료는 매출 리포트용)
     const o1 = { amount: 10000000, sale: 10000000, method: "card", kind: "course" };
-    ok(ST.pgFeeOf({}, o1) === 330000 && ST.insBase({}, o1) === 9670000 && ST.insAmt({}, o1, 50) === 4835000 && ST.pgFeeOf({ card: { pct: 2.5 } }, o1) === 250000 && ST.pgFeeOf({}, { amount: 9900, method: "vbank" }) === 300 && ST.pgFeeOf({}, { amount: 9900, method: "point" }) === 0,
-      "PG 수수료: 카드 3.3% · 마스터가 정한 2.5% · 가상계좌 건당 300원 · 포인트 결제 0원 → 강사 정산액 = (판매가 − 수수료) × 50%");
+    ok(ST.pgFeeOf({}, o1) === 330000 && ST.pgFeeOf({ card: { pct: 2.5 } }, o1) === 250000 && ST.pgFeeOf({}, { amount: 9900, method: "vbank" }) === 300 && ST.pgFeeOf({}, { amount: 9900, method: "point" }) === 0,
+      "실제 PG 수수료(매출 리포트 · 플랫폼 이익용): 카드 3.3% · 마스터가 정한 2.5% · 가상계좌 건당 300원 · 포인트 결제 0원");
+    const o1old = Object.assign({}, o1, { paidAt: Date.parse("2026-11-10T10:00:00+09:00") }), o1new = Object.assign({}, o1, { paidAt: Date.parse("2026-11-15T00:00:00+09:00") });
+    ok(ST.SETTLE_FEE_DEF === 7.5 && ST.settleFeeOf({}, o1) === 750000 && ST.insBase({}, o1) === 9250000 && ST.insAmt({}, o1, 50) === 4625000 && ST.insBase({}, o1new) === 9250000 &&
+      ST.insBase({}, o1old) === 9670000 && ST.insBase({ settleFee: 5 }, o1new) === 9500000 && ST.insBase({ settleFee: 99 }, o1new) === 9250000 &&
+      ST.settleFeeOf({}, { amount: 330000, sale: 330000, method: "bank" }) === 24750 && ST.settleFeeOf({}, { amount: 9900, method: "point" }) === 0 && ST.settleFeeOf({}, { amount: 0, method: "free" }) === 0,
+      "정산 공제 결제 수수료: 고객 결제액의 7.5%(결제수단 상관없이 · 무통장도) → 1,000만 원이면 75만 원 빼고 × 50% = 462.5만 원 · 2026-11-15 전 결제분은 예전처럼 실제 PG 수수료 · 마스터가 정한 5% · 범위 밖 값은 기본값 · 포인트 · 무료 0원");
     const o2 = { amount: 330000, sale: 330000, method: "bank", kind: "course", rs: { pg: 5, rate: 20 } };
-    ok(ST.rsOf(o2) === 62700 && ST.insBase({}, o2) === 267300 && ST.rsOf(Object.assign({}, o2, { kind: "coach" })) === 0,
-      "온드미디어 RS = 330,000 × 95% × 20% = 62,700원을 먼저 빼고 · 코칭권은 RS 없음");
+    ok(ST.rsOf(o2) === 62700 && ST.insBase({}, o2) === 242550 && ST.rsOf(Object.assign({}, o2, { kind: "coach" })) === 0 && ST.rsOf({ amount: 500000, sale: 500000, kind: "course", rs: { pg: 7.5, rate: 20 } }) === 92500,
+      "온드미디어 RS = 그때 비율 그대로(330,000 × 95% × 20% = 62,700원) · 새 기준 500,000 × 92.5% × 20% = 92,500원 · RS · 결제 수수료 7.5%를 먼저 빼고 · 코칭권은 RS 없음");
     const b = ST.payout(2500000, true, "std", 0), pp = ST.payout(2500000, false, "std", 0);
     ok(b.pay === 2500000 && b.invIns === 2500000 && pp.sup === 2272727 && pp.wh === 74990 && pp.pay === 2197737 && ST.payout(-1000, false, "std", 0).pay === 0,
       "지급액: 사업자 250만 원 그대로(세금계산서 250만 원) · 개인 250만 ÷ 1.1 = 2,272,727 − 3.3% 74,990(10원 아래 버림) → 2,197,737원 · 마이너스면 0원", [b, pp]);
     ok(ST.keepOf({ status: "refunded", amount: 100000, refundAmount: 30000 }) === 0.7 && ST.keepOf({ status: "paid" }) === 1 && ST.refundRatio({ amount: 100000, refundAmount: 30000 }) === 0.3,
       "부분 환불: 정산에 70% 남김 · 확정 뒤 환불은 30% 차감");
-    ok(MD26.rateOf({ subs: 120000 }, MD26.rules({})) === 20 && MD26.rateOf({ subs: 5000 }, MD26.rules({})) === 10 && MD26.rateOf({ rate: 15 }, MD26.rules({})) === 15 && MD26.codeOf("Doo-Go_MD!") === "doogomd" && MD26.rules({ vod: { settings: { rs: { pg: 50 } } } }).pg === 5,
-      "서버 RS 규칙(공용 모듈): 구독자 10만 이상 20% · 미만 10% · 직접 정한 15% · 링크 코드 정리 · 범위 밖 값은 기본값");
+    ok(MD26.rateOf({ subs: 120000 }, MD26.rules({})) === 20 && MD26.rateOf({ subs: 5000 }, MD26.rules({})) === 10 && MD26.rateOf({ rate: 15 }, MD26.rules({})) === 15 && MD26.codeOf("Doo-Go_MD!") === "doogomd" && MD26.rules({ vod: { settings: { rs: { pg: 50 } } } }).pg === 7.5 && MD26.rules({}).pg === 7.5,
+      "서버 RS 규칙(공용 모듈): 구독자 10만 이상 20% · 미만 10% · 직접 정한 15% · 링크 코드 정리 · PG 공제 기본 7.5% · 범위 밖 값은 기본값");
+    {
+      const OF = require(path.join(TMP, "class/api/_lib/oneoff.js"));
+      const mk = (rs) => ({ meta: { ver: 1, vod: { settings: rs === undefined ? {} : { rs } } } }), run = (d) => OF.pgFee75((k) => d[k]);
+      const a = run(mk({ lo: 10, hi: 20, subs: 100000, days: 30, pg: 5 })), b = run(mk({ pg: 6 })), c = run(mk(undefined));
+      ok(a.writes.meta && a.writes.meta.vod.settings.rs.pg === 7.5 && a.writes.meta.vod.settings.rs.days === 30 && !Object.keys(b.writes).length && !Object.keys(c.writes).length && OF.OPS.some((x) => x.id === "2026-11-15-pg-fee-75"),
+        "일회성 작업: RS 기준 PG 공제가 예전 기본값 5%면 7.5%로 · 마스터가 정한 6%나 저장 안 된 값은 그대로", [a.result, b.result, c.result]);
+    }
     const vs26 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), as26 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ms26 = fs.readFileSync(path.join(ROOT, "api/_lib/media.js"), "utf8"), ix26 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
     ok(/const ST = window\.DCS\.settle;/.test(vs26) && !/Math\.floor\(insBase\(o\) \* shareVal/.test(vs26) && /window\.DCS\.settle\.payout\(net, biz, mode, base0\)/.test(as26) && !/Math\.floor\(sup \* 0\.033/.test(as26) && /require\("\.\.\/\.\.\/shared\/settle"\)/.test(ms26) && /<script src="shared\/settle\.js"><\/script>[\s\S]*<script src="main\.js">/.test(ix26) && !/<script src="(vod|admin)\.js">/.test(ix26),
       "정산 규칙은 한 곳(shared/settle.js): 화면 · 강사 정산 명세서 · 서버 RS 모두 그 모듈을 써요");

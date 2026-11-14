@@ -7,7 +7,7 @@
  *                   비밀번호는 scrypt 해시(pwHash)로만 저장하고 누구에게도(마스터 포함) 보내지 않아요.
  *                   마스터 화면이 새 비밀번호를 pw 칸에 담아 보내면 저장할 때 해시로 바꿔요(hasPw 로 ‘설정됨’만 보여요).
  *  meta.mdPayouts   RS 지급 기록 { "<계정id>:<YYYY-MM>": { st: confirmed | paid, snap, at, by, paidAt, memo } } — 마스터만 · 본인은 자기 것만
- *  meta.vod.settings.rs   RS 규칙 { lo: 10, hi: 20, subs: 100000, days: 30, pg: 5 } — 공개(스토어가 링크 기간을 알아야 해요)
+ *  meta.vod.settings.rs   RS 규칙 { lo: 10, hi: 20, subs: 100000, days: 30, pg: 7.5 } — 공개(스토어가 링크 기간을 알아야 해요) · PG 공제 기본 7.5% (2026-11-15 확정)
  *  vo:<주문>.rs     홍보 링크로 산 주문 { mid(계정id), code, ch(채널 이름), rate(그때 RS %), pg(그때 PG 공제 %), at(링크를 누른 때) }
  *                   결제 대기 주문을 만들 때(/api/vod-pay prepare) 서버가 링크 코드 · 기간 · 상품을 확인해서 남겨요.
  *                   RS = (판매가 − 환불) × (1 − PG%) × RS% — 정산 때 강사 · 두고클래스가 나누기 전에 먼저 빼요 (vod.js rsOf). */

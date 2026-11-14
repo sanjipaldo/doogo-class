@@ -1195,6 +1195,20 @@ function bookCoupon(get, keys) {
   return { writes, result };
 }
 
+/* ---------- PG 결제 수수료 7.5% 확정 (대표님 2026-11-14 · 회사소개서와 같게) ----------
+ * 강사 정산에서 빼는 결제 수수료는 코드 기본값(shared/settle.js SETTLE_FEE_DEF 7.5% · 2026-11-15 결제분부터)이라 따로 저장할 것이 없어요.
+ * 온드미디어 RS 기준(meta.vod.settings.rs)에 예전 기본값 PG 공제 5% 가 저장돼 있으면 7.5% 로 (마스터가 다른 값으로 정했으면 그대로).
+ * 이미 RS 가 붙은 주문은 그때 비율(o.rs.pg)이 주문에 남아 있어 그대로예요 */
+function pgFee75(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  const s = isObj(meta.vod.settings) ? meta.vod.settings : {}, rs = isObj(s.rs) ? s.rs : null;
+  if (!rs || rs.pg == null || rs.pg === "" || Number(rs.pg) !== 5) return { writes: {}, result: { rsPg: rs && rs.pg != null && rs.pg !== "" ? "그대로 (" + rs.pg + "%)" : "기본값 7.5% (저장된 값 없음)" } };
+  const v = clone(meta.vod);
+  v.settings = Object.assign({}, s, { rs: Object.assign({}, rs, { pg: 7.5 }) });
+  return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result: { rsPg: "5% → 7.5%" } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1238,6 +1252,7 @@ const OPS = [
   { id: "2026-11-10-book-coupon", note: "첫 책 1,000원 할인 쿠폰(회원마다 한 장 · 기한 없음 · 전자책 · 종이책) 만들기 · 이미 가입한 회원에게 한 장씩 · 문대표 종이책은 정가 15,900원 그대로(쿠폰으로 18,400원)", run: bookCoupon },
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
   { id: "2026-11-12-family-demo", note: "패밀리 체험 계정 만들기: 영업 패밀리 partner / partner · 온드미디어 owned / owned (로그인 · 로그아웃할 때 처음 상태로 · 비밀번호는 못 바꿈 · 체험 링크 주문엔 RS 없음) — 이미 있거나 아이디가 겹치면 건너뜀", run: familyDemo },
+  { id: "2026-11-15-pg-fee-75", note: "PG 결제 수수료 7.5% 확정: 온드미디어 RS 기준의 PG 공제가 예전 기본값 5%로 저장돼 있으면 7.5%로 (강사 정산 공제 7.5%는 코드 기본값 · 2026-11-15 결제분부터)", run: pgFee75 },
 ];
 
-module.exports = { OPS, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, pgFee75, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

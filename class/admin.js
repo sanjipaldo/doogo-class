@@ -3656,8 +3656,8 @@
     // 지급액 계산은 공용 정산 모듈(shared/settle.js payout — 화면 · 서버 같은 규칙)
     const mode = X.taxMode(), base0 = vdSum(os, baseK);
     const { sup, vatOut, wh, vat, pay: pay0, invIns, invPf } = window.DCS.settle.payout(net, biz, mode, base0);
-    // PG 결제 수수료: 정산 기준액에서 빼요 (정산액에 이미 반영 · 여기는 보여 주기용 합계)
-    const pgK = (o) => Math.round(X.pgFeeOf(o) * keep(o));
+    // 결제 수수료(정산 공제 · 2026-11-15 결제분부터 7.5%): 정산 기준액에서 빼요 (정산액에 이미 반영 · 여기는 보여 주기용 합계)
+    const pgK = (o) => Math.round(X.settleFeeOf(o) * keep(o));
     // 온드미디어 RS: YouTube 링크로 팔린 주문은 판매가에서 RS 를 먼저 빼고 강사 비율로 나눠요 (정산액에 이미 반영 · 여기는 보여 주기용 합계)
     const rsK = (o) => Math.floor(X.rsOf(o) * keep(o) / 10) * 10, rsOs = os.filter((o) => o.rs);
     return { key, ym, name: vdKeyName(key), mode, invIns, invPf, rs: vdSum(rsOs, rsK), rsN: rsOs.length, rsBase: vdSum(rsOs, baseK), n: os.length, base: vdSum(os, baseK), paid: vdSum(os, (o) => Math.round(o.amount * keep(o))), supply: vdSum(os, (o) => Math.round(X.supplyOf(o) * keep(o))), pg: vdSum(os, pgK), ch, kinds, ins, dedN: dl.length, ded, dedIds: dl.map((o) => o.id), adCost, adPct, adDed, adN: ads.length, carry, next: net < 0 ? -net : 0, net, biz, sup, vatOut, wh, vat, pay: pay0, ids: os.map((o) => o.id), rec };
@@ -3747,7 +3747,7 @@
       '<form id="vda-tax-form" class="a-form" novalidate><div class="vs-rule">' +
         '<ol class="vs-rule-steps"><li><b>정산 기준액</b><span>할인 전 판매가 − 온드미디어 RS − PG 결제 수수료</span></li><li><b>정산액 (부가세 포함)</b><span>정산 기준액 × 강사 비율 (기본 50%) − 그 달 광고비 강사 분담</span></li><li><b>지급</b><span>사업자: 정산액 그대로 · 강사님이 두고홀딩스에 정산액(부가세 포함)으로 세금계산서<br>개인(3.3%): 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3% 원천징수</span></li></ol>' +
         '<p class="vs-rule-ex">' + icon("coins", "xs") + "<span>예) 1,000만 원 판매 → RS · PG 수수료 빼고 500만 원 → 강사 250만 원 · 플랫폼 250만 원 · 사업자 강사는 <b>250만 원</b> 지급(세금계산서 250만 원) · 개인 강사는 250만 ÷ 1.1 = " + won(sup) + "에서 3.3% " + won(wh) + " 빼고 <b>" + won(sup - wh) + "</b> 지급</span></p>" +
-        '<p class="a-muted p-small">PG 결제 수수료율은 매출 리포트 › 수수료율(결제수단별)을 써요 · 쿠폰 · 포인트 할인은 플랫폼 부담이에요.</p></div>' +
+        '<p class="a-muted p-small">PG 결제 수수료는 결제 금액의 ' + VX().settleFeePct() + '%예요 (2026-11-15 결제분부터 · 그 전 결제분은 결제수단별 실제 수수료 · 매출 리포트 › 수수료율에서 정해요) · 쿠폰 · 포인트 할인은 플랫폼 부담이에요.</p></div>' +
       '<p class="a-label">기본 비율 <small class="a-muted">강사별로 따로 정하지 않은 강사에게 써요 · 숫자는 강사 몫(%)</small></p><div class="a-form-row vda-defr">' +
         X.RATE_KEYS.map((x) => '<div class="a-field"><label for="vdt-' + x[0] + '">' + esc(x[1]) + '</label><div class="vda-pct"><input class="a-input" id="vdt-' + x[0] + '" name="r-' + x[0] + '" type="number" min="0" max="100" inputmode="numeric" value="' + esc(d[x[0]] != null && d[x[0]] !== "" ? d[x[0]] : X.rateDef(x[0])) + '"><span>%</span></div></div>').join("") + "</div>" +
       '<p class="a-muted p-small">' + icon("alert", "xs") + " 세금계산서는 사업자 강사만 해당해요(정산액 · 부가세 포함으로 강사님 → 두고홀딩스). 개인 강사는 부가세 전 금액에서 3.3%를 떼고 지급해요.</p>" +
@@ -3920,12 +3920,16 @@
         return '<li><div class="fin-bh"><b>' + esc(x[1]) + '</b><span class="num">' + won(v.amt) + " · " + v.n + "건</span></div>" + '<span class="fin-bar"><i style="width:' + p + '%"></i></span><small>' + p + "%</small></li>"; }).join("") + "</ul>" : emptyBox("coins", "이 달 판매가 없어요.")) + "</section>";
   }
   function finFeeModal() {
-    openModal("결제수단별 수수료율", '<form id="fin-fee-form" class="a-form" novalidate><p class="a-muted">PG(토스페이먼츠 · 카드사) 계약서의 수수료율을 적으면 매출 리포트의 PG 수수료 · 플랫폼 이익이 그 기준으로 다시 계산돼요. 실제 수수료는 PG 정산 내역이 기준이에요.</p>' +
+    openModal("결제수단별 수수료율", '<form id="fin-fee-form" class="a-form" novalidate>' +
+      '<div class="a-field"><label for="fin-settle">강사 정산 · 명세서에서 빼는 PG 결제 수수료 (%)</label><input class="a-input" id="fin-settle" name="settle" type="number" min="0" max="30" step="0.1" value="' + VX().settleFeePct() + '"><small class="a-muted">결제수단과 상관없이 고객 결제 금액의 이 % 를 빼고 강사 비율로 나눠요 · 회사소개서 기준 7.5% · 2026-11-15 결제분부터 (온드미디어 RS 공제 % 는 온드미디어 RS › RS 기준에서 따로 정해요)</small></div>' +
+      '<p class="a-muted">아래는 <b>실제 PG 수수료</b>예요. PG(토스페이먼츠 · 카드사) 계약서의 수수료율을 적으면 매출 리포트의 PG 수수료 · 플랫폼 이익이 그 기준으로 다시 계산돼요. 실제 수수료는 PG 정산 내역이 기준이에요.</p>' +
       '<div class="fin-fee-g">' + VD_PAY_KEYS.filter((x) => x[0] !== "free").map((x) => { const r = vdFeeRate(x[0]); return '<div class="fin-fee-r"><b>' + esc(x[1]) + '</b><label><input class="a-input a-sm" name="p-' + x[0] + '" type="number" min="0" max="20" step="0.01" value="' + r[0] + '"><span>%</span></label><label><input class="a-input a-sm" name="w-' + x[0] + '" type="number" min="0" max="10000" step="10" value="' + r[1] + '"><span>원/건</span></label></div>'; }).join("") + "</div>" +
       '<p class="a-error" id="fin-fee-err"></p></form>', btn("기본값으로", "fin-fee-def", "a-btn-ghost") + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="fin-fee-form">저장</button>', "md");
   }
   function saveFinFee(f) {
     const out = {}, err = document.getElementById("fin-fee-err");
+    const sf = f.settle ? Number(f.settle.value) : NaN;
+    if (f.settle && !(f.settle.value !== "" && sf >= 0 && sf <= 30)) { err.textContent = "강사 정산에서 빼는 PG 결제 수수료를 0~30% 사이로 적어 주세요."; return; }
     for (const x of VD_PAY_KEYS) {
       if (x[0] === "free") continue;
       const p = Number(f["p-" + x[0]].value), w = Number(f["w-" + x[0]].value);
@@ -3933,7 +3937,8 @@
       out[x[0]] = { pct: Math.round(p * 100) / 100, won: Math.round(w) };
     }
     VD().settings.pgFee = out;
-    commit("결제수단별 수수료율을 저장했어요.");
+    if (f.settle) VD().settings.settleFee = Math.round(sf * 10) / 10;
+    commit("수수료율을 저장했어요.");
   }
   function downloadCsv(name, rows) {
     const csv = "\uFEFF" + rows.map((r) => r.map((c) => '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"').join(",")).join("\n"), l = document.createElement("a");
@@ -4147,21 +4152,21 @@
     const r = st.rec || {};
     openModal(st.name + " · " + vdYMtxt(ym) + " 정산 명세서",
       '<div class="vs-stmt"><div class="vs-stmt-top">' + pill(s.t, s.c) + "<span>" + (st.biz ? "사업자 · 세금계산서" : "개인 · 사업소득 3.3% 원천징수") + " · 지급일 " + fmtFull(vdPayDate(ym)) + "</span></div>" + vdTypeBox(key, ym, st) +
-        '<dl class="vs-dl">' + row("판매", st.n + "건") + row("판매가 합계 (할인 전)", won(st.base)) + row("고객 결제액", won(st.paid)) + (st.base - st.paid > 0 ? row("플랫폼 부담 할인 (쿠폰 · 포인트)", won(st.base - st.paid)) : "") + (st.mode === "std" ? "" : row("공급가액 (판매가 ÷ 1.1)", won(st.supply))) + (st.rs ? row("온드미디어 RS (YouTube 링크 " + st.rsN + "건 · 판매가 " + won(st.rsBase || 0) + ")", "- " + won(st.rs) + " <small>나누기 전에 먼저 빼요</small>") : "") + (st.pg ? row("PG 결제 수수료 (결제수단별)", "- " + won(st.pg) + " <small>나누기 전에 먼저 빼요</small>") : "") + (st.mode === "std" ? row("정산 기준액 (판매가 − RS − PG 수수료)", won(Math.max(0, st.base - (st.rs || 0) - (st.pg || 0))), "b") : "") + "</dl>" +
+        '<dl class="vs-dl">' + row("판매", st.n + "건") + row("판매가 합계 (할인 전)", won(st.base)) + row("고객 결제액", won(st.paid)) + (st.base - st.paid > 0 ? row("플랫폼 부담 할인 (쿠폰 · 포인트)", won(st.base - st.paid)) : "") + (st.mode === "std" ? "" : row("공급가액 (판매가 ÷ 1.1)", won(st.supply))) + (st.rs ? row("온드미디어 RS (YouTube 링크 " + st.rsN + "건 · 판매가 " + won(st.rsBase || 0) + ")", "- " + won(st.rs) + " <small>나누기 전에 먼저 빼요</small>") : "") + (st.pg ? row("PG 결제 수수료 (결제 금액의 " + X.settleFeePct() + "%)", "- " + won(st.pg) + " <small>나누기 전에 먼저 빼요</small>") : "") + (st.mode === "std" ? row("정산 기준액 (판매가 − RS − PG 수수료)", won(Math.max(0, st.base - (st.rs || 0) - (st.pg || 0))), "b") : "") + "</dl>" +
         vdKindTable(st) +
         '<div class="a-table-wrap"><table class="a-table vs-ch-table"><thead><tr><th>유입 · 상품</th><th class="right">건수</th><th class="right">판매가</th><th class="right">정산액</th></tr></thead><tbody>' +
           (Object.keys(st.ch).length ? Object.keys(st.ch).map((k) => "<tr><td>" + esc(X.CH_TXT[k] || k) + '</td><td class="right num">' + st.ch[k].n + '건</td><td class="right num">' + won(st.ch[k].base) + '</td><td class="right num">' + won(st.ch[k].ins) + "</td></tr>").join("") : '<tr><td colspan="4" class="a-muted">이 달 판매 없음</td></tr>') + "</tbody></table></div>" +
         '<dl class="vs-dl vs-dl-sum">' + row("강사 정산액", won(st.ins)) + (st.ded ? row("확정 뒤 환불 차감 (" + st.dedN + "건)", "- " + won(st.ded)) : "") + (st.adDed ? row("광고비 분담 (집행 " + won(st.adCost) + " × 강사 " + st.adPct + "%)", "- " + won(st.adDed)) : "") + (st.carry ? row("지난달에서 이월된 차감", "- " + won(st.carry)) : "") + row("정산 금액", won(st.net) + (st.mode !== "supply" ? " (부가세 포함)" : ""), "b") + (st.biz ? (st.mode === "supply" ? row("부가세 10%", "+ " + won(st.vat)) : st.mode === "std" && st.net > 0 ? row("사업자: 그대로 지급", "세금계산서 " + won(st.invIns) + " (부가세 포함)") : "") : (st.mode === "std" && st.net > 0 ? row("부가세 전 금액 (정산 금액 ÷ 1.1)", won(st.sup) + " <small>부가세 " + won(st.vatOut) + " 빼고</small>") : "") + row("원천징수 3.3% (소득세 3% · 지방세 0.3%)" + (st.mode === "std" ? " · 부가세 전 금액 기준" : ""), "- " + won(st.wh))) + row("지급액", won(st.pay), "big") + (st.next ? row("다음 달 정산으로 이월", won(st.next) + " (다음 달 정산액에서 이어서 빼요)") : "") + "</dl>" +
         vdInvBox(st) +
         (os.length ? '<details class="vs-orders"><summary>주문 ' + os.length + "건 보기</summary>" + '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>결제일</th><th>주문번호</th><th>상품</th><th>구분</th><th class="right">판매가</th><th class="right">비율</th><th class="right">정산액</th></tr></thead><tbody>' +
-          os.map((o) => "<tr><td>" + esc(fmtMD(DB.date.toStr(new Date(o.paidAt)))) + '</td><td><small class="num">' + esc(o.no) + "</small></td><td>" + esc(o.title) + (X.optTxt(o) ? '<small class="a-memo">' + esc(X.optTxt(o)) + "</small>" : "") + vdRsTag(o) + vdRbTag(o) + "</td><td>" + esc(X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"]) + '</td><td class="right num">' + won(X.baseOf(o)) + (X.pgFeeOf(o) ? '<small class="a-memo">PG − ' + won(X.pgFeeOf(o)) + "</small>" : "") + '</td><td class="right num">' + X.shareVal(o) + '%</td><td class="right num">' + won(X.insAmt(o)) + "</td></tr>").join("") + "</tbody></table></div></details>" : "") +
+          os.map((o) => "<tr><td>" + esc(fmtMD(DB.date.toStr(new Date(o.paidAt)))) + '</td><td><small class="num">' + esc(o.no) + "</small></td><td>" + esc(o.title) + (X.optTxt(o) ? '<small class="a-memo">' + esc(X.optTxt(o)) + "</small>" : "") + vdRsTag(o) + vdRbTag(o) + "</td><td>" + esc(X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"]) + '</td><td class="right num">' + won(X.baseOf(o)) + (X.settleFeeOf(o) ? '<small class="a-memo">결제 수수료 − ' + won(X.settleFeeOf(o)) + "</small>" : "") + '</td><td class="right num">' + X.shareVal(o) + '%</td><td class="right num">' + won(X.insAmt(o)) + "</td></tr>").join("") + "</tbody></table></div></details>" : "") +
         '<ol class="vs-time">' + [["판매 월 마감", vdYMadd(ym, 1) + "-01" <= todayStr()], ["정산 확정", r.confirmedAt], [st.biz ? "세금계산서 " + (r.invoiceAt ? "수취" : r.invReqAt ? "발행 신고" : "") : "원천징수 처리", st.biz ? r.invoiceAt || r.invReqAt : r.confirmedAt], ["지급", r.st === "paid" || (!r.st && r.at) ? r.at : null]].map((x) => '<li class="' + (x[1] ? "on" : "") + '"><b>' + esc(x[0]) + "</b><small>" + (x[1] === true ? "완료" : x[1] ? esc(typeof x[1] === "number" ? DB.date.toStr(new Date(x[1])) : x[1]) : "대기") + "</small></li>").join("") + "</ol>" +
         (pf.account ? '<p class="a-muted p-small">' + icon("coins", "xs") + " 지급 계좌: " + esc(pf.bank || "") + " " + esc(pf.account) + " (" + esc(pf.holder || "") + ")" + (pf.bizNo ? " · 사업자 " + esc(pf.bizNo) : "") + "</p>" : '<p class="a-error">' + icon("alert", "xs") + " 정산 정보(계좌 · 개인/사업자)가 없어요. 강사센터 › 판매 정산 › 정산 받을 정보에서 등록해야 지급할 수 있어요.</p>") + "</div>",
       btn(icon("download", "sm") + "CSV", "vda-stcsv", "a-btn-ghost", ' data-m="' + esc(ym) + '" data-k="' + esc(key) + '"') + btn(icon("download", "sm") + "PDF", "vda-print", "a-btn-ghost") + btn("닫기", "modal-close", "a-btn-primary"), "lg");
   }
   function vdStmtCsv(ym, only) {
     const X = VX(), kName = (o) => (X.RATE_KEYS.find((x) => x[0] === X.rateKeyOf(o)) || [0, ""])[1], rows = [["판매월", "강사", "주문번호", "결제일", "상품", "상품 종류", "구분", "판매가", "고객결제액", "결제수단", "PG 수수료", "온드미디어 채널", "RS율", "온드 RS", "정산 기준액", "정산비율", "정산액"]];
-    vdStmtKeys(ym, only).forEach((st) => VD().orders.filter((o) => st.ids.indexOf(o.id) >= 0).forEach((o) => rows.push([ym, st.name, o.no, DB.date.toStr(new Date(o.paidAt)), o.title, kName(o), X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"], X.baseOf(o), o.amount, VD_PAY[o.method] || o.method || "", X.pgFeeOf(o), o.rs ? o.rs.ch || "" : "", o.rs ? (Number(o.rs.rate) || 0) + "%" : "", X.rsOf(o), X.insBase(o), X.shareVal(o), X.insAmt(o)])));
+    vdStmtKeys(ym, only).forEach((st) => VD().orders.filter((o) => st.ids.indexOf(o.id) >= 0).forEach((o) => rows.push([ym, st.name, o.no, DB.date.toStr(new Date(o.paidAt)), o.title, kName(o), X.CH_TXT[X.isAccess(o) ? o.ch || "web" : "addon"], X.baseOf(o), o.amount, VD_PAY[o.method] || o.method || "", X.settleFeeOf(o), o.rs ? o.rs.ch || "" : "", o.rs ? (Number(o.rs.rate) || 0) + "%" : "", X.rsOf(o), X.insBase(o), X.shareVal(o), X.insAmt(o)])));
     const csv = "﻿" + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "DOOGO-CLASS-정산-" + ym + (only ? "-" + vdKeyName(only) : "") + ".csv"; document.body.appendChild(a); a.click(); a.remove();
     toast("정산 명세 CSV를 내려받았어요.");
@@ -5571,7 +5576,7 @@
       '<ul class="fin-pnl">' +
         li("판매가 합계", won(st.base), "", st.n + "건") +
         (st.rs ? li("온드미디어 RS", "- " + won(st.rs), "neg", "YouTube 링크 판매 " + st.rsN + "건 · 나누기 전에 먼저 빼요") : "") +
-        (st.pg ? li("PG 결제 수수료", "- " + won(st.pg), "neg", "결제수단별 수수료 · 나누기 전에 먼저 빼요") : "") +
+        (st.pg ? li("PG 결제 수수료", "- " + won(st.pg), "neg", "결제 금액의 " + X.settleFeePct() + "% · 나누기 전에 먼저 빼요") : "") +
         li((isCoach() ? "강사님" : "내") + " 정산액", won(st.ins), "", (st.mode === "std" ? "(판매가 − RS − PG 수수료) × " : st.rs ? "(판매가 − 온드 RS) × " : "판매가 × ") + (isCoach() ? "강사님" : "내") + " 비율") +
         (st.ded ? li("확정 뒤 환불 차감", "- " + won(st.ded), "neg", st.dedN + "건") : "") +
         li("광고비 분담", (st.adDed ? "- " : "") + won(st.adDed), "neg", st.adCost ? "이 달 광고비 " + won(st.adCost) + " × " + st.adPct + "%" : "이 달 광고비 없음") +
@@ -5967,7 +5972,7 @@
       case "fin-year": ui.finYM = vdYMadd(ui.finYM || todayStr().slice(0, 7), Number(d.dir) * 12); render(); break;
       case "fin-csv": finCsv(Number(d.y)); break;
       case "fin-fee": finFeeModal(); break;
-      case "fin-fee-def": { const f = document.getElementById("fin-fee-form"); if (f) VD_PAY_KEYS.forEach((x) => { const dv = PG_FEE_DEF[x[0]]; if (f["p-" + x[0]]) { f["p-" + x[0]].value = dv[0]; f["w-" + x[0]].value = dv[1]; } }); break; }
+      case "fin-fee-def": { const f = document.getElementById("fin-fee-form"); if (f && f.settle) f.settle.value = window.DCS.settle.SETTLE_FEE_DEF; if (f) VD_PAY_KEYS.forEach((x) => { const dv = PG_FEE_DEF[x[0]]; if (f["p-" + x[0]]) { f["p-" + x[0]].value = dv[0]; f["w-" + x[0]].value = dv[1]; } }); break; }
       case "rk-per": ui.rkPer = d.k; render(); break;
       case "ad-ym": ui.adYM = vdYMadd(ui.adYM || todayStr().slice(0, 7), Number(d.dir)); render(); break;
       case "vda-rate-edit": vdRateModal(d.k); break;
@@ -7858,7 +7863,7 @@
   /* ================= 온드미디어 RS 패밀리 (YouTube 채널 팀) =================
    * 마스터가 계정을 만들고(마스터 › DOOGO CLASS › 온드미디어 RS), 온드미디어는 로그인 화면 ‘마스터 · 패밀리’ 탭에서 아이디 + 비밀번호로 들어와요.
    * VOD마다 계정별 홍보 링크(/vod/p/<상품>?rs=<코드>)가 있고, 그 링크로 들어와 기간(기본 30일) 안에 산 수강권 주문에 rs 가 남아요(서버가 확인).
-   * RS = (판매가 − 환불) × (1 − PG 5%) × RS %(구독자 10만 이상 20% · 미만 10% · 마스터가 직접 정할 수 있음) — 강사 · 두고클래스가 나누기 전에 먼저 빼요.
+   * RS = (판매가 − 환불) × (1 − PG 7.5%) × RS %(구독자 10만 이상 20% · 미만 10% · 마스터가 직접 정할 수 있음) — 강사 · 두고클래스가 나누기 전에 먼저 빼요.
    * 정산: 매달 1일~말일 판매분을 다음 달 초 마스터가 확정 → 10일(영업일) 지급. 확정 뒤 환불은 다음 달 RS 에서 차감. 개인 3.3% 원천징수 · 사업자 세금계산서.
    * 저장: meta.media(계정 · 서버는 비밀번호를 해시로만) · meta.mdPayouts["<계정>:<YYYY-MM>"](확정 · 지급) · meta.vod.settings.rs(규칙) — 서버 권한은 api/_lib/media.js */
   const mdList = () => (Array.isArray(DB.data.media) ? DB.data.media : []);
@@ -8229,7 +8234,7 @@
   }
   function mdSetModal() {
     const R = mdR(), fi = (k, label, val, hint, attrs) => '<div class="a-field"><label for="mds-' + k + '">' + label + '</label><input class="a-input" id="mds-' + k + '" name="' + k + '" type="number" value="' + esc(val) + '" inputmode="numeric"' + (attrs || "") + '><small class="a-muted">' + hint + "</small></div>";
-    openModal("RS 기준", '<form id="md-set-form" class="a-form" novalidate><p class="a-muted">회사소개서 기준: 구독자 10만 이상 20% · 미만 10% · PG 5% 공제 · 링크 30일. 바꾸면 <b>그때부터 결제한 주문</b>에 적용돼요 (지난 주문은 그때 비율 그대로).</p>' +
+    openModal("RS 기준", '<form id="md-set-form" class="a-form" novalidate><p class="a-muted">회사소개서 기준: 구독자 10만 이상 20% · 미만 10% · PG 7.5% 공제 · 링크 30일. 바꾸면 <b>그때부터 결제한 주문</b>에 적용돼요 (지난 주문은 그때 비율 그대로).</p>' +
       '<div class="a-form-row">' + fi("hi", "높은 RS율 (%)", R.hi, "구독자 기준 이상", ' min="0" max="100"') + fi("lo", "낮은 RS율 (%)", R.lo, "구독자 기준 미만", ' min="0" max="100"') + fi("subs", "구독자 기준 (명)", R.subs, "이 수 이상이면 높은 RS율", ' min="0"') + "</div>" +
       '<div class="a-form-row">' + fi("days", "링크 유효 기간 (일)", R.days, "링크를 누른 뒤 이 기간 안에 결제하면 RS", ' min="1" max="365"') + fi("pg", "PG 수수료 공제 (%)", R.pg, "RS = 판매가 × (1 − 이 %) × RS율", ' min="0" max="30" step="0.1"') + "</div>" +
       '<p class="a-error" id="mds-error"></p></form>', btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="md-set-form">저장</button>', "md");

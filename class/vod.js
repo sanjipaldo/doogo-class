@@ -919,6 +919,10 @@
   const pgRate = (k) => ST.pgRate((STG() || {}).pgFee, k);
   /** 이 주문의 PG 결제 수수료 (고객 결제액 × 수수료율 + 건당) — 무료 · 쿠폰 · 포인트 결제는 0원 */
   const pgFeeOf = (o) => ST.pgFeeOf((STG() || {}).pgFee, o);
+  /** 정산 공제 결제 수수료 (2026-11-15 결제분부터 고정 7.5% · 마스터 설정 settleFee) — 강사 정산 · 명세서에 쓰는 수수료.
+   *  실제 PG 수수료(pgFeeOf)는 매출 리포트의 플랫폼 이익에만 써요 */
+  const settleFeePct = () => ST.settleFeePct(STG() || {});
+  const settleFeeOf = (o) => ST.settleFeeOf(STG() || {}, o);
   /* ---------- 온드미디어(YouTube 채널 팀) RS ----------
    * 홍보 링크 /vod/p/<상품>?rs=<코드> 로 들어오면 이 브라우저에 { 코드, 누른 때 } 를 상품마다 기억해요 (같은 상품은 마지막 링크가 이겨요).
    * 그 상품을 기간(기본 30일) 안에 사면 결제할 때 서버로 보내고, 서버가 코드 · 기간 · 상품을 다시 확인해 주문에 rs 를 남겨요 (api/_lib/media.js).
@@ -932,9 +936,9 @@
   const rsProduct = ST.rsProduct;
   /** 이 주문의 온드미디어 RS (환불 전 전체 · 부가세 포함 · 10원 아래 버림) — 부분 환불은 화면이 남은 비율만큼 줄여요 */
   const rsOf = ST.rsOf;
-  /** 강사 정산액 = (할인 전 판매가 − 온드미디어 RS − PG 결제 수수료) × 강사 비율 · 10원 아래 버림 (부가세가 들어 있는 금액) */
-  const insBase = (o) => ST.insBase((STG() || {}).pgFee, o);
-  const insAmt = (o) => ST.insAmt((STG() || {}).pgFee, o, shareVal(o));
+  /** 강사 정산액 = (할인 전 판매가 − 온드미디어 RS − 결제 수수료(정산 공제)) × 강사 비율 · 10원 아래 버림 (부가세가 들어 있는 금액) */
+  const insBase = (o) => ST.insBase(STG() || {}, o);
+  const insAmt = (o) => ST.insAmt(STG() || {}, o, shareVal(o));
   function rsMap() { try { const m = JSON.parse(localStorage.getItem(RS_KEY) || "{}"); return m && typeof m === "object" && !Array.isArray(m) ? m : {}; } catch (e) { return {}; } }
   function rsKeep(pid, c) {
     try {
@@ -1303,7 +1307,7 @@
       '<i class="vd-art-go" aria-hidden="true">' + icon("arrowUpRight", "xs") + "</i></span>";
   }
 
-  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, PG_FEE_DEF, payKeyOf, pgRate, pgFeeOf, insBase, RS_DEF, rsRules, rsRateOf, rsCode, rsProduct, rsOf, rsUrl, rsFor, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
+  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, PG_FEE_DEF, payKeyOf, pgRate, pgFeeOf, settleFeePct, settleFeeOf, insBase, RS_DEF, rsRules, rsRateOf, rsCode, rsProduct, rsOf, rsUrl, rsFor, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
 
   /* ================= 두잉고 강의 묶음 (전체 클래스) ================= */
   // 무료강의 = 무료 VOD + 두잉고 강사 무료 LIVE(#/free) · 프리미엄강의 = LIVE · 오프라인 상품 + 두잉고 기수 강의(#/p) · VOD강의 = 유료 VOD · 전자책

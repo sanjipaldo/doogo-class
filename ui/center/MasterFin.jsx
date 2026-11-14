@@ -129,7 +129,7 @@ function TaxCard({ n }) {
     <form key={n} id="vda-tax-form" className="a-form" noValidate><div className="vs-rule">
         <ol className="vs-rule-steps"><li><b>정산 기준액</b><span>할인 전 판매가 − 온드미디어 RS − PG 결제 수수료</span></li><li><b>정산액 (부가세 포함)</b><span>정산 기준액 × 강사 비율 (기본 50%) − 그 달 광고비 강사 분담</span></li><li><b>지급</b><span>사업자: 정산액 그대로 · 강사님이 두고홀딩스에 정산액(부가세 포함)으로 세금계산서<br />개인(3.3%): 정산액 ÷ 1.1(부가세 전 금액)에서 사업소득 3.3% 원천징수</span></li></ol>
         <p className="vs-rule-ex"><Icon n="coins" c="xs" /><span>예) 1,000만 원 판매 → RS · PG 수수료 빼고 500만 원 → 강사 250만 원 · 플랫폼 250만 원 · 사업자 강사는 <b>250만 원</b> 지급(세금계산서 250만 원) · 개인 강사는 250만 ÷ 1.1 = {won(sup)}에서 3.3% {won(wh)} 빼고 <b>{won(sup - wh)}</b> 지급</span></p>
-        <p className="a-muted p-small">PG 결제 수수료율은 매출 리포트 › 수수료율(결제수단별)을 써요 · 쿠폰 · 포인트 할인은 플랫폼 부담이에요.</p></div>
+        <p className="a-muted p-small">{"PG 결제 수수료는 결제 금액의 " + A.VX().settleFeePct() + "%예요 (2026-11-15 결제분부터 · 그 전 결제분은 결제수단별 실제 수수료 · 매출 리포트 › 수수료율에서 정해요) · 쿠폰 · 포인트 할인은 플랫폼 부담이에요."}</p></div>
       <p className="a-label">기본 비율 <small className="a-muted">강사별로 따로 정하지 않은 강사에게 써요 · 숫자는 강사 몫(%)</small></p><div className="a-form-row vda-defr">
         {X.RATE_KEYS.map((x) => <div key={x[0]} className="a-field"><label htmlFor={"vdt-" + x[0]}>{x[1]}</label><div className="vda-pct"><input className="a-input" id={"vdt-" + x[0]} name={"r-" + x[0]} type="number" min="0" max="100" inputMode="numeric" defaultValue={d[x[0]] != null && d[x[0]] !== "" ? d[x[0]] : X.rateDef(x[0])} /><span>%</span></div></div>)}</div>
       <p className="a-muted p-small"><Icon n="alert" c="xs" /> 세금계산서는 사업자 강사만 해당해요(정산액 · 부가세 포함으로 강사님 → 두고홀딩스). 개인 강사는 부가세 전 금액에서 3.3%를 떼고 지급해요.</p>
