@@ -1209,6 +1209,20 @@ function pgFee75(get) {
   return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result: { rsPg: "5% → 7.5%" } };
 }
 
+/** 패밀리 · 파트너스 한 화면 (2026-11-14): /vod/partners 가 ‘패밀리’ 탭(기본)이 되면서, 저장된 첫 화면 배너 중 링크가 예전 주소(#/vod/partners)인 것은
+ *  파트너스(강사) 탭 #/vod/partners?tab=partners 로 — 그 링크를 넣을 때 /vod/partners 는 강사 지원 소개뿐이었어요 (‘강사 모집’ 배너 vb3 등).
+ *  다른 링크 · 다른 칸 · 이미 ?tab= 이 붙은 링크는 그대로 · 다시 돌려도 그대로 */
+const PT_OLD_LINK = /^(#|https?:\/\/(www\.)?doogoclass\.com)?\/vod\/partners\/?$/;
+function partnersTabLinks(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  const v = clone(meta.vod);
+  let n = 0;
+  (Array.isArray(v.banners) ? v.banners : []).forEach((b) => { if (isObj(b) && typeof b.href === "string" && PT_OLD_LINK.test(b.href.trim())) { b.href = "#/vod/partners?tab=partners"; n++; } });
+  if (!n) return { writes: {}, result: { banners: "바꿀 링크 없음" } };
+  return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result: { banners: n + "개 → 파트너스 탭(?tab=partners)" } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1253,6 +1267,7 @@ const OPS = [
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
   { id: "2026-11-12-family-demo", note: "패밀리 체험 계정 만들기: 영업 패밀리 partner / partner · 온드미디어 owned / owned (로그인 · 로그아웃할 때 처음 상태로 · 비밀번호는 못 바꿈 · 체험 링크 주문엔 RS 없음) — 이미 있거나 아이디가 겹치면 건너뜀", run: familyDemo },
   { id: "2026-11-15-pg-fee-75", note: "PG 결제 수수료 7.5% 확정: 온드미디어 RS 기준의 PG 공제가 예전 기본값 5%로 저장돼 있으면 7.5%로 (강사 정산 공제 7.5%는 코드 기본값 · 2026-11-15 결제분부터)", run: pgFee75 },
+  { id: "2026-11-14-partners-tab-links", note: "패밀리 · 파트너스 한 화면: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners · 강사 모집)면 파트너스(강사) 탭 #/vod/partners?tab=partners 로 — /vod/partners 는 이제 패밀리 탭이 기본", run: partnersTabLinks },
 ];
 
-module.exports = { OPS, pgFee75, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

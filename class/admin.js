@@ -2591,7 +2591,7 @@
     const xlBtn = all.length ? btn(icon("download", "sm") + "엑셀로 내려받기", "inq-xl", "a-btn-outline", ' data-only="' + (only || "") + '" data-f="' + esc(f) + '"') : "";
     return (only
       ? head("두고 파트너스 지원", "DOOGO CLASS ‘두고 파트너스’ 지원서(www.doogoclass.com/vod/partners)와 예전 ‘강사 모집’ 팝업으로 들어온 지원이 여기에 차곡차곡 쌓여요. 서버에 저장되고 마스터만 봐요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. (메모는 마스터만 봐요)",
-          xlBtn + '<a class="a-btn a-btn-ghost" href="#/vod/partners" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "지원 페이지 열기</a>")
+          xlBtn + '<a class="a-btn a-btn-ghost" href="#/vod/partners?tab=partners" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "지원 페이지 열기</a>")
       : head("강사 입점 문의", "두잉고 첫 화면의 ‘강사 입점 문의’와 DOOGO CLASS ‘두고 파트너스’ 지원서로 들어온 신청이에요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. 패밀리 추천 링크로 들어온 문의는 상태 · 1:1 대화가 그 패밀리의 패밀리센터에도 함께 보여요. (메모는 마스터만 봐요)",
           xlBtn + '<a class="a-btn a-btn-ghost" href="#/partner" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "문의 화면 열기</a>")) +
       alertBar +
@@ -8422,6 +8422,9 @@
     if (S && S.role === "coach") { const ci = DB.instructor(S.instructorId), cc = DB.coach(S.instructorId, S.coachId); if (!ci || ci.status !== "active" || !cc || cc.status !== "active") { S = null; DB.session.setAdmin(null); } }
     if (S && S.actingAs && !DB.instructor(S.actingAs)) { S.actingAs = null; DB.session.setAdmin(S); }
     if (!S) {
+      // 스토어 패밀리 탭 ‘체험 계정으로 둘러보기’(#/center/login?tab=family)는 ‘마스터 · 패밀리’ 탭이 골라진 채로 — 한 번 고르고 주소에서 지워요 (2026-11-14)
+      const qt = r.parts[0] === "login" ? r.params.get("tab") : null;
+      if (qt === "family" || qt === "master") { loginTab = "master"; ROUTE.replace("#/center/login"); }
       document.body.dataset.master = loginTab === "master" ? "1" : "";
       // 로그인 후 원래 가려던 화면(예: 무료강의 페이지 편집)으로 돌아간다
       if (r.parts[0] !== "login" && r.parts.length) DB.store.set("moonclass:after-login", ROUTE.hash);

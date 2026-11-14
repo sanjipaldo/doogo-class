@@ -3164,6 +3164,48 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "화면: 결제 화면 무통장은 같은 규칙(자동 · 늘 · 안 받기)으로 보이고 숨겨요 · 마스터 주문 목록(현금영수증 탭 · 표시) · 상세 · 엑셀 · 대시보드 할 일에 현금영수증 신청");
   }
 
+  {
+    console.log("59) 패밀리 · 파트너스 탭 (/vod/partners · 2026-11-14): 패밀리(기본) · 파트너스(?tab=partners) · 소개서 숫자 · 이름 바꾸기");
+    const vj40 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), sh40 = fs.readFileSync(path.join(ROOT, "../ui/store/Shell.jsx"), "utf8"), pp40 = fs.readFileSync(path.join(ROOT, "../ui/store/PartnersPage.jsx"), "utf8"),
+      ft40 = fs.readFileSync(path.join(ROOT, "../ui/store/FamilyTab.jsx"), "utf8"), aj40 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), fd40 = fs.readFileSync(path.join(ROOT, "api/_lib/familydemo.js"), "utf8");
+    // 탭 · 패밀리 글 묶음(PT_DECK ~ familyView)은 바깥 것 없이 돌아요 — 그 부분만 떼어 실제로 계산해 봐요 (icon 만 빈 함수)
+    const a40 = vj40.indexOf("  const PT_DECK = "), b40 = vj40.indexOf("  const ptCatRows = ");
+    const sb40 = { icon: () => "<svg></svg>", URLSearchParams }; require("vm").createContext(sb40);
+    require("vm").runInContext(vj40.slice(a40, b40) + "\n;this.out = { pfTabOf, PF_TABS, pfTabs, familyView, PT_DECK, FM_DECK, FM_DEMO };", sb40);
+    const T = sb40.out, F = T.familyView(), q = (s) => new URLSearchParams(s);
+    ok(a40 > 0 && b40 > a40 && T.pfTabOf(q("tab=partners")) === "partners" && T.pfTabOf(q("")) === "family" && T.pfTabOf(q("tab=family")) === "family" && T.pfTabOf(q("tab=evil")) === "family" && T.pfTabOf(null) === "family",
+      "탭: ?tab=partners 만 파트너스 · 없거나 다른 값은 패밀리(기본 · 왼쪽)");
+    const tb40 = T.pfTabs("family");
+    ok(T.PF_TABS.map((t) => t[0] + "=" + t[1]).join() === "family=#/vod/partners,partners=#/vod/partners?tab=partners" && (tb40.match(/aria-current="page"/g) || []).length === 1 && /class="pf-tab on" href="#\/vod\/partners" data-pf-tab="family" aria-current="page"/.test(tb40),
+      "위 탭 줄: 왼쪽 패밀리(#/vod/partners) · 오른쪽 파트너스(?tab=partners) · 고른 탭만 on · aria-current", tb40.slice(0, 160));
+    ok(F.sim.map((s) => s.rate + ":" + s.one + ":" + s.day).join() === "10:46250:185000,20:92500:370000" && F.pg === 7.5,
+      "온드미디어 기대 수익 예시 = 소개서 숫자: 50만 원 × (1 − PG 7.5%) × 10% = 46,250원(하루 4건 185,000원) · 20% = 92,500원(370,000원)", F.sim);
+    ok(F.per === 780000 && F.grow.join() === "780000,1560000,2340000",
+      "두잉고 세일즈 예시 = 소개서 숫자: A 240만 · B 150만 × 20% = 기수마다 78만 원 → 1~3기 누적 78만 · 156만 · 234만", F.grow);
+    ok(T.PT_DECK === "https://view.publitas.com/doogo/dugokeulraeseu_gangsaibjeomsogaeseo/page/1" && T.FM_DECK.media === "" && T.FM_DECK.sales === "" && T.FM_DEMO === "#/center/login?tab=family",
+      "소개서 링크: 강사 입점 소개서(파트너스 탭 · 새 창) · 패밀리 소개서 2개는 링크를 받기 전까지 버튼 없음 · 체험 계정은 ‘마스터 · 패밀리’ 탭 로그인으로");
+    ok(F.centers.map((c) => c.id).join() === "owned,partner" && /AFF_LOGIN = "partner", MD_LOGIN = "owned"/.test(fd40) && F.faq.length === 8 && F.teams.map((t) => t.name).join() === "온드미디어팀,두잉고 세일즈팀",
+      "패밀리 두 팀(온드미디어팀 · 두잉고 세일즈팀) · 센터 체험 계정 = familydemo.js 공개 체험 계정(owned · partner) · 자주 묻는 질문 8개");
+    ok(/'<div class="pt pt-' \+ tab \+ '">' \+ pfTabs\(tab\) \+ \(tab === "partners" \? ptBody\(\) : pageFamily\(\)\)/.test(vj40) && /VOD\(\)\.pfTabOf\(r\.qs\)/.test(pp40) && /tab === "partners" \? <Partners \/> : <Family \/>/.test(pp40) && /X\.familyView\(\)/.test(ft40) &&
+      /ROUTE\.replace\("#\/vod\/partners\?tab=partners"\)/.test(vj40) && /ROUTE\.hash = "#\/vod\/partners\?tab=partners"/.test(vj40) && /href: "#\/vod\/partners\?tab=partners"/.test(vj40),
+      "예전 화면 · React 같은 구조(탭 + 고른 탭) · 예전 강사 모집 주소 · ‘강사 모집’ 배너 → 파트너스 탭");
+    ok(/"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(vj40) && /"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(sh40) && !/강사 · 코치 · 파트너"/.test(vj40 + sh40) &&
+      /href="#\/vod\/partners">패밀리 · 파트너스/.test(vj40) && /href="#\/vod\/partners">패밀리 · 파트너스/.test(sh40) && /"두고 패밀리 \(온드미디어 · 세일즈\)"/.test(vj40) && /"두고 패밀리 \(온드미디어 · 세일즈\)"/.test(sh40),
+      "이름: 바닥 강사센터 로그인 ‘강사 · 코치 · 패밀리’ · 머리띠 ‘패밀리 · 파트너스’ · 바닥 · 전체 메뉴에 ‘두고 패밀리’ (예전 화면 = React)");
+    ok(/const qt = r\.parts\[0\] === "login" \? r\.params\.get\("tab"\) : null;\s*if \(qt === "family" \|\| qt === "master"\) \{ loginTab = "master"; ROUTE\.replace\("#\/center\/login"\); \}/.test(aj40),
+      "강사센터 로그인 ?tab=family → ‘마스터 · 패밀리’ 탭이 골라진 채로 (한 번 고르고 주소에서 지워요)");
+    const S40 = require(path.join(ROOT, "shared/screens.js"));
+    ok(S40.match("/vod/partners") === "vod-partners" && S40.match("/vod/partners?tab=partners") === "vod-partners" && S40.match("/vod/partners/apply") === "vod-partners", "React 화면 스위치: 패밀리 · 파트너스 탭 · 지원서 모두 같은 화면(vod-partners)");
+    // 일회성: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners — 그땐 강사 지원 소개뿐)면 파트너스 탭으로 · 다른 링크 · 칸은 그대로 · 다시 돌려도 그대로
+    const OF40 = require(path.join(TMP, "class/api/_lib/oneoff.js"));
+    const bn40 = [{ id: "vb3", title: "강사 모집", href: "#/vod/partners" }, { id: "vb9", href: "https://www.doogoclass.com/vod/partners/" }, { id: "vb1", href: "#/vod/c/all" }, { id: "vb4", href: "#/vod/partners?tab=partners" }, { id: "vb5", href: "#/vod/partners/apply" }];
+    const d40 = { meta: { ver: 3, other: 1, vod: { banners: bn40, products: [{ id: "v1" }] } } }, r40 = OF40.partnersTabLinks((k) => d40[k]);
+    const nb40 = r40.writes.meta && r40.writes.meta.vod.banners, d40b = { meta: r40.writes.meta }, r40b = OF40.partnersTabLinks((k) => d40b[k]);
+    ok(nb40 && nb40.map((b) => b.href).join(" ") === "#/vod/partners?tab=partners #/vod/partners?tab=partners #/vod/c/all #/vod/partners?tab=partners #/vod/partners/apply" && nb40[0].title === "강사 모집" && r40.writes.meta.other === 1 && r40.writes.meta.vod.products.length === 1 &&
+      bn40[0].href === "#/vod/partners" && !Object.keys(r40b.writes).length && !Object.keys(OF40.partnersTabLinks(() => null).writes).length && OF40.OPS.some((x) => x.id === "2026-11-14-partners-tab-links" && x.run === OF40.partnersTabLinks),
+      "일회성(2026-11-14-partners-tab-links): ‘강사 모집’ 배너 등 예전 주소 링크만 파트너스 탭으로 · 다른 링크 · 지원서 링크 · 다른 칸 그대로 · 원본은 안 건드림 · 다시 돌리면 그대로 · 데이터 없으면 건너뜀", r40.result);
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

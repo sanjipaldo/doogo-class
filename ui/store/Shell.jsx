@@ -83,7 +83,7 @@ function Mega({ cat, onPick }) {
       <nav className="vd-mg-cats" aria-label="분야"><p className="vd-mg-cap">분야</p>{row("all", "전체 클래스", "layers", ls.length)}{cs.map((c) => row(c.key, c.label, c.icon, ls.filter((p) => p.cat === c.key).length))}</nav>
       <MegaMain k={k} />
       <aside className="vd-mg-side"><p className="vd-mg-cap">바로가기</p>{goLink("#/vod/c/soon", "bell", "오픈 예정", "알림 신청하면 오픈 할인")}{goLink("#/vod/teachers", "users", "강사진", "직접 해서 번 강사님들")}{X.bizOn("flive") ? goLink("#/vod/c/all?tab=flive", "video", "무료 LIVE", "") : null}{goLink("#/vod/my/classes", "monitorPlay", "내 강의실", "")}{goLink("#/vod/about", "store", "DOOGO CLASS 소개", "")}
-        <a className="vd-mg-pt" href="#/vod/partners"><small>DOOGO PARTNERS</small><b>내 노하우로<br />클래스를 열어 보세요</b><span>파트너 강사로 지원하기<Icon n="arrowRight" c="xs" /></span></a></aside>
+        <a className="vd-mg-pt" href="#/vod/partners?tab=partners"><small>DOOGO PARTNERS</small><b>내 노하우로<br />클래스를 열어 보세요</b><span>파트너 강사로 지원하기<Icon n="arrowRight" c="xs" /></span></a></aside>
     </div></div>
   );
 }
@@ -166,7 +166,7 @@ function Header({ nav, open }) {
       <a className="vd-logo" href="#/vod" aria-label="DOOGO CLASS 홈"><img fetchPriority="high" className="vd-logo-img" src={LOGO_SRC} alt="DOOGO CLASS" /></a><SiteSwitch on="vod" />
       <SearchForm cls="vd-search" value={r.path[0] === "search" ? r.qs.get("q") || "" : ""} />
       <div className="vd-top-r">
-        <a className={"vd-ptl vd-ic-pc" + (nav === "partners" ? " on" : "")} href="#/vod/partners">두고 파트너스{nav === "partners" ? null : <span className="vd-ptl-tip" aria-hidden="true">파트너 강사로 지원하기</span>}</a>
+        <a className={"vd-ptl vd-ic-pc" + (nav === "partners" ? " on" : "")} href="#/vod/partners">패밀리 · 파트너스{nav === "partners" ? null : <span className="vd-ptl-tip" aria-hidden="true">패밀리 · 강사 모집 중</span>}</a>
         <a className="vd-tl vd-ic-pc" href="#/vod/my/classes" aria-label="내 강의실" title="내 강의실"><svg className="icon sm" viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: BOOK }} /><span>내 강의실</span></a>
         <a className="vd-ic vd-ic-pc" href="#/vod/my/likes" aria-label="찜한 강의" title="찜한 강의"><Icon n="heart" c="sm" /></a>
         {m ? <button type="button" className="vd-acct" data-v="acct" aria-haspopup="dialog" aria-label={m.name + "님 내 계정 메뉴"} onClick={() => open("acct")}><span className="vd-me-av">{m.name.slice(0, 1)}</span><span className="vd-acct-n"><small>안녕하세요</small><b>{m.name}님</b></span><Icon n="chevDown" c="xs" /></button>
@@ -193,18 +193,18 @@ function Footer({ open }) {
   return (
     <footer className="vd-gf"><div className="vd-gf-mq" aria-hidden="true"><div className="vd-gf-mq-t">{[0, 1, 2, 3, 4, 5].map(mq)}</div></div>
       <div className="vd-wrap"><div className="vd-gf-top"><div className="vd-gf-brand"><img className="vd-logo-img" src={LOGO_SRC} alt="DOOGO CLASS" /><p>돈 되는 노하우를 {kinds}{/책$/.test(kinds) ? "으로" : "로"}.<br />직접 해서 번 사람에게 배워요.</p>
-        <div className="vd-gf-login" aria-label="로그인 바로가기"><small>로그인 바로가기</small>{[["#/center/login", "monitorPlay", "강사센터 로그인", "강사 · 코치 · 파트너"], ["#/login", "users", "수강생 로그인", "두잉고 기수 강의실"]].map((x) => <a key={x[0]} className="vd-gf-lg" href={x[0]}><span className="vd-gf-lg-ic"><Icon n={x[1]} c="sm" /></span><span><b>{x[2]}</b><em>{x[3]}</em></span><Icon n="arrowUpRight" c="xs" /></a>)}</div></div>
+        <div className="vd-gf-login" aria-label="로그인 바로가기"><small>로그인 바로가기</small>{[["#/center/login", "monitorPlay", "강사센터 로그인", "강사 · 코치 · 패밀리"], ["#/login", "users", "수강생 로그인", "두잉고 기수 강의실"]].map((x) => <a key={x[0]} className="vd-gf-lg" href={x[0]}><span className="vd-gf-lg-ic"><Icon n={x[1]} c="sm" /></span><span><b>{x[2]}</b><em>{x[3]}</em></span><Icon n="arrowUpRight" c="xs" /></a>)}</div></div>
         <nav className="vd-gf-grid" aria-label="바로가기">
           {col("클래스", [["#/vod", "돈되는 클래스"], ["#/vod/c/all?tab=vod", "VOD 강의"], X.bizOn("ebook") && ["#/vod/c/all?tab=ebook", "전자책"], X.bizOn("flive") && ["#/vod/c/all?tab=flive", "무료 LIVE"], X.bizOn("live") && ["#/vod/c/all?tab=premium", "LIVE · 오프라인 강의"], X.bizOn("free") && ["#/vod/c/all?tab=free", "무료강의"], ["#/vod/teachers", "강사진"], ["#/vod/c/soon", "오픈 예정"]].filter(Boolean))}
           {col("마이페이지", [["#/vod/my/classes", "내 강의실"], ["#/vod/my/coupons", "쿠폰"], ["#/vod/my/orders", "주문 · 결제 내역"], ["#/vod/my/account", "회원 정보 수정"]])}
-          {col("DOOGO CLASS", [["#/vod/about", "DOOGO CLASS 소개"], ["#/vod/partners", "두고 파트너스 (강사 지원)"], ["#/doinggo", "두잉고 (강의 운영 시스템)"], ["#/center", "강사센터"]])}
+          {col("DOOGO CLASS", [["#/vod/about", "DOOGO CLASS 소개"], ["#/vod/partners", "두고 패밀리 (온드미디어 · 세일즈)"], ["#/vod/partners?tab=partners", "두고 파트너스 (강사 지원)"], ["#/doinggo", "두잉고 (강의 운영 시스템)"], ["#/center", "강사센터"]])}
         </nav>
         <div className="vd-gf-help"><b>도움이 필요하신가요?</b><p>수강 · 결제 · 환불 문의를 남겨 주시면<br />영업일 기준 하루 안에 답해 드려요.</p><div className="vd-gf-hbtn"><a className="vd-btn vd-btn-p" href="#/vod/my/help">1:1 문의하기 <Icon n="arrowRight" c="xs" /></a><KakaoBtn cls="vd-btn vd-btn-kakao" label="카카오톡 상담" /></div>
           {S.phone || S.hours ? <p className="vd-gf-cs">{S.phone ? <b>{tel(S.phone)}</b> : null}{S.hours ? <small>{S.hours}</small> : null}</p> : null}</div></div>
       <div className="vd-gf-bot"><div className="vd-gf-biz"><strong>{S.company || "(주)두고홀딩스"}</strong><dl>{biz.map((x) => <div key={x[0]}><dt>{x[0]}</dt><dd>{x[1]}</dd></div>)}</dl>{S.notice ? <p>{S.notice}</p> : null}
         {LN ? <p className="vd-gf-lnote">{LN.date}부터 <a href="#/terms">이용약관</a> · <a href="#/privacy">개인정보처리방침</a>이 일부 바뀌어요. 바뀌는 내용은 각 페이지 맨 위 개정 안내에서 볼 수 있어요.</p> : null}
         <p className="vd-gf-copy">© 2026 {S.company || "(주)두고홀딩스"}. All rights reserved.</p></div>
-        <nav className="vd-gf-links" aria-label="약관"><a href="#/terms">이용약관</a><a href="#/privacy"><strong>개인정보처리방침</strong></a><a href="#/refund">환불정책</a><button type="button" data-v="legal" data-k="oss" onClick={() => open("legal:oss")}>오픈소스 라이선스</button>{bizDigits.length === 10 ? <a href={"https://www.ftc.go.kr/bizCommPop.do?wrkr_no=" + bizDigits} target="_blank" rel="noopener">사업자정보확인</a> : null}<a href="#/vod/partners">두고 파트너스 · 입점 문의</a></nav></div></div></footer>
+        <nav className="vd-gf-links" aria-label="약관"><a href="#/terms">이용약관</a><a href="#/privacy"><strong>개인정보처리방침</strong></a><a href="#/refund">환불정책</a><button type="button" data-v="legal" data-k="oss" onClick={() => open("legal:oss")}>오픈소스 라이선스</button>{bizDigits.length === 10 ? <a href={"https://www.ftc.go.kr/bizCommPop.do?wrkr_no=" + bizDigits} target="_blank" rel="noopener">사업자정보확인</a> : null}<a href="#/vod/partners?tab=partners">두고 파트너스 · 입점 문의</a></nav></div></div></footer>
   );
 }
 

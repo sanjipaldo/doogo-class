@@ -102,7 +102,7 @@ export default function PartnerApply() {
       <div className="pt-gf-ban" aria-hidden="true"><div className="pt-gf-ban-tx"><small>DOOGO PARTNERS</small><b>노하우를 클래스로,<br />첫걸음은 지원서부터</b></div><img src={X.PT_MS + "mascot-hero.webp"} alt="" width="880" height="760" /></div>
       <div className="pt-gf-card pt-gf-title"><h1>두고 파트너스 지원서</h1><p>직접 해서 번 노하우를 DOOGO CLASS 클래스로 만들어 보세요. 기획 · 촬영 · 편집 · 상세페이지 · 판매 · 정산까지 함께해요. 적어 주신 내용은 담당자만 보고, 지원 검토 · 상담 연락에만 써요.</p>
         <ul className="pt-gf-meta"><li><Icon n="clock" c="xs" />약 5분</li><li><Icon n="layers" c="xs" />섹션 5개</li><li><Icon n="lock" c="xs" />담당자만 봐요</li></ul>
-        <p className="pt-gf-req"><em>*</em> 표시는 꼭 답해 주세요{m ? " · " + (m.email || m.name || "") + " 님으로 쓰는 중" : ""}</p><a className="pt-gf-back" href="#/vod/partners"><Icon n="arrowLeft" c="xs" />두고 파트너스 소개 다시 보기</a></div>
+        <p className="pt-gf-req"><em>*</em> 표시는 꼭 답해 주세요{m ? " · " + (m.email || m.name || "") + " 님으로 쓰는 중" : ""}</p><a className="pt-gf-back" href="#/vod/partners?tab=partners"><Icon n="arrowLeft" c="xs" />두고 파트너스 소개 다시 보기</a></div>
       <div className="pt-gf-prog" id="pt-gf-prog"><span><b id="pt-gf-pn">{cur}</b> / 5 · <em id="pt-gf-pt">{S[cur - 1][0]}</em></span><i role="progressbar" aria-valuemin="0" aria-valuemax="5" aria-valuenow={cur} aria-label="지원서 진행"><b id="pt-gf-pb" style={{ width: cur * 20 + "%" }} /></i></div>
       <form ref={fRef} className="pt-form pt-gf-form" data-pt-form="" noValidate onInput={(e) => X.ptSaveDraft(e.currentTarget)} onSubmit={submit}>
         {sec(1, <>{inp("name", "성함", 1, { maxLength: 40, autoComplete: "name", placeholder: "홍길동" }, "", m ? m.name : "")}{inp("nick", "활동명 · 브랜드명", 0, { maxLength: 40, placeholder: "예: 갓농부, ○○스토어" }, "스토어 · 강사 페이지에 보일 이름이에요. 없으면 비워 두세요.")}

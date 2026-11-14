@@ -16,8 +16,8 @@ const PUB = ["/terms", "/privacy", "/refund", "/vod/legal/privacy", "/vod/teache
   // 클래스 목록: 전체 · 종류 탭 · 정렬 · 분야 · 분야 + 종류 · 꺼진 종류 · 오픈 예정 · BEST · 새로 열린 · 무료 특강 · 없는 분야 · 검색(빈 · 있음 · 없음)
   "/vod/c/all", "/vod/c", "/vod/c/all?tab=vod", "/vod/c/all?tab=ebook&sort=low", "/vod/c/all?tab=premium", "/vod/c/all?tab=free", "/vod/c/commerce", "/vod/c/ai?tab=vod&sort=new", "/vod/c/money",
   "/vod/c/soon", "/vod/c/best", "/vod/c/new?sort=like", "/vod/c/free", "/vod/c/nothing", "/vod/search", "/vod/search?q=%EC%87%BC%ED%95%91", "/vod/search?q=zzqq",
-  // 소개 · 두고 파트너스 · 지원서 · 스토어 홈 (대표 주소 · /vod)
-  "/vod/about", "/vod/partners", "/vod/partners/apply", "/", "/vod",
+  // 소개 · 패밀리 · 파트너스(강사) · 지원서 · 스토어 홈 (대표 주소 · /vod)
+  "/vod/about", "/vod/partners", "/vod/partners?tab=partners", "/vod/partners/apply", "/", "/vod",
   // 클래스 상세: VOD(수강권 · 코칭) · 오픈 예정 · 전자책 · LIVE · 무료 LIVE · 강사 없는 VOD · 종이책 · 숨긴 클래스 · 없는 클래스
   "/vod/p/v2", "/vod/p/v3", "/vod/p/v4", "/vod/p/v5", "/vod/p/v8", "/vod/p/v9", "/vod/p/v11", "/vod/p/v12", "/vod/p/fl-choi", "/vod/p/fl-farmer-0", "/vod/p/v14", "/vod/p/b1", "/vod/p/v1", "/vod/p/nope"];
 module.exports = {
@@ -393,6 +393,9 @@ module.exports = {
         await step(out, () => pg.click(".vd-nav-r a[href='#/vod/about']"), 400);
         await step(out, () => pg.click(".vd-top a.vd-ptl"), 500);
         // 자주 묻는 질문은 스크롤 없이 눌러요 (눌러서 스크롤되면 브라우저의 스크롤 고정이 위치를 조금씩 다르게 잡아요 — 화면 모양과 상관없이)
+        // 패밀리 탭(기본) 자주 묻는 질문 → 위 탭 ‘파트너스’ → 파트너스 탭 자주 묻는 질문 · 지원하기 (2026-11-14)
+        await step(out, () => pg.$eval(".pt-faq-it:nth-child(3) summary", (el) => el.click()));
+        await step(out, () => pg.click(".pf-tab[data-pf-tab='partners']"), 600);
         await step(out, () => pg.$eval(".pt-faq-it:nth-child(3) summary", (el) => el.click()));
         await step(out, () => pg.$eval(".pt-faq-it:nth-child(5) summary", (el) => el.click()));
         await step(out, () => pg.click(".pt-hero a[href='#/vod/partners/apply']"), 500);

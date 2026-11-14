@@ -323,7 +323,7 @@ export default function AboutPage({ n, moved }) {
         <section className="ab-join">
           <div className="vd-wrap">
             <div><b>크리에이터로 함께해요.</b><p>직접 해서 번 경험과 노하우를 강의로 나누는 사람,<br />DOOGO CLASS 크리에이터를 찾습니다.</p></div>
-            <a className="vd-btn vd-btn-p" href="#/vod/partners">두고 파트너스 지원하기 ↗</a>
+            <a className="vd-btn vd-btn-p" href="#/vod/partners?tab=partners">두고 파트너스 지원하기 ↗</a>
           </div>
         </section>
       </div>
