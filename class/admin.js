@@ -283,6 +283,26 @@
     "paused-media": "사용이 중지된 온드미디어 계정이에요. 두고클래스 담당자에게 문의해 주세요.",
     input: "이름과 전화번호 뒷자리 4자리를 확인해 주세요."
   };
+  /* 공개 체험 계정으로 바로 로그인 (2026-11-14 · 스토어 패밀리 탭 ‘체험 계정으로 둘러보기’ · 대표님 요청)
+   *  owned = 온드미디어 · partner = 영업 패밀리 — familydemo.js 가 만드는 체험 계정(비밀번호 = 아이디 · 소개서 · 패밀리 탭에 공개)만 · 다른 값은 무시
+   *  로그인 칸에 아이디 · 비밀번호를 채워 보여 주고, 손으로 누른 것과 같은 길(서버 로그인 · 시안은 이 브라우저 계정)로 들어가요
+   *  이미 누가 로그인해 있으면 아무것도 하지 않아요 · 틀리면 그때 화면에 있는 로그인 칸 빨간 글로 */
+  const DEMO_IDS = { owned: 1, partner: 1 };
+  function demoLogin(id, tries) {
+    if (S || !DEMO_IDS[id]) return;
+    const f = document.getElementById("a-login-form");
+    if (!f && (tries || 0) < 20) { setTimeout(() => demoLogin(id, (tries || 0) + 1), 50); return; } // 로그인 화면(React 포함)이 그려질 때까지 잠깐
+    loginTab = "master";
+    if (f) { if (f.uid) f.uid.value = id; if (f.pw) f.pw.value = id; }
+    const err = { get textContent() { const e = document.getElementById("al-error"); return e ? e.textContent : ""; }, set textContent(v) { const e = document.getElementById("al-error"); if (e) e.textContent = v; } };
+    if (!DB.remote.on) {
+      const a = id === "partner" ? findPartnerLogin(id, id) : findMediaLogin(id, id);
+      if (!a) { err.textContent = "체험 계정을 찾지 못했어요. 아이디와 비밀번호를 직접 넣어 주세요."; return; }
+      if (id === "partner") partnerSignIn(a, err); else mediaSignIn(a, err);
+      return;
+    }
+    serverLogin(f, id, id, err);
+  }
   function serverLogin(f, id, pw, err, iid) {
     const btn = f && f.querySelector("button[type=submit]");
     if (btn) btn.disabled = true;
@@ -8422,9 +8442,12 @@
     if (S && S.role === "coach") { const ci = DB.instructor(S.instructorId), cc = DB.coach(S.instructorId, S.coachId); if (!ci || ci.status !== "active" || !cc || cc.status !== "active") { S = null; DB.session.setAdmin(null); } }
     if (S && S.actingAs && !DB.instructor(S.actingAs)) { S.actingAs = null; DB.session.setAdmin(S); }
     if (!S) {
-      // 스토어 패밀리 탭 ‘체험 계정으로 둘러보기’(#/center/login?tab=family)는 ‘마스터 · 패밀리’ 탭이 골라진 채로 — 한 번 고르고 주소에서 지워요 (2026-11-14)
-      const qt = r.parts[0] === "login" ? r.params.get("tab") : null;
-      if (qt === "family" || qt === "master") { loginTab = "master"; ROUTE.replace("#/center/login"); }
+      // 스토어 패밀리 탭 (2026-11-14): #/center/login?tab=family → ‘마스터 · 패밀리’ 탭이 골라진 채로
+      //   ‘체험 계정으로 둘러보기’ #/center/login?demo=owned | partner → 그 공개 체험 계정으로 바로 로그인(demoLogin — 로그인 화면이 그려진 뒤)
+      //   한 번만: 고르고 나서 주소의 ?tab= · ?demo= 는 지워요
+      const qt = r.parts[0] === "login" ? r.params.get("tab") : null, qd = r.parts[0] === "login" ? r.params.get("demo") : null;
+      if (qt === "family" || qt === "master" || DEMO_IDS[qd]) { loginTab = "master"; ROUTE.replace("#/center/login"); }
+      if (DEMO_IDS[qd]) setTimeout(() => demoLogin(qd), 0);
       document.body.dataset.master = loginTab === "master" ? "1" : "";
       // 로그인 후 원래 가려던 화면(예: 무료강의 페이지 편집)으로 돌아간다
       if (r.parts[0] !== "login" && r.parts.length) DB.store.set("moonclass:after-login", ROUTE.hash);

@@ -98,10 +98,10 @@ export default function Family() {
             <div className="fm-ctr-vis" aria-hidden="true"><Mock k={c.k} /></div>
             <div className="fm-ctr-tx"><small>{c.team}</small><h3>{c.name}</h3><ul>{c.items.map((t) => <li key={t}><Icon n="check" c="xs" />{t}</li>)}</ul>
               <dl className="fm-demo"><div><dt>아이디</dt><dd>{c.id}</dd></div><div><dt>비밀번호</dt><dd>{c.id}</dd></div></dl>
-              <a className="vd-btn fm-ctr-go" href={F.demo}>{c.name + " 둘러보기"}<Icon n="arrowRight" c="xs" /></a></div>
+              <a className="vd-btn fm-ctr-go" href={c.go}>{c.name + " 둘러보기"}<Icon n="arrowRight" c="xs" /></a></div>
           </div>
         ))}</div>
-        <p className="fm-demo-note"><Icon n="lock" c="xs" />강사센터 로그인 › ‘마스터 · 패밀리’ 탭에서 로그인해요 · 체험 계정은 로그인 · 로그아웃할 때 처음 상태로 돌아가요</p>
+        <p className="fm-demo-note"><Icon n="lock" c="xs" />‘둘러보기’를 누르면 체험 계정으로 바로 로그인돼요 · 체험 계정은 로그인 · 로그아웃할 때 처음 상태로 돌아가요</p>
         <div className="fm-pays"><b className="fm-sub">정산은 이렇게 진행돼요</b><ol className="fm-pay" data-rv-kids="">{F.pay.map((x) => <li key={x[1]}><span className="fm-pay-ic"><Icon n={x[0]} c="sm" /></span><b>{x[1]}</b><small>{x[2]}</small></li>)}</ol></div>
       </Sec>
       <Sec id="fm-flow" eb="HOW TO JOIN" h="합류 신청부터 첫 정산까지, 이렇게 진행돼요" cls="pt-flows">
@@ -124,10 +124,10 @@ export default function Family() {
         <div className="vd-wrap">
           <small data-rv="">DOOGO CLASS FAMILY</small>
           <h2 data-rv="">먼저 보고,<br />{"확신이 들 때 "}<em>시작</em>하세요.</h2>
+          {/* 마지막 안내 (2026-11-14): 카카오 대신 소개서 2개(새 창) · 체험 계정으로 둘러보기(온드미디어 owned 로 바로 로그인) */}
           <div className="pt-end-btns" data-rv="">
-            {deck("media", "vd-btn vd-btn-xl fm-end-deck", "온드미디어 소개서")}
-            {deck("sales", "vd-btn vd-btn-xl fm-end-deck", "두잉고 세일즈 소개서")}
-            <KakaoBtn cls="vd-btn vd-btn-xl pt-end-kk" label="카카오톡으로 합류 상담하기" />
+            {deck("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서")}
+            {deck("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서")}
             <a className="vd-btn vd-btn-xl fm-end-demo" href={F.demo}><Icon n="monitorPlay" c="sm" /><span>체험 계정으로 둘러보기</span></a>
           </div>
         </div>

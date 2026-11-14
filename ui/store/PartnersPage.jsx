@@ -7,7 +7,7 @@
  *  · 오른쪽 아래 지원 상자는 첫 화면 · 마지막 안내 · 바닥이 안 보일 때만 · 자주 묻는 질문은 하나만 열려요 (예전 wirePt · ptKit.jsx)
  *  · 검색 · 공유 미리보기는 서버가 예전처럼 넣어요 (app/(react)/layout.js → pagemeta) */
 import { useEffect, useRef } from "react";
-import Shell, { KakaoBtn } from "./Shell.jsx";
+import Shell from "./Shell.jsx";
 import Icon from "../lib/Icon.jsx";
 import { RawOne } from "../lib/Raw.jsx";
 import { Eg, useMotion } from "../lib/motion.jsx";
@@ -272,7 +272,6 @@ function Partners() {
             <div className="pt-end-btns" data-rv="">
               <a className="vd-btn vd-btn-p vd-btn-xl" href="#/vod/partners/apply">두고 파트너스 지원하기<Icon n="arrowRight" c="sm" /></a>
               <Deck cls="vd-btn vd-btn-xl pt-end-deck" />
-              <KakaoBtn cls="vd-btn vd-btn-xl pt-end-kk" label="카카오톡으로 먼저 물어보기" />
             </div>
           </div>
         </section>

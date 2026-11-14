@@ -3403,10 +3403,11 @@
      강사 정산 비율은 대외비라 이 공개 화면(파트너스 탭)에 쓰지 않아요 (상담에서 안내) ---------- */
   const PT_APPLY = "#/vod/partners/apply";
   const PT_MS = "assets/partners/"; // 두고 파트너스 캐릭터 ‘두디’ (빨간 D · 베어 문 자국) — 기본 · 응원 · 질문 포즈
-  const PT_DECK = "https://view.publitas.com/doogo/dugokeulraeseu_gangsaibjeomsogaeseo/page/1"; // 강사 입점 소개서 (publitas · 새 창)
-  // 패밀리 소개서 (온드미디어 · 두잉고 세일즈) 새 창 링크 — 받으면 넣어요. 비어 있으면 그 버튼은 그리지 않아요
-  const FM_DECK = { media: "", sales: "" };
-  const FM_DEMO = "#/center/login?tab=family"; // 체험 계정 → 강사센터 로그인 ‘마스터 · 패밀리’ 탭이 골라진 채로
+  const PT_DECK = "https://view.publitas.com/doogo/dugokeulraeseu_gangsaibjeomsogaeseo/"; // 강사 입점 소개서 (publitas · 새 창)
+  // 패밀리 소개서 (publitas · 새 창) — 비우면 그 버튼은 그리지 않아요
+  const FM_DECK = { media: "https://view.publitas.com/doogo/dugokeulraeseu_ondeumidieo/", sales: "https://view.publitas.com/doogo/dugokeulraeseu_duinggo/" };
+  // 체험 계정으로 둘러보기 → 그 공개 체험 계정(familydemo.js — 온드미디어 owned · 영업 패밀리 partner)으로 강사센터에 바로 로그인 (admin.js demoLogin)
+  const FM_DEMO = (id) => "#/center/login?demo=" + id;
   const FM_PG = 7.5; // 온드미디어 RS 계산(예시)의 PG 결제 수수료 % — 소개서 · 정산 기본값과 같게
   /** 지금 탭: ?tab=partners 면 파트너스, 아니면 패밀리 (예전 화면 · React 같이 씀) */
   const pfTabOf = (qs) => (qs && qs.get("tab") === "partners" ? "partners" : "family");
@@ -3421,7 +3422,7 @@
       to: "fm-media", more: "온드미디어팀 자세히 보기", deck: "media", deckLabel: "온드미디어 소개서" },
     { k: "sl", ic: "handshake", eb: "DOINGGO SALES", name: "두잉고 세일즈팀", lead: "배움이 필요한 사람을 연결하고, 성과를 수익으로.", rate: "이용료의 20%", rateSub: "소개한 강사님이 기수를 열 때마다 (공급가액 기준)",
       pts: ["교육 업계 · 마케터 · 커뮤니티 운영자 누구나", "아는 강사님께 추천 링크 · 코드로 두잉고를 소개", "상담 · 계약 · 세팅은 두잉고 담당자가", "패밀리센터에서 입점 진행 · 입금 · 지급을 실시간으로"],
-      to: "fm-sales", more: "두잉고 세일즈팀 자세히 보기", deck: "sales", deckLabel: "두잉고 세일즈 소개서" }
+      to: "fm-sales", more: "두잉고 세일즈팀 자세히 보기", deck: "sales", deckLabel: "두잉고 소개서" }
   ];
   const FM_MD_STEPS = [["video", "강사님 스토리를 내 채널 영상으로", "DOOGO CLASS 강사님을 찍고, 어떻게 돈을 벌었는지 이야기해요."], ["link", "설명란에 내 RS 링크", "VOD마다 주어지는 내 전용 링크를 설명란 · 고정 댓글에 붙여요."], ["coins", "결제되면 RS가 바로 보여요", "내 링크로 결제된 주문과 RS가 판매 달력에 실시간으로 쌓여요."]];
   const FM_MD_TIERS = [["구독자 10만 명 미만", 10, "채널만 있으면 누구나 바로 시작"], ["구독자 10만 명 이상", 20, "10만 명 이상 채널은 RS 2배"]];
@@ -3453,8 +3454,8 @@
     const rs = (rate) => Math.floor(500000 * (100 - FM_PG) / 100 * rate / 100 / 10) * 10;
     const sim = FM_MD_TIERS.map((x) => ({ rate: x[1], one: rs(x[1]), day: rs(x[1]) * 4 }));
     const per = FM_SL_GROW.reduce((a, x) => a + Math.round(x[1] * 0.2), 0), grow = [1, 2, 3].map((k) => per * k);
-    return { deck: FM_DECK, demo: FM_DEMO, pg: FM_PG, strip: FM_STRIP, teams: FM_TEAMS, mdSteps: FM_MD_STEPS, tiers: FM_MD_TIERS, sim, chans: FM_CHANS, mdTags: FM_MD_TAGS,
-      slSteps: FM_SL_STEPS, growRows: FM_SL_GROW, per, grow, slWho: FM_SL_WHO, vs: FM_VS, centers: FM_CENTERS, pay: FM_PAY, flow: FM_FLOW, faq: FM_FAQ };
+    return { deck: FM_DECK, demo: FM_DEMO("owned"), pg: FM_PG, strip: FM_STRIP, teams: FM_TEAMS, mdSteps: FM_MD_STEPS, tiers: FM_MD_TIERS, sim, chans: FM_CHANS, mdTags: FM_MD_TAGS,
+      slSteps: FM_SL_STEPS, growRows: FM_SL_GROW, per, grow, slWho: FM_SL_WHO, vs: FM_VS, centers: FM_CENTERS.map((c) => Object.assign({ go: FM_DEMO(c.id) }, c)), pay: FM_PAY, flow: FM_FLOW, faq: FM_FAQ };
   }
   const ptCatRows = (cs) => {
     const chip = (c) => '<span class="pt-cat">' + (MG_IMG[c.key] ? '<img src="' + tileImg(c.key) + '" alt="" loading="lazy">' : icon(c.icon || "layers", "xs")) + esc(c.label) + "</span>";
@@ -3536,17 +3537,18 @@
       ? '<div class="fm-mock"><div class="fm-mock-h"><b>내 홍보 링크</b><span>' + icon("copy", "xs") + "전체 복사</span></div>" + ["VOD 강의 A", "VOD 강의 B", "전자책 C"].map((t, i) => '<div class="fm-mk-link" style="--k:' + i + '"><span><b>' + t + "</b><small>doogoclass.com/vod/p/…?rs=내코드</small></span><em>복사</em></div>").join("") + "</div>"
       : '<div class="fm-mock"><div class="fm-mock-h"><b>입점 진행</b><span>' + icon("refresh", "xs") + '실시간</span></div><ol class="fm-mk-steps">' + ["문의 접수", "열람", "두잉고 상담", "계약 완료", "플랫폼 오픈"].map((t, i) => '<li class="' + (i < 3 ? "done" : i === 3 ? "now" : "") + '" style="--k:' + i + '"><i>' + (i < 3 ? icon("check", "xs") : "") + "</i>" + t + "</li>").join("") + "</ol></div>");
     const center = (c) => '<div class="fm-ctr fm-ctr-' + c.k + '"><div class="fm-ctr-vis" aria-hidden="true">' + mock(c.k) + '</div><div class="fm-ctr-tx"><small>' + c.team + "</small><h3>" + c.name + "</h3><ul>" + c.items.map((t) => "<li>" + icon("check", "xs") + t + "</li>").join("") + "</ul>" +
-      '<dl class="fm-demo"><div><dt>아이디</dt><dd>' + c.id + "</dd></div><div><dt>비밀번호</dt><dd>" + c.id + '</dd></div></dl><a class="vd-btn fm-ctr-go" href="' + F.demo + '">' + c.name + " 둘러보기" + icon("arrowRight", "xs") + "</a></div></div>";
+      '<dl class="fm-demo"><div><dt>아이디</dt><dd>' + c.id + "</dd></div><div><dt>비밀번호</dt><dd>" + c.id + '</dd></div></dl><a class="vd-btn fm-ctr-go" href="' + c.go + '">' + c.name + " 둘러보기" + icon("arrowRight", "xs") + "</a></div></div>";
     const pay = '<ol class="fm-pay" data-rv-kids>' + F.pay.map((x) => '<li><span class="fm-pay-ic">' + icon(x[0], "sm") + "</span><b>" + x[1] + "</b><small>" + x[2] + "</small></li>").join("") + "</ol>";
     const centers = ptSec("fm-center", "TRANSPARENT", "숨길 게 없어서,<br>체험 계정을 그대로 공개해요.", "두 팀 모두 개별 아이디 · 비밀번호로 센터에 들어가 판매 · RS · 정산서를 실시간으로 확인해요. 합류하기 전에 먼저 둘러보세요.",
-      '<div class="fm-ctrs" data-rv-kids>' + F.centers.map(center).join("") + '</div><p class="fm-demo-note">' + icon("lock", "xs") + "강사센터 로그인 › ‘마스터 · 패밀리’ 탭에서 로그인해요 · 체험 계정은 로그인 · 로그아웃할 때 처음 상태로 돌아가요</p>" +
+      '<div class="fm-ctrs" data-rv-kids>' + F.centers.map(center).join("") + '</div><p class="fm-demo-note">' + icon("lock", "xs") + "‘둘러보기’를 누르면 체험 계정으로 바로 로그인돼요 · 체험 계정은 로그인 · 로그아웃할 때 처음 상태로 돌아가요</p>" +
       '<div class="fm-pays"><b class="fm-sub">정산은 이렇게 진행돼요</b>' + pay + "</div>", "fm-centers");
     const flow = ptSec("fm-flow", "HOW TO JOIN", "합류 신청부터 첫 정산까지, 이렇게 진행돼요", "", '<ol class="pt-flow" data-rv-kids>' + F.flow.map((x, i) => '<li><span class="pt-fl-n">' + String(i + 1).padStart(2, "0") + '</span><span class="pt-fl-ic">' + icon(x[0], "sm") + "</span><b>" + x[1] + "</b><p>" + x[2] + "</p></li>").join("") + "</ol>" +
       '<div class="pt-flow-cta" data-rv>' + kkBtn("vd-btn vd-btn-xl pt-end-kk", "카카오톡으로 합류 신청하기") + "</div>", "pt-flows");
     const faq = '<section class="pt-faqs" id="fm-faq"><div class="vd-wrap pt-faq-w"><img class="pt-faq-ms" data-rv="pop" src="' + PT_MS + 'mascot-faq.webp" alt="" width="380" height="408" loading="lazy"><h2 class="pt-faq-h" data-rv>자주 묻는 질문</h2>' +
       '<div class="pt-faq" data-rv-kids>' + F.faq.map((x, i) => '<details class="pt-faq-it"' + (i ? "" : " open") + "><summary><span>Q. " + esc(x[0]) + "</span>" + icon("chevDown", "sm") + '</summary><div class="pt-faq-a"><p>' + esc(x[1]) + "</p></div></details>").join("") + "</div></div></section>";
+    // 마지막 안내 (2026-11-14 대표님 요청): 카카오 대신 소개서 2개(새 창) · 체험 계정으로 둘러보기(온드미디어 owned 로 바로 로그인)
     const end = '<section class="pt-end fm-end"><div class="vd-wrap"><small data-rv>DOOGO CLASS FAMILY</small><h2 data-rv>먼저 보고,<br>확신이 들 때 <em>시작</em>하세요.</h2><div class="pt-end-btns" data-rv>' +
-      deckBtn("media", "vd-btn vd-btn-xl fm-end-deck", "온드미디어 소개서") + deckBtn("sales", "vd-btn vd-btn-xl fm-end-deck", "두잉고 세일즈 소개서") + kkBtn("vd-btn vd-btn-xl pt-end-kk", "카카오톡으로 합류 상담하기") +
+      deckBtn("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서") + deckBtn("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서") +
       '<a class="vd-btn vd-btn-xl fm-end-demo" href="' + F.demo + '">' + icon("monitorPlay", "sm") + "<span>체험 계정으로 둘러보기</span></a></div></div></section>";
     const flt = '<a class="pt-float fm-float" href="' + esc(opsKk().chat) + '" target="_blank" rel="noopener" data-kk-ops aria-label="카카오톡으로 패밀리 합류 상담하기"><img src="' + PT_MS + 'mascot-cheer.webp" alt="" width="48" height="52"><span><small>내 채널 · 인맥이 수익으로</small><b>패밀리 합류 상담하기</b></span>' + icon("arrowRight", "sm") + "</a>";
     return hero + strip + teams + media + sales + centers + flow + faq + end + flt;
@@ -3591,8 +3593,8 @@
     const flow = sec("pt-flow", "HOW IT WORKS", "지원부터 오픈까지, 이렇게 진행돼요", "", '<ol class="pt-flow" data-rv-kids>' + PT_FLOW.map((x, i) => '<li><span class="pt-fl-n">' + String(i + 1).padStart(2, "0") + '</span><span class="pt-fl-ic">' + icon(x[2], "sm") + "</span><b>" + x[0] + "</b><p>" + x[1] + "</p></li>").join("") + "</ol>" + '<div class="pt-flow-cta" data-rv>' + ptCta("vd-btn-xl", "지원서 쓰러 가기") + ptDeck("vd-btn vd-btn-xl pt-deck-o") + "</div>", "pt-flows");
     const faq = '<section class="pt-faqs" id="pt-faq"><div class="vd-wrap pt-faq-w"><img class="pt-faq-ms" data-rv="pop" src="' + PT_MS + 'mascot-faq.webp" alt="" width="380" height="408" loading="lazy"><h2 class="pt-faq-h" data-rv>자주 묻는 질문</h2>' +
       '<div class="pt-faq" data-rv-kids>' + PT_FAQ.map((x, i) => '<details class="pt-faq-it"' + (i ? "" : " open") + "><summary><span>Q. " + esc(x[0]) + "</span>" + icon("chevDown", "sm") + '</summary><div class="pt-faq-a"><p>' + esc(x[1]) + "</p></div></details>").join("") + "</div></div></section>";
-    // 마지막 안내: 지원하기 · 강사 입점 소개서(새 창) · 카카오톡
-    const end = '<section class="pt-end"><div class="vd-wrap"><small data-rv>DOOGO PARTNERS</small><h2 data-rv>노하우는 이미 충분해요.<br>이제 <em>클래스</em>로 만들 차례예요.</h2><div class="pt-end-btns" data-rv>' + ptCta("vd-btn-xl") + ptDeck("vd-btn vd-btn-xl pt-end-deck") + kkBtn("vd-btn vd-btn-xl pt-end-kk", "카카오톡으로 먼저 물어보기") + "</div></div></section>";
+    // 마지막 안내: 지원하기 · 강사 입점 소개서(새 창) — 카카오톡 버튼은 뺐어요 (2026-11-14 대표님 요청)
+    const end = '<section class="pt-end"><div class="vd-wrap"><small data-rv>DOOGO PARTNERS</small><h2 data-rv>노하우는 이미 충분해요.<br>이제 <em>클래스</em>로 만들 차례예요.</h2><div class="pt-end-btns" data-rv>' + ptCta("vd-btn-xl") + ptDeck("vd-btn vd-btn-xl pt-end-deck") + "</div></div></section>";
     const flt = '<a class="pt-float" href="' + PT_APPLY + '" aria-label="두고 파트너스 지원하기"><img src="' + PT_MS + 'mascot-hero.webp" alt="" width="48" height="42"><span><small>노하우를 클래스로, 첫걸음</small><b>두고 파트너스 지원하기</b></span>' + icon("arrowRight", "sm") + "</a>";
     return hero + strip + voices + why + who + types + flow + faq + end + flt;
   }

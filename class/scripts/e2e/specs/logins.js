@@ -88,6 +88,18 @@ module.exports = {
       const chip2 = await page.evaluate(() => !!document.querySelector(".vd-acct"));
       await run.check(inDg && (!m || (!m.vod && !m.student)) && !chip2, "두잉고 VOD 강의실에서 로그아웃 → 스토어 회원 로그인도 풀려요", { inDg, m, chip2 }, page);
     }
+    // 패밀리 체험 계정 바로 로그인 (2026-11-14 · 스토어 패밀리 탭 ‘체험 계정으로 둘러보기’): ?demo=owned → 온드미디어 센터 · ?demo=partner → 패밀리센터 · 모르는 값은 로그인 화면 그대로
+    for (const [demo, role, path] of [["owned", "media", "/center/media"], ["partner", "partner", "/center/partner"]]) {
+      await L.open(page, base, "/center/login?demo=" + demo);
+      await page.waitForFunction((p) => location.pathname.indexOf(p) === 0, path, { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(600);
+      m = await FL.serverMe(page);
+      const at = await page.evaluate(() => location.pathname + location.search);
+      await run.check(roleOf(m) === role && at.indexOf(path) === 0, "체험 계정으로 둘러보기 ?demo=" + demo + " → " + path + " (바로 로그인)", { m, at }, page);
+      await FL.logout(page);
+    }
+    await L.open(page, base, "/center/login?demo=evil"); await page.waitForTimeout(1500);
+    m = await FL.serverMe(page);
+    await run.check((!m || !m.admin) && !!(await page.$("#al-id")), "체험 계정 바로 로그인: 모르는 값(?demo=evil)은 로그인 화면 그대로", m, page);
     await page.context().close();
   }
 };
