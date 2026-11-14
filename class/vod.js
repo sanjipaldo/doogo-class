@@ -172,7 +172,7 @@
       { id: "vb1", eyebrow: "DOOGO CLASS", title: "돈 되는 노하우,\n먼저 들어 보고 시작해요", sub: "무료 특강부터 VOD · 전자책 · LIVE까지 한곳에서", href: "#/vod/c/all", color: ["#fc1c49", "#fc1c49"], sticker: "따라 하면\n바로 쓰는\n실전 클래스", on: true },
       { id: "vb2", eyebrow: "BEST · 문대표", title: "재고 없이 0원으로\n해외 건기식 브랜드 런칭", sub: "지금 26% 할인 · 12개월 시청", pid: "v1", color: ["#232326", "#3a0f18"], on: true },
       { id: "vb6", eyebrow: "오프라인 · 20명 한정", title: "1인 무역 워크숍,\n현장에서 같이 시작해요", sub: "11월 22일(일) 서울 강남 · 얼리버드 20% 할인", pid: "v13", color: ["#0f2a4a", "#1c4f86"], on: true },
-      { id: "vb3", eyebrow: "TEACHER", title: "내 노하우를\nVOD 클래스로 팔아 보세요", sub: "두고 파트너스 모집 중 · 촬영 · 편집 · 판매까지 함께해요", href: "#/vod/partners?tab=partners", color: ["#c9f7b0", "#c9f7b0"], dark: true, sticker: "강사\n모집 중", on: true },
+      { id: "vb3", eyebrow: "TEACHER", title: "내 노하우를\nVOD 클래스로 팔아 보세요", sub: "두고 파트너스 모집 중 · 촬영 · 편집 · 판매까지 함께해요", href: "#/vod/partners", color: ["#c9f7b0", "#c9f7b0"], dark: true, sticker: "강사\n모집 중", on: true },
       { id: "vb4", eyebrow: "NEW · 유나", title: "그림 실력 없어도\nAI로 굿즈 만들기", sub: "캐릭터부터 첫 판매까지", pid: "v2", color: ["#ff5c8a", "#ff8fa8"], on: true },
       { id: "vb5", eyebrow: "무료 특강", title: "1인 무역,\n처음이라면 여기서", sub: "40분이면 구조가 보여요 · 평생 무료", pid: "v7", color: ["#7a7a80", "#5f5f66"], on: true }
     ];
@@ -1417,7 +1417,7 @@
         '<nav class="vd-gf-grid" aria-label="바로가기">' +
           col("클래스", [["#/vod", "돈되는 클래스"], ["#/vod/c/all?tab=vod", "VOD 강의"], bizOn("ebook") && ["#/vod/c/all?tab=ebook", "전자책"], bizOn("flive") && ["#/vod/c/all?tab=flive", "무료 LIVE"], bizOn("live") && ["#/vod/c/all?tab=premium", "LIVE · 오프라인 강의"], bizOn("free") && ["#/vod/c/all?tab=free", "무료강의"], ["#/vod/teachers", "강사진"], ["#/vod/c/soon", "오픈 예정"]].filter(Boolean)) +
           col("마이페이지", [["#/vod/my/classes", "내 강의실"], ["#/vod/my/coupons", "쿠폰"], ["#/vod/my/orders", "주문 · 결제 내역"], ["#/vod/my/account", "회원 정보 수정"]]) +
-          col("DOOGO CLASS", [["#/vod/about", "DOOGO CLASS 소개"], ["#/vod/partners", "두고 패밀리 (온드미디어 · 세일즈)"], ["#/vod/partners?tab=partners", "두고 파트너스 (강사 지원)"], ["#/doinggo", "두잉고 (강의 운영 시스템)"], ["#/center", "강사센터"]]) +
+          col("DOOGO CLASS", [["#/vod/about", "두고클래스 소개"], [PF_FAMILY, "두고 패밀리"], ["#/vod/partners", "두고 파트너스"], ["#/doinggo", "두잉고"], ["#/center", "강사센터"]]) +
         "</nav>" +
         '<div class="vd-gf-help"><b>도움이 필요하신가요?</b><p>수강 · 결제 · 환불 문의를 남겨 주시면<br>영업일 기준 하루 안에 답해 드려요.</p><div class="vd-gf-hbtn"><a class="vd-btn vd-btn-p" href="#/vod/my/help">1:1 문의하기 ' + icon("arrowRight", "xs") + "</a>" + kkBtn("vd-btn vd-btn-kakao", "카카오톡 상담") + "</div>" +
           (S.phone || S.hours ? '<p class="vd-gf-cs">' + (S.phone ? "<b>" + tel(S.phone) + "</b>" : "") + (S.hours ? "<small>" + esc(S.hours) + "</small>" : "") + "</p>" : "") + "</div></div>" +
@@ -1425,7 +1425,7 @@
         // 약관 개정 공지 (약관 제3조 · 개인정보처리방침 13번: 시행 7일 전부터 화면에 공지) — 눈에 띄는 빨간 배지 대신 조용한 한 줄. 시행일(legal.js NEW_FROM)이 되면 저절로 사라져요
         (window.CLASS_LEGAL_NOTICE ? '<p class="vd-gf-lnote">' + esc(window.CLASS_LEGAL_NOTICE.date) + '부터 <a href="#/terms">이용약관</a> · <a href="#/privacy">개인정보처리방침</a>이 일부 바뀌어요. 바뀌는 내용은 각 페이지 맨 위 개정 안내에서 볼 수 있어요.</p>' : "") +
         '<p class="vd-gf-copy">© 2026 ' + esc(S.company || "(주)두고홀딩스") + ". All rights reserved.</p></div>" +
-        '<nav class="vd-gf-links" aria-label="약관"><a href="#/terms">이용약관</a><a href="#/privacy"><strong>개인정보처리방침</strong></a>' + '<a href="#/refund">환불정책</a>' + lg("oss", "오픈소스 라이선스") + (bizDigits.length === 10 ? ext("https://www.ftc.go.kr/bizCommPop.do?wrkr_no=" + bizDigits, "사업자정보확인") : "") + '<a href="#/vod/partners?tab=partners">두고 파트너스 · 입점 문의</a></nav></div></div></footer>';
+        '<nav class="vd-gf-links" aria-label="약관"><a href="#/terms">이용약관</a><a href="#/privacy"><strong>개인정보처리방침</strong></a>' + '<a href="#/refund">환불정책</a>' + lg("oss", "오픈소스 라이선스") + (bizDigits.length === 10 ? ext("https://www.ftc.go.kr/bizCommPop.do?wrkr_no=" + bizDigits, "사업자정보확인") : "") + '<a href="#/vod/partners">두고 파트너스 · 입점 문의</a></nav></div></div></footer>';
   }
   // 휴대폰 아래 메뉴: 왼쪽 ‘메뉴’(전체 메뉴 · 검색) · 찜 · 가운데 ‘홈’ · 내 강의실 · 마이
   const tabbar = (on) => '<nav class="vd-tabbar" aria-label="아래 메뉴">' + [["menu", "", "menu", "메뉴"], ["likes", "#/vod/my/likes", "heart", "찜"], ["home", "#/vod", "home", "홈"], ["cls", "#/vod/my/classes", "monitorPlay", "내 강의실"], ["my", "#/vod/my", "user", "마이"]].map((t) => t[0] === "menu"
@@ -1901,7 +1901,7 @@
         '</div><a href="#/vod/c/all">지금 클래스 둘러보기 ↗</a></div></div></section>' +
       // 13) 마무리
       '<section class="ab-dark"><div class="vd-wrap"><p data-rv="fade">새로운 일을 해 보고 싶은 마음을,<br>다음으로 미루지 않도록.</p><b data-rv>“부업 해 보고 싶은데 뭐부터 하지?”</b><b class="lime" data-rv style="--d:.25s">“DOOGO CLASS에서 찾아봐.”</b><small data-rv="fade">그 말이 자연스럽게 나오는 곳을 만들고 있어요.</small><a class="ab2-final" href="#/vod/c/all" data-rv style="--d:.4s">지금 클래스 둘러보기 ' + icon("arrowRight", "xs") + "</a></div></section>" +
-      '<section class="ab-join"><div class="vd-wrap"><div><b>크리에이터로 함께해요.</b><p>직접 해서 번 경험과 노하우를 강의로 나누는 사람,<br>DOOGO CLASS 크리에이터를 찾습니다.</p></div><a class="vd-btn vd-btn-p" href="#/vod/partners?tab=partners">두고 파트너스 지원하기 ↗</a></div></section>' +
+      '<section class="ab-join"><div class="vd-wrap"><div><b>크리에이터로 함께해요.</b><p>직접 해서 번 경험과 노하우를 강의로 나누는 사람,<br>DOOGO CLASS 크리에이터를 찾습니다.</p></div><a class="vd-btn vd-btn-p" href="#/vod/partners">두고 파트너스 지원하기 ↗</a></div></section>' +
       "</div>", "");
   }
   /* ---------- 상세 (패스트캠퍼스 강의 상세 구성 + 맛보기 · 다짐 한마디 · 기수 강의 연결) ---------- */
@@ -3392,10 +3392,11 @@
         '<aside class="vd-pl-side">' + dgCard(p, "vd-dg-pl") + '<b class="vd-pl-side-h">커리큘럼 <small>' + lz.filter((l) => pr.done[l.id]).length + " / " + lz.length + "</small></b>" + (p.curriculum || []).map((c) => '<div class="vd-pl-ch"><small>' + esc(c.title) + "</small>" + (c.lessons || []).map((l) => '<a href="#/vod/learn/' + esc(pid) + "/" + esc(l.id) + '" class="' + (l.id === cur.id ? "on" : "") + (pr.done[l.id] ? " done" : "") + '"><i>' + (pr.done[l.id] ? icon("check", "xs") : "") + "</i><span>" + esc(l.title) + freshTag(l) + ((l.files || []).length ? " " + icon("paperclip", "xs") : "") + "</span><small>" + lLen(l) + "</small></a>").join("") + "</div>").join("") + "</aside></div></div>";
   }
 
-  /* ---------- 패밀리 · 파트너스 (2026-11-14) — 한 화면 · 위에 탭 두 개 (왼쪽 ‘패밀리’가 먼저)
+  /* ---------- 패밀리 · 파트너스 (2026-11-14) — 한 화면 · 위에 탭 두 개 (왼쪽 ‘파트너스’가 먼저 · 2026-11-14 대표님 요청으로 순서 바꿈)
      부르는 이름: 온드미디어팀 · 두잉고 세일즈팀 = 패밀리 · 강사 = 파트너스
-     패밀리 탭   #/vod/partners               (기본) 온드미디어팀 + 두잉고 세일즈팀 — 두 패밀리 소개서 내용
-     파트너스 탭 #/vod/partners?tab=partners  강사 입점 = 예전 ‘두고 파트너스’ 소개 그대로 + 강사 입점 소개서(새 창)
+     파트너스 탭 #/vod/partners             (기본) 강사 입점 = 예전 ‘두고 파트너스’ 소개 그대로 + 강사 입점 소개서(새 창)
+                 (#/vod/partners?tab=partners — 잠깐 쓰던 주소도 파트너스 그대로)
+     패밀리 탭   #/vod/partners?tab=family  온드미디어팀 + 두잉고 세일즈팀 — 두 패밀리 소개서 내용
      지원서      #/vod/partners/apply         (파트너스 · 탭 없음) → DB.applyPartner({ source: "partners", form: {…} })
        두잉고 ‘강사 입점 문의’와 같은 마스터 접수함(서버 문서 inq:<id> · 마스터만 읽어요)에 쌓여요 → 마스터 › DOOGO CLASS › 두고 파트너스 지원
      예전 #/vod/recruit(강사 모집) · 첫 화면 ‘강사 모집’ 배너는 파트너스 탭으로
@@ -3403,15 +3404,17 @@
      강사 정산 비율은 대외비라 이 공개 화면(파트너스 탭)에 쓰지 않아요 (상담에서 안내) ---------- */
   const PT_APPLY = "#/vod/partners/apply";
   const PT_MS = "assets/partners/"; // 두고 파트너스 캐릭터 ‘두디’ (빨간 D · 베어 문 자국) — 기본 · 응원 · 질문 포즈
-  const PT_DECK = "https://view.publitas.com/doogo/dugokeulraeseu_gangsaibjeomsogaeseo/"; // 강사 입점 소개서 (publitas · 새 창)
-  // 패밀리 소개서 (publitas · 새 창) — 비우면 그 버튼은 그리지 않아요
-  const FM_DECK = { media: "https://view.publitas.com/doogo/dugokeulraeseu_ondeumidieo/", sales: "https://view.publitas.com/doogo/dugokeulraeseu_duinggo/" };
-  // 체험 계정으로 둘러보기 → 그 공개 체험 계정(familydemo.js — 온드미디어 owned · 영업 패밀리 partner)으로 강사센터에 바로 로그인 (admin.js demoLogin)
+  // 소개서 링크 (새 창 · 2026-11-14 publitas → DocSend — publitas 가 느려서 대표님 요청으로 바꿈)
+  const PT_DECK = "https://docsend.com/view/mzd5wpkmsb2r7fzj"; // 강사 입점 소개서
+  // 패밀리 소개서 — 비우면 그 버튼은 그리지 않아요
+  const FM_DECK = { media: "https://docsend.com/view/3wjy9wd5uum33gsr", sales: "https://docsend.com/view/z5ggtz7kuk7b45vk" }; // 온드미디어 · 두잉고 세일즈
+  // 센터 카드 ‘둘러보기’ → 그 공개 체험 계정(familydemo.js — 온드미디어 owned · 영업 패밀리 partner)으로 강사센터에 바로 로그인 (admin.js demoLogin)
   const FM_DEMO = (id) => "#/center/login?demo=" + id;
   const FM_PG = 7.5; // 온드미디어 RS 계산(예시)의 PG 결제 수수료 % — 소개서 · 정산 기본값과 같게
-  /** 지금 탭: ?tab=partners 면 파트너스, 아니면 패밀리 (예전 화면 · React 같이 씀) */
-  const pfTabOf = (qs) => (qs && qs.get("tab") === "partners" ? "partners" : "family");
-  const PF_TABS = [["family", "#/vod/partners", "users", "패밀리", "온드미디어 · 두잉고 세일즈"], ["partners", "#/vod/partners?tab=partners", "handshake", "파트너스", "강사 입점"]];
+  /** 지금 탭: ?tab=family 면 패밀리, 아니면 파트너스(기본) (예전 화면 · React 같이 씀) */
+  const pfTabOf = (qs) => (qs && qs.get("tab") === "family" ? "family" : "partners");
+  const PF_FAMILY = "#/vod/partners?tab=family";
+  const PF_TABS = [["partners", "#/vod/partners", "handshake", "파트너스", "강사 입점"], ["family", PF_FAMILY, "users", "패밀리", "온드미디어 · 두잉고 세일즈"]];
   // 위 탭 줄 — 머리띠 바로 아래에 붙어서 따라와요 (탭을 바꾸면 맨 위에서 시작)
   const pfTabs = (on) => '<nav class="pf-tabs" aria-label="패밀리 · 파트너스"><div class="vd-wrap pf-tabs-in">' + PF_TABS.map((t) => '<a class="pf-tab' + (t[0] === on ? " on" : "") + '" href="' + t[1] + '" data-pf-tab="' + t[0] + '"' + (t[0] === on ? ' aria-current="page"' : "") + '><span class="pf-tab-ic">' + icon(t[2], "sm") + '</span><span class="pf-tab-tx"><b>' + t[3] + "</b><small>" + t[4] + "</small></span></a>").join("") + "</div></nav>";
   /* 패밀리 탭 글 · 숫자 — 온드미디어 · 두잉고 세일즈 소개서(2026-11)에서 옮겼어요. 예전 화면(pageFamily) · React 화면(ui/store/FamilyTab.jsx)이 같이 써요 */
@@ -3454,7 +3457,7 @@
     const rs = (rate) => Math.floor(500000 * (100 - FM_PG) / 100 * rate / 100 / 10) * 10;
     const sim = FM_MD_TIERS.map((x) => ({ rate: x[1], one: rs(x[1]), day: rs(x[1]) * 4 }));
     const per = FM_SL_GROW.reduce((a, x) => a + Math.round(x[1] * 0.2), 0), grow = [1, 2, 3].map((k) => per * k);
-    return { deck: FM_DECK, demo: FM_DEMO("owned"), pg: FM_PG, strip: FM_STRIP, teams: FM_TEAMS, mdSteps: FM_MD_STEPS, tiers: FM_MD_TIERS, sim, chans: FM_CHANS, mdTags: FM_MD_TAGS,
+    return { deck: FM_DECK, pg: FM_PG, strip: FM_STRIP, teams: FM_TEAMS, mdSteps: FM_MD_STEPS, tiers: FM_MD_TIERS, sim, chans: FM_CHANS, mdTags: FM_MD_TAGS,
       slSteps: FM_SL_STEPS, growRows: FM_SL_GROW, per, grow, slWho: FM_SL_WHO, vs: FM_VS, centers: FM_CENTERS.map((c) => Object.assign({ go: FM_DEMO(c.id) }, c)), pay: FM_PAY, flow: FM_FLOW, faq: FM_FAQ };
   }
   const ptCatRows = (cs) => {
@@ -3485,7 +3488,7 @@
     const kinds = [["monitorPlay", "VOD 강의", "6개월 · 12개월 수강권으로 판매해요. 수강 기간이 끝나면 재수강 할인으로 다시 만나요."], ["book", "전자책 · 종이책", "PDF 전자책은 바로 내려받고, 종이책은 택배로 보내요."], bizOn("live") && ["calendar", "LIVE · 오프라인 강의", "실시간 온라인 강의 · 오프라인 특강으로 수강생을 직접 만나요."], ["message", "1:1 코칭권 · TEA TIME", "VOD 수강생에게 1:1 피드백 · 줌 TEA TIME을 더해 함께 판매해요."]].filter(Boolean);
     return { ts, cs, ps, p0, kinds };
   }
-  // 강사 입점 소개서 (publitas) 새 창 버튼 — 파트너스 탭 진행 과정 · 마지막 안내
+  // 강사 입점 소개서 (DocSend) 새 창 버튼 — 파트너스 탭 진행 과정 · 마지막 안내
   const ptDeck = (cls) => '<a class="' + cls + '" href="' + PT_DECK + '" target="_blank" rel="noopener">' + icon("file", "sm") + "<span>강사 입점 소개서 보기</span>" + icon("arrowUpRight", "xs") + "</a>";
   // 패밀리 · 파트너스 화면: 위 탭 줄 + 고른 탭 (탭은 주소 ?tab= 로 — 공유 · 뒤로 가기 그대로)
   function pagePartners() {
@@ -3546,10 +3549,10 @@
       '<div class="pt-flow-cta" data-rv>' + kkBtn("vd-btn vd-btn-xl pt-end-kk", "카카오톡으로 합류 신청하기") + "</div>", "pt-flows");
     const faq = '<section class="pt-faqs" id="fm-faq"><div class="vd-wrap pt-faq-w"><img class="pt-faq-ms" data-rv="pop" src="' + PT_MS + 'mascot-faq.webp" alt="" width="380" height="408" loading="lazy"><h2 class="pt-faq-h" data-rv>자주 묻는 질문</h2>' +
       '<div class="pt-faq" data-rv-kids>' + F.faq.map((x, i) => '<details class="pt-faq-it"' + (i ? "" : " open") + "><summary><span>Q. " + esc(x[0]) + "</span>" + icon("chevDown", "sm") + '</summary><div class="pt-faq-a"><p>' + esc(x[1]) + "</p></div></details>").join("") + "</div></div></section>";
-    // 마지막 안내 (2026-11-14 대표님 요청): 카카오 대신 소개서 2개(새 창) · 체험 계정으로 둘러보기(온드미디어 owned 로 바로 로그인)
+    // 마지막 안내 (2026-11-14 대표님 요청): 소개서 2개(새 창) + 카카오톡 패밀리 문의 (노란 버튼) — 체험 계정 둘러보기는 위 센터 카드에 있어서 여기선 빼요
     const end = '<section class="pt-end fm-end"><div class="vd-wrap"><small data-rv>DOOGO CLASS FAMILY</small><h2 data-rv>먼저 보고,<br>확신이 들 때 <em>시작</em>하세요.</h2><div class="pt-end-btns" data-rv>' +
       deckBtn("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서") + deckBtn("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서") +
-      '<a class="vd-btn vd-btn-xl fm-end-demo" href="' + F.demo + '">' + icon("monitorPlay", "sm") + "<span>체험 계정으로 둘러보기</span></a></div></div></section>";
+      kkBtn("vd-btn vd-btn-xl pt-end-kk", "카카오톡 패밀리 문의하기") + "</div></div></section>";
     const flt = '<a class="pt-float fm-float" href="' + esc(opsKk().chat) + '" target="_blank" rel="noopener" data-kk-ops aria-label="카카오톡으로 패밀리 합류 상담하기"><img src="' + PT_MS + 'mascot-cheer.webp" alt="" width="48" height="52"><span><small>내 채널 · 인맥이 수익으로</small><b>패밀리 합류 상담하기</b></span>' + icon("arrowRight", "sm") + "</a>";
     return hero + strip + teams + media + sales + centers + flow + faq + end + flt;
   }
@@ -3641,7 +3644,7 @@
     const ban = '<div class="pt-gf-ban" aria-hidden="true"><div class="pt-gf-ban-tx"><small>DOOGO PARTNERS</small><b>노하우를 클래스로,<br>첫걸음은 지원서부터</b></div><img src="' + PT_MS + 'mascot-hero.webp" alt="" width="880" height="760"></div>';
     const title = '<div class="pt-gf-card pt-gf-title"><h1>두고 파트너스 지원서</h1><p>직접 해서 번 노하우를 DOOGO CLASS 클래스로 만들어 보세요. 기획 · 촬영 · 편집 · 상세페이지 · 판매 · 정산까지 함께해요. 적어 주신 내용은 담당자만 보고, 지원 검토 · 상담 연락에만 써요.</p>' +
       '<ul class="pt-gf-meta"><li>' + icon("clock", "xs") + "약 5분</li><li>" + icon("layers", "xs") + "섹션 5개</li><li>" + icon("lock", "xs") + "담당자만 봐요</li></ul>" +
-      '<p class="pt-gf-req"><em>*</em> 표시는 꼭 답해 주세요' + (m ? " · " + esc(m.email || m.name || "") + " 님으로 쓰는 중" : "") + '</p><a class="pt-gf-back" href="#/vod/partners?tab=partners">' + icon("arrowLeft", "xs") + "두고 파트너스 소개 다시 보기</a></div>";
+      '<p class="pt-gf-req"><em>*</em> 표시는 꼭 답해 주세요' + (m ? " · " + esc(m.email || m.name || "") + " 님으로 쓰는 중" : "") + '</p><a class="pt-gf-back" href="#/vod/partners">' + icon("arrowLeft", "xs") + "두고 파트너스 소개 다시 보기</a></div>";
     const prog = '<div class="pt-gf-prog" id="pt-gf-prog"><span><b id="pt-gf-pn">' + cur + "</b> / 5 · <em id=\"pt-gf-pt\">" + PT_SECS[cur - 1][0] + '</em></span><i role="progressbar" aria-valuemin="0" aria-valuemax="5" aria-valuenow="' + cur + '" aria-label="지원서 진행"><b id="pt-gf-pb" style="width:' + cur * 20 + '%"></b></i></div>';
     const form = '<form class="pt-form pt-gf-form" data-pt-form novalidate>' +
       sec(1, inp("name", "성함", 1, 'maxlength="40" autocomplete="name" placeholder="홍길동"', "", m ? m.name : "") + inp("nick", "활동명 · 브랜드명", 0, 'maxlength="40" placeholder="예: 갓농부, ○○스토어"', "스토어 · 강사 페이지에 보일 이름이에요. 없으면 비워 두세요.") +
@@ -3876,7 +3879,7 @@
     syncFreeLive();
     let html;
     // 예전 강사 모집 주소(#/vod/recruit · 첫 화면 배너)는 파트너스(강사 입점) 탭으로
-    if (a === "recruit") { ROUTE.replace("#/vod/partners?tab=partners"); return render(); }
+    if (a === "recruit") { ROUTE.replace("#/vod/partners"); return render(); }
     if (!a) html = pageHome();
     else if (a === "partners") html = b === "apply" ? pagePartnerApply() : pagePartners();
     else if (a === "c") html = !b || b === "all" || cats().some((x) => x.key === b) ? pageAll(b === "all" ? "" : b) : listPage(b);
@@ -4038,7 +4041,7 @@
         .concat([I("#/vod/teachers", "강사진", { ic: "users", tone: "violet" }), I("#/vod/c/soon", "오픈 예정", { img: "soon" })])],
       ["분야", cats().map((c) => I("#/vod/c/" + c.key, c.label, MG_IMG[c.key] ? { img: c.key } : { ic: c.icon || "layers", tone: "gray" }))],
       ["마이페이지", [I("#/vod/my/classes", "내 강의실", { ic: "monitorPlay", tone: "blue" }), I("#/vod/my/likes", "찜 · 관심 부업", { ic: "heart", tone: "pink" }), I("#/vod/my/coupons", "쿠폰", { ic: "coins", tone: "amber" }), I("#/vod/my/orders", "주문 · 결제 내역", { ic: "file", tone: "green" }), I("#/vod/my/help", "고객센터 · 1:1 문의", { ic: "headset", tone: "sky" })]],
-      ["DOOGO CLASS", [I("#/vod/about", "DOOGO CLASS 소개", { ic: "store", tone: "orange" }), I("#/vod/partners", "두고 패밀리 (온드미디어 · 세일즈)", { ic: "users", tone: "pink" }), I("#/vod/partners?tab=partners", "두고 파트너스 (강사 지원)", { ic: "handshake", tone: "teal" }), I("#/doinggo", "두잉고 (기수 강의)", { ic: "arrowUpRight", tone: "dg" }), I("#/center", "강사센터 (강사 · 코치 로그인)", { ic: "monitor", tone: "slate" }), I(opsKk().chat, "카카오톡 상담 (문의하기)", { ic: "message", tone: "kakao", kk: 1 })]
+      ["DOOGO CLASS", [I("#/vod/about", "DOOGO CLASS 소개", { ic: "store", tone: "orange" }), I(PF_FAMILY, "두고 패밀리 (온드미디어 · 세일즈)", { ic: "users", tone: "pink" }), I("#/vod/partners", "두고 파트너스 (강사 지원)", { ic: "handshake", tone: "teal" }), I("#/doinggo", "두잉고 (기수 강의)", { ic: "arrowUpRight", tone: "dg" }), I("#/center", "강사센터 (강사 · 코치 로그인)", { ic: "monitor", tone: "slate" }), I(opsKk().chat, "카카오톡 상담 (문의하기)", { ic: "message", tone: "kakao", kk: 1 })]
         .concat(m ? [I("", "로그아웃", { ic: "logout", tone: "gray", out: 1 })] : [])]
     ];
   }
@@ -4081,7 +4084,7 @@
       '<nav class="vd-mg-cats" aria-label="분야"><p class="vd-mg-cap">분야</p>' + row("all", "전체 클래스", "layers", ls.length) + cs.map((c) => row(c.key, esc(c.label), c.icon, ls.filter((p) => p.cat === c.key).length)).join("") + "</nav>" +
       megaMain(k) +
       '<aside class="vd-mg-side"><p class="vd-mg-cap">바로가기</p>' + go("#/vod/c/soon", "bell", "오픈 예정", "알림 신청하면 오픈 할인") + go("#/vod/teachers", "users", "강사진", "직접 해서 번 강사님들") + (bizOn("flive") ? go("#/vod/c/all?tab=flive", "video", "무료 LIVE", "") : "") + go("#/vod/my/classes", "monitorPlay", "내 강의실", "") + go("#/vod/about", "store", "DOOGO CLASS 소개", "") +
-        '<a class="vd-mg-pt" href="#/vod/partners?tab=partners"><small>DOOGO PARTNERS</small><b>내 노하우로<br>클래스를 열어 보세요</b><span>파트너 강사로 지원하기' + icon("arrowRight", "xs") + "</span></a></aside>" +
+        '<a class="vd-mg-pt" href="#/vod/partners"><small>DOOGO PARTNERS</small><b>내 노하우로<br>클래스를 열어 보세요</b><span>파트너 강사로 지원하기' + icon("arrowRight", "xs") + "</span></a></aside>" +
       "</div></div>";
   }
   /** 펼침 메뉴 열기 · 닫기 — 열려 있는 주소를 기억해 두었다가, 같은 주소에서 화면을 다시 그리면(저장 · 동기화) 다시 열어요 */
@@ -4147,7 +4150,7 @@
     const t = e.target.closest("[data-v]"); if (!t) return;
     const v = t.dataset.v, m = me();
     if (v === "close") { if (e.target === t || t.tagName === "BUTTON" || t.tagName === "A") closeModal(); return; }
-    if (v === "recruit") { e.preventDefault(); closeModal(); ROUTE.hash = "#/vod/partners?tab=partners"; return; }
+    if (v === "recruit") { e.preventDefault(); closeModal(); ROUTE.hash = "#/vod/partners"; return; }
     if (v === "pt-sec") { e.preventDefault(); ptGo(Number(t.dataset.n) || 1); return; }
     if (v === "tpg-cat") { tpgC = t.dataset.tpgCat || ""; tpgApply(); return; }
     if (v === "tpg-clear" || v === "tpg-reset") { tpgQ = ""; if (v === "tpg-reset") tpgC = ""; const q = document.querySelector("[data-tpg-q]"); if (q) { q.value = ""; if (v === "tpg-clear") q.focus(); } tpgApply(); return; }

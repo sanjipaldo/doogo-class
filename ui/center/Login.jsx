@@ -24,7 +24,11 @@ export default function CenterLogin() {
       <section className="a-login-brand"><RawOne html={window.loginArt(L.theme, L.icons)} />
         <a className="a-logo a-logo-doogo" href="#/doinggo" title="두잉고 홈으로" aria-label="두잉고 홈으로"><RawOne html={window.doogoClassLock()} /><em>{L.tag}</em></a>
         <div className="a-login-hero"><p className="a-eyebrow">{L.eyebrow}</p>{H(L.h)}<p>{L.sub}</p></div>
-        <div className="a-login-foot"><a className="a-login-home" href="#/doinggo"><Icon n="home" c="sm" />두잉고 페이지 바로가기<Icon n="arrowRight" c="xs" /></a><span>© 2026 (주)두고홀딩스</span></div>
+        {/* 왼쪽 아래: 두잉고 첫 화면 · 두고클래스 스토어 바로가기 (2026-11-14 — 두잉고 = 파랑 · 두고클래스 = 빨강, 예전 admin.js 와 같은 모양) */}
+        <div className="a-login-foot"><nav className="a-login-go" aria-label="서비스 바로가기">
+          <a className="a-go a-go-dg" href="#/doinggo"><span className="a-go-ic"><Icon n="users" c="sm" /></span><span className="a-go-tx"><small>강의 운영 시스템</small><b>두잉고 페이지 바로가기</b></span><Icon n="arrowRight" c="xs a-go-arw" /></a>
+          <a className="a-go a-go-dc" href="#/vod"><span className="a-go-ic"><Icon n="monitorPlay" c="sm" /></span><span className="a-go-tx"><small>VOD · 전자책 클래스</small><b>두고클래스 페이지 바로가기</b></span><Icon n="arrowRight" c="xs a-go-arw" /></a>
+        </nav><span>© 2026 (주)두고홀딩스</span></div>
       </section>
       <section className="a-login-panel">
         <div className="a-login-topright"><span>수강생이신가요?</span><a className="a-btn a-btn-primary a-btn-sm" href="#/login" data-action="to-student">바로가기</a></div>

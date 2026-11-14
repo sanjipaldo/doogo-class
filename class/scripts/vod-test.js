@@ -3165,7 +3165,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   }
 
   {
-    console.log("59) 패밀리 · 파트너스 탭 (/vod/partners · 2026-11-14): 패밀리(기본) · 파트너스(?tab=partners) · 소개서 숫자 · 이름 바꾸기");
+    console.log("59) 패밀리 · 파트너스 탭 (/vod/partners · 2026-11-14): 파트너스(기본 · 왼쪽) · 패밀리(?tab=family) · 소개서(DocSend) · 숫자 · 이름 · 강사센터 로그인 바로가기");
     const vj40 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), sh40 = fs.readFileSync(path.join(ROOT, "../ui/store/Shell.jsx"), "utf8"), pp40 = fs.readFileSync(path.join(ROOT, "../ui/store/PartnersPage.jsx"), "utf8"),
       ft40 = fs.readFileSync(path.join(ROOT, "../ui/store/FamilyTab.jsx"), "utf8"), aj40 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), fd40 = fs.readFileSync(path.join(ROOT, "api/_lib/familydemo.js"), "utf8");
     // 탭 · 패밀리 글 묶음(PT_DECK ~ familyView)은 바깥 것 없이 돌아요 — 그 부분만 떼어 실제로 계산해 봐요 (icon 만 빈 함수)
@@ -3173,39 +3173,57 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const sb40 = { icon: () => "<svg></svg>", URLSearchParams }; require("vm").createContext(sb40);
     require("vm").runInContext(vj40.slice(a40, b40) + "\n;this.out = { pfTabOf, PF_TABS, pfTabs, familyView, PT_DECK, FM_DECK, FM_DEMO };", sb40);
     const T = sb40.out, F = T.familyView(), q = (s) => new URLSearchParams(s);
-    ok(a40 > 0 && b40 > a40 && T.pfTabOf(q("tab=partners")) === "partners" && T.pfTabOf(q("")) === "family" && T.pfTabOf(q("tab=family")) === "family" && T.pfTabOf(q("tab=evil")) === "family" && T.pfTabOf(null) === "family",
-      "탭: ?tab=partners 만 파트너스 · 없거나 다른 값은 패밀리(기본 · 왼쪽)");
-    const tb40 = T.pfTabs("family");
-    ok(T.PF_TABS.map((t) => t[0] + "=" + t[1]).join() === "family=#/vod/partners,partners=#/vod/partners?tab=partners" && (tb40.match(/aria-current="page"/g) || []).length === 1 && /class="pf-tab on" href="#\/vod\/partners" data-pf-tab="family" aria-current="page"/.test(tb40),
-      "위 탭 줄: 왼쪽 패밀리(#/vod/partners) · 오른쪽 파트너스(?tab=partners) · 고른 탭만 on · aria-current", tb40.slice(0, 160));
+    ok(a40 > 0 && b40 > a40 && T.pfTabOf(q("tab=family")) === "family" && T.pfTabOf(q("")) === "partners" && T.pfTabOf(q("tab=partners")) === "partners" && T.pfTabOf(q("tab=evil")) === "partners" && T.pfTabOf(null) === "partners",
+      "탭: ?tab=family 만 패밀리 · 없거나 다른 값(잠깐 쓰던 ?tab=partners 포함)은 파트너스(기본 · 왼쪽)");
+    const tb40 = T.pfTabs("partners"), tf40 = T.pfTabs("family");
+    ok(T.PF_TABS.map((t) => t[0] + "=" + t[1]).join() === "partners=#/vod/partners,family=#/vod/partners?tab=family" && (tb40.match(/aria-current="page"/g) || []).length === 1 && /class="pf-tab on" href="#\/vod\/partners" data-pf-tab="partners" aria-current="page"/.test(tb40) &&
+      tb40.indexOf('data-pf-tab="partners"') < tb40.indexOf('data-pf-tab="family"') && /class="pf-tab on" href="#\/vod\/partners\?tab=family" data-pf-tab="family" aria-current="page"/.test(tf40),
+      "위 탭 줄: 왼쪽 파트너스(#/vod/partners · 기본) · 오른쪽 패밀리(?tab=family) · 고른 탭만 on · aria-current", tb40.slice(0, 160));
     ok(F.sim.map((s) => s.rate + ":" + s.one + ":" + s.day).join() === "10:46250:185000,20:92500:370000" && F.pg === 7.5,
       "온드미디어 기대 수익 예시 = 소개서 숫자: 50만 원 × (1 − PG 7.5%) × 10% = 46,250원(하루 4건 185,000원) · 20% = 92,500원(370,000원)", F.sim);
     ok(F.per === 780000 && F.grow.join() === "780000,1560000,2340000",
       "두잉고 세일즈 예시 = 소개서 숫자: A 240만 · B 150만 × 20% = 기수마다 78만 원 → 1~3기 누적 78만 · 156만 · 234만", F.grow);
-    ok(T.PT_DECK === "https://view.publitas.com/doogo/dugokeulraeseu_gangsaibjeomsogaeseo/" && T.FM_DECK.media === "https://view.publitas.com/doogo/dugokeulraeseu_ondeumidieo/" && T.FM_DECK.sales === "https://view.publitas.com/doogo/dugokeulraeseu_duinggo/" &&
-      F.demo === "#/center/login?demo=owned" && F.centers.map((c) => c.go).join() === "#/center/login?demo=owned,#/center/login?demo=partner" && F.teams.map((t) => t.deckLabel).join() === "온드미디어 소개서,두잉고 소개서",
-      "소개서 링크(새 창): 강사 입점 · 온드미디어 · 두잉고 (publitas) · 체험 계정으로 둘러보기 = 온드미디어 owned 로 바로 로그인 · 센터 카드는 owned · partner");
+    ok(T.PT_DECK === "https://docsend.com/view/mzd5wpkmsb2r7fzj" && T.FM_DECK.media === "https://docsend.com/view/3wjy9wd5uum33gsr" && T.FM_DECK.sales === "https://docsend.com/view/z5ggtz7kuk7b45vk" && !/publitas/i.test(vj40.slice(a40, b40)) &&
+      F.centers.map((c) => c.go).join() === "#/center/login?demo=owned,#/center/login?demo=partner" && F.teams.map((t) => t.deckLabel).join() === "온드미디어 소개서,두잉고 소개서",
+      "소개서 링크(새 창 · DocSend): 강사 입점 · 온드미디어 · 두잉고 세일즈 (publitas 는 남지 않음) · 센터 카드 둘러보기 = owned · partner 로 바로 로그인");
     ok(F.centers.map((c) => c.id).join() === "owned,partner" && /AFF_LOGIN = "partner", MD_LOGIN = "owned"/.test(fd40) && F.faq.length === 8 && F.teams.map((t) => t.name).join() === "온드미디어팀,두잉고 세일즈팀",
       "패밀리 두 팀(온드미디어팀 · 두잉고 세일즈팀) · 센터 체험 계정 = familydemo.js 공개 체험 계정(owned · partner) · 자주 묻는 질문 8개");
-    // 마지막 안내(2026-11-14): 두 탭 모두 카카오 버튼 없음 · 패밀리 = 온드미디어 · 두잉고 소개서 + 체험 계정 · 파트너스 = 지원하기 + 강사 입점 소개서 (예전 화면 = React)
+    // 마지막 안내(2026-11-14): 패밀리 = 온드미디어 · 두잉고 소개서 + 노란 ‘카카오톡 패밀리 문의하기’(체험 계정은 위 센터 카드에) · 파트너스 = 지원하기 + 강사 입점 소개서(카카오 없음) (예전 화면 = React)
     const cut40 = (s, a, b) => { const i = s.indexOf(a); return i < 0 ? "" : s.slice(i, s.indexOf(b, i + a.length)); };
     const fmEndL = cut40(vj40, "const end = '<section class=\"pt-end fm-end\">", "const flt"), ptEndL = cut40(vj40, "const end = '<section class=\"pt-end\"><div class=\"vd-wrap\"><small data-rv>DOOGO PARTNERS", "const flt");
     const fmEndR = cut40(ft40, 'className="pt-end fm-end"', "</section>"), ptEndR = cut40(pp40, 'className="pt-end"', "</section>");
-    ok(fmEndL && ptEndL && fmEndR && ptEndR && !/kkBtn|KakaoBtn|data-kk-ops/.test(fmEndL + ptEndL + fmEndR + ptEndR) &&
-      /deckBtn\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\) \+ deckBtn\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\)/.test(fmEndL) && /체험 계정으로 둘러보기/.test(fmEndL) && /ptCta\("vd-btn-xl"\) \+ ptDeck\("vd-btn vd-btn-xl pt-end-deck"\) \+ "<\/div>/.test(ptEndL) &&
-      /deck\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\)/.test(fmEndR) && /deck\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\)/.test(fmEndR) && /<Deck cls="vd-btn vd-btn-xl pt-end-deck" \/>/.test(ptEndR),
-      "마지막 안내: 두 탭 모두 카카오 버튼 없음 · 패밀리 = 온드미디어 · 두잉고 소개서(새 창) + 체험 계정 · 파트너스 = 지원하기 + 강사 입점 소개서(새 창) (예전 화면 = React)");
+    const kk40 = (s) => (s.match(/kkBtn\(|<KakaoBtn |data-kk-ops/g) || []).length;
+    ok(fmEndL && ptEndL && fmEndR && ptEndR && !kk40(ptEndL + ptEndR) && kk40(fmEndL) === 1 && kk40(fmEndR) === 1 && !/체험 계정으로 둘러보기|fm-end-demo|F\.demo/.test(fmEndL + fmEndR) &&
+      /deckBtn\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\) \+ deckBtn\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\) \+\s*kkBtn\("vd-btn vd-btn-xl pt-end-kk", "카카오톡 패밀리 문의하기"\)/.test(fmEndL) && /ptCta\("vd-btn-xl"\) \+ ptDeck\("vd-btn vd-btn-xl pt-end-deck"\) \+ "<\/div>/.test(ptEndL) &&
+      /deck\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\)/.test(fmEndR) && /deck\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\)/.test(fmEndR) && /<KakaoBtn cls="vd-btn vd-btn-xl pt-end-kk" label="카카오톡 패밀리 문의하기" \/>/.test(fmEndR) && /<Deck cls="vd-btn vd-btn-xl pt-end-deck" \/>/.test(ptEndR),
+      "마지막 안내: 패밀리 = 온드미디어 · 두잉고 소개서(새 창) + 노란 ‘카카오톡 패밀리 문의하기’(체험 계정 버튼 없음) · 파트너스 = 지원하기 + 강사 입점 소개서(카카오 없음) (예전 화면 = React)");
+    const lk40 = ["../ui/store/AboutPage.jsx", "../ui/store/PartnerApply.jsx", "../ui/center/MasterInq.jsx"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8")).join("\n") + sh40 + aj40;
     ok(/'<div class="pt pt-' \+ tab \+ '">' \+ pfTabs\(tab\) \+ \(tab === "partners" \? ptBody\(\) : pageFamily\(\)\)/.test(vj40) && /VOD\(\)\.pfTabOf\(r\.qs\)/.test(pp40) && /tab === "partners" \? <Partners \/> : <Family \/>/.test(pp40) && /X\.familyView\(\)/.test(ft40) &&
-      /ROUTE\.replace\("#\/vod\/partners\?tab=partners"\)/.test(vj40) && /ROUTE\.hash = "#\/vod\/partners\?tab=partners"/.test(vj40) && /href: "#\/vod\/partners\?tab=partners"/.test(vj40),
-      "예전 화면 · React 같은 구조(탭 + 고른 탭) · 예전 강사 모집 주소 · ‘강사 모집’ 배너 → 파트너스 탭");
+      /ROUTE\.replace\("#\/vod\/partners"\)/.test(vj40) && /ROUTE\.hash = "#\/vod\/partners"/.test(vj40) && /href: "#\/vod\/partners",/.test(vj40) && !/href="#\/vod\/partners\?tab=partners"|"#\/vod\/partners\?tab=partners"/.test(vj40.replace(/\/\*[\s\S]*?\*\//g, "") + lk40),
+      "예전 화면 · React 같은 구조(탭 + 고른 탭) · 강사 모집 주소 · ‘강사 모집’ 배너 · 파트너스 링크는 모두 #/vod/partners (?tab=partners 링크 남지 않음)");
     ok(/"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(vj40) && /"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(sh40) && !/강사 · 코치 · 파트너"/.test(vj40 + sh40) &&
-      /href="#\/vod\/partners">패밀리 · 파트너스/.test(vj40) && /href="#\/vod\/partners">패밀리 · 파트너스/.test(sh40) && /"두고 패밀리 \(온드미디어 · 세일즈\)"/.test(vj40) && /"두고 패밀리 \(온드미디어 · 세일즈\)"/.test(sh40),
-      "이름: 바닥 강사센터 로그인 ‘강사 · 코치 · 패밀리’ · 머리띠 ‘패밀리 · 파트너스’ · 바닥 · 전체 메뉴에 ‘두고 패밀리’ (예전 화면 = React)");
+      /href="#\/vod\/partners">패밀리 · 파트너스/.test(vj40) && /href="#\/vod\/partners">패밀리 · 파트너스/.test(sh40) &&
+      /col\("DOOGO CLASS", \[\["#\/vod\/about", "두고클래스 소개"\], \[PF_FAMILY, "두고 패밀리"\], \["#\/vod\/partners", "두고 파트너스"\], \["#\/doinggo", "두잉고"\], \["#\/center", "강사센터"\]\]\)/.test(vj40) &&
+      /col\("DOOGO CLASS", \[\["#\/vod\/about", "두고클래스 소개"\], \["#\/vod\/partners\?tab=family", "두고 패밀리"\], \["#\/vod\/partners", "두고 파트너스"\], \["#\/doinggo", "두잉고"\], \["#\/center", "강사센터"\]\]\)/.test(sh40) &&
+      /I\(PF_FAMILY, "두고 패밀리 \(온드미디어 · 세일즈\)"/.test(vj40),
+      "이름: 바닥 강사센터 로그인 ‘강사 · 코치 · 패밀리’ · 머리띠 ‘패밀리 · 파트너스’ · 바닥 DOOGO CLASS 칸 = 두고클래스 소개 · 두고 패밀리 · 두고 파트너스 · 두잉고 · 강사센터 (예전 화면 = React) · 전체 메뉴 ‘두고 패밀리’ → 패밀리 탭");
+    // 패밀리 첫 화면 = 연한 분홍 + 진한 글씨 (파트너스 = 진한 빨강 그대로)
+    const vc40 = fs.readFileSync(path.join(ROOT, "vod.css"), "utf8");
+    ok(/\.pt-hero\.fm-hero \{ color: var\(--on1\); background: [^}]*linear-gradient\(112deg, #ffd3df 0%, #ffe3eb 48%, #fff1f5 100%\)/.test(vc40) && /\.pt-hero \{ position: relative; overflow: hidden; color: #fff; background: [^}]*#e64f6c/.test(vc40) && !/fm-end-demo/.test(vc40),
+      "패밀리 첫 화면 = 연한 분홍 바탕 + 진한 글씨 · 파트너스 첫 화면 = 진한 빨강 그대로 (탭이 바뀐 게 보여요)");
+    // 강사센터 로그인 왼쪽 아래 바로가기 (2026-11-14): 두잉고(파랑) · 두고클래스(빨강) 카드 — 예전 화면 = React
+    const lj40 = fs.readFileSync(path.join(ROOT, "../ui/center/Login.jsx"), "utf8"), ac40 = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
+    ok(/<a class="a-go a-go-dg" href="#\/doinggo"><span class="a-go-ic">' \+ icon\("users", "sm"\) \+ '<\/span><span class="a-go-tx"><small>강의 운영 시스템<\/small><b>두잉고 페이지 바로가기<\/b><\/span>' \+ icon\("arrowRight", "xs a-go-arw"\)/.test(aj40) &&
+      /<a class="a-go a-go-dc" href="#\/vod"><span class="a-go-ic">' \+ icon\("monitorPlay", "sm"\) \+ '<\/span><span class="a-go-tx"><small>VOD · 전자책 클래스<\/small><b>두고클래스 페이지 바로가기<\/b><\/span>' \+ icon\("arrowRight", "xs a-go-arw"\)/.test(aj40) &&
+      /<a className="a-go a-go-dg" href="#\/doinggo"><span className="a-go-ic"><Icon n="users" c="sm" \/><\/span><span className="a-go-tx"><small>강의 운영 시스템<\/small><b>두잉고 페이지 바로가기<\/b><\/span><Icon n="arrowRight" c="xs a-go-arw" \/><\/a>/.test(lj40) &&
+      /<a className="a-go a-go-dc" href="#\/vod"><span className="a-go-ic"><Icon n="monitorPlay" c="sm" \/><\/span><span className="a-go-tx"><small>VOD · 전자책 클래스<\/small><b>두고클래스 페이지 바로가기<\/b><\/span><Icon n="arrowRight" c="xs a-go-arw" \/><\/a>/.test(lj40) &&
+      !/a-login-home"/.test(aj40 + lj40) && /\.a-go \{ --go-c: #2563eb;/.test(ac40) && /\.a-go-dc \{ --go-c: #fc1c49;/.test(ac40),
+      "강사센터 로그인 왼쪽 아래: 두잉고 페이지 바로가기(파랑 · #/doinggo) + 두고클래스 페이지 바로가기(빨강 · #/vod) — 예전 화면 = React 같은 모양");
     ok(/qd = r\.parts\[0\] === "login" \? r\.params\.get\("demo"\) : null;\s*if \(qt === "family" \|\| qt === "master" \|\| DEMO_IDS\[qd\]\) \{ loginTab = "master"; ROUTE\.replace\("#\/center\/login"\); \}\s*if \(DEMO_IDS\[qd\]\) setTimeout\(\(\) => demoLogin\(qd\), 0\);/.test(aj40) &&
       /const DEMO_IDS = \{ owned: 1, partner: 1 \};/.test(aj40) && /function demoLogin\(id, tries\) \{\s*if \(S \|\| !DEMO_IDS\[id\]\) return;/.test(aj40) && /serverLogin\(f, id, id, err\);/.test(aj40),
       "강사센터 로그인 ?tab=family → ‘마스터 · 패밀리’ 탭 · ?demo=owned | partner → 그 체험 계정으로 바로 로그인(다른 값 · 이미 로그인한 사람은 그대로 · 주소에서 지워요)");
     const S40 = require(path.join(ROOT, "shared/screens.js"));
-    ok(S40.match("/vod/partners") === "vod-partners" && S40.match("/vod/partners?tab=partners") === "vod-partners" && S40.match("/vod/partners/apply") === "vod-partners", "React 화면 스위치: 패밀리 · 파트너스 탭 · 지원서 모두 같은 화면(vod-partners)");
+    ok(S40.match("/vod/partners") === "vod-partners" && S40.match("/vod/partners?tab=family") === "vod-partners" && S40.match("/vod/partners?tab=partners") === "vod-partners" && S40.match("/vod/partners/apply") === "vod-partners", "React 화면 스위치: 파트너스 · 패밀리 탭 · 지원서 모두 같은 화면(vod-partners)");
     // 일회성: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners — 그땐 강사 지원 소개뿐)면 파트너스 탭으로 · 다른 링크 · 칸은 그대로 · 다시 돌려도 그대로
     const OF40 = require(path.join(TMP, "class/api/_lib/oneoff.js"));
     const bn40 = [{ id: "vb3", title: "강사 모집", href: "#/vod/partners" }, { id: "vb9", href: "https://www.doogoclass.com/vod/partners/" }, { id: "vb1", href: "#/vod/c/all" }, { id: "vb4", href: "#/vod/partners?tab=partners" }, { id: "vb5", href: "#/vod/partners/apply" }];

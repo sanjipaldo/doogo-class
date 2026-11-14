@@ -1,5 +1,5 @@
 "use client";
-/* 패밀리 탭 (/vod/partners — 기본 탭) = 온드미디어팀 + 두잉고 세일즈팀 — 예전 vod.js pageFamily 를 React 로 (2026-11-14)
+/* 패밀리 탭 (/vod/partners?tab=family — 오른쪽 탭) = 온드미디어팀 + 두잉고 세일즈팀 — 예전 vod.js pageFamily 를 React 로 (2026-11-14)
  *  · 글 · 숫자는 예전 화면과 같은 곳(VOD().familyView() — 온드미디어 · 두잉고 세일즈 소개서에서 옮긴 값)에서 받아요 → 두 화면 글이 어긋나지 않게
  *  · 화면 구조는 예전 화면(pageFamily)과 똑같이 그려요 (e2e react.js 가 #root 구조를 비교해요)
  *  · 합류는 지원서 대신 카카오톡 채널 · 소개서 버튼은 링크(familyView().deck)가 있을 때만 · 체험 계정은 강사센터 로그인 ‘마스터 · 패밀리’ 탭으로 */
@@ -124,11 +124,11 @@ export default function Family() {
         <div className="vd-wrap">
           <small data-rv="">DOOGO CLASS FAMILY</small>
           <h2 data-rv="">먼저 보고,<br />{"확신이 들 때 "}<em>시작</em>하세요.</h2>
-          {/* 마지막 안내 (2026-11-14): 카카오 대신 소개서 2개(새 창) · 체험 계정으로 둘러보기(온드미디어 owned 로 바로 로그인) */}
+          {/* 마지막 안내 (2026-11-14): 소개서 2개(새 창) + 카카오톡 패밀리 문의 — 체험 계정 둘러보기는 위 센터 카드에 있어서 여기선 빼요 */}
           <div className="pt-end-btns" data-rv="">
             {deck("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서")}
             {deck("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서")}
-            <a className="vd-btn vd-btn-xl fm-end-demo" href={F.demo}><Icon n="monitorPlay" c="sm" /><span>체험 계정으로 둘러보기</span></a>
+            <KakaoBtn cls="vd-btn vd-btn-xl pt-end-kk" label="카카오톡 패밀리 문의하기" />
           </div>
         </div>
       </section>

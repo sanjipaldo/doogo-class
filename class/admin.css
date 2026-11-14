@@ -366,11 +366,34 @@ textarea.a-input { min-height: 0; resize: vertical; line-height: 1.6; }
 .a-login-hero p { margin: 18px 0 0; max-width: 440px; font-size: 15px; line-height: 1.75; color: var(--m-steel); }
 .a-login-foot { flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--m-hairline-soft); font-size: 12px; color: var(--m-stone); }
 .a-login-foot > span { white-space: nowrap; }
-.a-login-home { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--m-primary-200); background: #fff; color: var(--m-primary-deep);
-  font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: background-color .15s, border-color .15s, color .15s; }
-.a-login-home:hover { background: var(--m-primary); border-color: var(--m-primary); color: #fff; }
-.a-login-home .icon:last-child { transition: transform .15s; }
-.a-login-home:hover .icon:last-child { transform: translateX(3px); }
+/* 왼쪽 아래 바로가기 2개 (2026-11-14): 두잉고 = 파랑 · 두고클래스 = 빨강 — 스토어 · 두잉고 위 메뉴 전환(.site-sw)과 같은 색 · 같은 그라데이션.
+ * 위: 카드 2개(자리가 모자라면 한 줄에 하나씩) · 아래: © 줄. 로그인 탭(강사 · 코치 · 마스터) 색과 상관없이 서비스 색 그대로 */
+.a-login-foot { flex-direction: column; align-items: stretch; gap: 14px; }
+.a-login-foot > span { align-self: flex-end; }
+.a-login-go { display: flex; flex-wrap: wrap; gap: 10px; }
+.a-go { --go-c: #2563eb; --go-g: linear-gradient(135deg, #4a8dff, #2563eb 55%, #1849c6); --go-tint: #f2f6ff; --go-line: #d6e3ff; --go-ink: #1d3f9e; --go-rgb: 37, 99, 235;
+  flex: 1 1 auto; display: flex; align-items: center; gap: 11px; min-height: 54px; padding: 7px 14px 7px 7px; border: 1px solid var(--go-line); border-radius: 15px;
+  background: linear-gradient(180deg, #fff 0%, var(--go-tint) 100%); color: var(--go-ink); text-decoration: none; white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 8px 18px -12px rgba(var(--go-rgb), .5); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.a-go-dc { --go-c: #fc1c49; --go-g: linear-gradient(135deg, #ff4468, #fc1c49 55%, #e30f3c); --go-tint: #fff3f5; --go-line: #ffd3dc; --go-ink: #b4102f; --go-rgb: 252, 28, 73; }
+.a-go-ic { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 11px; background: var(--go-g); color: #fff;
+  box-shadow: 0 5px 12px -5px rgba(var(--go-rgb), .7), inset 0 1px 0 rgba(255, 255, 255, .3); }
+.a-go-ic .icon { width: 19px; height: 19px; }
+.a-go-tx { flex: 1 1 auto; display: grid; gap: 2px; min-width: 0; line-height: 1.25; text-align: left; }
+.a-go-tx b { font-size: 14px; font-weight: 800; letter-spacing: -0.02em; color: var(--go-ink); }
+.a-go-tx small { font-size: 11.5px; font-weight: 600; letter-spacing: -0.01em; color: var(--m-stone); }
+.a-go-arw { flex: none; margin-left: 2px; color: var(--go-c); transition: transform .18s ease; }
+.a-go:hover { transform: translateY(-1px); border-color: var(--go-c); box-shadow: 0 2px 4px rgba(16, 24, 40, .06), 0 14px 26px -14px rgba(var(--go-rgb), .6); }
+.a-go:hover .a-go-arw { transform: translateX(3px); }
+.a-go:active { transform: translateY(0); }
+.a-go:focus-visible { outline: 2px solid var(--go-c); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .a-go, .a-go-arw { transition: none; } .a-go:hover, .a-go:hover .a-go-arw { transform: none; } }
+/* 바로가기 카드가 들어가 아래가 높아져서, 아래쪽 그림 타일(달력 · 톱니)은 카드 위 빈 곳으로 올려요.
+ * 1440px 아래는 카드가 한 줄에 하나씩(아래가 더 높음) · 높이가 낮은 화면은 글과 겹치지 않게 두 타일을 숨겨요 (1023px 아래는 원래 숨김) */
+.a-login .lx-tile.t3 { bottom: 236px; }
+.a-login .lx-tile.t4 { bottom: 160px; }
+@media (max-width: 1439px) { .a-login .lx-tile.t3 { bottom: 300px; } .a-login .lx-tile.t4 { bottom: 224px; } }
+@media (max-height: 759px), (max-width: 1439px) and (max-height: 839px) { .a-login .lx-tile.t3, .a-login .lx-tile.t4 { display: none; } }
 .a-login-panel { position: relative; }
 .a-login-topright { position: absolute; top: 20px; right: 24px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: var(--m-charcoal); }
 .a-login-stack { width: 100%; max-width: 440px; display: grid; gap: 16px; }
@@ -760,8 +783,6 @@ body[data-master="1"] .a-logo-role { padding: 2px 10px; border-radius: 8px; back
 .a-login-green .a-login-brand { background: radial-gradient(560px 440px at 90% 6%, rgba(1, 164, 132, .05), transparent 70%), linear-gradient(180deg, #f9fdfb 0%, #ffffff 72%); }
 .a-login-green .a-login-hero h2 em { color: #01a484; }
 .a-login-green .a-login-brand .a-logo em { border-color: #b3e4d8; color: #00866b; }
-.a-login-green .a-login-home { border-color: #b3e4d8; color: #00866b; }
-.a-login-green .a-login-home:hover { background: #01a484; border-color: #01a484; color: #fff; }
 .a-login-green .a-eyebrow { color: #01a484; }
 .a-login-green .a-login-role, .a-login-green .a-field-note, .a-login-green .a-login-help { color: #01a484; }
 .a-login-green .a-btn-primary { background: #01a484; }

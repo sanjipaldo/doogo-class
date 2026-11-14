@@ -1,6 +1,7 @@
 "use client";
 /* 패밀리 · 파트너스 (/vod/partners) — 예전 vod.js pagePartners 를 React 로 (Next.js 전환 · 스토어 공개 화면)
- *  · 2026-11-14: 위에 탭 두 개 — 왼쪽 ‘패밀리’(기본 · 온드미디어팀 + 두잉고 세일즈팀 → FamilyTab.jsx) · 오른쪽 ‘파트너스’(?tab=partners · 강사 입점 = 예전 두고 파트너스 소개)
+ *  · 2026-11-14: 위에 탭 두 개 — 왼쪽 ‘파트너스’(기본 · 강사 입점 = 예전 두고 파트너스 소개) · 오른쪽 ‘패밀리’(?tab=family · 온드미디어팀 + 두잉고 세일즈팀 → FamilyTab.jsx)
+ *    (처음엔 패밀리가 왼쪽 · 기본이었는데 같은 날 대표님 요청으로 파트너스가 먼저 — 순서 · 주소는 예전 vod.js PF_TABS · pfTabOf 하나로)
  *    탭은 주소(?tab=)로 — 공유 · 뒤로 가기 그대로 · 탭을 바꾸면 새 탭의 맨 위에서 움직임과 함께 시작 (예전 wirePt 와 같게)
  *  · 글 · 그림은 예전 화면이 그린 모양 그대로 옮겼어요 (예전 화면 출력을 JSX 로 바꿔서 — 틀린 글자가 없게)
  *  · 움직이는 곳만 React: 강사 카드 · 분야 줄 · 대표 클래스 그림 · 이번 달 · 열 수 있는 클래스 종류 · 카카오 문의 주소
@@ -21,7 +22,7 @@ const TITLE = "DOOGO CLASS — 돈 되는 클래스";
 function PfTabs({ on }) {
   return <nav className="pf-tabs" aria-label="패밀리 · 파트너스"><div className="vd-wrap pf-tabs-in">{VOD().PF_TABS.map((t) => <a key={t[0]} className={"pf-tab" + (t[0] === on ? " on" : "")} href={t[1]} data-pf-tab={t[0]} aria-current={t[0] === on ? "page" : undefined}><span className="pf-tab-ic"><Icon n={t[2]} c="sm" /></span><span className="pf-tab-tx"><b>{t[3]}</b><small>{t[4]}</small></span></a>)}</div></nav>;
 }
-/** 강사 입점 소개서 (publitas) 새 창 버튼 — 예전 ptDeck */
+/** 강사 입점 소개서 (DocSend) 새 창 버튼 — 예전 ptDeck */
 const Deck = ({ cls }) => <a className={cls} href={VOD().PT_DECK} target="_blank" rel="noopener"><Icon n="file" c="sm" /><span>강사 입점 소개서 보기</span><Icon n="arrowUpRight" c="xs" /></a>;
 /** 흐르는 분야 줄 (예전 ptCatRows 의 한 줄) — 10개가 넘게 이어 붙여 두 번 */
 function CatRow({ list, rev }) {
@@ -30,7 +31,7 @@ function CatRow({ list, rev }) {
   return <div className={"vd-chiprow pt-catrow" + (rev ? " rev" : "")} aria-hidden="true"><div className="vd-chipmq" style={{ "--dur": a.length * 4 + "s" }}>{a.concat(a).map((c, i) => <span key={i} className="pt-cat">{X.MG_IMG[c.key] ? <img src={X.tileImg(c.key)} alt="" loading="lazy" /> : <Icon n={c.icon || "layers"} c="xs" />}{c.label}</span>)}</div></div>;
 }
 
-/** /vod/partners (패밀리 탭) · /vod/partners?tab=partners (파트너스 탭) · /vod/partners/apply (지원서) */
+/** /vod/partners (파트너스 탭 · 기본) · /vod/partners?tab=family (패밀리 탭) · /vod/partners/apply (지원서) */
 export default function PartnersPage({ n, moved }) {
   const r = storeRoute(), apply = r.path[1] === "apply", tab = VOD().pfTabOf(r.qs);
   // 탭만 바뀌면(주소 ?tab= — 같은 화면이라 moved 가 아님) 이번 그리기도 ‘처음 그림’처럼 움직여요

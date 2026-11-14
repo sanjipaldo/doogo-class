@@ -3934,8 +3934,6 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd .fm-end-md { background: #fc1c49 !important; }
 .vd .fm-end-sl { background: #2f6bff !important; }
 .vd .fm-end-deck:hover { filter: brightness(.94); }
-.vd .fm-end-demo { background: transparent !important; color: #fff !important; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .55) !important; }
-.vd .fm-end-demo:hover { background: rgba(255, 255, 255, .1) !important; }
 .pt-deck-o .icon:last-child, .pt-end-deck .icon:last-child, .fm-end-deck .icon:last-child, .fm-team-deck .icon:last-child { opacity: .6; }
 
 /* ---------- 패밀리 · 파트너스 위 탭 (2026-11-14) — 머리띠 바로 아래에 붙어서 따라와요 · 왼쪽 패밀리(기본) · 오른쪽 파트너스 ---------- */
@@ -3956,7 +3954,22 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 
 /* ---------- 패밀리 탭 (온드미디어팀 · 두잉고 세일즈팀) — 파트너스 탭과 같은 틀(.pt-*) + 패밀리 칸(.fm-*)
    색: 온드미디어 = 두고 빨강 · 두잉고 세일즈 = 두잉고 파랑 (스토어 두잉고 칩과 같게) · 바탕은 흰색 + 옅은 색 ---------- */
-.fm-hero { background: radial-gradient(720px 560px at 76% 44%, rgba(255, 241, 238, .4) 0%, rgba(255, 241, 238, 0) 64%), radial-gradient(520px 420px at 6% 96%, rgba(255, 190, 160, .32) 0%, rgba(255, 190, 160, 0) 70%), linear-gradient(112deg, #e6475f 0%, #f0626f 46%, #ff9a86 100%); }
+/* 패밀리 첫 화면 (2026-11-14 대표님 요청): 파트너스 탭(진한 빨강)과 탭이 바뀐 게 느껴지게 — 연한 분홍 바탕 + 진한 글씨 · 포인트(수익 · 버튼 · 배지)는 두고 빨강 그대로 */
+.pt-hero.fm-hero { color: var(--on1); background: radial-gradient(720px 560px at 76% 44%, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, 0) 64%), radial-gradient(560px 440px at 4% 100%, rgba(255, 176, 198, .5) 0%, rgba(255, 176, 198, 0) 70%), linear-gradient(112deg, #ffd3df 0%, #ffe3eb 48%, #fff1f5 100%); }
+.fm-hero .pt-hero-bg b { background: linear-gradient(180deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, .06)); }
+.fm-hero .pt-eyebrow { background: rgba(252, 28, 73, .1); color: #e0244a; }
+.fm-hero .pt-hero-tx h1, .vd.mo .pt-hero.fm-hero [data-eg].is-split.is-in .eg-c { color: #1d1d22; }
+.pt-hero.fm-hero [data-eg] .eg-accent, .vd.mo .pt-hero.fm-hero [data-eg].is-split .eg-c, .vd.mo .pt-hero.fm-hero [data-eg].is-split.is-in .eg-accent .eg-c { color: var(--vd-pri); }
+.pt-hero.fm-hero [data-eg] .eg-accent::after { background: var(--vd-pri); opacity: .9; }
+.fm-hero .pt-hero-tx > p { color: #4a4a55; }
+.vd .fm-hero .pt-btn-w { background: #fc1c49 !important; color: #fff !important; box-shadow: 0 12px 24px -8px rgba(252, 28, 73, .5); }
+.vd .fm-hero .pt-btn-w:hover { background: #e8143f !important; }
+.fm-hero .pt-btn-line { background: rgba(255, 255, 255, .6) !important; color: #e0244a !important; box-shadow: inset 0 0 0 1.5px rgba(224, 36, 74, .42) !important; }
+.fm-hero .pt-btn-line:hover { background: #fff !important; }
+.fm-hero .pt-hero-note { color: #6a6a74; }
+.fm-hero .pt-hero-note .icon { color: var(--vd-pri); }
+.fm-hero .pt-mascot { filter: drop-shadow(0 28px 30px rgba(214, 40, 84, .22)); }
+.fm-hero .pt-chip { box-shadow: 0 12px 26px rgba(214, 40, 84, .14); }
 .pt-mascot.fm-mascot { width: min(340px, 70%); }
 .fm-media, .fm-team-md, .fm-ctr-md { --fm-c: #fc1c49; --fm-tint: #fff0f3; --fm-line: rgba(252, 28, 73, .32); --fm-sh: rgba(252, 28, 73, .22); }
 .fm-sales, .fm-team-sl, .fm-ctr-sl { --fm-c: #2f6bff; --fm-tint: #edf2ff; --fm-line: rgba(47, 107, 255, .32); --fm-sh: rgba(47, 107, 255, .22); }

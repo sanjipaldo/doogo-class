@@ -199,8 +199,11 @@
         '<section class="a-login-brand">' + window.loginArt(L.theme, L.icons) +
           '<a class="a-logo a-logo-doogo" href="#/doinggo" title="두잉고 홈으로" aria-label="두잉고 홈으로">' + window.doogoClassLock() + "<em>" + L.tag + "</em></a>" +
           '<div class="a-login-hero"><p class="a-eyebrow">' + L.eyebrow + "</p><h2>" + L.h + "</h2><p>" + L.sub + "</p></div>" +
-          // 왼쪽 아래: 두잉고 첫 화면(강의 플랫폼 소개)으로 가는 링크
-          '<div class="a-login-foot"><a class="a-login-home" href="#/doinggo">' + icon("home", "sm") + "두잉고 페이지 바로가기" + icon("arrowRight", "xs") + "</a><span>© 2026 (주)두고홀딩스</span></div>" +
+          // 왼쪽 아래: 두잉고 첫 화면 · 두고클래스 스토어 바로가기 (2026-11-14 — 위 메뉴 전환 버튼과 같은 색: 두잉고 = 파랑 · 두고클래스 = 빨강)
+          '<div class="a-login-foot"><nav class="a-login-go" aria-label="서비스 바로가기">' +
+            '<a class="a-go a-go-dg" href="#/doinggo"><span class="a-go-ic">' + icon("users", "sm") + '</span><span class="a-go-tx"><small>강의 운영 시스템</small><b>두잉고 페이지 바로가기</b></span>' + icon("arrowRight", "xs a-go-arw") + "</a>" +
+            '<a class="a-go a-go-dc" href="#/vod"><span class="a-go-ic">' + icon("monitorPlay", "sm") + '</span><span class="a-go-tx"><small>VOD · 전자책 클래스</small><b>두고클래스 페이지 바로가기</b></span>' + icon("arrowRight", "xs a-go-arw") + "</a>" +
+          "</nav><span>© 2026 (주)두고홀딩스</span></div>" +
         "</section>" +
         '<section class="a-login-panel">' +
           '<div class="a-login-topright"><span>수강생이신가요?</span><a class="a-btn a-btn-primary a-btn-sm" href="#/login" data-action="to-student">바로가기</a></div>' +
@@ -2611,7 +2614,7 @@
     const xlBtn = all.length ? btn(icon("download", "sm") + "엑셀로 내려받기", "inq-xl", "a-btn-outline", ' data-only="' + (only || "") + '" data-f="' + esc(f) + '"') : "";
     return (only
       ? head("두고 파트너스 지원", "DOOGO CLASS ‘두고 파트너스’ 지원서(www.doogoclass.com/vod/partners)와 예전 ‘강사 모집’ 팝업으로 들어온 지원이 여기에 차곡차곡 쌓여요. 서버에 저장되고 마스터만 봐요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. (메모는 마스터만 봐요)",
-          xlBtn + '<a class="a-btn a-btn-ghost" href="#/vod/partners?tab=partners" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "지원 페이지 열기</a>")
+          xlBtn + '<a class="a-btn a-btn-ghost" href="#/vod/partners" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "지원 페이지 열기</a>")
       : head("강사 입점 문의", "두잉고 첫 화면의 ‘강사 입점 문의’와 DOOGO CLASS ‘두고 파트너스’ 지원서로 들어온 신청이에요. 연락한 뒤 상태를 바꾸고 메모를 남겨 두세요. 패밀리 추천 링크로 들어온 문의는 상태 · 1:1 대화가 그 패밀리의 패밀리센터에도 함께 보여요. (메모는 마스터만 봐요)",
           xlBtn + '<a class="a-btn a-btn-ghost" href="#/partner" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "문의 화면 열기</a>")) +
       alertBar +
