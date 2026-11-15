@@ -2597,12 +2597,15 @@ a.login-vod:hover { filter: brightness(.97); }
 .mv-player-wrap .video .vp-img { opacity: 1; mix-blend-mode: normal; }
 .mv-player-wrap .video .video-ph::after { display: none; }
 .mv-player-wrap .video .vp-title { visibility: hidden; }
-/* 수강생 대시보드 ‘오늘의 응원 영상’ (2026-11-15 대표님 요청): 위 큰 화면처럼 유튜브 썸네일 원래 색 그대로 — 테마 색 · 고사리 그림을 덮지 않고,
-   썸네일 위 제목 글자는 숨겨요(제목은 영상 아래 줄에 있어요). 썸네일이 있는 유튜브 영상만(.video[data-yid]) — 비메오 · 준비 중 칸은 테마 그대로 */
-.home-mv .video[data-yid], .home-mv .video[data-yid] .video-ph { background: #000; }
-.home-mv .video[data-yid] .vp-img { opacity: 1; mix-blend-mode: normal; }
-.home-mv .video[data-yid] .video-ph::after { display: none; }
-.home-mv .video[data-yid] .vp-title { visibility: hidden; }
+/* 강의실 영상 카드 썸네일 (2026-11-15 대표님 요청 · 모든 강사 · 모든 화면 — 주차별 강의 · 강의 자료함 · 라이브 다시보기 · 대시보드 응원 영상 · 메뉴 페이지 · 공지):
+   누르기 전 카드에 유튜브 썸네일 원래 색 그대로 — 테마 색(뉴질랜드 남색 · 두잉고 분홍 · 밝은 테마) · 고사리 그림을 덮지 않고,
+   썸네일 위 제목 글자는 숨겨요(제목은 화면 제목 · 영상 아래 줄에 있고, 읽기 프로그램은 ‘제목 재생’ 이름으로 읽어요). 재생 버튼 · ‘유튜브에서 보기’ · 길이는 그대로(길이는 어두운 칸 — 밝은 썸네일에서도 보이게).
+   썸네일이 있는 유튜브 영상만(.video[data-yid]) — 비메오 · 준비 중 칸은 테마 그대로 */
+.video[data-yid], .video[data-yid] .video-ph { background: #000; }
+.video[data-yid] .vp-img { opacity: 1; mix-blend-mode: normal; }
+.video[data-yid] .video-ph::after { display: none; }
+.video[data-yid] .vp-title { visibility: hidden; }
+.video[data-yid] .vp-time { background: rgba(0, 0, 0, .6); color: #fff; }
 
 /* 새 버전 안내 띠 (2026-11-15 · main.js newVerBar): 배포 전에 열어 둔 화면에 — 모든 화면(강사센터 포함) 공통 */
 .dc-newver { position: fixed; left: 16px; right: 16px; bottom: 20px; margin: 0 auto; width: fit-content; max-width: 640px; z-index: 10000; display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; border-radius: 14px; background: #111827; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25); font: 500 14px/1.45 Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }

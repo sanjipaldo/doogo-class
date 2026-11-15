@@ -3245,8 +3245,12 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /<CwPager w=\{pick\} D=\{D\} \/><div className="cw-one"><CwSide w=\{pick\} D=\{D\} d=\{-1\} \/><CurWeek key=\{pick\.no\} w=\{pick\} now=\{cur === pick\} \/><CwSide w=\{pick\} D=\{D\} d=\{1\} \/><\/div>/.test(ln60) &&
       /pick = D\.weeks\.find\(\(w\) => w\.no === n\) \|\| cur \|\| D\.weeks\[0\]/.test(ln60) && /<Curriculum r=\{r\} \/>/.test(ln60) && /\.cw-side\.prev \{ left: -68px; \}/.test(st60),
       "주차별 강의: 한 주만 보여요 · 위 줄(이전 · 주차 점 · 다음) + 카드 양옆 화살표 · #/curriculum?w=N · 처음엔 이번 주 (예전 화면 = React)");
-    ok(/\.home-mv \.video\[data-yid\] \.vp-img \{ opacity: 1; mix-blend-mode: normal; \}/.test(st60) && /\.home-mv \.video\[data-yid\] \.video-ph::after \{ display: none; \}/.test(st60),
-      "대시보드 ‘오늘의 응원 영상’: 유튜브 썸네일 원래 색 그대로 (뉴질랜드 남색 · 고사리 덮개 없음)");
+    const last60 = (sel) => st60.lastIndexOf(sel);
+    ok(/\n\.video\[data-yid\] \.vp-img \{ opacity: 1; mix-blend-mode: normal; \}/.test(st60) && /\n\.video\[data-yid\] \.video-ph::after \{ display: none; \}/.test(st60) &&
+      /\n\.video\[data-yid\], \.video\[data-yid\] \.video-ph \{ background: #000; \}/.test(st60) && /\n\.video\[data-yid\] \.vp-title \{ visibility: hidden; \}/.test(st60) &&
+      /\n\.video\[data-yid\] \.vp-time \{ background: rgba\(0, 0, 0, \.6\); color: #fff; \}/.test(st60) && st60.indexOf(".home-mv .video[data-yid]") < 0 &&
+      [".th-nz .video .vp-img", ".th-doinggo .video .vp-img", ".th-light .video .vp-img", ".th-nz .video-ph .vp-time", ".th-doinggo .video { background"].every((x) => last60(x) > 0 && last60(x) < last60(".video[data-yid] .vp-img")),
+      "강의실 영상 카드(모든 강사 · 모든 화면 — 주차별 강의 · 강의 자료함 · 다시보기 · 대시보드 응원 영상): 유튜브 썸네일 원래 색 그대로 · 썸네일 위 제목 숨김 · 길이는 어두운 칸 (테마 규칙보다 뒤 — 뉴질랜드 · 두잉고 · 밝은 테마 모두 이겨요)");
     ok(/function lvVarList\(iid\) \{\s*const t = DB\.themeOf\(/.test(ad60) && /const iid = rows\[0\]\.s && rows\[0\]\.s\.instructorId, sty = iid \? lvStyle\(iid\) : "";/.test(ad60) &&
       /if \(!master\) lvVarList\(IID\(\)\)\.forEach/.test(ad60) && /\.a-lvbar span \{[^}]*background: var\(--lv-c, #9fe870\)/.test(ac60) && /\.a-lv\.lv-forest \{ background: var\(--lv-c, #163300\)/.test(ac60),
       "강사센터 성장 단계 막대 · 칩 = 그 강사가 고른 강의실 색(수강생 화면과 같은 --primary) · 마스터 강사별 보드는 강사마다 · 색 정보 없으면 예전 연두");
