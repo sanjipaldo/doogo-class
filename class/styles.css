@@ -2605,7 +2605,8 @@ a.login-vod:hover { filter: brightness(.97); }
 .home-mv .video[data-yid] .vp-title { visibility: hidden; }
 
 /* 새 버전 안내 띠 (2026-11-15 · main.js newVerBar): 배포 전에 열어 둔 화면에 — 모든 화면(강사센터 포함) 공통 */
-.dc-newver { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 10000; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 12px 14px 12px 18px; border-radius: 14px; background: #111827; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25); font: 500 14px/1.45 Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+.dc-newver { position: fixed; left: 16px; right: 16px; bottom: 20px; margin: 0 auto; width: fit-content; max-width: 640px; z-index: 10000; display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; border-radius: 14px; background: #111827; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.25); font: 500 14px/1.45 Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+.dc-newver span { flex: 1 1 auto; min-width: 0; word-break: keep-all; }
 .dc-newver b { font-weight: 800; }
 .dc-newver-go { flex: none; border: 0; border-radius: 999px; padding: 8px 14px; background: #fff; color: #111827; font: inherit; font-weight: 800; cursor: pointer; }
 .dc-newver-x { flex: none; border: 0; background: none; color: rgba(255,255,255,.7); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 4px; }
