@@ -97,8 +97,20 @@
     go();
     if (ROUTE.hash === h && y) window.scrollTo(0, y);
   }
+  // 새 버전 안내 (2026-11-15): 배포 전에 열어 둔 화면은 예전 화면 그대로라(예: 강사센터 수정 창에 새 칸이 안 보임) 아래에 띠로 알려요 · 저장한 뒤 새로 고침
+  function newVerBar() {
+    if (document.getElementById("dc-newver")) return;
+    const el = document.createElement("div");
+    el.id = "dc-newver"; el.className = "dc-newver"; el.setAttribute("role", "status");
+    el.innerHTML = "<span><b>새 버전이 나왔어요.</b> 새로 고침하면 바뀐 화면이 보여요.</span>" +
+      '<button type="button" class="dc-newver-go">새로 고침</button><button type="button" class="dc-newver-x" aria-label="닫기">×</button>';
+    el.querySelector(".dc-newver-go").addEventListener("click", () => { Promise.resolve(DB.remote.on ? DB.remote.flush() : null).catch(() => {}).then(() => location.reload()); });
+    el.querySelector(".dc-newver-x").addEventListener("click", () => el.remove());
+    document.body.appendChild(el);
+  }
   function onRemote(type, info) {
     if (type === "reset") { location.reload(); return; }
+    if (type === "newver") { newVerBar(); return; }
     if (type === "error") { notify(info, "warn"); return; }
     // 서버 점검(쓰기 멈춤) 중이면 그 안내를 · 아니면 연결 안내 — 둘 다 바뀐 내용은 들고 있다가 다시 보내요
     if (type === "offline") { notify(info && info.readonly ? "점검 중이에요. 끝나면 자동으로 저장돼요." : "연결이 불안정해 다시 저장하는 중이에요.", "warn", "offline"); return; }

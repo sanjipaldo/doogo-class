@@ -22,5 +22,6 @@ module.exports = handler(["GET"], async (req, res) => {
     const v = access.view(r.k, r.v, ids);
     if (v !== undefined) docs.push([r.k, v, r.ver]);
   });
-  send(res, 200, { mode: "server", now, epoch, me: auth.publicMe(ids), docs });
+  // ver: 지금 배포된 판(커밋 앞 8자리) — 열어 둔 화면이 예전 판이면 ‘새 버전’ 안내 (db.js poll · 2026-11-15)
+  send(res, 200, { mode: "server", now, epoch, ver: String(process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 8), me: auth.publicMe(ids), docs });
 });

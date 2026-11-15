@@ -1092,6 +1092,8 @@
     }
   }
   /** 다른 기기 · 다른 사람이 바꾼 내용 받기 (30초마다, 그리고 이 창으로 돌아올 때) */
+  /** 이 화면이 받은 판 (site.js 가 index.html 의 CSS · JS 주소 끝에 붙인 ?v=<커밋 8자리>) — 내 컴퓨터 · 시험 서버는 비교 안 함 */
+  const PAGE_VER = (() => { try { const u = Array.from(document.scripts).map((x) => x.src || "").find((x) => /\/(main|db)\.js\?v=/.test(x)); const m = u && /[?&]v=([0-9a-z]+)/i.exec(u); return m ? m[1] : ""; } catch (e) { return ""; } })();
   async function poll(force) {
     if (!R.on || !db || R.polling || R.busy) return;
     if (!force && Date.now() - R.lastPoll < 5000) return;
@@ -1102,6 +1104,8 @@
       const j = await call("bootstrap?since=" + Math.max(0, R.now - 15000), undefined, "GET");
       if (j.error) return;
       if (j.epoch && R.epoch && j.epoch !== R.epoch) { emit("reset"); return; }
+      // 새로 배포됐는데 이 화면은 예전 판(index.html 의 ?v=)이면 한 번만 알려요 — 고치던 내용을 잃지 않게 저절로 새로 고치지는 않아요
+      if (j.ver && PAGE_VER && j.ver !== PAGE_VER && !R.newVer) { R.newVer = j.ver; emit("newver", j.ver); }
       const meChanged = JSON.stringify(j.me) !== JSON.stringify(R.me);
       R.me = j.me; R.now = j.now;
       const changed = [];

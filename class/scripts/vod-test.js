@@ -3318,6 +3318,14 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     useJar({}); const visGet = await call("file", { method: "GET", query: { h: h61 } });
     ok(h61 && other.status === 403 && otherGet.status === 403 && stuGet.status === 200 && Buffer.isBuffer(stuGet.body) && stuGet.body.equals(pdf61) && visGet.status === 403,
       "강사센터 파일 올리기(content:moon): 문대표 200 · 다른 강사는 올리기 · 받기 403 · 문대표 수강생 200(같은 바이트) · 방문자 403", { up: r61.status, other: other.status, og: otherGet.status, stu: stuGet.status, vis: visGet.status });
+    // 새 버전 안내: 서버가 배포된 판(커밋 8자리)을 알려 주고 · 열어 둔 화면(index.html ?v=)이 예전 판이면 띠
+    const shaKeep = process.env.VERCEL_GIT_COMMIT_SHA; process.env.VERCEL_GIT_COMMIT_SHA = "abcdef1234567890";
+    useJar({}); const bs61 = await call("bootstrap", { method: "GET" });
+    if (shaKeep === undefined) delete process.env.VERCEL_GIT_COMMIT_SHA; else process.env.VERCEL_GIT_COMMIT_SHA = shaKeep;
+    const dbj61 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), mj61 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), st61 = fs.readFileSync(path.join(ROOT, "scripts/site.js"), "utf8");
+    ok(bs61.json && bs61.json.ver === "abcdef12" && /if \(j\.ver && PAGE_VER && j\.ver !== PAGE_VER && !R\.newVer\) \{ R\.newVer = j\.ver; emit\("newver", j\.ver\); \}/.test(dbj61) &&
+      /if \(type === "newver"\) \{ newVerBar\(\); return; \}/.test(mj61) && /새 버전이 나왔어요\./.test(mj61) && /const VER = \(process\.env\.VERCEL_GIT_COMMIT_SHA \|\| Date\.now\(\)\.toString\(36\)\)\.slice\(0, 8\);/.test(st61),
+      "새 버전 안내: 서버 bootstrap 이 배포된 판(커밋 8자리 = index.html ?v= 와 같은 규칙)을 알려 주고 · 배포 전에 열어 둔 화면이면 아래 띠 ‘새 버전이 나왔어요 · 새로 고침’ (저절로 새로 고치지 않음)", bs61.json && bs61.json.ver);
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
