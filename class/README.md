@@ -1066,7 +1066,8 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
 ## 마스터 관리 영역 ‘두고클래스’ · ‘대시보드’ (2026-11-15)
 
 - 마스터 왼쪽 위 관리 영역 탭: ‘두잉고 · DOOGO CLASS’ → **‘두잉고 · 두고클래스’**(`admin.js masterSwitch` — React 센터도 같은 함수). 두고클래스 탭 왼쪽 메뉴 첫 줄 · 첫 화면 제목: ‘DOOGO CLASS 대시보드’ → **‘대시보드’**(`admin.js masterDcNavRaw` · `pageDc` = React `MasterDc.jsx`). 메뉴 묶음 이름 ‘DOOGO CLASS 운영’ · 머리띠 로고 · 강사센터의 탭 · 메뉴는 그대로. 운영자 계정 메뉴 고르기 창에서는 ‘DOOGO CLASS 운영’ 묶음 아래 ‘대시보드’로 보여요.
-- 테스트: `node scripts/vod-test.js` 64) · e2e `reactct`(마스터 · 센터 예전 화면 = React).
+- 테스트: `node scripts/vod-test.js` 64) · e2e `reactct`(마스터 · 센터 예전 화면 = React) 14/14.
+- **운영 배포 (2026-11-15 · main `a273587`)**: 빌드 정상 · 운영 admin.js 에 새 글자 확인 · 서버 오류 0.
 
 ## 유튜브 썸네일 늘 최신 — 유튜브에서 바꾸면 우리 화면에도 (2026-11-15)
 
