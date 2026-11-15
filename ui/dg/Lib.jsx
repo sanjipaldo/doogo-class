@@ -98,7 +98,7 @@ const Warn = () => <div className="callout callout-neg"><Icon n="shield" /><div>
 /** 수업 자료 목록(예전 HTML) 안의 미리보기 · 내려받기 */
 const matDelegate = (e) => { const a = e.target.closest && e.target.closest("[data-action='vt-mat'], [data-action='vt-dl']"); if (a) DGA().matClick(a); };
 function ResThumb({ it }) {
-  const yid = DBX().youtubeId(it.youtubeId), img = (it.images || [])[0], src = yid ? "https://i.ytimg.com/vi/" + yid + "/hqdefault.jpg" : img ? img.data || img.url : "";
+  const yid = DBX().youtubeId(it.youtubeId), img = (it.images || [])[0], src = yid ? DBX().ytThumb(yid, "hqdefault") : img ? img.data || img.url : "";
   return <span className="vod-thumb">{src ? <img src={src} alt="" loading="lazy" /> : <span className="vod-ph">{it.title}</span>}{yid ? <span className="vod-play"><Icon n="play" /></span> : null}</span>;
 }
 function ResDetail({ c, id }) {

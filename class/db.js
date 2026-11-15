@@ -109,6 +109,11 @@
   const vidOk = (v) => !!(youtubeId(v) || vimeoSrc(v));
   /** 고치는 칸에 보여 줄 주소: 유튜브 ID → https://youtu.be/ID · 비메오는 저장한 주소 그대로 */
   const vidShow = (v) => (!v ? "" : vimeoSrc(v) ? String(v) : youtubeId(v) ? "https://youtu.be/" + youtubeId(v) : String(v));
+  /** 유튜브 썸네일 주소 (2026-11-15 대표님 요청 — 유튜브에서 썸네일을 바꾸면 우리 화면에도 늘 새 썸네일): 같은 주소(…/hqdefault.jpg)를 쓰면
+   *  브라우저 · 유튜브 CDN 이 예전 그림을 계속 보여 줄 수 있어서, 주소 끝에 5분마다 바뀌는 판 표시(?v=)를 붙여요 → 바꾼 뒤 길어야 5분이면
+   *  새로 연 화면에 새 썸네일. 한 화면(페이지)을 여는 동안은 같은 표시라 다시 받지 않아요. size: default · mqdefault · hqdefault · sddefault · maxresdefault */
+  const YT_V = Math.floor(Date.now() / 3e5).toString(36);
+  const ytThumb = (v, size) => { const id = youtubeId(v); return id ? "https://i.ytimg.com/vi/" + id + "/" + (size || "hqdefault") + ".jpg?v=" + YT_V : ""; };
 
   /* ---------------- 영상 길이 (비메오 · 유튜브 실제 재생 시간) ----------------
    * 영상 링크로 실제 길이를 서버(/api/public · vdur)에서 받아 24:30 처럼 보여 줘요. 받은 길이는 이 브라우저에 기억하고,
@@ -1150,7 +1155,7 @@
   };
 
   window.DB = {
-    load, save, reset, store, clone, uid, esc, linkify, brief, youtubeId, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
+    load, save, reset, store, clone, uid, esc, linkify, brief, youtubeId, ytThumb, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
     get data() { return db; },
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,

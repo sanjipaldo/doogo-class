@@ -3461,6 +3461,26 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(offLocal && onVercel && OF62.launchOrdersClean(() => null, () => []).result.skipped, "일회성 목록에 등록 · Vercel 배포 때만(로컬 화면 테스트 DB 의 체험 계정 강의는 그대로) · 지울 게 없으면 건너뜀");
   }
 
+  {
+    console.log("63) 유튜브 썸네일 늘 최신 — 주소에 5분마다 바뀌는 판 표시 (2026-11-15)");
+    const vm63 = require("vm"), sb63 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb63.window = sb63; vm63.createContext(sb63); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm63.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb63, { filename: f }));
+    const T = sb63.DB.ytThumb, v63 = Math.floor(Date.now() / 3e5).toString(36);
+    ok(typeof T === "function" && T("AbCdEfGhI_k", "mqdefault") === "https://i.ytimg.com/vi/AbCdEfGhI_k/mqdefault.jpg?v=" + v63 && T("https://youtu.be/AbCdEfGhI_k") === "https://i.ytimg.com/vi/AbCdEfGhI_k/hqdefault.jpg?v=" + v63 &&
+      T("https://www.youtube.com/watch?v=AbCdEfGhI_k&t=10") === "https://i.ytimg.com/vi/AbCdEfGhI_k/hqdefault.jpg?v=" + v63 && T("") === "" && T("https://vimeo.com/123456789") === "",
+      "DB.ytThumb(영상 · 크기): 유튜브 ID · 주소 → i.ytimg.com/vi/ID/크기.jpg?v=<5분 판> · 기본 hqdefault · 영상 아님/비메오 → 빈 값");
+    const src63 = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
+    const files63 = ["app.js", "landing.js", "../ui/dg/bits.jsx", "../ui/dg/More.jsx", "../ui/dg/Lib.jsx"];
+    const raw63 = files63.filter((f) => /i\.ytimg\.com\/vi\//.test(src63(f)));
+    const use63 = files63.map((f) => (src63(f).match(/\.ytThumb\(/g) || []).length);
+    const vd63 = src63("vod.js");
+    ok(!raw63.length && use63.join(",") === "5,4,2,2,1" && /DB\.ytThumb \? DB\.ytThumb\(yid, "hqdefault"\)/.test(vd63),
+      "썸네일 주소는 모두 ytThumb 로 (예전 화면 강의 카드 · 강의 목록 · 자료 · 응원 영상 · 다시보기 / 소개 페이지 / React 같은 곳 / 스토어 미리보기) — 판 표시 없는 i.ytimg 주소가 남지 않음 " + raw63.join(" ") + " · " + use63.join(","));
+    const lib63 = fs.readFileSync(path.join(ROOT, "scripts/e2e/lib.js"), "utf8");
+    ok(/img\[src\*="i\.ytimg\.com\/vi\/"\][^\n]*replace\(\/\\\?v=\[\\w-\]\+\$\/, ""\)/.test(lib63),
+      "화면 비교(e2e domShape)는 썸네일 판 표시(?v=)를 빼고 비교 — 예전 화면 · React 를 찍는 사이에 5분 경계를 넘어도 같게");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

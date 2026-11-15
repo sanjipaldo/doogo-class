@@ -42,7 +42,7 @@ export function MotivationPage() {
         <div className="section-head"><h2>오늘의 응원 영상</h2>{D.brand.youtubeChannel ? <a className="link-btn" href={D.brand.youtubeChannel} target="_blank" rel="noopener">유튜브 채널 <Icon n="arrowUpRight" c="sm" /></a> : null}</div>
         <div className="mv-tiles">{list.map((it, i) => { const y = DB.youtubeId(it.youtubeId), on = it === cur; return (
           <button key={it.id} type="button" className={"mv-tile" + (on ? " on" : "")} data-action="mv-pick" data-id={it.id} aria-pressed={String(on)} title={it.title} onClick={() => pick(it)}>
-            <span className="mv-tile-img">{y ? <img src={"https://i.ytimg.com/vi/" + y + "/hqdefault.jpg"} alt="" loading="lazy" /> : <span className="vod-ph">{it.title}</span>}<span className="mv-tile-play"><Icon n="play" /></span></span>
+            <span className="mv-tile-img">{y ? <img src={DBX().ytThumb(y, "hqdefault")} alt="" loading="lazy" /> : <span className="vod-ph">{it.title}</span>}<span className="mv-tile-play"><Icon n="play" /></span></span>
             <span className="mv-tile-label">영상 {i + 1}{on ? <em>재생 중</em> : null}</span></button>); })}</div>
       </> : <section className="card" style={{ marginTop: "14px" }}><Empty ic="flame">응원 영상을 준비하고 있어요.</Empty></section>}
       {quote ? <div className="quote" style={{ marginTop: "20px" }}>“{quote}”<small>— {D.brand.instructor}</small></div> : null}
@@ -187,7 +187,7 @@ export function ReplaysPage({ r }) {
         <section className="card overall"><div className="overall-top"><span>{sub ? "보충 강의 시청" : "다시보기 시청"}</span><PctText pct={pct} /></div><Progress pct={pct} /><span className="tiny" style={{ color: "var(--body)" }}>{all.length}개 중 {done}개 시청 · 최근 영상이 맨 앞에 있어요</span></section>
         {weeks.length > 1 ? <WeekChips nums={weeks} cur={wk} action="rp-week" all={all.length} onPick={(k) => { X.rpWeek(k); redraw(); }} /> : null}
         <div className="rp-grid">{list.map((x) => { const yid = DB.youtubeId(x.youtubeId); return (
-          <a key={x.id} className="card rp-card plain-link" href={"#/replays/" + x.id}><span className="rp-thumb">{yid ? <img src={"https://i.ytimg.com/vi/" + yid + "/mqdefault.jpg"} alt="" loading="lazy" /> : null}<span className="rp-play"><Icon n="play" /></span><RawOne html={DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len")} /></span>
+          <a key={x.id} className="card rp-card plain-link" href={"#/replays/" + x.id}><span className="rp-thumb">{yid ? <img src={DBX().ytThumb(yid, "mqdefault")} alt="" loading="lazy" /> : null}<span className="rp-play"><Icon n="play" /></span><RawOne html={DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len")} /></span>
             <span className="rp-body"><span className="rp-meta">{x.week ? <span className="badge badge-neutral">{Number(x.week)}주차</span> : null}{x.date ? <span>{fmtMD(x.date) + (ml ? " 업로드" : " 라이브")}</span> : null}{seen[x.id] ? <span className="badge badge-positive"><Icon n="check" c="xs" />다 봤어요</span> : null}</span>
               <b>{x.title}</b>{x.summary ? <span className="rp-sum">{String(x.summary).replace(/\s+/g, " ").slice(0, 90)}</span> : null}</span></a>); })}</div>
       </> : <section className="card"><Empty ic="monitorPlay">{ml ? "아직 올라온 보충 강의가 없어요." : "아직 올라온 다시보기 영상이 없어요."}</Empty></section>}

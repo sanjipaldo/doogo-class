@@ -2100,7 +2100,7 @@
   }
   function pvThumb(p, l) {
     const yid = DB.youtubeId ? DB.youtubeId(l.video || "") : "", r = chapOf(p, l);
-    return '<span class="vd-pv-th" style="--acc:' + esc(accOf(p)) + '">' + '<i class="vd-pv-bg" aria-hidden="true"><b>' + esc(l.title) + "</b></i>" + (yid ? '<img src="https://i.ytimg.com/vi/' + esc(yid) + '/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()">' : "") + '<i class="vd-pv-play" aria-hidden="true">' + icon("play") + "</i><small>Part " + (r.ci + 1) + " · " + String(r.li + 1).padStart(2, "0") + "</small><em>" + (typeOf(p) === "ebook" ? (Number(l.min) || 0) + "쪽" : lLen(l)) + "</em></span>";
+    return '<span class="vd-pv-th" style="--acc:' + esc(accOf(p)) + '">' + '<i class="vd-pv-bg" aria-hidden="true"><b>' + esc(l.title) + "</b></i>" + (yid ? '<img src="' + esc(DB.ytThumb ? DB.ytThumb(yid, "hqdefault") : "https://i.ytimg.com/vi/" + yid + "/hqdefault.jpg") + '" alt="" loading="lazy" onerror="this.remove()">' : "") + '<i class="vd-pv-play" aria-hidden="true">' + icon("play") + "</i><small>Part " + (r.ci + 1) + " · " + String(r.li + 1).padStart(2, "0") + "</small><em>" + (typeOf(p) === "ebook" ? (Number(l.min) || 0) + "쪽" : lLen(l)) + "</em></span>";
   }
   /* 상세페이지 이미지 (마스터가 JPG 여러 장 업로드 · 타이탄 클래스처럼 위에서 아래로 이어 붙여 보여요)
    * detailMode: "img-text" 이미지 → 기본 상세 · "img" 이미지만 · "text-img" 기본 상세 → 이미지 · "text" 기본 상세만 */

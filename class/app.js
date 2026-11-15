@@ -222,7 +222,7 @@
     }
     if (yid) {
       return '<div class="video" data-yid="' + esc(yid) + '"><div class="video-ph" role="button" tabindex="0" data-action="video-play" aria-label="' + esc(item.title) + ' 재생">' +
-        '<img class="vp-img" src="https://i.ytimg.com/vi/' + esc(yid) + '/hqdefault.jpg" alt="" loading="lazy">' +
+        '<img class="vp-img" src="' + esc(DB.ytThumb(yid, "hqdefault")) + '" alt="" loading="lazy">' +
         '<span class="vp-title">' + esc(opts.headline || item.title) + '</span><span class="vp-play">' + icon("play") + "</span>" +
         '<span class="vp-foot"><a href="https://www.youtube.com/watch?v=' + esc(yid) + '" target="_blank" rel="noopener" class="vp-ext">유튜브에서 보기 ' + icon("arrowUpRight", "xs") + "</a>" +
         minutes + "</span></div></div>";
@@ -243,7 +243,7 @@
   }
   function thumb(item) {
     const yid = DB.youtubeId(item.youtubeId);
-    return '<span class="lesson-thumb">' + (yid ? '<img src="https://i.ytimg.com/vi/' + esc(yid) + '/mqdefault.jpg" alt="" loading="lazy">' : "") + icon("play") + "</span>";
+    return '<span class="lesson-thumb">' + (yid ? '<img src="' + esc(DB.ytThumb(yid, "mqdefault")) + '" alt="" loading="lazy">' : "") + icon("play") + "</span>";
   }
   const progressBar = (pct, thin) => '<div class="progress' + (thin ? " thin" : "") + '" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span style="width:' + pct + '%"></span></div>';
   const pctText = (pct) => '<span class="big-pct">' + pct + "<small>%</small></span>";
@@ -2042,7 +2042,7 @@
   // 자료 썸네일: 유튜브 썸네일 → 첫 사진 → 기본 그림
   function resThumb(it) {
     const yid = DB.youtubeId(it.youtubeId), img = (it.images || [])[0];
-    const src = yid ? "https://i.ytimg.com/vi/" + yid + "/hqdefault.jpg" : img ? img.data || img.url : "";
+    const src = yid ? DB.ytThumb(yid, "hqdefault") : img ? img.data || img.url : "";
     return '<span class="vod-thumb">' + (src ? '<img src="' + esc(src) + '" alt="" loading="lazy">' : '<span class="vod-ph">' + esc(it.title) + "</span>") + (yid ? '<span class="vod-play">' + icon("play") + "</span>" : "") + "</span>";
   }
   // 시니어 기초 가이드 · VOD 상세: 게시판처럼 영상(선택) + 글 + 사진 + 첨부 자료
@@ -2199,7 +2199,7 @@
         '<div class="mv-tiles">' + list.map((it, i) => {
           const yid = DB.youtubeId(it.youtubeId);
           return '<button type="button" class="mv-tile' + (it === cur ? " on" : "") + '" data-action="mv-pick" data-id="' + esc(it.id) + '" aria-pressed="' + (it === cur) + '" title="' + esc(it.title) + '">' +
-            '<span class="mv-tile-img">' + (yid ? '<img src="https://i.ytimg.com/vi/' + esc(yid) + '/hqdefault.jpg" alt="" loading="lazy">' : '<span class="vod-ph">' + esc(it.title) + "</span>") + '<span class="mv-tile-play">' + icon("play") + "</span></span>" +
+            '<span class="mv-tile-img">' + (yid ? '<img src="' + esc(DB.ytThumb(yid, "hqdefault")) + '" alt="" loading="lazy">' : '<span class="vod-ph">' + esc(it.title) + "</span>") + '<span class="mv-tile-play">' + icon("play") + "</span></span>" +
             '<span class="mv-tile-label">영상 ' + (i + 1) + (it === cur ? '<em>재생 중</em>' : "") + "</span></button>";
         }).join("") + "</div>"
         : '<section class="card" style="margin-top:14px">' + empty("flame", "응원 영상을 준비하고 있어요.") + "</section>") +
@@ -2349,7 +2349,7 @@
         (weeks.length > 1 ? weekChips(weeks, rpWeek, "rp-week", all.length) : "") +
         '<div class="rp-grid">' + list.map((x) => {
           const yid = DB.youtubeId(x.youtubeId);
-          return '<a class="card rp-card plain-link" href="#/replays/' + esc(x.id) + '"><span class="rp-thumb">' + (yid ? '<img src="https://i.ytimg.com/vi/' + esc(yid) + '/mqdefault.jpg" alt="" loading="lazy">' : "") + '<span class="rp-play">' + icon("play") + "</span>" + DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len") + "</span>" +
+          return '<a class="card rp-card plain-link" href="#/replays/' + esc(x.id) + '"><span class="rp-thumb">' + (yid ? '<img src="' + esc(DB.ytThumb(yid, "mqdefault")) + '" alt="" loading="lazy">' : "") + '<span class="rp-play">' + icon("play") + "</span>" + DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len") + "</span>" +
             '<span class="rp-body"><span class="rp-meta">' + (x.week ? '<span class="badge badge-neutral">' + Number(x.week) + "주차</span>" : "") + (x.date ? "<span>" + fmtMD(x.date) + (mainLec() ? " 업로드" : " 라이브") + "</span>" : "") + (seen[x.id] ? '<span class="badge badge-positive">' + icon("check", "xs") + "다 봤어요</span>" : "") + "</span>" +
             "<b>" + esc(x.title) + "</b>" + (x.summary ? '<span class="rp-sum">' + esc(String(x.summary).replace(/\s+/g, " ").slice(0, 90)) + "</span>" : "") + "</span></a>";
         }).join("") + "</div>"

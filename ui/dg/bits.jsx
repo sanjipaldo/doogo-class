@@ -36,7 +36,7 @@ export function Video({ item, headline }) {
     const go = (e) => { if (e.target.closest(".vp-ext")) return; setPlay(true); };
     return (
       <div className="video" data-yid={yid}><div className="video-ph" role="button" tabIndex={0} data-action="video-play" aria-label={item.title + " 재생"} onClick={go} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPlay(true); } }}>
-        <img className="vp-img" src={"https://i.ytimg.com/vi/" + yid + "/hqdefault.jpg"} alt="" loading="lazy" />
+        <img className="vp-img" src={DBX().ytThumb(yid, "hqdefault")} alt="" loading="lazy" />
         <span className="vp-title">{title}</span><span className="vp-play"><Icon n="play" /></span>
         <span className="vp-foot"><a href={"https://www.youtube.com/watch?v=" + yid} target="_blank" rel="noopener" className="vp-ext">유튜브에서 보기 <Icon n="arrowUpRight" c="xs" /></a>{minutes ? <RawOne html={minutes} /> : null}</span></div></div>
     );
@@ -78,7 +78,7 @@ export function Pager({ p, n, back }) {
 }
 export function Thumb({ item }) {
   const yid = DBX().youtubeId(item.youtubeId);
-  return <span className="lesson-thumb">{yid ? <img src={"https://i.ytimg.com/vi/" + yid + "/mqdefault.jpg"} alt="" loading="lazy" /> : null}<Icon n="play" /></span>;
+  return <span className="lesson-thumb">{yid ? <img src={DBX().ytThumb(yid, "mqdefault")} alt="" loading="lazy" /> : null}<Icon n="play" /></span>;
 }
 /** AI 조교 얼굴 (강사 사진 · 없으면 로봇) */
 export function BotFace({ size }) {

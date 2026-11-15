@@ -202,6 +202,9 @@ const domShape = (page, id) => page.evaluate((id) => {
   // 남은 시간(1초마다 바뀜)은 마감 시각으로 · 못 불러오면 스스로 지우는 그림(유튜브 미리보기 · 네트워크에 따라 다름)은 빼요
   c.querySelectorAll("[data-cd]").forEach((el) => { el.textContent = el.dataset.cd; });
   c.querySelectorAll('img[onerror="this.remove()"]').forEach((el) => el.remove());
+  // 유튜브 썸네일 판 표시(?v= · 5분마다 바뀜 — db.js ytThumb)는 빼요 — 예전 화면 · React 를 찍는 사이에 5분 경계를 넘으면 달라져요
+  c.querySelectorAll('img[src*="i.ytimg.com/vi/"]').forEach((el) => el.setAttribute("src", el.getAttribute("src").replace(/\?v=[\w-]+$/, "")));
+  c.querySelectorAll('img[data-alt*="i.ytimg.com/vi/"]').forEach((el) => el.setAttribute("data-alt", el.getAttribute("data-alt").replace(/\?v=[\w-]+$/, "")));
   // 클래스 상세 맨 위 대표 영상(2026-11-08): 그린 뒤 붙이는 영상(iframe · video) · 재생 · 소리 · 눌러서 재생 표시는 네트워크 · 시각에 따라 달라서 빼요
   c.querySelectorAll(".vd-pdv-slot").forEach((el) => { el.innerHTML = ""; });
   c.querySelectorAll(".vd-pdv").forEach((el) => el.classList.remove("is-play", "is-snd", "is-tap", "is-calm", "is-run", "is-pause"));

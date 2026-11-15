@@ -228,7 +228,7 @@
     return '<section class="youtube-showcase" aria-labelledby="youtube-showcase-title"><div class="youtube-heading"><span>' + esc(v.kicker) + '</span><h2 id="youtube-showcase-title">' + esc(v.title) + "</h2>" + (v.desc ? "<p>" + esc(v.desc) + "</p>" : "") + "</div>" +
       '<div class="video-carousel"><button class="carousel-control carousel-control--previous" type="button" data-fc="v-prev" aria-label="이전 영상 보기">' + SV(IC.left, 24) + "</button>" +
       '<div class="video-stage">' + items.map((x, i) => { const pos = i === vIdx ? "active" : i === left ? "left" : "right"; return '<article class="video-slide video-slide--' + pos + '"><div class="video-frame">' +
-          (pos === "active" ? '<iframe src="' + esc(ytEmbed(x.youtube)) + '" title="' + esc(x.title) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>' : '<img src="https://i.ytimg.com/vi/' + esc(DB.youtubeId(x.youtube)) + '/hqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover;display:block">') +
+          (pos === "active" ? '<iframe src="' + esc(ytEmbed(x.youtube)) + '" title="' + esc(x.title) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>' : '<img src="' + esc(DB.ytThumb(DB.youtubeId(x.youtube), "hqdefault")) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block">') +
           (pos !== "active" ? '<button class="video-select-overlay" type="button" data-fc="v-go" data-i="' + i + '" aria-label="' + esc(x.title) + ' 영상 가운데로 가져오기">' + SV(IC.play, 22) + "</button>" : "") +
           '</div><div class="video-meta"><span>' + esc(x.channel || "YouTube") + "</span><strong>" + esc(x.title) + "</strong></div></article>"; }).join("") + "</div>" +
       '<button class="carousel-control carousel-control--next" type="button" data-fc="v-next" aria-label="다음 영상 보기">' + SV(IC.right, 24) + "</button></div>" +
@@ -240,7 +240,7 @@
     const v = F.intro || {}, y = DB.youtubeId(v.youtube || "");
     if (!y) return "";
     return '<section class="fc-intro" aria-labelledby="fc-intro-t"><div class="section-heading"><span>' + esc(v.kicker || "WATCH FIRST") + '</span><h2 id="fc-intro-t">' + esc(v.title || "영상으로 먼저 만나보세요") + "</h2>" + (v.desc ? "<p>" + esc(v.desc) + "</p>" : "") + "</div>" +
-      '<div class="fc-intro-frame" data-y="' + esc(y) + '"><button type="button" class="fc-intro-play" data-fc="intro-play" aria-label="' + esc(v.title || "대표 영상") + ' 재생"><img src="https://i.ytimg.com/vi/' + esc(y) + '/maxresdefault.jpg" data-alt="https://i.ytimg.com/vi/' + esc(y) + '/hqdefault.jpg" alt="" decoding="async">' +
+      '<div class="fc-intro-frame" data-y="' + esc(y) + '"><button type="button" class="fc-intro-play" data-fc="intro-play" aria-label="' + esc(v.title || "대표 영상") + ' 재생"><img src="' + esc(DB.ytThumb(y, "maxresdefault")) + '" data-alt="' + esc(DB.ytThumb(y, "hqdefault")) + '" alt="" decoding="async">' +
         '<span class="fc-intro-btn" aria-hidden="true">' + SV(IC.play, 30) + "</span>" + (v.caption ? '<span class="fc-intro-cap">' + esc(v.caption) + "</span>" : "") + "</button></div>" +
       '<a class="fc-yt-out" href="https://www.youtube.com/watch?v=' + esc(y) + '" target="_blank" rel="noopener">유튜브에서 보기 ↗</a></section>';
   };
@@ -422,7 +422,7 @@
         '<p class="lp-iv-s">어떤 사람이 어떻게 해냈는지, 강의를 듣기 전에 영상으로 먼저 만나 보세요.</p>' +
         (yt ? '<a class="lp-yt" href="' + esc(yt) + '" target="_blank" rel="noopener"><span class="lp-yt-ic" aria-hidden="true"><svg viewBox="0 0 28 20"><rect width="28" height="20" rx="6" fill="#ff0033"/><path d="M11.2 6.1v7.8l6.6-3.9z" fill="#fff"/></svg></span><span class="lp-yt-t"><b>유튜브 채널에서 더 보기</b><small>' + esc((c.brand || {}).name || nm) + "</small></span>" + icon("arrowUpRight", "sm") + "</a>" : "") + "</div>" +
       '<div class="lp-iv-v"><button type="button" class="lp-iv-play" data-lp-yt="' + esc(ytEmbed(v.youtube)) + '" aria-label="' + esc(v.title || nm + " 소개 영상") + ' 재생">' +
-        '<img src="https://i.ytimg.com/vi/' + esc(y) + '/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()">' +
+        '<img src="' + esc(DB.ytThumb(y, "hqdefault")) + '" alt="" loading="lazy" onerror="this.remove()">' +
         '<span class="lp-iv-shade"></span><span class="lp-iv-btn">' + SV('<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>', 30) + "</span>" +
         '<span class="lp-iv-cap"><b>' + esc(v.title || nm + " 소개 영상") + "</b><small>" + esc((c.brand || {}).name || nm) + " · 유튜브</small></span></button></div>" +
     "</div></div></section>";
