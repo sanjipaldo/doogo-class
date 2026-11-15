@@ -2614,3 +2614,13 @@ a.login-vod:hover { filter: brightness(.97); }
 .dc-newver-go { flex: none; border: 0; border-radius: 999px; padding: 8px 14px; background: #fff; color: #111827; font: inherit; font-weight: 800; cursor: pointer; }
 .dc-newver-x { flex: none; border: 0; background: none; color: rgba(255,255,255,.7); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 4px; }
 @media (max-width: 720px) { .dc-newver { bottom: 84px; font-size: 13px; } }
+
+/* 강의 자료함 카테고리 칩 (2026-11-15 대표님 요청 — 시니어 기초 가이드부터): 목록 위 ‘전체 N · 카테고리 N’ — 고른 칩은 강의실 대표색(app.js libCatBar = React 같은 HTML) */
+.lib-cats { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 16px; }
+.lib-cat { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px 8px 18px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); font-size: 15px; font-weight: 700; letter-spacing: -0.02em; text-decoration: none; transition: border-color .15s, background .15s; }
+.lib-cat:hover { border-color: var(--ink); }
+.lib-cat .n { min-width: 26px; padding: 2px 8px; border-radius: 999px; background: var(--primary-pale); color: var(--ink); font-size: 12.5px; font-weight: 800; text-align: center; }
+.lib-cat.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.lib-cat.on .n { background: rgba(255, 255, 255, .24); color: inherit; }
+.lib-cat:focus-visible { outline: 3px solid var(--primary-pale); outline-offset: 2px; }
+@media (max-width: 640px) { .lib-cats { gap: 6px 8px; } .lib-cat { min-height: 40px; padding: 6px 12px 6px 14px; font-size: 14px; } }

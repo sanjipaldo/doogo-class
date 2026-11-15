@@ -3330,7 +3330,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /\(docCat \? resFilesTop\(it\) : ""\)/.test(ap61) && /<RawOne html=\{X\.resFilesTop\(it\)\} \/>/.test(lb61) && /\{nA \? "자료 받기" : "자세히 보기"\}/.test(lb61) && /resDoc, resExts, resFilesTop,/.test(ap61),
       "수강생 자료 파일: 설명 · 파일이 있으면 ‘자료 받기’ → 자료 화면(맨 위 받을 자료 · 아래 설명) · 파일 형식 칩 (예전 화면 = React)");
     ok(/COLL\["res-file"\] = \{[^\n]*\n[^\n]*\n\s*F\("url", "Google Drive 다운로드 링크", "url"/.test(ad61) && /F\("attachments", "자료 파일 더 넣기/.test(ad61) && /pill\(links\.some\(isDrive\) \? "Google Drive 연결됨" : "링크 연결됨", "ok"\)/.test(ad61) && /F\("body", "자세한 설명/.test(ad61) && /function libDashCard\(\)/.test(ad61) && /libDashCard\(\) \+\n\s*'<div class="a-grid-2">'/.test(ad61) &&
-      /<Isl html=\{A\.libDashCard\(\)\} \/>/.test(db61) && /<Isl html=\{A\.resPills\(it, isVideo\)\} \/>/.test(c261) && /case "lib-go": ui\.libTab = d\.k \|\| "file"; ROUTE\.hash = "#\/center\/library";/.test(ad61) &&
+      /<Isl html=\{A\.libDashCard\(\)\} \/>/.test(db61) && /<Isl html=\{A\.resPills\(it, isVideo, k\)\} \/>/.test(c261) && /case "lib-go": ui\.libTab = d\.k \|\| "file"; ROUTE\.hash = "#\/center\/library";/.test(ad61) &&
       /const MAX_SRV_FILE = 3 \* 1024 \* 1024;/.test(ad61) && /scope: "content:" \+ IID\(\)/.test(ad61) && /파일을 올리는 중이에요\. 다 올라간 뒤에 저장해 주세요\./.test(ad61),
       "강사센터: 자료 파일 = Google Drive 다운로드 링크(맨 위) + 파일 더 넣기(서버에선 바로 비공개 저장 · 3MB) + 자세한 설명 · ‘Google Drive 연결됨’ 표시 · 대시보드 ‘자료 파일’ 카드(바로 수정) · 올리는 중엔 저장 막기 (예전 화면 = React)");
     ok(/const isDrive = \(u\) => \/\^https\?:/.test(ap61) && /const GD_LOGO = '<svg class="gd-logo"/.test(ap61) && /"Google Drive에서 받기<\/a><\/li>"/.test(ap61) && /"다운로드 링크 열기<\/a><\/li>"/.test(ap61) &&
@@ -3488,6 +3488,33 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /\["DOOGO CLASS 운영", \[\["master\/dc", "대시보드", "grid"\]/.test(ad64) && /return head\("대시보드", "VOD 스토어의/.test(ad64) && /<Head title="대시보드" sub="VOD 스토어의/.test(dc64) &&
       /tab\("vod", "DOOGO CLASS"\)/.test(ad64) && /\["", "DOOGO CLASS 대시보드", "grid"\]/.test(ad64),
       "마스터: 관리 영역 탭 ‘두잉고 · 두고클래스’ · 왼쪽 메뉴와 첫 화면 제목 ‘대시보드’ (예전 화면 = React 같은 함수 · 강사센터 탭 · 메뉴는 그대로)");
+  }
+
+  {
+    console.log("65) 강의 자료함 카테고리 — 시니어 기초 가이드 칩 · 강사센터 만들기 · 이름 바꾸기 · 지우기 (2026-11-15)");
+    const vm65 = require("vm"), sb65 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb65.window = sb65; vm65.createContext(sb65); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm65.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb65, { filename: f }));
+    const LC = sb65.DB.libCatsOf, c65 = { libCats: { senior: [{ id: "a", name: "쿠팡" }, { id: "", name: "x" }, { id: "b", name: "  " }, null, { id: "c", name: "컴퓨터" }] } };
+    ok(LC(c65, "senior").map((x) => x.id).join(",") === "a,c" && LC(c65, "file").length === 0 && LC({}, "senior").length === 0 && LC(null, "senior").length === 0,
+      "DB.libCatsOf(콘텐츠, 분류): 이름 · id 있는 카테고리만 · 없으면 빈 목록");
+    const ap65 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), lb65 = fs.readFileSync(path.join(ROOT, "../ui/dg/Lib.jsx"), "utf8"), ad65 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), c2 = fs.readFileSync(path.join(ROOT, "../ui/center/Content2.jsx"), "utf8"), st65 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    ok(/const all = resOf\(cat\), sel = libCatSel\(cat, r\), items = sel \? all\.filter\(\(it\) => it\.cat === sel\) : all;/.test(ap65) && /libCatBar\(cat, all, sel\) \+ '<div style="margin-top:14px">' \+ body/.test(ap65) &&
+      /\.filter\(\(p\) => p\[1\] > 0\)/.test(ap65) && /chip\("#\/library\/" \+ cat, !sel, "전체", items\.length\)/.test(ap65) && /"\?cat=" \+ encodeURIComponent\(p\[0\]\.id\)/.test(ap65) && /\(all\.indexOf\(it\) \+ 1\)/.test(ap65) &&
+      /const all = X\.resOf\(cat\), sel = X\.libCatSel\(cat, r\), items = sel \? all\.filter\(\(it\) => it\.cat === sel\) : all/.test(lb65) && /bar = X\.libCatBar\(cat, all, sel\)/.test(lb65) && /\{bar \? <RawOne html=\{bar\} \/> : null\}/.test(lb65) && /\(all\.indexOf\(it\) \+ 1\)/.test(lb65) &&
+      /\.lib-cat\.on \{ background: var\(--primary\)/.test(st65),
+      "수강생: 목록 위 ‘전체 N · 카테고리 N’ 칩(글이 있는 카테고리만) · ?cat= 으로 골라 보기 · 번호는 전체 순서 그대로 (예전 화면 = React 같은 HTML)");
+    ok(/const libCatField = \(k\) => F\("cat", "카테고리", "select", \{ when: \(\) => DB\.libCatsOf\(C\(\), k\)\.length > 0/.test(ad65) && (ad65.match(/libCatField\("(ebook|file)"\)|libCatField\(k\)/g) || []).length === 3 &&
+      /def\.fields\.filter\(\(f\) => !f\.when \|\| f\.when\(\)\)\.map\(\(f\) => fieldHtml\(f, item\)\)/.test(ad65) && /libCatAdmin\(k\) \+\s*simpleList\("res-" \+ k/.test(ad65) && /resPills\(it, isVideo, k\)/.test(ad65) &&
+      /case "libcat-edit": libCatEdit\(d\.k, d\.id\); break;/.test(ad65) && /case "libcat-del": deleteLibCat\(d\.k, d\.id\); break;/.test(ad65) && /"libcat-form": saveLibCat/.test(ad65) &&
+      /같은 이름의 카테고리가 이미 있어요/.test(ad65) && /items\.forEach\(\(it\) => \{ delete it\.cat; \}\)/.test(ad65) && /<Isl html=\{A\.libCatAdmin\(k\)\} \/>/.test(c2) && /A\.resPills\(it, isVideo, k\)/.test(c2),
+      "강사센터: 탭 아래 ‘카테고리’ 줄(칩 = 이름 바꾸기 · 지우기 · ‘카테고리 추가’) · 글 수정 창 카테고리 고르기(카테고리가 있을 때만) · 목록에 카테고리 표시 · 지우면 글은 남고 ‘전체’에만 (예전 화면 = React)");
+    const OF65 = require(path.join(ROOT, "api/_lib/oneoff.js")), op65 = OF65.OPS.find((x) => x.id === "2026-11-15-moon-senior-cats");
+    const src65 = { resources: { senior: [{ id: "s1", title: "챗GPT 회원가입 및 첫 사용 방법" }, { id: "s2", title: "상품 이미지 누끼 따는 방법" }, { id: "s3", title: "네이버 웨일(Whale) 설치하는 방법" }, { id: "s4", title: "쿠팡 로켓그로스 입점" }, { id: "s5", title: "스마트스토어 정산 보기" }, { id: "s6", title: "홈택스 공동인증서", cat: "lc-etc" }, { id: "s7", title: "카카오톡 고객 응대" }] } };
+    const w65 = OF65.moonSeniorCats((k) => (k === "content:moon" ? src65 : null)), n65 = w65.writes["content:moon"], cat65 = (id) => (n65.resources.senior.find((x) => x.id === id) || {}).cat;
+    ok(op65 && op65.run === OF65.moonSeniorCats && !op65.when && n65.libCats.senior.map((x) => x.name).join("|") === "배송|쿠팡|상품등록|컴퓨터|빽형 건기식 AI 마스터툴 VOD|기타|네이버" &&
+      cat65("s1") === "lc-pc" && cat65("s2") === "lc-reg" && cat65("s3") === "lc-pc" && cat65("s4") === "lc-coupang" && cat65("s5") === "lc-naver" && cat65("s6") === "lc-etc" && cat65("s7") === undefined && w65.result.none === 1 && !src65.libCats &&
+      OF65.moonSeniorCats(() => n65).result.skipped && OF65.moonSeniorCats(() => null).result.skipped,
+      "일회성: 문대표 시니어 기초 가이드 카테고리 7개(보내 준 화면 그대로) · 제목으로 골라 넣기(웨일 · 크롬 · 챗GPT → 컴퓨터 · 누끼 → 상품등록 · 쿠팡 · 네이버) · 이미 고른 글 · 맞는 게 없는 글은 그대로 · 다시 돌리면 건너뜀");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

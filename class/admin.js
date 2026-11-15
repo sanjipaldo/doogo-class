@@ -1265,15 +1265,17 @@
     mv: { name: "응원 영상", prepend: true, list: (c) => c.motivation, idp: "mv", init: () => ({ date: todayStr() }),
       fields: [F("title", "영상 제목"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }), F("minutes", "영상 길이 (예: 31:57)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }), F("date", "올린 날", "date")] }
   };
-  COLL["res-ebook"] = { name: "자료", list: (c) => c.resources.ebook, idp: "e", fields: [F("title", "자료 이름"), F("meta", "형식 (예: 전자책 · 86쪽)"), F("desc", "한 줄 설명"), F("url", "열람·다운로드 주소 (구글 드라이브 등)", "url")] };
+  // 카테고리 고르기 (2026-11-15 대표님 요청): 그 분류에 카테고리가 있을 때만 칸이 보여요 — 칸이 없으면 저장해도 글의 카테고리는 그대로
+  const libCatField = (k) => F("cat", "카테고리", "select", { when: () => DB.libCatsOf(C(), k).length > 0, options: () => [["", "카테고리 없음 (‘전체’에만 보여요)"]].concat(DB.libCatsOf(C(), k).map((x) => [x.id, x.name])), hint: "카테고리는 강의 자료함 목록 위 ‘카테고리’ 줄에서 만들고 · 이름을 바꾸고 · 지워요." });
+  COLL["res-ebook"] = { name: "자료", list: (c) => c.resources.ebook, idp: "e", fields: [F("title", "자료 이름"), libCatField("ebook"), F("meta", "형식 (예: 전자책 · 86쪽)"), F("desc", "한 줄 설명"), F("url", "열람·다운로드 주소 (구글 드라이브 등)", "url")] };
   // 자료 파일 (2026-11-15): Google Drive 다운로드 링크(대표님 요청 — 파일은 구글 드라이브로) · 또는 파일 직접 올리기(수강생만 받음) · 자세한 설명 글
   COLL["res-file"] = { name: "자료", list: (c) => c.resources.file, idp: "f", init: () => ({ attachments: [] }),
-    fields: [F("title", "자료 이름"), F("meta", "형식 (예: 엑셀 2개 · PDF)"), F("desc", "한 줄 설명 (목록에 보여요)"),
+    fields: [F("title", "자료 이름"), libCatField("file"), F("meta", "형식 (예: 엑셀 2개 · PDF)"), F("desc", "한 줄 설명 (목록에 보여요)"),
       F("url", "Google Drive 다운로드 링크", "url", { hint: "구글 드라이브에서 파일(또는 폴더) › 공유 › 일반 액세스를 ‘링크가 있는 모든 사용자’로 바꾼 뒤 ‘링크 복사’ → 여기에 붙여 넣어요. 수강생 화면에 ‘Google Drive에서 받기’ 버튼으로 보여요. 다른 다운로드 주소도 돼요." }),
       F("attachments", "자료 파일 더 넣기 (선택 · 파일 직접 올리기 3MB까지 · 또는 ‘링크 추가’로 Google Drive 파일을 하나씩)", "attachments"),
       F("body", "자세한 설명 (자료 화면에 보여요 · 언제 쓰는지 · 들어 있는 것 · 활용 팁)", "textarea", { rows: 12, rich: true })] };
   ["vod", "senior"].forEach((k) => { COLL["res-" + k] = { name: "영상", list: (c) => c.resources[k], idp: k[0], init: () => ({ body: "", attachments: [] }),
-    fields: [F("title", "영상 제목 (팝업 제목)"), F("meta", "형식 (예: 기초 · 15분)"), F("desc", "한 줄 설명 (목록에 보여요)"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
+    fields: [F("title", "영상 제목 (팝업 제목)"), libCatField(k), F("meta", "형식 (예: 기초 · 15분)"), F("desc", "한 줄 설명 (목록에 보여요)"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
       F("body", "본문 (게시판처럼 글을 쓰고, 사진은 [사진1] 자리에 들어가요)", "textarea", { rows: 14, rich: true, photos: true }), F("images", "사진 (여러 장 가능 · 첫 사진은 영상이 없을 때 썸네일)", "images"),
       F("attachments", "첨부 자료 (교습지·엑셀·PDF 등)", "attachments")] }; });
   const faqCats = () => C().faqs.map((f) => f.category || "기타").filter((c, i, a) => a.indexOf(c) === i);
@@ -1406,7 +1408,7 @@
     const head = copy ? '<p class="a-copy-note">' + icon("copy", "sm") + "<span>‘" + esc(copy.label) + "’ 내용을 복사했어요. 고쳐서 <b>저장</b>하면 " + (coll === "week" ? "맨 끝 주차로" : "원본 바로 아래에") + " 새로 추가돼요. 원본은 그대로예요.</span></p>" +
       (coll === "lesson" || coll === "mission" ? '<div class="a-field"><label for="cp-week">넣을 주차</label><select class="a-input" id="cp-week" name="cpWeek">' + CUR().weeks.map((w) => '<option value="' + w.no + '"' + (String(w.no) === String(ctx) ? " selected" : "") + ">" + w.no + "주차" + (w.title ? " · " + esc(w.title) : "") + (String(w.no) === String(ctx) ? " (원본과 같은 주차)" : "") + "</option>").join("") + '</select><small class="a-muted">다른 주차를 고르면 그 주차 맨 끝에 들어가요.</small></div>' : "") : "";
     openModal((copy ? def.name + " 복사" : id ? def.name + " 수정" : def.name + " 추가"),
-      '<form id="coll-form" class="a-form" data-coll="' + coll + '" data-id="' + esc(id || "") + '" data-ctx="' + esc(ctx || "") + '"' + (copy ? ' data-copy="1"' : "") + " novalidate>" + head + def.fields.map((f) => fieldHtml(f, item)).join("") + '<p class="a-error" id="coll-error"></p></form>',
+      '<form id="coll-form" class="a-form" data-coll="' + coll + '" data-id="' + esc(id || "") + '" data-ctx="' + esc(ctx || "") + '"' + (copy ? ' data-copy="1"' : "") + " novalidate>" + head + def.fields.filter((f) => !f.when || f.when()).map((f) => fieldHtml(f, item)).join("") + '<p class="a-error" id="coll-error"></p></form>',
       (id ? btn(icon("trash", "sm") + "삭제", "item-delete", "a-btn-ghost danger", ' data-coll="' + coll + '" data-id="' + esc(id) + '" data-ctx="' + esc(ctx || "") + '"') + btn(icon("copy", "sm") + "복사", "item-copy", "a-btn-ghost") : "") + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="coll-form">' + (copy ? "복사본 저장" : "저장") + "</button>", "md");
     applyShowIf();
   }
@@ -1902,12 +1904,48 @@
       '<section class="a-card a-libnote"><div class="a-card-head"><span class="a-menu-ico">' + icon("shield", "sm") + '</span><div class="a-grow"><h2>자료실 이용 안내 팝업</h2><p class="a-muted">수강생이 자료실에 들어올 때마다 떠요. ‘' + esc(ln.button) + "’을 눌러야 자료가 보이고, 자료실 화면에는 열람자 이름 · 기수 · 시각이 옅게 표시돼요.</p></div>" +
         btn(icon("pen", "sm") + "문구 수정", "libnote-edit", "a-btn-ghost a-btn-sm") + "</div></section>" +
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs.map((t) => '<button type="button" class="a-tab' + (k === t[0] ? " on" : "") + '" data-action="lib-tab" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + c.resources[t[0]].length + "</span></button>").join("") + "</div></div>" +
-        simpleList("res-" + k, items, (it) => '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</small></div>" + resPills(it, isVideo), "아직 자료가 없어요.") + "</section>";
+        libCatAdmin(k) +
+        simpleList("res-" + k, items, (it) => '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</small></div>" + resPills(it, isVideo, k), "아직 자료가 없어요.") + "</section>";
+  }
+  /* 강의 자료함 카테고리 (2026-11-15 대표님 요청 — 시니어 기초 가이드부터 · 4개 분류 모두): 탭 아래 ‘카테고리’ 줄 — 칩을 누르면 이름 바꾸기 · 지우기, ‘카테고리 추가’로 만들기
+   * 글마다 수정 창에서 카테고리를 골라요 · 수강생 목록 위에는 글이 있는 카테고리만 ‘전체 N · 카테고리 N’ 칩으로 (React 센터도 이 HTML 그대로) */
+  function libCatAdmin(k) {
+    const c = C(), cats = DB.libCatsOf(c, k), items = c.resources[k] || [], none = items.filter((it) => !cats.some((x) => x.id === it.cat)).length;
+    return '<div class="a-libcats"><span class="a-libcats-l">' + icon("layers", "xs") + "카테고리</span>" +
+      cats.map((x) => '<button type="button" class="a-libcat" data-action="libcat-edit" data-k="' + k + '" data-id="' + esc(x.id) + '" title="이름 바꾸기 · 지우기">' + esc(x.name) + ' <span class="num">' + items.filter((it) => it.cat === x.id).length + "</span></button>").join("") +
+      btn(icon("plus", "xs") + "카테고리 추가", "libcat-edit", "a-btn-ghost a-btn-sm", ' data-k="' + k + '"') +
+      '<small class="a-muted a-libcats-h">' + (cats.length ? "칩을 누르면 이름을 바꾸거나 지울 수 있어요. 글마다 ‘수정’에서 카테고리를 골라요." + (none ? " 카테고리 없는 글 " + none + "개는 수강생 화면 ‘전체’에만 보여요." : "") : "카테고리를 만들면 수강생 화면 목록 위에 ‘전체 · 카테고리’ 칩이 생겨요.") + "</small></div>";
+  }
+  function libCatEdit(k, id) {
+    const c = C(), x = id ? DB.libCatsOf(c, k).find((y) => y.id === id) : null, n = x ? (c.resources[k] || []).filter((it) => it.cat === x.id).length : 0;
+    openModal(x ? "카테고리 수정" : "카테고리 추가",
+      '<form id="libcat-form" class="a-form" data-k="' + esc(k) + '" data-id="' + esc(x ? x.id : "") + '" novalidate><div class="a-field"><label for="lc-name">카테고리 이름</label><input class="a-input" id="lc-name" name="name" maxlength="30" value="' + esc(x ? x.name : "") + '" placeholder="예: 쿠팡 · 컴퓨터 · 네이버"><small class="a-muted">' + (x ? "이 카테고리 글 " + n + "개 · 이름을 바꾸면 수강생 화면 칩도 바로 바뀌어요." : "수강생 화면 목록 위에 칩으로 보여요 (글을 이 카테고리로 고른 뒤부터).") + '</small></div><p class="a-error" id="libcat-error"></p></form>',
+      (x ? btn(icon("trash", "sm") + "삭제", "libcat-del", "a-btn-ghost danger", ' data-k="' + esc(k) + '" data-id="' + esc(x.id) + '"') : "") + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="libcat-form">저장</button>', "sm");
+  }
+  function saveLibCat(f) {
+    const c = C(), k = f.dataset.k, id = f.dataset.id, name = f.name.value.trim(), err = document.getElementById("libcat-error");
+    if (!name) { err.textContent = "카테고리 이름을 적어 주세요."; return; }
+    const m = c.libCats && typeof c.libCats === "object" && !Array.isArray(c.libCats) ? c.libCats : (c.libCats = {}), list = Array.isArray(m[k]) ? m[k] : (m[k] = []);
+    if (list.some((y) => y && y.id !== id && String(y.name || "").trim() === name)) { err.textContent = "같은 이름의 카테고리가 이미 있어요."; return; }
+    const x = id ? list.find((y) => y && y.id === id) : null;
+    if (x) x.name = name; else list.push({ id: DB.uid("lc"), name });
+    commit(x ? "카테고리 이름을 바꿨어요." : "카테고리를 만들었어요.");
+  }
+  function deleteLibCat(k, id) {
+    const c = C(), x = DB.libCatsOf(c, k).find((y) => y.id === id);
+    if (!x) return;
+    const items = (c.resources[k] || []).filter((it) => it.cat === id);
+    confirmModal("카테고리 삭제", "‘" + esc(x.name) + "’ 카테고리를 삭제할까요?" + (items.length ? "<br>이 카테고리 글 " + items.length + "개는 지워지지 않고, 카테고리 없이 ‘전체’에만 보여요." : ""), "삭제", true, () => {
+      c.libCats[k] = c.libCats[k].filter((y) => !y || y.id !== id);
+      items.forEach((it) => { delete it.cat; });
+      commit("카테고리를 삭제했어요.");
+    });
   }
   // 자료 상태 표시: 파일 N개 · 계산기 · 링크 · 설명만 · 준비 중 (React 화면도 같이 씀)
   const isDrive = (u) => /^https?:\/\/(drive|docs)\.google\.com\//i.test(String(u || ""));
-  function resPills(it, isVideo) {
-    const at = it.attachments || [], nA = at.length;
+  function resPills(it, isVideo, k) {
+    const at = it.attachments || [], nA = at.length, cn = k && it.cat ? (DB.libCatsOf(C(), k).find((x) => x.id === it.cat) || {}).name : "";
+    if (cn) return pill(cn, "mute") + resPills(it, isVideo);
     if (isVideo) return (nA ? pill("첨부 " + nA, "info") : "") + ytBadge(it);
     if (it.tool) return pill("계산기", "info");
     const nF = at.filter((f) => f.data).length, links = (it.url ? [it.url] : []).concat(at.filter((f) => !f.data && f.url).map((f) => f.url));
@@ -8830,6 +8868,8 @@
       case "q-tab": ui.qFilter = d.k; render(); break;
       // 콘텐츠
       case "lib-tab": ui.libTab = d.k; render(); break;
+      case "libcat-edit": libCatEdit(d.k, d.id); break;
+      case "libcat-del": deleteLibCat(d.k, d.id); break;
       case "lib-go": ui.libTab = d.k || "file"; ROUTE.hash = "#/center/library"; break;
       case "faq-bulk": faqBulkModal(); break;
       case "gl-bulk": glBulkModal(); break;
@@ -9075,7 +9115,7 @@
       render(); toast("입금 계좌 · 부가세 설정을 저장했어요.");
       return;
     }
-    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "vins-edit-form": saveVinsEdit, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "coach-form": saveCoach };
+    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "vins-edit-form": saveVinsEdit, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "libcat-form": saveLibCat, "coach-form": saveCoach };
     if (forms[f.id]) { e.preventDefault(); forms[f.id](f); return; }
     if (f.classList.contains("vda-price")) { e.preventDefault(); saveVodPrice(f); return; }
     if (f.classList.contains("a-q-form")) {
@@ -9205,7 +9245,7 @@
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
-    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,

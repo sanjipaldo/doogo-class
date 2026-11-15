@@ -3710,3 +3710,11 @@ body[data-ath="nz"] .a-vpbar-t small { color: #9cc3ee; }
 .a-libdash .a-card-head .a-link { margin-left: auto; background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
 .a-libdash .a-lib-ic { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--lv-pale, var(--m-surface-soft, #f3f4f6)); color: var(--lv-c, var(--m-primary)); }
 .a-libdash .a-items li { gap: 12px; }
+
+/* 강의 자료함 카테고리 줄 (2026-11-15 · admin.js libCatAdmin = React 센터 같은 HTML): 탭 아래 — 칩을 누르면 이름 바꾸기 · 지우기 */
+.a-libcats { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 14px; padding: 12px 14px; border: 1px dashed var(--m-hairline); border-radius: 12px; background: var(--m-surface); }
+.a-libcats-l { display: inline-flex; align-items: center; gap: 5px; margin-right: 4px; font-size: 13px; font-weight: 800; color: var(--m-slate); }
+.a-libcat { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--m-hairline); border-radius: 999px; background: var(--m-canvas); color: var(--m-ink); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.a-libcat:hover { border-color: var(--m-ink-deep); }
+.a-libcat .num { min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--m-surface); color: var(--m-slate); font-size: 12px; font-weight: 800; text-align: center; }
+.a-libcats-h { flex-basis: 100%; margin-top: 2px; }

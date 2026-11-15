@@ -53,7 +53,8 @@ export function Library() {
     <section className="a-card a-libnote"><div className="a-card-head"><span className="a-menu-ico"><Icon n="shield" c="sm" /></span><div className="a-grow"><h2>자료실 이용 안내 팝업</h2><p className="a-muted">수강생이 자료실에 들어올 때마다 떠요. ‘{ln.button}’을 눌러야 자료가 보이고, 자료실 화면에는 열람자 이름 · 기수 · 시각이 옅게 표시돼요.</p></div>
       <Btn action="libnote-edit" cls="a-btn-ghost a-btn-sm"><Icon n="pen" c="sm" />문구 수정</Btn></div></section>
     <section className="a-card"><div className="a-toolbar"><div className="a-tabs">{tabs.map((t) => <button key={t[0]} type="button" className={"a-tab" + (k === t[0] ? " on" : "")} data-action="lib-tab" data-k={t[0]}>{t[1]} <span className="num">{c.resources[t[0]].length}</span></button>)}</div></div>
-      <SimpleList coll={"res-" + k} items={items} one={(it) => <><Main b={it.title} s={[it.meta, it.desc].filter(Boolean).join(" · ")} /><Isl html={A.resPills(it, isVideo)} /></>} empty="아직 자료가 없어요." /></section>
+      <Isl html={A.libCatAdmin(k)} />{/* 카테고리 줄 (2026-11-15) — 예전 화면 libCatAdmin 그대로 */}
+      <SimpleList coll={"res-" + k} items={items} one={(it) => <><Main b={it.title} s={[it.meta, it.desc].filter(Boolean).join(" · ")} /><Isl html={A.resPills(it, isVideo, k)} /></>} empty="아직 자료가 없어요." /></section>
   </>;
 }
 

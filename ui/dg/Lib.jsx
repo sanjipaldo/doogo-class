@@ -139,13 +139,14 @@ function Library({ r, n }) {
     );
   }
   if (r.parts[2]) return <ResDetail key={r.parts[2]} c={c} id={r.parts[2]} />;
-  const items = X.resOf(cat), isVideo = cat === "vod" || cat === "senior", showCalc = r.params.get("tool") === "calculator";
+  // 카테고리 칩 (2026-11-15): 예전 화면 libCatBar 그대로 · ?cat= 으로 골라 봐요
+  const all = X.resOf(cat), sel = X.libCatSel(cat, r), items = sel ? all.filter((it) => it.cat === sel) : all, isVideo = cat === "vod" || cat === "senior", showCalc = r.params.get("tool") === "calculator", bar = X.libCatBar(cat, all, sel);
   let body;
   if (!items.length) body = <section className="card"><Empty ic={c.icon}>자료를 준비하고 있어요.</Empty></section>;
   else if (isVideo) body = (
-    <div className="vod-grid">{items.map((it, i) => (
+    <div className="vod-grid">{items.map((it) => (
       <a key={it.id} className="vod-card" href={"#/library/" + cat + "/" + it.id}><ResThumb it={it} />
-        <span className="vod-info"><span className="vod-no">{(cat === "senior" ? "가이드 " : "VOD ") + (i + 1)}</span><span className="vod-title">{it.title}</span>{it.desc ? <span className="vod-desc">{it.desc}</span> : null}
+        <span className="vod-info"><span className="vod-no">{(cat === "senior" ? "가이드 " : "VOD ") + (all.indexOf(it) + 1)}</span><span className="vod-title">{it.title}</span>{it.desc ? <span className="vod-desc">{it.desc}</span> : null}
           <span className="vod-meta">{it.youtubeId ? <RawOne html={DB.vdur.label(it.youtubeId, it.durSec, "", "vod-len")} /> : null}{it.meta ? <span>{it.meta}</span> : null}{(it.images || []).length ? <span><Icon n="image" c="xs" />사진 {it.images.length}</span> : null}{(it.attachments || []).length ? <span><Icon n="paperclip" c="xs" />첨부 {it.attachments.length}</span> : null}</span></span></a>
     ))}</div>
   );
@@ -161,7 +162,7 @@ function Library({ r, n }) {
       {tag ? <RawOne html={tag} /> : null}</div>{action}</div>;
   });
   // 계산기는 다시 그릴 때마다(예전 render) 그때 숫자로 새로 — n 이 바뀌면 새로 그려요
-  return <div className="page">{head}<Warn />{showCalc ? <div style={{ marginTop: "14px" }}><Calculator key={n} /></div> : null}<div style={{ marginTop: "14px" }}>{body}</div></div>;
+  return <div className="page">{head}<Warn />{showCalc ? <div style={{ marginTop: "14px" }}><Calculator key={n} /></div> : null}{bar ? <RawOne html={bar} /> : null}<div style={{ marginTop: "14px" }}>{body}</div></div>;
 }
 /** 열람자 표시 — 이름 · 기수 · 시각 (예전 watermark) */
 function Watermark() {

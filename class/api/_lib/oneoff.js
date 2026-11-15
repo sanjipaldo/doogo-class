@@ -1231,6 +1231,25 @@ function partnersTabLinks(get) {
 const LIB_PACK = "moon-lib-2026-11-15.enc";
 const LIB_FILES = { mf1: ["proposal", "dm"], mf2: ["channels"], mf3: ["bep"], mf4: ["calendar"] };
 const libSeed = () => clone(require("./seed").loadSeed().content.moon.resources.file);
+/* 문대표 시니어 기초 가이드 카테고리 (2026-11-15 대표님 요청 — 보내 준 화면의 카테고리로 1차 셋팅 · 강사센터 강의 자료함에서 지우고 만들 수 있어요)
+ * content:moon(LIVE) libCats.senior 가 없을 때만 넣고 · 카테고리 없는 글은 제목으로 골라 넣어요(쿠팡 → 배송 → 상품등록 → 컴퓨터 → 네이버 순서로 먼저 맞는 것)
+ * 수강생 화면에는 글이 있는 카테고리만 칩으로 보여요 */
+const SENIOR_CATS = [["lc-ship", "배송"], ["lc-coupang", "쿠팡"], ["lc-reg", "상품등록"], ["lc-pc", "컴퓨터"], ["lc-bb", "빽형 건기식 AI 마스터툴 VOD"], ["lc-etc", "기타"], ["lc-naver", "네이버"]];
+const SENIOR_RULES = [["lc-coupang", /쿠팡/], ["lc-ship", /배송|택배|송장/], ["lc-reg", /누끼|remove\.?bg|상품\s*(이미지|등록|사진)|상세\s*페이지/i], ["lc-pc", /챗\s*GPT|ChatGPT|크롬|Chrome|웨일|Whale|캡처|설치|컴퓨터|엑셀|한글|윈도우/i], ["lc-naver", /네이버|스마트스토어/]];
+function moonSeniorCats(get) {
+  const k = "content:moon", c = get(k);
+  if (!isObj(c) || !isObj(c.resources) || !Array.isArray(c.resources.senior)) return { writes: {}, result: { skipped: "문대표 시니어 기초 가이드 없음" } };
+  if (isObj(c.libCats) && Array.isArray(c.libCats.senior) && c.libCats.senior.length) return { writes: {}, result: { skipped: "이미 카테고리가 있어요", cats: c.libCats.senior.map((x) => x && x.name) } };
+  const nc = clone(c), set = [];
+  nc.libCats = isObj(nc.libCats) ? nc.libCats : {};
+  nc.libCats.senior = SENIOR_CATS.map((x) => ({ id: x[0], name: x[1] }));
+  nc.resources.senior.forEach((it) => {
+    if (!isObj(it) || it.cat) return;
+    const t = String(it.title || "") + " " + String(it.desc || ""), hit = SENIOR_RULES.find((r) => r[1].test(t));
+    if (hit) { it.cat = hit[0]; set.push(String(it.title || "").slice(0, 40) + " → " + SENIOR_CATS.find((x) => x[0] === hit[0])[1]); }
+  });
+  return { writes: { [k]: nc }, result: { cats: nc.libCats.senior.map((x) => x.name), set, none: nc.resources.senior.filter((it) => isObj(it) && !it.cat).length } };
+}
 function moonLibItems(get) {
   const k = "content:moon", c = get(k);
   if (!isObj(c) || !isObj(c.resources) || !Array.isArray(c.resources.file)) return { writes: {}, result: { skipped: "문대표 자료 파일 없음" } };
@@ -1354,7 +1373,8 @@ const OPS = [
   { id: "2026-11-15-moon-lib-items", note: "문대표 자료 파일: 마진 계산기는 그대로 · 예전 예시 4개(건강식품 리스트 150 · 키워드 리스트 · 상세페이지 템플릿 · CS 답변 템플릿) 지우고 실전 문서 5개(공동구매 제안서 · DM 템플릿 · 판매 플랫폼 정리 · 손익분기점 계산표 · 월별 이벤트 캘린더 · 프리랜서 계약서) 글 넣기", run: moonLibItems },
   { id: "2026-11-15-moon-lib-files", note: "문대표 자료 파일 첨부: 잠근 묶음을 DC_FILES_KEY 로 열어 엑셀 · PDF 5개를 비공개 파일로 (문대표 수강생 · 운영자만 · 강사센터에서 이미 올린 자료는 그대로)", run: moonLibFiles, when: () => !!String(process.env.DC_FILES_KEY || "").trim() },
   { id: "2026-11-14-partners-tab-links", note: "패밀리 · 파트너스 한 화면: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners · 강사 모집)면 파트너스(강사) 탭 #/vod/partners?tab=partners 로 — /vod/partners 는 이제 패밀리 탭이 기본", run: partnersTabLinks },
+  { id: "2026-11-15-moon-senior-cats", note: "문대표 시니어 기초 가이드 카테고리 1차 셋팅: 배송 · 쿠팡 · 상품등록 · 컴퓨터 · 빽형 건기식 AI 마스터툴 VOD · 기타 · 네이버 (없을 때만) · 카테고리 없는 글은 제목으로 골라 넣기", run: moonSeniorCats },
   { id: "2026-11-15-launch-orders-clean", note: "정식 운영 전 주문 정리: 운영팀 테스트 주문(알려 준 주문 3건을 낸 회원들의 11/16 전 주문 전부) · 체험 계정 주문 전부 지우기(쓴 쿠폰 · 포인트는 돌려줌 · 회원 계정은 그대로) · 무통장 입금 받기 설정 지우기 (Vercel 배포 때만 — 로컬 화면 테스트 DB 의 체험 계정 강의는 그대로)", run: launchOrdersClean, when: () => !!process.env.VERCEL },
 ];
 
-module.exports = { OPS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonSeniorCats, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

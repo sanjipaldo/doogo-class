@@ -7,7 +7,7 @@ const isReact = (page) => page.evaluate(() => !!window.DC_REACT_PAGE);
 // 옮긴 강의실 화면 주소 (shared/screens.js 의 dg-* 와 같게 — 화면을 옮길 때마다 여기에도 더해요)
 const DG = ["/home", "/curriculum", "/missions", "/missions?kind=required", "/missions?kind=challenge", "/missions?kind=mind", "/missions/1", "/missions/2", "/missions/9", "/curriculum/nope",
   "/schedule", "/notices", "/notices/nope", "/qna", "/qna?tab=request", "/qna/requests", "/qna/requests/new", "/qna/requests/nope",
-  "/docs", "/library", "/library/ebook", "/library/file", "/library/file?tool=calculator", "/library/vod", "/library/vod/nope", "/library/senior", "/library/lesson", "/library/nope", "/bot",
+  "/docs", "/library", "/library/ebook", "/library/file", "/library/file?tool=calculator", "/library/vod", "/library/vod/nope", "/library/senior", "/library/senior?cat=lc-pc", "/library/lesson", "/library/nope", "/bot",
   "/motivation", "/channels", "/partners", "/partners?tab=nope", "/certificate", "/replays", "/replays/nope", "/showcase", "/showcase?w=1", "/notes", "/glossary", "/glossary?q=%EB%A7%88", "/page/nope"];
 // 강의 한 편은 데이터에서 골라요 (열린 주차 첫 강의 · 잠긴 주차 강의)
 async function shapes(page, base, L, list) {

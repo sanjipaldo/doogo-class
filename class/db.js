@@ -114,6 +114,9 @@
    *  새로 연 화면에 새 썸네일. 한 화면(페이지)을 여는 동안은 같은 표시라 다시 받지 않아요. size: default · mqdefault · hqdefault · sddefault · maxresdefault */
   const YT_V = Math.floor(Date.now() / 3e5).toString(36);
   const ytThumb = (v, size) => { const id = youtubeId(v); return id ? "https://i.ytimg.com/vi/" + id + "/" + (size || "hqdefault") + ".jpg?v=" + YT_V : ""; };
+  /** 강의 자료함 카테고리 (2026-11-15 대표님 요청 — 시니어 기초 가이드부터 · 4개 분류 모두 쓸 수 있어요): 강사 콘텐츠 libCats[분류] = [{ id, name }]
+   *  글(자료)마다 cat = 카테고리 id · 수강생 목록 위 ‘전체 N · 카테고리 N’ 칩(글이 있는 카테고리만) · 강사센터 강의 자료함에서 만들기 · 이름 바꾸기 · 지우기 */
+  const libCatsOf = (c, board) => { const m = c && c.libCats, a = m && Array.isArray(m[board]) ? m[board] : []; return a.filter((x) => x && x.id && String(x.name || "").trim()); };
 
   /* ---------------- 영상 길이 (비메오 · 유튜브 실제 재생 시간) ----------------
    * 영상 링크로 실제 길이를 서버(/api/public · vdur)에서 받아 24:30 처럼 보여 줘요. 받은 길이는 이 브라우저에 기억하고,
@@ -1155,7 +1158,7 @@
   };
 
   window.DB = {
-    load, save, reset, store, clone, uid, esc, linkify, brief, youtubeId, ytThumb, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
+    load, save, reset, store, clone, uid, esc, linkify, brief, youtubeId, ytThumb, libCatsOf, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
     get data() { return db; },
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,

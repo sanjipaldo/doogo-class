@@ -1995,6 +1995,14 @@
   }
 
   /* ---------------- 자료실 ---------------- */
+  // 자료함 카테고리 (2026-11-15 대표님 요청): 목록 위 ‘전체 N · 카테고리 N’ 칩 — 글이 있는 카테고리만 · #/library/<분류>?cat=<카테고리> · React 화면도 이 HTML 그대로
+  function libCatSel(cat, r) { const id = (r && r.params && r.params.get("cat")) || ""; return DB.libCatsOf(D, cat).some((x) => x.id === id) ? id : ""; }
+  function libCatBar(cat, items, sel) {
+    const cats = DB.libCatsOf(D, cat).map((x) => [x, items.filter((it) => it.cat === x.id).length]).filter((p) => p[1] > 0);
+    if (!cats.length) return "";
+    const chip = (href, on, label, n) => '<a class="lib-cat' + (on ? " on" : "") + '" href="' + href + '"' + (on ? ' aria-current="true"' : "") + ">" + esc(label) + '<span class="n">' + n + "</span></a>";
+    return '<nav class="lib-cats" aria-label="카테고리">' + chip("#/library/" + cat, !sel, "전체", items.length) + cats.map((p) => chip("#/library/" + cat + "?cat=" + encodeURIComponent(p[0].id), sel === p[0].id, p[0].name, p[1])).join("") + "</nav>";
+  }
   function pageLibrary(r) {
     const cat = r.parts[1];
     const warn = '<div class="callout callout-neg">' + icon("shield") + "<div>본 자료는 <b>유료 수강생 전용</b>입니다. 무단 다운로드·복사·캡처 배포 시 추적·법적 책임이 따릅니다.</div></div>";
@@ -2011,7 +2019,7 @@
       return '<div class="page">' + pageHead(c.label, c.desc(), crumb([[ML("library"), "#/library"], [c.label]])) + warn +
         '<div class="stack" style="margin-top:14px">' + Object.keys(g).map((k) => '<section class="card lib-lesson"><div class="lib-lesson-h"><small>' + esc(g[k].x.p.title) + "</small><b>" + esc(g[k].l.title) + '</b><a class="link-btn" href="' + learnHref(g[k].x.p.id, g[k].l.id) + '">강의 보기 ' + icon("arrowRight", "sm") + "</a></div>" + vtFiles(g[k].fs) + "</section>").join("") + "</div></div>";
     }
-    const items = resOf(cat);
+    const all = resOf(cat), sel = libCatSel(cat, r), items = sel ? all.filter((it) => it.cat === sel) : all;
     if (r.parts[2]) return pageResDetail(c, r.parts[2]);
     const isVideo = cat === "vod" || cat === "senior";
     const showCalc = r.params.get("tool") === "calculator";
@@ -2020,7 +2028,7 @@
     else if (isVideo) {
       body = '<div class="vod-grid">' + items.map((it, i) =>
         '<a class="vod-card" href="#/library/' + cat + "/" + it.id + '">' + resThumb(it) +
-          '<span class="vod-info"><span class="vod-no">' + (cat === "senior" ? "가이드 " : "VOD ") + (i + 1) + '</span><span class="vod-title">' + esc(it.title) + "</span>" +
+          '<span class="vod-info"><span class="vod-no">' + (cat === "senior" ? "가이드 " : "VOD ") + (all.indexOf(it) + 1) + '</span><span class="vod-title">' + esc(it.title) + "</span>" +
           (it.desc ? '<span class="vod-desc">' + esc(it.desc) + "</span>" : "") +
           '<span class="vod-meta">' + (it.youtubeId ? DB.vdur.label(it.youtubeId, it.durSec, "", "vod-len") : "") + (it.meta ? "<span>" + esc(it.meta) + "</span>" : "") + ((it.images || []).length ? "<span>" + icon("image", "xs") + "사진 " + it.images.length + "</span>" : "") +
           ((it.attachments || []).length ? "<span>" + icon("paperclip", "xs") + "첨부 " + it.attachments.length + "</span>" : "") + "</span></span></a>").join("") + "</div>";
@@ -2037,7 +2045,7 @@
       }).join("");
     }
     return '<div class="page">' + pageHead(c.label, c.desc(), crumb([[ML("library"), "#/library"], [c.label]])) + warn +
-      (showCalc ? '<div style="margin-top:14px">' + calculator() + "</div>" : "") + '<div style="margin-top:14px">' + body + "</div></div>";
+      (showCalc ? '<div style="margin-top:14px">' + calculator() + "</div>" : "") + libCatBar(cat, all, sel) + '<div style="margin-top:14px">' + body + "</div></div>";
   }
   // 자료 썸네일: 유튜브 썸네일 → 첫 사진 → 기본 그림
   function resThumb(it) {
@@ -2973,7 +2981,7 @@
     qSeen: (id) => { const q = (P.questions || []).find((y) => y.id === id); if (q && q.answer && (q.answeredAt || 1) > (q.seenAt || 0)) { q.seenAt = Date.now(); saveProgress(); return true; } return false; },
     noteSave: (id, v) => { P.notes = P.notes || {}; if (String(v).trim()) P.notes[id] = v; else delete P.notes[id]; saveProgress(); },
     // 서류 준비 체크 · 자료실(분류 · 자료 · 수업 자료 모음 · 열람자 표시 · 이용 안내) · 수업 자료 미리보기/내려받기
-    docToggle, resOf, lessonFiles, vtFiles, matClick, libNotice: () => DB.libNoticeOf(D),
+    docToggle, resOf, libCatSel, libCatBar, lessonFiles, vtFiles, matClick, libNotice: () => DB.libNoticeOf(D),
     // 동기부여(고른 영상 · 자동 재생) · 수료증(미리보기 · 도장 · 메달 · 번호 · PDF) · 다시보기 · 모범 과제(주차 칩) · 학습 노트 · 용어 사전 · 추가 메뉴
     mv: (id) => { if (id !== undefined) { mvSel = id; mvAuto = true; } return { sel: mvSel, auto: mvAuto }; },
     certPv: (flip) => { if (flip) certPreview = !certPreview; return certPreview; }, certSeal, certRosette, certNo: certNumber, certPrint, allMissions,
