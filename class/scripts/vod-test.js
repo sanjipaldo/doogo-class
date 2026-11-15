@@ -143,8 +143,8 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   await require(path.join(TMP, "class/api/_lib/init.js")).ensureSeeded(); // 실제 서버처럼 두잉고 기본 데이터(meta · 강사)부터
   console.log("1) 설정 · 카탈로그");
   let r = await call("vod-config", { method: "GET" });
-  ok(r.json.cfg.auth && r.json.cfg.kakao && r.json.cfg.toss && r.json.cfg.toss.ck === "test_ck_dctest" && r.json.cfg.toss.mode === "window" && r.json.cfg.toss.test === true && r.json.cfg.toss.live === false && r.json.cfg.toss.methods.join() === "transfer,card,vbank" && !JSON.stringify(r.json).includes("test_sk_dctest") && !JSON.stringify(r.json).includes("cs-test"),
-    "config: 토스 클라이언트 키(공개 값) · 결제창 방식 · 결제수단(기본 계좌이체 · 카드 · 가상계좌)만 · 시크릿 키 · 비밀 값 없음", r.json);
+  ok(r.json.cfg.auth && r.json.cfg.kakao && r.json.cfg.toss && r.json.cfg.toss.ck === "test_ck_dctest" && r.json.cfg.toss.mode === "window" && r.json.cfg.toss.test === true && r.json.cfg.toss.live === false && r.json.cfg.toss.methods.join() === "card,vbank" && !JSON.stringify(r.json).includes("test_sk_dctest") && !JSON.stringify(r.json).includes("cs-test"),
+    "config: 토스 클라이언트 키(공개 값) · 결제창 방식 · 결제수단(기본 카드 · 가상계좌 — 퀵계좌이체 없음)만 · 시크릿 키 · 비밀 값 없음", r.json);
   r = await call("vod-pay", { body: { action: "catalog", catalog: { products: [] } } });
   ok(r.status === 403, "카탈로그: 마스터만", r.json);
   jar.dc_a = auth.sign({ r: "master" });
@@ -433,7 +433,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   meta.vod = { ver: 4, products: [
     { id: "v5", title: "챗GPT로 블로그 수익화", type: "vod", status: "on", price: 89000, sale: 59000, iid: "choi", dg: true, kakao: "https://open.kakao.com/o/secret", curriculum: [{ title: "1장", lessons: [{ id: "v5-l1-1", title: "미리보기", video: "PREVIEW-VID", preview: true }, { id: "v5-l1-2", title: "본강의", video: "SECRET-VID", files: [{ name: "자료.pdf", url: "/assets/files/v5-topic.pdf" }] }] }] },
     { id: "v6", title: "다른 클래스", type: "vod", status: "on", price: 49000, iid: "moon", curriculum: [] }],
-    settings: { reviewPoint: 500, bank: "국민은행", account: "123-45", holder: "(주)두고홀딩스" }, coupons: [], members: [{ id: "leak", email: "leak@x.com" }], crm: { secret: 1 } };
+    settings: { reviewPoint: 500, bank: "국민은행", account: "123-45", holder: "(주)두고홀딩스", bankMode: "on" /* 예전 무통장 흐름 시험용 (운영은 2026-11-15 부터 받지 않아요) */ }, coupons: [], members: [{ id: "leak", email: "leak@x.com" }], crm: { secret: 1 } };
   r = await sync([{ k: "meta", base: verOf(j, "meta"), put: meta }]);
   ok(r.results && !r.results[0].error, "마스터가 meta(공개 정보) 저장", r);
   await call("vod-pay", { body: { action: "catalog", catalog: { products: meta.vod.products.map((p) => Object.assign({}, p, { dg: true })), coupons: [], settings: { refund: { instant: true, days: 7, maxUsed: 0 } } } } });
@@ -452,7 +452,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   console.log("9) 무통장 입금 · 카드 준비 중 · 입금 확인 · 강의 잠금 해제");
   const sec = process.env.TOSS_SECRET_KEY; delete process.env.TOSS_SECRET_KEY;
   r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "card", expect: 65000 } });
-  ok(r.status === 409 && /PG/.test(r.json.message), "토스 키가 없으면 카드 결제 막기 (가짜 결제 없음)", r.json);
+  ok(r.status === 409 && /결제 준비 중/.test(r.json.message), "토스 키가 없으면 카드 결제 막기 (가짜 결제 없음 · ‘결제 준비 중’)", r.json);
   process.env.TOSS_SECRET_KEY = sec;
   r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "bank", buyer: { name: "나OO", phone: "010-0000-2222" }, expect: 65000 } });
   ok(r.json.ok && r.json.bank && r.json.orders[0].status === "pending", "무통장 입금 주문 → 입금 대기", r.json);
@@ -698,7 +698,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   Object.assign(process.env, { PAYACTION_API_KEY: "pa-key", PAYACTION_MALL_ID: "mall-1", PAYACTION_WEBHOOK_KEY: "wh-key-123" });
   useJar({ dc_a: auth.sign({ r: "master" }) });
   j = await boot();
-  const mt4 = docOf(j, "meta"); mt4.vod.settings = Object.assign({}, mt4.vod.settings, { bank: "국민은행", account: "123-456", holder: "(주)두고홀딩스" });
+  const mt4 = docOf(j, "meta"); mt4.vod.settings = Object.assign({}, mt4.vod.settings, { bank: "국민은행", account: "123-456", holder: "(주)두고홀딩스", bankMode: "on" });
   await sync([{ k: "meta", base: verOf(j, "meta"), put: mt4 }]);
   r = await call("vod-config", { method: "GET" });
   ok(r.json.cfg.bankAuto === true && !JSON.stringify(r.json).includes("pa-key") && !JSON.stringify(r.json).includes("wh-key"), "config: 자동 입금 확인 켜짐 (키는 안 보냄)", r.json.cfg);
@@ -971,10 +971,10 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   const MASTER = auth.sign({ r: "master" });
   process.env.TOSS_METHODS = "kakao,card,vbank,naver,transfer,phone"; process.env.TOSS_VBANK_HOURS = "48";
   r = await call("vod-config", { method: "GET" });
-  ok(r.json.cfg.toss.methods.join() === "transfer,naver,kakao,card,vbank" && r.json.cfg.toss.vbankHours === 48, "설정: TOSS_METHODS → 결제 화면 순서(계좌이체 · 네이버페이 · 카카오페이 · 카드 · 가상계좌 · 모르는 값은 버림) · 입금 기한 48시간", r.json.cfg.toss);
+  ok(r.json.cfg.toss.methods.join() === "naver,kakao,card,vbank" && r.json.cfg.toss.vbankHours === 48, "설정: TOSS_METHODS → 결제 화면 순서(네이버페이 · 카카오페이 · 카드 · 가상계좌 · 퀵계좌이체 · 모르는 값은 버림) · 입금 기한 48시간", r.json.cfg.toss);
   process.env.TOSS_METHODS = "card,transfer"; delete process.env.TOSS_VBANK_HOURS;
   r = await call("vod-config", { method: "GET" });
-  ok(r.json.cfg.toss.methods.join() === "transfer,card" && r.json.cfg.toss.vbankHours === 72, "설정에서 빼면 가상계좌 · 간편결제는 닫혀요 (입금 기한 기본 72시간)", r.json.cfg.toss);
+  ok(r.json.cfg.toss.methods.join() === "card" && r.json.cfg.toss.vbankHours === 72, "설정에서 빼면 가상계좌 · 간편결제는 닫혀요 · 퀵계좌이체는 넣어도 안 열려요 (입금 기한 기본 72시간)", r.json.cfg.toss);
   delete jar.dc_v; delete jar.dc_a;
   await store.rlClear(["vip:1.2.3.4"]); // 같은 IP 로 가입을 여러 번 해서
   r = await call("vod-auth", { body: { action: "signup", email: "va@example.com", pw: "test1234a", pw2: "test1234a", name: "가상OO", phone: "010-0000-7777", agree: true } });
@@ -984,7 +984,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, points: 1000, method: "vbank" } });
   ok(r.status === 409, "가상계좌가 닫혀 있으면 결제 준비 거절", r.json);
   r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "naver" } });
-  ok(r.status === 409 && /열리지/.test(r.json.message), "네이버페이를 열지 않았으면 결제 준비 거절", r.json);
+  ok(r.status === 409 && /받지 않아요/.test(r.json.message), "네이버페이를 열지 않았으면 결제 준비 거절", r.json);
   process.env.TOSS_METHODS = "card,transfer,vbank,naver,kakao";
   r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, points: 1000, method: "vbank" } });
   ok(r.json.ok && r.json.paymentId && r.json.amount > 0 && r.json.customerKey && /^[A-Za-z0-9_=.@-]{2,50}$/.test(r.json.customerKey), "가상계좌 결제 준비 (포인트 1,000 사용 · 토스 구매자 키)", r.json);
@@ -1064,16 +1064,19 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   ok(r.json.orders.find((o) => o.no === vaN2).status === "canceled" && PG[vaP2].closed && PG[vaP2].status === "CANCELED" && calls.indexOf("POST api.tosspayments.com/v1/payments/" + PG[vaP2].paymentKey + "/cancel") >= 0, "입금 전 취소 → 주문 취소 · 토스 결제 취소로 가상계좌 닫기 (취소 뒤 입금 안 되게)");
   r = await call("vod-auth", { body: { action: "me" } });
   ok(r.json.member.points === vaPt0, "입금 전 취소하면 써 둔 포인트 500을 돌려받아요", r.json.member.points);
-  // 실시간 계좌이체: 카드처럼 바로 결제 완료
+  // 퀵계좌이체(실시간 계좌이체)는 2026-11-15 부터 받지 않아요 — TOSS_METHODS 에 있어도 서버가 막아요
   r = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "transfer" } });
-  const vaPt = r.json.paymentId, vaNt = r.json.no; paidLike(vaPt, r.json.amount, { method: "계좌이체", card: null, transfer: { bankCode: "90", settlementStatus: "INCOMPLETED" } });
+  ok(r.status === 409 && !r.json.paymentId && /받지 않아요/.test(r.json.message), "퀵계좌이체는 받지 않아요 (TOSS_METHODS 에 있어도 409 · 주문을 만들지 않음)", r.json);
+  // 카드 결제 (토스 상점관리자에서 직접 취소하는 경우 확인용)
+  r = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "card" } });
+  const vaPt = r.json.paymentId, vaNt = r.json.no; paidLike(vaPt, r.json.amount);
   r = await call("vod-pay", { body: cpl(vaPt) });
-  ok(r.json.ok && r.json.orders[0].status === "paid" && r.json.orders[0].method === "transfer" && r.json.orders[0].pg.bank === "카카오뱅크", "실시간 계좌이체 → 바로 결제 완료 (은행 이름 남김)", r.json);
+  ok(r.json.ok && r.json.orders[0].status === "paid" && r.json.orders[0].method === "card", "카드 → 바로 결제 완료", r.json);
   // 토스 상점관리자에서 직접 취소한 결제 (웹훅을 놓친 경우) → 결제 조회로 맞춰요
   Object.assign(PG[vaPt], { status: "CANCELED", balanceAmount: 0 });
   jar.dc_a = MASTER;
   r = await call("vod-pay", { body: { action: "pgInfo", no: vaNt } });
-  ok(r.json.ok && /환불로 맞췄어요/.test(r.json.synced) && r.json.pay.method.type === "transfer", "결제 조회: 토스는 취소인데 주문이 결제 완료면 환불로 맞춰요", r.json);
+  ok(r.json.ok && /환불로 맞췄어요/.test(r.json.synced) && r.json.pay.method.type === "card", "결제 조회: 토스는 취소인데 주문이 결제 완료면 환불로 맞춰요", r.json);
   r = await call("vod-pay", { body: { action: "pgInfo", no: vaN2 } });
   ok(r.json.ok && r.json.pay.status === "CANCELED" && !r.json.synced, "결제 조회: 입금 전에 취소한 가상계좌 주문은 그대로", r.json);
   // 취소를 누른 순간 이미 입금됐으면 (토스가 환불 계좌 없이는 취소를 거절해요) 취소하지 않고 결제 완료로 — 회원 취소 · 마스터 취소 둘 다
@@ -1494,11 +1497,36 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(r.status === 200 && r.json.ok, "두고 파트너스 지원서 저장", r.json);
     const inqs = async () => (await st20.listDocs({ prefixes: ["inq:%"] })).map((x) => x.v);
     const d = (await inqs()).find((x) => x.email === "pt@example.com") || {};
+    // 강사 입점 제안서 메일 (2026-11-15): 이메일(Resend)이 연결 안 됐으면 보내지 않고 접수만 · mailed false · 지원서에 ‘못 보냄(off)’
+    ok(r.json.mailed === false && d.deckMail && d.deckMail.ok === false && d.deckMail.why === "off" && d.deckMail.at > 0, "이메일 연결 전: 지원서는 접수 · 제안서 메일은 보내지 않아요(mailed false · deckMail.why off)", { mailed: r.json.mailed, dm: d.deckMail });
     ok(d.source === "partners" && d.ref === "ab_c.1" && d.form && d.form.nick === "지OO스토어" && d.form.topic.length === 80 && d.form.kinds.join("|") === "VOD 강의|전자책 · 종이책|7" && d.form.link2 === "https://blog.example.com" && !("evil" in d.form) && !("iid" in d.form) && !d.iid && d.link === "https://example.com/ch" && d.status === "new" && /노하우/.test(d.course), "지원서 칸: 정해 둔 칸 · 길이만 · 주소엔 https:// · 모르는 칸은 버려요", d);
     ok(d.form && d.form.ctime === "저녁 (6시 이후)" && d.form.career === "2019 창업\n\n지금 2개 브랜드" && d.form.curri.length === 1500 && d.form.reach === "1천~1만 명" && d.form.target === "직장인" && d.form.film === "직접 찍어서 보낼게요" && d.form.price === "상담하며 정할게요", "구글폼 지원서 새 칸: 연락 시간 · 강사 소개(줄바꿈 유지) · 커리큘럼(1,500자) · 채널 규모 · 수강 대상 · 촬영 · 판매가", d.form);
     r = await call("public", { body: Object.assign({}, base, { email: "pt2@example.com", source: "hack", form: { nick: "x" }, ref: "bad ref!" }) });
     const d2 = (await inqs()).find((x) => x.email === "pt2@example.com") || {};
     ok(r.json.ok && !("source" in d2) && !("form" in d2) && !("ref" in d2), "모르는 source · 다른 출처의 form · 이상한 추천 코드는 저장하지 않아요", d2);
+    // 이메일이 연결되면: 두고 파트너스 지원서만 지원자 이메일로 강사 입점 제안서 메일 한 통 (정보성 · 광고 표시 없음 · 정산 비율 숫자 없음)
+    Object.assign(process.env, { RESEND_API_KEY: "re-test", MAIL_FROM: "두고클래스 <hello@doogoclass.com>" });
+    const n20 = RES.length;
+    r = await call("public", { body: Object.assign({}, base, { email: "pt4@example.com", phone: "010-3333-4444", source: "partners", form: { topic: "스마트스토어 첫 매출" } }) });
+    const d4 = (await inqs()).find((x) => x.email === "pt4@example.com") || {}, m4 = ((RES[n20] || {}).body || [])[0] || {}, PM = require(path.join(TMP, "class/api/_lib/ptmail.js"));
+    ok(r.status === 200 && r.json.ok && r.json.mailed === true && RES.length === n20 + 1 && RES[n20].path === "/emails/batch" && RES[n20].auth === "Bearer re-test" && (RES[n20].body || []).length === 1 &&
+      m4.to && m4.to.join() === "pt4@example.com" && m4.from === "두고클래스 <hello@doogoclass.com>" && /강사 입점 제안서/.test(m4.subject) && !/\(광고\)/.test(m4.subject + m4.text) &&
+      m4.text.indexOf(PM.PT_DECK) > 0 && m4.html.indexOf('href="' + PM.PT_DECK + '"') > 0 && /MD님이 연락드리기에 앞서/.test(m4.text) && /수익금이 어떻게 나뉘는지/.test(m4.text) && /지OO 강사님/.test(m4.text) && /스마트스토어 첫 매출/.test(m4.text) &&
+      !/수신 거부|소식 받기에 동의/.test(m4.html) && !/\d+\s*%|정산 비율|대 \d/.test(m4.text + m4.html.replace(/(width|max-width|line-height)[^;"]*/g, "")) &&
+      d4.deckMail && d4.deckMail.ok === true && d4.deckMail.id === "em0" && d4.status === "new" && d4.source === "partners",
+      "이메일 연결 후: 두고 파트너스 지원서 → 지원자 이메일로 강사 입점 제안서(DocSend 링크) 한 통 · 정보성(광고 · 수신 거부 문구 없음) · 정산 비율 숫자 없음 · 지원서에 보냄(deckMail) 기록", { mailed: r.json.mailed, n: RES.length - n20, s: m4.subject, dm: d4.deckMail });
+    r = await call("public", { body: Object.assign({}, base, { email: "pt5@example.com" }) });
+    const d5 = (await inqs()).find((x) => x.email === "pt5@example.com") || {};
+    ok(r.json.ok && !("mailed" in r.json) && RES.length === n20 + 1 && !("deckMail" in d5), "두잉고 강사 입점 문의(두고 파트너스 지원서가 아님)는 제안서 메일을 보내지 않아요", { r: r.json, n: RES.length - n20 });
+    // 메일이 늦거나 실패해도 접수는 그대로 — 8초까지만 기다리고 ‘못 보냄’으로 남겨요
+    const realFetch20 = global.fetch;
+    global.fetch = (u, o) => (/api\.resend\.com/.test(String(u)) ? new Promise(() => {}) : realFetch20(u, o));
+    const slow = await PM.sendDeck({ name: "지OO", email: "pt6@example.com" }, 30);
+    global.fetch = (u, o) => (/api\.resend\.com/.test(String(u)) ? Promise.resolve({ ok: false, status: 422, json: async () => ({ message: "domain not verified" }) }) : realFetch20(u, o));
+    const bad = await PM.sendDeck({ name: "지OO", email: "pt6@example.com" });
+    global.fetch = realFetch20;
+    ok(slow.ok === false && slow.why === "timeout" && bad.ok === false && bad.why === "error" && /domain not verified/.test(bad.err), "메일이 늦으면(timeout) · 실패하면(error) 접수는 그대로 두고 ‘못 보냄’으로 남겨요", { slow, bad });
+    ["RESEND_API_KEY", "MAIL_FROM"].forEach((k) => delete process.env[k]);
     r = await call("public", { body: Object.assign({}, base, { email: "pt3@example.com", agree: false, source: "partners" }) });
     ok(r.status === 400, "개인정보 동의 없으면 받지 않아요", r.json);
     let jb = await boot();
@@ -3124,11 +3152,11 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   }
 
   {
-    console.log("35) 무통장 입금 받기 스위치 (자동 · 늘 받기 · 받지 않기) · 현금영수증 신청 (2026-11-11)");
+    console.log("35) 무통장 입금은 받지 않아요 (2026-11-15 · 예전 스위치 자동 · 늘 받기 · 받지 않기는 2026-11-11) · 이미 들어온 무통장 주문 · 현금영수증");
     const BKL = require(path.join(TMP, "class/api/_lib/bank.js")), keepK = { c: process.env.TOSS_CLIENT_KEY, s: process.env.TOSS_SECRET_KEY };
     const live = (on) => { if (on) Object.assign(process.env, { TOSS_CLIENT_KEY: "live_ck_x", TOSS_SECRET_KEY: "live_sk_x" }); else Object.assign(process.env, { TOSS_CLIENT_KEY: keepK.c, TOSS_SECRET_KEY: keepK.s }); };
-    ok(BKL.openOf({}) === true && BKL.openOf({ bankMode: "off" }) === false && (live(true), !BKL.openOf({}) && BKL.openOf({ bankMode: "on" }) && !BKL.openOf({ bankMode: "x" })) && (live(false), BKL.openOf({ bankMode: "weird" })),
-      "규칙: 자동은 토스 시험 키 · 키 없음이면 받기 · 라이브 키면 안 받기 / 늘 받기 · 받지 않기는 그대로 / 모르는 값은 자동");
+    ok(BKL.openOf({}) === false && BKL.openOf(null) === false && BKL.openOf({ bankMode: "auto" }) === false && BKL.openOf({ bankMode: "off" }) === false && BKL.openOf({ bankMode: "weird" }) === false && BKL.openOf({ bankMode: "on" }) === true && (live(true), BKL.openOf({ bankMode: "on" }) && !BKL.openOf({})) && (live(false), true),
+      "규칙: 기본 · 예전 ‘자동’ · 받지 않기 · 모르는 값 = 받지 않아요 (토스 키와 상관없이) · 화면에 없는 \"on\" 일 때만 (일회성 작업이 운영의 예전 값을 지워요)");
     const setMode = async (mode) => { useJar({ dc_a: auth.sign({ r: "master" }) }); const j0 = await boot(), mt = docOf(j0, "meta"); mt.vod.settings = Object.assign({}, mt.vod.settings, { bank: "국민은행", account: "123-456", holder: "(주)두고홀딩스" }, mode ? { bankMode: mode } : {}); if (!mode) delete mt.vod.settings.bankMode; return sync([{ k: "meta", base: verOf(j0, "meta"), put: mt }]); };
     await setMode(null);
     useJar({}); await store.rlClear(["vip:1.2.3.4"]);
@@ -3136,21 +3164,22 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const memJ = saveJar();
     const prep = (cash) => call("vod-pay", { body: Object.assign({ action: "prepare", pid: "v5", kind: "course", plan: 365, method: "bank", depositor: "무OO" }, cash ? { cashRcpt: cash } : {}) });
     r = await prep({ type: "p", no: "010-1234-5678" });
-    const no35 = r.json.no;
-    ok(r.json.ok && r.json.bank && (await store.getDoc("vo:" + no35)).v.cashRcpt.type === "p" && (await store.getDoc("vo:" + no35)).v.cashRcpt.no === "01012345678", "자동 · 토스 시험 키(심사 중): 무통장 주문 받기 · 현금영수증(소득공제 · 숫자만) 주문에 남김", r.json);
-    live(true);
-    r = await prep();
-    ok(r.status === 409 && /무통장/.test(r.json.message), "자동 · 토스 라이브 키: 새 무통장 주문은 막아요 (가상계좌로)", r.json);
-    r = await call("vod-pay", { body: { action: "cancelPending", no: no35 } });
-    ok(r.json.ok && (await store.getDoc("vo:" + no35)).v.status === "canceled", "막혀 있어도 이미 들어온 무통장 주문은 회원이 입금 전 취소할 수 있어요", r.json);
+    ok(r.status === 409 && /무통장/.test(r.json.message) && !r.json.no, "기본(설정 없음 · 토스 시험 키여도): 새 무통장 주문은 받지 않아요 (2026-11-15)", r.json);
+    // 이미 들어온 무통장 주문 처리 확인용으로 잠깐 예전 값 "on" (화면에서는 켤 수 없어요)
     await setMode("on"); useJar(memJ);
+    r = await prep({ type: "p", no: "010-1234-5678" });
+    const no35 = r.json.no;
+    ok(r.json.ok && r.json.bank && (await store.getDoc("vo:" + no35)).v.cashRcpt.type === "p" && (await store.getDoc("vo:" + no35)).v.cashRcpt.no === "01012345678", "예전 값 \"on\" 일 때만 무통장 주문 · 현금영수증(소득공제 · 숫자만) 주문에 남김", r.json);
+    live(true);
     r = await prep({ type: "b", no: "123-45-67890" });
     const no35b = r.json.no;
-    ok(r.json.ok && r.json.bank && (await store.getDoc("vo:" + no35b)).v.cashRcpt.no === "1234567890", "늘 받기: 라이브 키여도 무통장 주문 받기 (지출증빙 사업자번호)", r.json);
+    ok(r.json.ok && r.json.bank && (await store.getDoc("vo:" + no35b)).v.cashRcpt.no === "1234567890", "\"on\": 라이브 키여도 무통장 주문 (지출증빙 사업자번호)", r.json);
     await setMode("off"); useJar(memJ);
     live(false);
     r = await prep();
-    ok(r.status === 409 && /무통장/.test(r.json.message), "받지 않기: 시험 키여도 새 무통장 주문은 막아요", r.json);
+    ok(r.status === 409 && /무통장/.test(r.json.message), "받지 않기: 새 무통장 주문은 막아요", r.json);
+    r = await call("vod-pay", { body: { action: "cancelPending", no: no35 } });
+    ok(r.json.ok && (await store.getDoc("vo:" + no35)).v.status === "canceled", "막혀 있어도 이미 들어온 무통장 주문은 회원이 입금 전 취소할 수 있어요", r.json);
     useJar({ dc_a: auth.sign({ r: "master" }) });
     r = await call("vod-pay", { body: { action: "bankOk", no: no35b } });
     const o35 = (await store.getDoc("vo:" + no35b)).v;
@@ -3159,60 +3188,84 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const j35 = await boot();
     r = await sync([{ k: "vo:" + no35b, base: verOf(j35, "vo:" + no35b), ops: [{ p: ["cashRcpt", "done"], v: Date.now() }] }]);
     ok(r.results && !r.results[0].error && (await store.getDoc("vo:" + no35b)).v.cashRcpt.done > 0, "마스터: 현금영수증 ‘발급 완료’ 표시 저장", r);
-    await setMode(null); useJar({});
-    const vj = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), aj = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mo = fs.readFileSync(path.join(ROOT, "../ui/center/MasterOrders.jsx"), "utf8");
-    ok(/function bankOpen\(\) \{\s*const m = \(V\(\)\.settings \|\| \{\}\)\.bankMode;\s*if \(m === "on" \|\| m === "off"\) return m === "on";\s*return !\(SRV\(\) && CFG && CFG\.toss && CFG\.toss\.ck && !CFG\.toss\.test\);/.test(vj) && /concat\(bankOpen\(\) \? \[bankInfo\(\)\.real \? bankO : bankO\.concat\("준비 중"\)\] : \[\]\)/.test(vj) &&
+    await setMode("on"); useJar({}); // 뒤 시험들이 쓰는 예전 무통장 흐름 그대로 (시험 DB 만)
+    const vj = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), aj = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mo = fs.readFileSync(path.join(ROOT, "../ui/center/MasterOrders.jsx"), "utf8"), ms35 = fs.readFileSync(path.join(ROOT, "../ui/center/MasterStore.jsx"), "utf8");
+    ok(/function bankOpen\(\) \{ return \(V\(\)\.settings \|\| \{\}\)\.bankMode === "on"; \}/.test(vj) && /const bankO = bankOpen\(\) \? \[SRV\(\) && !bankInfo\(\)\.real \? \["bank", "", "무통장 입금", "준비 중"\] : \["bank", "", "무통장 입금"\]\] : \[\];/.test(vj) &&
+      /const PAY_ORD = \["naver", "kakao", "card", "vbank", "tp"\], PAY_ALL = \["naver", "kakao", "card", "vbank"\];/.test(vj) && !/transfer: \["transfer"/.test(vj) && /PAY_ALL\.map\(\(k\) => lab\(k, true\)\.concat\("결제 준비 중"\)\)/.test(vj) &&
+      !/vda-bankmode/.test(aj + ms35) && /<label>무통장 입금<\/label><p class="a-muted p-small">받지 않아요 — /.test(aj) && /<label>무통장 입금<\/label><p className="a-muted p-small">받지 않아요 — /.test(ms35) &&
       /function vdCash\(o\)/.test(aj) && /\["cash", "현금영수증"\]/.test(aj) && /"현금영수증 발급", "무통장 주문의 현금영수증을/.test(aj) && /"현금영수증 용도", "현금영수증 번호", "현금영수증 금액", "현금영수증 상태"/.test(aj) && /A\.vdCash\(o\)/.test(mo),
-      "화면: 결제 화면 무통장은 같은 규칙(자동 · 늘 · 안 받기)으로 보이고 숨겨요 · 마스터 주문 목록(현금영수증 탭 · 표시) · 상세 · 엑셀 · 대시보드 할 일에 현금영수증 신청");
+      "화면: 결제수단 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌만(퀵계좌이체 없음 · 토스 키가 없으면 네 칸 모두 ‘결제 준비 중’) · 무통장은 서버와 같은 규칙(\"on\" 일 때만) · 마스터 설정 스위치 대신 ‘받지 않아요’ 안내 · 주문 목록(현금영수증 탭 · 표시) · 상세 · 엑셀 · 대시보드 할 일");
   }
 
   {
-    console.log("59) 패밀리 · 파트너스 탭 (/vod/partners · 2026-11-14): 파트너스(기본 · 왼쪽) · 패밀리(?tab=family) · 소개서(DocSend) · 숫자 · 이름 · 강사센터 로그인 바로가기");
+    console.log("59) 파트너스(/vod/partners) · 패밀리(/vod/family) 따로 (2026-11-15 · 처음엔 2026-11-14 탭): 소개서 · 숫자 · 이름 · 숨김 · 강사센터 로그인 바로가기");
     const vj40 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), sh40 = fs.readFileSync(path.join(ROOT, "../ui/store/Shell.jsx"), "utf8"), pp40 = fs.readFileSync(path.join(ROOT, "../ui/store/PartnersPage.jsx"), "utf8"),
-      ft40 = fs.readFileSync(path.join(ROOT, "../ui/store/FamilyTab.jsx"), "utf8"), aj40 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), fd40 = fs.readFileSync(path.join(ROOT, "api/_lib/familydemo.js"), "utf8");
-    // 탭 · 패밀리 글 묶음(PT_DECK ~ familyView)은 바깥 것 없이 돌아요 — 그 부분만 떼어 실제로 계산해 봐요 (icon 만 빈 함수)
-    const a40 = vj40.indexOf("  const PT_DECK = "), b40 = vj40.indexOf("  const ptCatRows = ");
+      ft40 = fs.readFileSync(path.join(ROOT, "../ui/store/FamilyTab.jsx"), "utf8"), aj40 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), fd40 = fs.readFileSync(path.join(ROOT, "api/_lib/familydemo.js"), "utf8"),
+      pa40 = fs.readFileSync(path.join(ROOT, "../ui/store/PartnerApply.jsx"), "utf8");
+    // 소개서 안내 · 패밀리 글 묶음(PT_DECK_TX ~ familyView)은 바깥 것 없이 돌아요 — 그 부분만 떼어 실제로 계산해 봐요 (icon 만 빈 함수)
+    const a40 = vj40.indexOf("  const PT_DECK_TX = "), b40 = vj40.indexOf("  const ptCatRows = ");
     const sb40 = { icon: () => "<svg></svg>", URLSearchParams }; require("vm").createContext(sb40);
-    require("vm").runInContext(vj40.slice(a40, b40) + "\n;this.out = { pfTabOf, PF_TABS, pfTabs, familyView, PT_DECK, FM_DECK, FM_DEMO };", sb40);
+    require("vm").runInContext(vj40.slice(a40, b40) + "\n;this.out = { pfTabOf, PF_FAMILY, familyView, FM_DECK, FM_DEMO, PT_DECK_TX, ptDeckNote };", sb40);
     const T = sb40.out, F = T.familyView(), q = (s) => new URLSearchParams(s);
-    ok(a40 > 0 && b40 > a40 && T.pfTabOf(q("tab=family")) === "family" && T.pfTabOf(q("")) === "partners" && T.pfTabOf(q("tab=partners")) === "partners" && T.pfTabOf(q("tab=evil")) === "partners" && T.pfTabOf(null) === "partners",
-      "탭: ?tab=family 만 패밀리 · 없거나 다른 값(잠깐 쓰던 ?tab=partners 포함)은 파트너스(기본 · 왼쪽)");
-    const tb40 = T.pfTabs("partners"), tf40 = T.pfTabs("family");
-    ok(T.PF_TABS.map((t) => t[0] + "=" + t[1]).join() === "partners=#/vod/partners,family=#/vod/partners?tab=family" && (tb40.match(/aria-current="page"/g) || []).length === 1 && /class="pf-tab on" href="#\/vod\/partners" data-pf-tab="partners" aria-current="page"/.test(tb40) &&
-      tb40.indexOf('data-pf-tab="partners"') < tb40.indexOf('data-pf-tab="family"') && /class="pf-tab on" href="#\/vod\/partners\?tab=family" data-pf-tab="family" aria-current="page"/.test(tf40),
-      "위 탭 줄: 왼쪽 파트너스(#/vod/partners · 기본) · 오른쪽 패밀리(?tab=family) · 고른 탭만 on · aria-current", tb40.slice(0, 160));
+    ok(a40 > 0 && b40 > a40 && T.pfTabOf(q("tab=family")) === "family" && T.pfTabOf(q("")) === "partners" && T.pfTabOf(q("tab=partners")) === "partners" && T.pfTabOf(q("tab=evil")) === "partners" && T.pfTabOf(null) === "partners" && T.PF_FAMILY === "#/vod/family",
+      "예전 패밀리 탭 주소: ?tab=family 만 패밀리(→ #/vod/family 로 옮겨요) · 없거나 다른 값은 파트너스");
     ok(F.sim.map((s) => s.rate + ":" + s.one + ":" + s.day).join() === "10:46250:185000,20:92500:370000" && F.pg === 7.5,
       "온드미디어 기대 수익 예시 = 소개서 숫자: 50만 원 × (1 − PG 7.5%) × 10% = 46,250원(하루 4건 185,000원) · 20% = 92,500원(370,000원)", F.sim);
     ok(F.per === 780000 && F.grow.join() === "780000,1560000,2340000",
       "두잉고 세일즈 예시 = 소개서 숫자: A 240만 · B 150만 × 20% = 기수마다 78만 원 → 1~3기 누적 78만 · 156만 · 234만", F.grow);
-    ok(T.PT_DECK === "https://docsend.com/view/mzd5wpkmsb2r7fzj" && T.FM_DECK.media === "https://docsend.com/view/3wjy9wd5uum33gsr" && T.FM_DECK.sales === "https://docsend.com/view/z5ggtz7kuk7b45vk" && !/publitas/i.test(vj40.slice(a40, b40)) &&
+    // 강사 입점 소개서(DocSend) 링크는 화면에서 빠지고 서버(메일)에만 — 패밀리 소개서 2개는 그대로 새 창
+    const lsUi40 = ["../ui/store/PartnersPage.jsx", "../ui/store/PartnerApply.jsx", "../ui/store/FamilyTab.jsx", "../ui/store/Shell.jsx", "index.html"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8")).join("\n");
+    const pm40 = fs.readFileSync(path.join(ROOT, "api/_lib/ptmail.js"), "utf8"), noCm40 = (x) => x.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    ok(!/mzd5wpkmsb2r7fzj/.test(vj40 + lsUi40) && /const PT_DECK = "https:\/\/docsend\.com\/view\/mzd5wpkmsb2r7fzj"/.test(pm40) && !/PT_DECK\b|ptDeck\(|<Deck |pt-deck-o|pt-end-deck|강사 입점 소개서 보기/.test(noCm40(vj40 + lsUi40)) &&
+      T.FM_DECK.media === "https://docsend.com/view/3wjy9wd5uum33gsr" && T.FM_DECK.sales === "https://docsend.com/view/z5ggtz7kuk7b45vk" && !/publitas/i.test(vj40.slice(a40, b40)) &&
       F.centers.map((c) => c.go).join() === "#/center/login?demo=owned,#/center/login?demo=partner" && F.teams.map((t) => t.deckLabel).join() === "온드미디어 소개서,두잉고 소개서",
-      "소개서 링크(새 창 · DocSend): 강사 입점 · 온드미디어 · 두잉고 세일즈 (publitas 는 남지 않음) · 센터 카드 둘러보기 = owned · partner 로 바로 로그인");
+      "강사 입점 소개서 링크는 화면(예전 · React)에서 빠지고 서버 메일(ptmail.js)에만 · 패밀리 소개서(온드미디어 · 두잉고 세일즈 DocSend)는 그대로 · 센터 카드 둘러보기 = owned · partner 로 바로 로그인");
+    const dn40 = T.ptDeckNote();
+    ok(/^<p class="pt-deck-note" data-rv><svg><\/svg><span>지원서를 보내면 <b>강사 입점 제안서<\/b>\(시스템 구성 · 수익 구조\)를 이메일로 먼저 보내 드려요<\/span><\/p>$/.test(dn40) && /ptCta\("vd-btn-xl", "지원서 쓰러 가기"\) \+ "<\/div>" \+ ptDeckNote\(\)/.test(vj40) &&
+      /지원서 쓰러 가기<Icon n="arrowRight" c="sm" \/><\/a><\/div>\s*<DeckNote \/>/.test(pp40) && /const DeckNote = \(\) => <p className="pt-deck-note" data-rv=""><Icon n="mail" c="xs" \/><span dangerouslySetInnerHTML=\{\{ __html: VOD\(\)\.PT_DECK_TX \}\} \/><\/p>;/.test(pp40),
+      "진행 과정 아래: 소개서 버튼 대신 ‘지원서를 보내면 강사 입점 제안서를 이메일로 먼저 보내 드려요’ 한 줄 (예전 화면 = React)", dn40);
     ok(F.centers.map((c) => c.id).join() === "owned,partner" && /AFF_LOGIN = "partner", MD_LOGIN = "owned"/.test(fd40) && F.faq.length === 8 && F.teams.map((t) => t.name).join() === "온드미디어팀,두잉고 세일즈팀",
       "패밀리 두 팀(온드미디어팀 · 두잉고 세일즈팀) · 센터 체험 계정 = familydemo.js 공개 체험 계정(owned · partner) · 자주 묻는 질문 8개");
-    // 마지막 안내(2026-11-14): 패밀리 = 온드미디어 · 두잉고 소개서 + 노란 ‘카카오톡 패밀리 문의하기’(체험 계정은 위 센터 카드에) · 파트너스 = 지원하기 + 강사 입점 소개서(카카오 없음) (예전 화면 = React)
+    // 마지막 안내: 패밀리 = 온드미디어 · 두잉고 소개서 + 노란 ‘카카오톡 패밀리 문의하기’(체험 계정은 위 센터 카드에) · 파트너스 = 지원하기 버튼 하나 (2026-11-15 소개서 버튼 뺌 · 카카오 없음) (예전 화면 = React)
     const cut40 = (s, a, b) => { const i = s.indexOf(a); return i < 0 ? "" : s.slice(i, s.indexOf(b, i + a.length)); };
     const fmEndL = cut40(vj40, "const end = '<section class=\"pt-end fm-end\">", "const flt"), ptEndL = cut40(vj40, "const end = '<section class=\"pt-end\"><div class=\"vd-wrap\"><small data-rv>DOOGO PARTNERS", "const flt");
     const fmEndR = cut40(ft40, 'className="pt-end fm-end"', "</section>"), ptEndR = cut40(pp40, 'className="pt-end"', "</section>");
     const kk40 = (s) => (s.match(/kkBtn\(|<KakaoBtn |data-kk-ops/g) || []).length;
     ok(fmEndL && ptEndL && fmEndR && ptEndR && !kk40(ptEndL + ptEndR) && kk40(fmEndL) === 1 && kk40(fmEndR) === 1 && !/체험 계정으로 둘러보기|fm-end-demo|F\.demo/.test(fmEndL + fmEndR) &&
-      /deckBtn\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\) \+ deckBtn\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\) \+\s*kkBtn\("vd-btn vd-btn-xl pt-end-kk", "카카오톡 패밀리 문의하기"\)/.test(fmEndL) && /ptCta\("vd-btn-xl"\) \+ ptDeck\("vd-btn vd-btn-xl pt-end-deck"\) \+ "<\/div>/.test(ptEndL) &&
-      /deck\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\)/.test(fmEndR) && /deck\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\)/.test(fmEndR) && /<KakaoBtn cls="vd-btn vd-btn-xl pt-end-kk" label="카카오톡 패밀리 문의하기" \/>/.test(fmEndR) && /<Deck cls="vd-btn vd-btn-xl pt-end-deck" \/>/.test(ptEndR),
-      "마지막 안내: 패밀리 = 온드미디어 · 두잉고 소개서(새 창) + 노란 ‘카카오톡 패밀리 문의하기’(체험 계정 버튼 없음) · 파트너스 = 지원하기 + 강사 입점 소개서(카카오 없음) (예전 화면 = React)");
+      /deckBtn\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\) \+ deckBtn\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\) \+\s*kkBtn\("vd-btn vd-btn-xl pt-end-kk", "카카오톡 패밀리 문의하기"\)/.test(fmEndL) && /ptCta\("vd-btn-xl"\) \+ "<\/div><\/div><\/section>";/.test(ptEndL) &&
+      /deck\("media", "vd-btn vd-btn-xl fm-end-deck fm-end-md", "온드미디어 소개서"\)/.test(fmEndR) && /deck\("sales", "vd-btn vd-btn-xl fm-end-deck fm-end-sl", "두잉고 소개서"\)/.test(fmEndR) && /<KakaoBtn cls="vd-btn vd-btn-xl pt-end-kk" label="카카오톡 패밀리 문의하기" \/>/.test(fmEndR) &&
+      (ptEndR.match(/<a /g) || []).length === 1 && /href="#\/vod\/partners\/apply">두고 파트너스 지원하기/.test(ptEndR),
+      "마지막 안내: 패밀리 = 온드미디어 · 두잉고 소개서(새 창) + 노란 ‘카카오톡 패밀리 문의하기’ · 파트너스 = 지원하기 버튼 하나 (소개서 · 카카오 없음) (예전 화면 = React)");
+    // 서로 다른 화면: 예전 화면 #/vod/partners → pagePartners · #/vod/family → pageFamilyLp · ?tab=family → #/vod/family / React 도 같게 (위 탭 줄은 없어요)
     const lk40 = ["../ui/store/AboutPage.jsx", "../ui/store/PartnerApply.jsx", "../ui/center/MasterInq.jsx"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8")).join("\n") + sh40 + aj40;
-    ok(/'<div class="pt pt-' \+ tab \+ '">' \+ pfTabs\(tab\) \+ \(tab === "partners" \? ptBody\(\) : pageFamily\(\)\)/.test(vj40) && /VOD\(\)\.pfTabOf\(r\.qs\)/.test(pp40) && /tab === "partners" \? <Partners \/> : <Family \/>/.test(pp40) && /X\.familyView\(\)/.test(ft40) &&
-      /ROUTE\.replace\("#\/vod\/partners"\)/.test(vj40) && /ROUTE\.hash = "#\/vod\/partners"/.test(vj40) && /href: "#\/vod\/partners",/.test(vj40) && !/href="#\/vod\/partners\?tab=partners"|"#\/vod\/partners\?tab=partners"/.test(vj40.replace(/\/\*[\s\S]*?\*\//g, "") + lk40),
-      "예전 화면 · React 같은 구조(탭 + 고른 탭) · 강사 모집 주소 · ‘강사 모집’ 배너 · 파트너스 링크는 모두 #/vod/partners (?tab=partners 링크 남지 않음)");
-    ok(/"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(vj40) && /"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(sh40) && !/강사 · 코치 · 파트너"/.test(vj40 + sh40) &&
-      /href="#\/vod\/partners">패밀리 · 파트너스/.test(vj40) && /href="#\/vod\/partners">패밀리 · 파트너스/.test(sh40) &&
-      /col\("DOOGO CLASS", \[\["#\/vod\/about", "두고클래스 소개"\], \[PF_FAMILY, "두고 패밀리"\], \["#\/vod\/partners", "두고 파트너스"\], \["#\/doinggo", "두잉고"\], \["#\/center", "강사센터"\]\]\)/.test(vj40) &&
-      /col\("DOOGO CLASS", \[\["#\/vod\/about", "두고클래스 소개"\], \["#\/vod\/partners\?tab=family", "두고 패밀리"\], \["#\/vod\/partners", "두고 파트너스"\], \["#\/doinggo", "두잉고"\], \["#\/center", "강사센터"\]\]\)/.test(sh40) &&
-      /I\(PF_FAMILY, "두고 패밀리 \(온드미디어 · 세일즈\)"/.test(vj40),
-      "이름: 바닥 강사센터 로그인 ‘강사 · 코치 · 패밀리’ · 머리띠 ‘패밀리 · 파트너스’ · 바닥 DOOGO CLASS 칸 = 두고클래스 소개 · 두고 패밀리 · 두고 파트너스 · 두잉고 · 강사센터 (예전 화면 = React) · 전체 메뉴 ‘두고 패밀리’ → 패밀리 탭");
-    // 패밀리 첫 화면 = 연한 분홍 + 진한 글씨 (파트너스 = 진한 빨강 그대로)
     const vc40 = fs.readFileSync(path.join(ROOT, "vod.css"), "utf8");
-    ok(/\.pt-hero\.fm-hero \{ color: var\(--on1\); background: [^}]*linear-gradient\(112deg, #ffd3df 0%, #ffe3eb 48%, #fff1f5 100%\)/.test(vc40) && /\.pt-hero \{ position: relative; overflow: hidden; color: #fff; background: [^}]*#e64f6c/.test(vc40) && !/fm-end-demo/.test(vc40),
-      "패밀리 첫 화면 = 연한 분홍 바탕 + 진한 글씨 · 파트너스 첫 화면 = 진한 빨강 그대로 (탭이 바뀐 게 보여요)");
+    ok(/function pagePartners\(\) \{ return shell\("partners", '<div class="pt pt-partners">' \+ ptBody\(\) \+ "<\/div>", "", "vd-pt-page"\); \}/.test(vj40) && /function pageFamilyLp\(\) \{ return shell\("family", '<div class="pt pt-family">' \+ pageFamily\(\) \+ "<\/div>", "", "vd-pt-page"\); \}/.test(vj40) &&
+      /if \(a === "partners" && !b && pfTabOf\(r\.qs\) === "family"\) \{ ROUTE\.replace\(PF_FAMILY\); return render\(\); \}/.test(vj40) && /else if \(a === "family"\) html = pageFamilyLp\(\);/.test(vj40) &&
+      /if \(r\.path\[0\] === "partners" && !r\.path\[1\] && VOD\(\)\.pfTabOf\(r\.qs\) === "family"\) \{ window\.ROUTE\.replace\(VOD\(\)\.PF_FAMILY\); r = storeRoute\(\); \}/.test(pp40) && /fam = r\.path\[0\] === "family"/.test(pp40) &&
+      /if \(fam\) return <Shell nav="family" tab="" cls="vd-pt-page" n=\{n\}><div className="pt pt-family"><Family \/><\/div><\/Shell>;/.test(pp40) && /return <Shell nav="partners" tab="" cls="vd-pt-page" n=\{n\}><div className="pt pt-partners"><Partners \/><\/div><\/Shell>;/.test(pp40) &&
+      !/pfTabs|PF_TABS|pf-tab|PfTabs/.test(vj40 + pp40 + vc40) && /X\.familyView\(\)/.test(ft40) &&
+      /ROUTE\.replace\("#\/vod\/partners"\)/.test(vj40) && /ROUTE\.hash = "#\/vod\/partners"/.test(vj40) && /href: "#\/vod\/partners",/.test(vj40) && !/href="#\/vod\/partners\?tab=partners"|"#\/vod\/partners\?tab=partners"/.test(vj40.replace(/\/\*[\s\S]*?\*\//g, "") + lk40),
+      "파트너스(#/vod/partners) · 패밀리(#/vod/family)는 서로 다른 화면 · 예전 ?tab=family 는 #/vod/family 로 · 위 탭 줄 없음 · 강사 모집 주소 · 배너 · 파트너스 링크는 #/vod/partners (예전 화면 = React)");
+    // 이름 · 숨김: 머리띠 ‘파트너스 지원’ + 말풍선 ‘파트너 강사로 지원하기’ · 바닥 · 전체 메뉴 · 사이트맵에서 ‘두고 패밀리’ 빼기 → 패밀리로 가는 링크는 어디에도 없어요 (주소로만)
+    const sm40 = fs.readFileSync(path.join(ROOT, "sitemap.xml"), "utf8");
+    ok(/"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(vj40) && /"강사센터 로그인", "강사 · 코치 · 패밀리"/.test(sh40) && !/강사 · 코치 · 파트너"/.test(vj40 + sh40) &&
+      /href="#\/vod\/partners">파트너스 지원' \+ \(nav === "partners" \? "" : '<span class="vd-ptl-tip" aria-hidden="true">파트너 강사로 지원하기<\/span>'\)/.test(vj40) &&
+      /href="#\/vod\/partners">파트너스 지원\{nav === "partners" \? null : <span className="vd-ptl-tip" aria-hidden="true">파트너 강사로 지원하기<\/span>\}/.test(sh40) && !/패밀리 · 파트너스<|패밀리 · 강사 모집 중/.test(vj40 + sh40) &&
+      /col\("DOOGO CLASS", \[\["#\/vod\/about", "두고클래스 소개"\], \["#\/vod\/partners", "두고 파트너스"\], \["#\/doinggo", "두잉고"\], \["#\/center", "강사센터"\]\]\)/.test(vj40) &&
+      /col\("DOOGO CLASS", \[\["#\/vod\/about", "두고클래스 소개"\], \["#\/vod\/partners", "두고 파트너스"\], \["#\/doinggo", "두잉고"\], \["#\/center", "강사센터"\]\]\)/.test(sh40) &&
+      !/"두고 패밀리|PF_FAMILY, "|I\(PF_FAMILY|href="' \+ PF_FAMILY/.test(noCm40(vj40)) && !/vod\/family|tab=family/.test(noCm40(sh40 + lk40.replace(aj40, "")) + sm40) && /두고 파트너스 \(강사 지원\)/.test(vj40),
+      "이름: 머리띠 ‘파트너스 지원’ + 말풍선 ‘파트너 강사로 지원하기’ · 바닥 DOOGO CLASS 칸 = 두고클래스 소개 · 두고 파트너스 · 두잉고 · 강사센터 · 전체 메뉴 · 사이트맵에도 패밀리 없음 (주소로만 · 예전 화면 = React)");
+    // 첫 화면 색: 파트너스 = 연한 분홍(흰 빛 · 진한 글씨 · 띠 · 마지막 안내도 분홍) · 패밀리 = 패밀리 분홍 그대로
+    ok(/\.pt-hero\.fm-hero \{ color: var\(--on1\); background: [^}]*linear-gradient\(112deg, #ffd3df 0%, #ffe3eb 48%, #fff1f5 100%\)/.test(vc40) && /\.pt-partners \.pt-hero \{ color: var\(--on1\); background: [^}]*linear-gradient\(118deg, #ffe2ea 0%, #ffeff4 52%, #fff8fa 100%\)/.test(vc40) &&
+      /\.pt-partners \.pt-strip \{ background: #fff6f8; color: var\(--on1\);/.test(vc40) && /\.pt-partners \.pt-end \{ color: var\(--on1\); background: [^}]*#ffdbe5/.test(vc40) && /\.pt-partners \.pt-float \{ background: #fff;/.test(vc40) && !/fm-end-demo|pt-deck-o|pt-end-deck/.test(vc40),
+      "파트너스 첫 화면 · 띠 · 마지막 안내 · 떠 있는 상자 = 연한 분홍 + 진한 글씨 · 패밀리 첫 화면은 패밀리 분홍 그대로");
+    // 접수 화면 안내 (예전 화면 = React 같은 글): 보냈으면 ‘메일로 먼저 보내 드렸어요’ + 이메일 · 못 보냈으면 ‘MD님이 연락드릴 때 함께’
+    const tx40 = cut40(vj40, "  function ptDoneMailTx(S) {", "  const ptDoneMail = "), sbt40 = {}; require("vm").createContext(sbt40); require("vm").runInContext(tx40 + "\n;this.f = ptDoneMailTx;", sbt40);
+    const m1 = sbt40.f({ mailed: true, email: "pt@example.com" }), m0 = sbt40.f({ mailed: false, email: "pt@example.com" });
+    ok(m1.mailed && /강사 입점 제안서를 메일로 먼저 보내 드렸어요/.test(m1.h) && /MD님이 연락드리기 전에/.test(m1.p) && /pt@example\.com\(으\)로 먼저 보내 드렸어요\. 한번 확인해 주세요/.test(m1.p) &&
+      !m0.mailed && /MD님이 연락드릴 때 함께 보내 드려요/.test(m0.h) && /\+ ptDoneMail\(S\) \+/.test(vj40) && /mailed: !!r\.mailed/.test(vj40) &&
+      /const dm = X\.ptDoneMailTx\(done\);/.test(pa40) && /<div className=\{"pt-done-mail" \+ \(dm\.mailed \? " ok" : ""\)\}><span className="pt-done-mail-ic"><Icon n="mail" c="sm" \/><\/span><div><b>\{dm\.h\}<\/b><p>\{dm\.p\}<\/p><\/div><\/div>/.test(pa40),
+      "접수 화면: 보냈으면 ‘강사 입점 제안서를 메일로 먼저 보내 드렸어요 · MD님이 연락드리기 전에 … 확인해 주세요’ · 못 보냈으면 ‘MD님이 연락드릴 때 함께’ (예전 화면 = React)", { m1, m0 });
     // 강사센터 로그인 왼쪽 아래 바로가기 (2026-11-14): 두잉고(파랑) · 두고클래스(빨강) 카드 — 예전 화면 = React
     const lj40 = fs.readFileSync(path.join(ROOT, "../ui/center/Login.jsx"), "utf8"), ac40 = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
     ok(/<a class="a-go a-go-dg" href="#\/doinggo"><span class="a-go-ic">' \+ icon\("users", "sm"\) \+ '<\/span><span class="a-go-tx"><small>강의 운영 시스템<\/small><b>두잉고 페이지 바로가기<\/b><\/span>' \+ icon\("arrowRight", "xs a-go-arw"\)/.test(aj40) &&
@@ -3225,7 +3278,14 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /const DEMO_IDS = \{ owned: 1, partner: 1 \};/.test(aj40) && /function demoLogin\(id, tries\) \{\s*if \(S \|\| !DEMO_IDS\[id\]\) return;/.test(aj40) && /serverLogin\(f, id, id, err\);/.test(aj40),
       "강사센터 로그인 ?tab=family → ‘마스터 · 패밀리’ 탭 · ?demo=owned | partner → 그 체험 계정으로 바로 로그인(다른 값 · 이미 로그인한 사람은 그대로 · 주소에서 지워요)");
     const S40 = require(path.join(ROOT, "shared/screens.js"));
-    ok(S40.match("/vod/partners") === "vod-partners" && S40.match("/vod/partners?tab=family") === "vod-partners" && S40.match("/vod/partners?tab=partners") === "vod-partners" && S40.match("/vod/partners/apply") === "vod-partners", "React 화면 스위치: 파트너스 · 패밀리 탭 · 지원서 모두 같은 화면(vod-partners)");
+    ok(S40.match("/vod/partners") === "vod-partners" && S40.match("/vod/partners?tab=family") === "vod-partners" && S40.match("/vod/partners?tab=partners") === "vod-partners" && S40.match("/vod/partners/apply") === "vod-partners" &&
+      S40.match("/vod/family") === "vod-partners" && S40.match("/vod/family/") === "vod-partners" && S40.match("/vod/familyx") === null && S40.match("/vod/family/apply") === null && S40.isPublic("vod-partners"),
+      "React 화면 스위치: 파트너스 · 지원서 · 패밀리(/vod/family) · 예전 ?tab=family 모두 같은 화면(vod-partners)");
+    // 패밀리는 검색 제외 (noindex) — 파트너스 · 다른 화면은 그대로
+    const PM40 = require(path.join(TMP, "class/api/_lib/pagemeta.js")), tpl40 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    const hf40 = await PM40.render("/vod/family", tpl40), hp40 = await PM40.render("/vod/partners", tpl40);
+    ok(/<meta name="robots" content="noindex, nofollow" \/>/.test(hf40) && !/content="index, follow"/.test(hf40) && hp40 === tpl40 && /content="index, follow"/.test(hp40) && /noindex, nofollow/.test(PM40.noindex("<head></head>")),
+      "패밀리(/vod/family)만 검색 제외(noindex, nofollow) · 파트너스는 그대로 검색에 보여요");
     // 일회성: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners — 그땐 강사 지원 소개뿐)면 파트너스 탭으로 · 다른 링크 · 칸은 그대로 · 다시 돌려도 그대로
     const OF40 = require(path.join(TMP, "class/api/_lib/oneoff.js"));
     const bn40 = [{ id: "vb3", title: "강사 모집", href: "#/vod/partners" }, { id: "vb9", href: "https://www.doogoclass.com/vod/partners/" }, { id: "vb1", href: "#/vod/c/all" }, { id: "vb4", href: "#/vod/partners?tab=partners" }, { id: "vb5", href: "#/vod/partners/apply" }];
@@ -3326,6 +3386,75 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(bs61.json && bs61.json.ver === "abcdef12" && /if \(j\.ver && PAGE_VER && j\.ver !== PAGE_VER && !R\.newVer\) \{ R\.newVer = j\.ver; emit\("newver", j\.ver\); \}/.test(dbj61) &&
       /if \(type === "newver"\) \{ newVerBar\(\); return; \}/.test(mj61) && /새 버전이 나왔어요\./.test(mj61) && /const VER = \(process\.env\.VERCEL_GIT_COMMIT_SHA \|\| Date\.now\(\)\.toString\(36\)\)\.slice\(0, 8\);/.test(st61),
       "새 버전 안내: 서버 bootstrap 이 배포된 판(커밋 8자리 = index.html ?v= 와 같은 규칙)을 알려 주고 · 배포 전에 열어 둔 화면이면 아래 띠 ‘새 버전이 나왔어요 · 새로 고침’ (저절로 새로 고치지 않음)", bs61.json && bs61.json.ver);
+  }
+
+  {
+    console.log("62) 체험 계정 주문 1시간 뒤 정리 · 체험 계정 실제 결제 막기 · 정식 운영 전 테스트 주문 정리 (2026-11-15)");
+    const st62 = require(path.join(TMP, "class/api/_lib/store.js")), DM = require(path.join(TMP, "class/api/_lib/demoorders.js")), OF62 = require(path.join(TMP, "class/api/_lib/oneoff.js"));
+    const now = Date.now(), H = 36e5, dmid = "vm-demo-srv", got = async (k) => { const x = await st62.getDoc(k); return x && x.v; };
+    if (!(await got("vm:" + dmid))) await st62.writeDoc("vm:" + dmid, { id: dmid, email: "demo62@example.com", name: "체험회원", demo: true, points: 0, coupons: [], orderNos: [] }, null);
+    const dr = await st62.getDoc("vm:" + dmid);
+    await st62.writeDoc("vm:" + dmid, Object.assign({}, dr.v, { points: 100, coupons: [{ id: "mc62", cid: "c1", usedAt: now - 2 * H, orderNo: "DC62OLD1" }], orderNos: (dr.v.orderNos || []).concat(["DC62OLD1", "DC62OLD2", "DC62NEW1"]) }), dr.ver);
+    const mk = (no, o) => st62.writeDoc("vo:" + no, Object.assign({ id: "vo-" + no, no, mid: dmid, status: "paid", amount: 0, createdAt: now - 2 * H, at: now - 2 * H }, o), null);
+    await mk("DC62OLD1", { paymentId: "pay_62a", pointOff: 300, demo: true });
+    await mk("DC62OLD2", {}); // 표시가 없던 예전 체험 주문 (체험 회원으로 찾아요)
+    await mk("DC62NEW1", { createdAt: now - 10 * 6e4, at: now - 10 * 6e4, demo: true });
+    await mk("DC62REAL", { mid: "vm-real62", createdAt: now - 3 * H });
+    await st62.writeDoc("vpay:pay_62a", { nos: ["DC62OLD1"], mid: dmid, total: 0 }, null);
+    DM._reset();
+    let sw = await DM.sweep({ now, test: true });
+    const m1 = await got("vm:" + dmid);
+    ok(sw.removed.slice().sort().join() === "DC62OLD1,DC62OLD2" && !(await got("vo:DC62OLD1")) && !(await got("vo:DC62OLD2")) && !!(await got("vo:DC62NEW1")) && !!(await got("vo:DC62REAL")) && !(await got("vpay:pay_62a")) &&
+      m1.orderNos.indexOf("DC62OLD1") < 0 && m1.orderNos.indexOf("DC62OLD2") < 0 && m1.orderNos.indexOf("DC62NEW1") >= 0 && m1.coupons[0].usedAt === null && m1.coupons[0].orderNo === "" && m1.points === 400,
+      "체험 주문 정리: 1시간 지난 체험 주문(체험 표시 · 체험 회원의 표시 없는 예전 주문)만 지워요 · 10분 된 체험 주문 · 일반 회원 주문은 그대로 · 결제 묶음 지우기 · 주문 목록에서 빼기 · 쓴 쿠폰 · 포인트 300 돌려놓기", { sw, orderNos: m1.orderNos, cp: m1.coupons, pt: m1.points });
+    sw = await DM.sweep({ now: now + 6e4 });
+    ok(sw.skipped === true, "bootstrap 에서 부르는 정리는 5분에 한 번까지", sw);
+    // 마스터가 불러오면(bootstrap) 그 전에 정리 · 방문자 bootstrap 은 정리하지 않아요
+    await mk("DC62OLD9", { demo: true });
+    DM._reset(); useJar({}); await boot();
+    const visKept = !!(await got("vo:DC62OLD9"));
+    DM._reset(); useJar({ dc_a: auth.sign({ r: "master" }) });
+    const jb62 = await boot();
+    ok(visKept && !(await got("vo:DC62OLD9")) && !(jb62.docs || []).some((d) => d[0] === "vo:DC62OLD9" && d[1]) && (jb62.docs || []).some((d) => d[0] === "vo:DC62NEW1"),
+      "마스터가 주문을 불러올 때(bootstrap) 1시간 지난 체험 주문을 먼저 지워서 목록 · 대시보드에 안 보여요 (방문자가 열 때는 그대로)", { visKept });
+    // 체험 계정 결제: 토스 시험 키면 시험 결제 · 라이브 키(실제 돈)면 막아요 — 1시간 뒤 지워질 주문에 돈이 걸리지 않게
+    useJar({ dc_v: auth.sign({ r: "vod", mid: dmid }) });
+    process.env.TOSS_METHODS = "card,vbank,naver,kakao";
+    r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "card" } });
+    const dno = r.json.no;
+    ok(r.json.ok && r.json.paymentId && dno && (await got("vo:" + dno)).demo === true, "체험 계정 · 토스 시험 키: 시험 결제 준비 · 주문에 체험 표시(demo) — 1시간 뒤 정리 대상", r.json);
+    const kk62 = { c: process.env.TOSS_CLIENT_KEY, s: process.env.TOSS_SECRET_KEY };
+    Object.assign(process.env, { TOSS_CLIENT_KEY: "live_ck_x", TOSS_SECRET_KEY: "live_sk_x" });
+    r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "card" } });
+    Object.assign(process.env, { TOSS_CLIENT_KEY: kk62.c, TOSS_SECRET_KEY: kk62.s });
+    ok(r.status === 403 && /체험 계정/.test(r.json.message) && !r.json.no, "체험 계정 · 토스 라이브 키: 실제 결제는 막아요 (회원가입 후 결제 안내)", r.json);
+    useJar({});
+    // 정식 운영 전 테스트 주문 정리 (일회성) — 주문 번호로 찾은 회원의 11/16 전 주문 · 체험 주문 · 무통장 설정
+    const T0 = Date.parse("2026-11-10T00:00:00+09:00"), D62 = {
+      "vo:DC261103733435": { no: "DC261103733435", mid: "vmA", status: "pending", amount: 15900, createdAt: T0, paymentId: "pA1" },
+      "vo:DC261031897485": { no: "DC261031897485", mid: "vmB", status: "paid", amount: 15900, createdAt: T0, paymentId: "pB1" },
+      "vo:DC261030835011": { no: "DC261030835011", mid: "vmB", status: "paid", amount: 15900, createdAt: T0, paymentId: "pB2", pointOff: 500 },
+      "vo:DCBOTHER": { no: "DCBOTHER", mid: "vmB", status: "failed", amount: 59000, createdAt: T0 + 1000 },
+      "vo:DCBLATE": { no: "DCBLATE", mid: "vmB", status: "paid", amount: 59000, createdAt: Date.parse("2026-11-16T09:00:00+09:00") },
+      "vo:DCREAL1": { no: "DCREAL1", mid: "vmC", status: "paid", amount: 59000, createdAt: T0 },
+      "vo:DC261029900": { no: "DC261029900", mid: dmid, status: "paid", amount: 0, demo: true, createdAt: T0 },
+      "vpay:pA1": { nos: ["DC261103733435"] }, "vpay:pB1": { nos: ["DC261031897485"] }, "vpay:pB2": { nos: ["DC261030835011"] },
+      "vm:vmA": { id: "vmA", name: "가나다", orderNos: ["DC261103733435"], coupons: [] },
+      "vm:vmB": { id: "vmB", name: "라마바", orderNos: ["DC261031897485", "DC261030835011", "DCBOTHER", "DCBLATE"], points: 0, coupons: [{ id: "mcB", cid: "book1", usedAt: T0, orderNo: "DC261031897485" }], paidPays: ["pB1", "pX"] },
+      "vm:vmC": { id: "vmC", name: "사아자", orderNos: ["DCREAL1"] },
+      ["vm:" + dmid]: { id: dmid, name: "체험회원", demo: true, orderNos: ["DC261029900"] },
+      meta: { vod: { settings: { bankMode: "on", bank: "IBK" } }, other: 1 }
+    };
+    const g62 = (k) => (D62[k] === undefined ? null : JSON.parse(JSON.stringify(D62[k]))), keys62 = (p) => Object.keys(D62).filter((k) => k.indexOf(p) === 0);
+    const w62 = OF62.launchOrdersClean(g62, keys62), W = w62.writes;
+    ok(["vo:DC261103733435", "vo:DC261031897485", "vo:DC261030835011", "vo:DCBOTHER", "vo:DC261029900", "vpay:pA1", "vpay:pB1", "vpay:pB2"].every((k) => W[k] === null) && !("vo:DCBLATE" in W) && !("vo:DCREAL1" in W) && !("vm:vmC" in W) &&
+      W["vm:vmB"].orderNos.join() === "DCBLATE" && W["vm:vmB"].coupons[0].usedAt === null && W["vm:vmB"].coupons[0].orderNo === "" && W["vm:vmB"].points === 500 && W["vm:vmB"].paidPays.join() === "pX" && W["vm:vmA"].orderNos.length === 0 && W["vm:" + dmid].orderNos.length === 0 &&
+      W.meta.vod.settings.bankMode === undefined && W.meta.vod.settings.bank === "IBK" && W.meta.other === 1 && w62.result.demo === 1 && w62.result.orders.length === 4 && !/가나다|라마바/.test(JSON.stringify(w62.result)),
+      "일회성: 알려 준 테스트 주문 3건을 낸 회원들의 11/16 전 주문 전부 · 체험 주문 지우기 · 결제 묶음 · 주문 목록 · 쿠폰 · 포인트 정리 · 11/16 뒤 주문 · 다른 회원 주문은 그대로 · 무통장 설정 지우기 · 결과엔 이름을 가려요", w62.result);
+    const op62 = OF62.OPS.find((x) => x.id === "2026-11-15-launch-orders-clean"), vk62 = process.env.VERCEL;
+    delete process.env.VERCEL; const offLocal = op62 && op62.when() === false; process.env.VERCEL = "1"; const onVercel = op62 && op62.when() === true;
+    if (vk62 === undefined) delete process.env.VERCEL; else process.env.VERCEL = vk62;
+    ok(offLocal && onVercel && OF62.launchOrdersClean(() => null, () => []).result.skipped, "일회성 목록에 등록 · Vercel 배포 때만(로컬 화면 테스트 DB 의 체험 계정 강의는 그대로) · 지울 게 없으면 건너뜀");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

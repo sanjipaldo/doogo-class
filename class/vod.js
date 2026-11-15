@@ -1100,27 +1100,24 @@
   }
   const likeTxt = (n) => (n >= 10 ? Math.floor(n / 10) * 10 + "+" : String(n));
   const nextNo = () => { const d = new Date(), ymd = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); return "DC" + ymd + String(V().orders.length + 1).padStart(3, "0") + String(Math.floor(Math.random() * 90 + 10)); };
-  /** 결제 수단 [값, 배지(np 네이버페이 · kp 카카오페이), 이름, 막힌 이유] — 세로 목록 · 순서는 탈잉처럼 (2026-11):
-   *  실시간 계좌이체 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 입금 · 무통장 입금 — 처음엔 카드를 골라 둬요 (payFirst)
-   *  정식 서버: 토스페이먼츠 키가 있을 때 서버가 연 것만 (TOSS_METHODS · 결제창형 키면 토스 창에서 고르는 한 칸) · 무통장은 계좌를 넣었을 때만
+  /** 결제 수단 [값, 배지(np 네이버페이 · kp 카카오페이), 이름, 막힌 이유] — 세로 목록 · 순서는 탈잉처럼:
+   *  네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 입금 — 처음엔 카드를 골라 둬요 (payFirst)
+   *  2026-11-15 대표님 요청: 무통장 입금 · 퀵계좌이체(실시간 계좌이체)는 받지 않아요 (서버 toss.js ALL · bank.js open 도 같게)
+   *  정식 서버: 토스페이먼츠 키가 있을 때 서버가 연 것만 (TOSS_METHODS · 결제창형 키면 토스 창에서 고르는 한 칸) — 키가 없으면 네 칸 모두 ‘결제 준비 중’으로 잠가요
    *  네이버페이 · 카카오페이를 열면 카드 칸 이름이 ‘카드/간편결제’(토스페이 · 페이코 같은 다른 간편결제도 그 창에서) */
-  const PAY_OPT = { transfer: ["transfer", "", "실시간 계좌이체"], naver: ["naver", "np", "네이버페이"], kakao: ["kakao", "kp", "카카오페이"], card: ["card", "", "신용 · 체크카드"], vbank: ["vbank", "", "가상계좌 입금"], tp: ["tp", "", "카드 · 계좌이체 · 가상계좌"] };
-  const PAY_ORD = ["transfer", "naver", "kakao", "card", "vbank", "tp"];
+  const PAY_OPT = { naver: ["naver", "np", "네이버페이"], kakao: ["kakao", "kp", "카카오페이"], card: ["card", "", "신용 · 체크카드"], vbank: ["vbank", "", "가상계좌 입금"], tp: ["tp", "", "카드 · 간편결제 · 가상계좌"] };
+  const PAY_ORD = ["naver", "kakao", "card", "vbank", "tp"], PAY_ALL = ["naver", "kakao", "card", "vbank"];
   function payOpts() {
-    const bankO = ["bank", "", "무통장 입금"], T = SRV() ? CFG && CFG.toss : null;
-    const ms = SRV() ? (T && T.methods) || [] : ["transfer", "naver", "kakao", "card", "vbank"], ks = PAY_ORD.filter((k) => ms.indexOf(k) >= 0);
-    const easy = ks.indexOf("naver") >= 0 || ks.indexOf("kakao") >= 0, o = ks.map((k) => (k === "card" && easy ? ["card", "", "카드/간편결제"] : PAY_OPT[k]));
-    if (!SRV()) return o.concat(bankOpen() ? [bankO] : []);
-    return (o.length ? o : [PAY_OPT.card.concat("PG 심사 중")]).concat(bankOpen() ? [bankInfo().real ? bankO : bankO.concat("준비 중")] : []);
+    const T = SRV() ? CFG && CFG.toss : null;
+    const ms = SRV() ? (T && T.methods) || [] : PAY_ALL, ks = PAY_ORD.filter((k) => ms.indexOf(k) >= 0);
+    const lab = (k, easy) => (k === "card" && easy ? ["card", "", "카드/간편결제"] : PAY_OPT[k]);
+    const easy = ks.indexOf("naver") >= 0 || ks.indexOf("kakao") >= 0, o = ks.map((k) => lab(k, easy));
+    const bankO = bankOpen() ? [SRV() && !bankInfo().real ? ["bank", "", "무통장 입금", "준비 중"] : ["bank", "", "무통장 입금"]] : [];
+    return (o.length ? o : PAY_ALL.map((k) => lab(k, true).concat("결제 준비 중"))).concat(bankO);
   }
-  /** 무통장 입금을 지금 받는지 — 마스터 › 정산 · 입금 설정 ‘무통장 입금 받기’(settings.bankMode · 2026-11-11)
-   *  auto(기본): 토스페이먼츠 라이브 키가 들어가면 받지 않아요 (가상계좌가 대신 — 입금 확인 · 현금영수증 · 환불을 토스가 해요) · on: 늘 받기 · off: 받지 않기
-   *  서버(api/_lib/bank.js open)도 같은 규칙으로 새 무통장 주문을 막아요 · 이미 들어온 무통장 주문(입금 대기 · 환불 송금)은 그대로 처리돼요 */
-  function bankOpen() {
-    const m = (V().settings || {}).bankMode;
-    if (m === "on" || m === "off") return m === "on";
-    return !(SRV() && CFG && CFG.toss && CFG.toss.ck && !CFG.toss.test);
-  }
+  /** 무통장 입금은 받지 않아요 (2026-11-15 대표님 요청 — 마스터 설정 ‘무통장 입금 받기’도 없앴어요 · 예전 ‘자동’도 이제 닫힘)
+   *  settings.bankMode === "on" 일 때만 열려요(화면에 켜는 곳은 없어요 · 서버 api/_lib/bank.js openOf 와 같은 규칙) · 이미 들어온 무통장 주문(입금 대기 · 환불 송금)은 그대로 처리돼요 */
+  function bankOpen() { return (V().settings || {}).bankMode === "on"; }
   /** 처음 골라 둘 결제 수단 — 카드(탈잉처럼) · 카드가 없으면 열린 첫 수단 */
   const payFirst = (opts) => { const ok = (opts || payOpts()).filter((y) => !y[3]); return ((ok.find((y) => y[0] === "card") || ok[0]) || [])[0] || ""; };
   /** 간편결제 배지 (네이버페이 N Pay · 카카오페이 pay) — 글자로 그린 표시 (그림 파일 없이) */
@@ -1133,7 +1130,7 @@
     return t ? '<div class="vd-pay-sub' + (on ? " on" : "") + '" data-pay-note="' + k + '"><b>' + t[0] + "</b><ul><li>" + t[1] + "</li><li>" + t[2] + "</li></ul></div>" : "";
   }
   /** 결제 수단 아래 안내 — 운영 사이트에 토스 시험 키(심사 중)면 ‘실제로 결제되지 않아요’ (예전 화면 · React 같이) */
-  const payNote = () => (SRV() && CFG && CFG.toss && CFG.toss.live ? '<p class="vd-co-bank vd-co-wait vd-co-tptest">' + icon("alert", "xs") + "<span>지금은 토스페이먼츠 심사 중이라 카드 · 간편결제 · 계좌이체 · 가상계좌는 <b>시험 결제창</b>만 열리고 실제로 결제되지 않아요." + (bankOpen() ? " 바로 구매하려면 무통장 입금을 골라 주세요." : "") + "</span></p>" : "");
+  const payNote = () => (SRV() && CFG && CFG.toss && CFG.toss.live ? '<p class="vd-co-bank vd-co-wait vd-co-tptest">' + icon("alert", "xs") + "<span>지금은 토스페이먼츠 심사 중이라 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌는 <b>시험 결제창</b>만 열리고 실제로 결제되지 않아요." + (bankOpen() ? " 바로 구매하려면 무통장 입금을 골라 주세요." : "") + "</span></p>" : "");
   /** 무통장 계좌: VOD 설정 → 비어 있으면 기수 입금 계좌. real = 실제로 넣은 계좌 (정식 서버는 이때만 무통장을 열어요) */
   const bankInfo = () => {
     const s = V().settings || {}, b = DB.billingInfo ? DB.billingInfo() : {}, x = s.bank && s.account ? s : b.bank && b.account ? b : null;
@@ -1388,8 +1385,9 @@
       '<a class="vd-logo" href="#/vod" aria-label="DOOGO CLASS 홈">' + logoTop + "</a>" + siteSw("vod") +
       '<form class="vd-search" data-vd-search role="search"><input name="q" type="search" placeholder="어떤 부업을 배워 볼까요?" value="' + esc(r.path[0] === "search" ? r.qs.get("q") || "" : "") + '" aria-label="클래스 검색" autocomplete="off"><button type="submit" aria-label="검색">' + icon("search", "sm") + "</button></form>" +
       '<div class="vd-top-r">' +
-        // 패밀리 · 파트너스 (탈잉 파트너스처럼): 링크 아래 작은 말풍선 ‘패밀리 · 강사 모집 중’ — 그 화면에서는 말풍선 없이 (2026-11-14 · 예전 ‘두고 파트너스’)
-        '<a class="vd-ptl vd-ic-pc' + (nav === "partners" ? " on" : "") + '" href="#/vod/partners">패밀리 · 파트너스' + (nav === "partners" ? "" : '<span class="vd-ptl-tip" aria-hidden="true">패밀리 · 강사 모집 중</span>') + "</a>" +
+        // 파트너스 지원 (탈잉 ‘튜터 지원’처럼 · 2026-11-15): 링크 아래 작은 말풍선 ‘파트너 강사로 지원하기’ — 그 화면에서는 말풍선 없이
+        // 패밀리(온드미디어 · 두잉고 세일즈)는 수강생도 보는 스토어에서 숨겨요 — #/vod/family 주소로만 (메뉴 · 바닥 · 사이트맵에 없음)
+        '<a class="vd-ptl vd-ic-pc' + (nav === "partners" ? " on" : "") + '" href="#/vod/partners">파트너스 지원' + (nav === "partners" ? "" : '<span class="vd-ptl-tip" aria-hidden="true">파트너 강사로 지원하기</span>') + "</a>" +
         '<a class="vd-tl vd-ic-pc" href="#/vod/my/classes" aria-label="내 강의실" title="내 강의실">' + BOOK + "<span>내 강의실</span></a>" +
         '<a class="vd-ic vd-ic-pc" href="#/vod/my/likes" aria-label="찜한 강의" title="찜한 강의">' + icon("heart", "sm") + "</a>" +
         // 로그인하면 오른쪽 위에 ‘OOO님’ — 누르면 내 계정 메뉴 · 로그아웃 (휴대폰의 검색 · 전체 메뉴는 아래 메뉴 버튼 안으로 옮김)
@@ -1417,7 +1415,7 @@
         '<nav class="vd-gf-grid" aria-label="바로가기">' +
           col("클래스", [["#/vod", "돈되는 클래스"], ["#/vod/c/all?tab=vod", "VOD 강의"], bizOn("ebook") && ["#/vod/c/all?tab=ebook", "전자책"], bizOn("flive") && ["#/vod/c/all?tab=flive", "무료 LIVE"], bizOn("live") && ["#/vod/c/all?tab=premium", "LIVE · 오프라인 강의"], bizOn("free") && ["#/vod/c/all?tab=free", "무료강의"], ["#/vod/teachers", "강사진"], ["#/vod/c/soon", "오픈 예정"]].filter(Boolean)) +
           col("마이페이지", [["#/vod/my/classes", "내 강의실"], ["#/vod/my/coupons", "쿠폰"], ["#/vod/my/orders", "주문 · 결제 내역"], ["#/vod/my/account", "회원 정보 수정"]]) +
-          col("DOOGO CLASS", [["#/vod/about", "두고클래스 소개"], [PF_FAMILY, "두고 패밀리"], ["#/vod/partners", "두고 파트너스"], ["#/doinggo", "두잉고"], ["#/center", "강사센터"]]) +
+          col("DOOGO CLASS", [["#/vod/about", "두고클래스 소개"], ["#/vod/partners", "두고 파트너스"], ["#/doinggo", "두잉고"], ["#/center", "강사센터"]]) +
         "</nav>" +
         '<div class="vd-gf-help"><b>도움이 필요하신가요?</b><p>수강 · 결제 · 환불 문의를 남겨 주시면<br>영업일 기준 하루 안에 답해 드려요.</p><div class="vd-gf-hbtn"><a class="vd-btn vd-btn-p" href="#/vod/my/help">1:1 문의하기 ' + icon("arrowRight", "xs") + "</a>" + kkBtn("vd-btn vd-btn-kakao", "카카오톡 상담") + "</div>" +
           (S.phone || S.hours ? '<p class="vd-gf-cs">' + (S.phone ? "<b>" + tel(S.phone) + "</b>" : "") + (S.hours ? "<small>" + esc(S.hours) + "</small>" : "") + "</p>" : "") + "</div></div>" +
@@ -3392,32 +3390,31 @@
         '<aside class="vd-pl-side">' + dgCard(p, "vd-dg-pl") + '<b class="vd-pl-side-h">커리큘럼 <small>' + lz.filter((l) => pr.done[l.id]).length + " / " + lz.length + "</small></b>" + (p.curriculum || []).map((c) => '<div class="vd-pl-ch"><small>' + esc(c.title) + "</small>" + (c.lessons || []).map((l) => '<a href="#/vod/learn/' + esc(pid) + "/" + esc(l.id) + '" class="' + (l.id === cur.id ? "on" : "") + (pr.done[l.id] ? " done" : "") + '"><i>' + (pr.done[l.id] ? icon("check", "xs") : "") + "</i><span>" + esc(l.title) + freshTag(l) + ((l.files || []).length ? " " + icon("paperclip", "xs") : "") + "</span><small>" + lLen(l) + "</small></a>").join("") + "</div>").join("") + "</aside></div></div>";
   }
 
-  /* ---------- 패밀리 · 파트너스 (2026-11-14) — 한 화면 · 위에 탭 두 개 (왼쪽 ‘파트너스’가 먼저 · 2026-11-14 대표님 요청으로 순서 바꿈)
+  /* ---------- 파트너스 · 패밀리 (2026-11-15 대표님 요청: 탭을 풀고 서로 다른 랜딩으로) ----------
      부르는 이름: 온드미디어팀 · 두잉고 세일즈팀 = 패밀리 · 강사 = 파트너스
-     파트너스 탭 #/vod/partners             (기본) 강사 입점 = 예전 ‘두고 파트너스’ 소개 그대로 + 강사 입점 소개서(새 창)
-                 (#/vod/partners?tab=partners — 잠깐 쓰던 주소도 파트너스 그대로)
-     패밀리 탭   #/vod/partners?tab=family  온드미디어팀 + 두잉고 세일즈팀 — 두 패밀리 소개서 내용
-     지원서      #/vod/partners/apply         (파트너스 · 탭 없음) → DB.applyPartner({ source: "partners", form: {…} })
+     파트너스  #/vod/partners         강사 입점 랜딩 (연한 분홍 · 탭 없음) — 머리띠 ‘파트너스 지원’ · 바닥 ‘두고 파트너스’에서 와요
+               강사 입점 소개서는 화면에 두지 않아요 — 지원서를 보내면 서버가 지원자 이메일로 보내요 (api/public.js partnerApply · api/_lib/ptmail.js)
+     패밀리    #/vod/family           온드미디어팀 + 두잉고 세일즈팀 — 수강생도 보는 스토어라 메뉴 · 바닥 · 사이트맵에 없고 주소로만 (검색 제외 noindex)
+               예전 주소 #/vod/partners?tab=family 는 #/vod/family 로 옮겨 줘요
+     지원서    #/vod/partners/apply   → DB.applyPartner({ source: "partners", form: {…} })
        두잉고 ‘강사 입점 문의’와 같은 마스터 접수함(서버 문서 inq:<id> · 마스터만 읽어요)에 쌓여요 → 마스터 › DOOGO CLASS › 두고 파트너스 지원
-     예전 #/vod/recruit(강사 모집) · 첫 화면 ‘강사 모집’ 배너는 파트너스 탭으로
+     예전 #/vod/recruit(강사 모집) · 첫 화면 ‘강사 모집’ 배너는 파트너스로
      패밀리 RS(온드미디어 10 · 20% · 두잉고 세일즈 이용료 20%)는 패밀리 소개서에 공개된 값이에요.
-     강사 정산 비율은 대외비라 이 공개 화면(파트너스 탭)에 쓰지 않아요 (상담에서 안내) ---------- */
+     강사 정산 비율은 대외비라 이 공개 화면(파트너스)에 쓰지 않아요 (상담 · 소개서 메일에서 안내) ---------- */
   const PT_APPLY = "#/vod/partners/apply";
   const PT_MS = "assets/partners/"; // 두고 파트너스 캐릭터 ‘두디’ (빨간 D · 베어 문 자국) — 기본 · 응원 · 질문 포즈
-  // 소개서 링크 (새 창 · 2026-11-14 publitas → DocSend — publitas 가 느려서 대표님 요청으로 바꿈)
-  const PT_DECK = "https://docsend.com/view/mzd5wpkmsb2r7fzj"; // 강사 입점 소개서
+  // 소개서 안내 한 줄 (진행 과정 아래) — 소개서 링크는 화면에 두지 않고, 지원서를 보내면 메일로 보내 드려요
+  const PT_DECK_TX = "지원서를 보내면 <b>강사 입점 제안서</b>(시스템 구성 · 수익 구조)를 이메일로 먼저 보내 드려요";
+  const ptDeckNote = () => '<p class="pt-deck-note" data-rv>' + icon("mail", "xs") + "<span>" + PT_DECK_TX + "</span></p>";
   // 패밀리 소개서 — 비우면 그 버튼은 그리지 않아요
   const FM_DECK = { media: "https://docsend.com/view/3wjy9wd5uum33gsr", sales: "https://docsend.com/view/z5ggtz7kuk7b45vk" }; // 온드미디어 · 두잉고 세일즈
   // 센터 카드 ‘둘러보기’ → 그 공개 체험 계정(familydemo.js — 온드미디어 owned · 영업 패밀리 partner)으로 강사센터에 바로 로그인 (admin.js demoLogin)
   const FM_DEMO = (id) => "#/center/login?demo=" + id;
   const FM_PG = 7.5; // 온드미디어 RS 계산(예시)의 PG 결제 수수료 % — 소개서 · 정산 기본값과 같게
-  /** 지금 탭: ?tab=family 면 패밀리, 아니면 파트너스(기본) (예전 화면 · React 같이 씀) */
+  /** 예전 패밀리 탭 주소(?tab=family)인지 — 그러면 #/vod/family 로 옮겨요 (예전 화면 · React 같이 씀) */
   const pfTabOf = (qs) => (qs && qs.get("tab") === "family" ? "family" : "partners");
-  const PF_FAMILY = "#/vod/partners?tab=family";
-  const PF_TABS = [["partners", "#/vod/partners", "handshake", "파트너스", "강사 입점"], ["family", PF_FAMILY, "users", "패밀리", "온드미디어 · 두잉고 세일즈"]];
-  // 위 탭 줄 — 머리띠 바로 아래에 붙어서 따라와요 (탭을 바꾸면 맨 위에서 시작)
-  const pfTabs = (on) => '<nav class="pf-tabs" aria-label="패밀리 · 파트너스"><div class="vd-wrap pf-tabs-in">' + PF_TABS.map((t) => '<a class="pf-tab' + (t[0] === on ? " on" : "") + '" href="' + t[1] + '" data-pf-tab="' + t[0] + '"' + (t[0] === on ? ' aria-current="page"' : "") + '><span class="pf-tab-ic">' + icon(t[2], "sm") + '</span><span class="pf-tab-tx"><b>' + t[3] + "</b><small>" + t[4] + "</small></span></a>").join("") + "</div></nav>";
-  /* 패밀리 탭 글 · 숫자 — 온드미디어 · 두잉고 세일즈 소개서(2026-11)에서 옮겼어요. 예전 화면(pageFamily) · React 화면(ui/store/FamilyTab.jsx)이 같이 써요 */
+  const PF_FAMILY = "#/vod/family";
+  /* 패밀리 글 · 숫자 — 온드미디어 · 두잉고 세일즈 소개서(2026-11)에서 옮겼어요. 예전 화면(pageFamily) · React 화면(ui/store/FamilyTab.jsx)이 같이 써요 */
   const FM_STRIP = [["gift", "가입비 0원", "입점비 · 가입비 · 유지비 없이"], ["megaphone", "온드미디어 RS 10~20%", "내 링크로 팔릴 때마다"], ["users", "두잉고 세일즈 20%", "소개한 강사님 기수마다"], ["calendar", "매월 10일 정산", "센터에서 실시간 확인"]];
   const FM_TEAMS = [
     { k: "md", ic: "monitorPlay", eb: "OWNED MEDIA", name: "온드미디어팀", lead: "내 채널의 영향력이, 새로운 수익이 돼요.", rate: "RS 10~20%", rateSub: "내 링크로 팔린 VOD 판매가 기준 (PG " + FM_PG + "% 제외)",
@@ -3488,15 +3485,11 @@
     const kinds = [["monitorPlay", "VOD 강의", "6개월 · 12개월 수강권으로 판매해요. 수강 기간이 끝나면 재수강 할인으로 다시 만나요."], ["book", "전자책 · 종이책", "PDF 전자책은 바로 내려받고, 종이책은 택배로 보내요."], bizOn("live") && ["calendar", "LIVE · 오프라인 강의", "실시간 온라인 강의 · 오프라인 특강으로 수강생을 직접 만나요."], ["message", "1:1 코칭권 · TEA TIME", "VOD 수강생에게 1:1 피드백 · 줌 TEA TIME을 더해 함께 판매해요."]].filter(Boolean);
     return { ts, cs, ps, p0, kinds };
   }
-  // 강사 입점 소개서 (DocSend) 새 창 버튼 — 파트너스 탭 진행 과정 · 마지막 안내
-  const ptDeck = (cls) => '<a class="' + cls + '" href="' + PT_DECK + '" target="_blank" rel="noopener">' + icon("file", "sm") + "<span>강사 입점 소개서 보기</span>" + icon("arrowUpRight", "xs") + "</a>";
-  // 패밀리 · 파트너스 화면: 위 탭 줄 + 고른 탭 (탭은 주소 ?tab= 로 — 공유 · 뒤로 가기 그대로)
-  function pagePartners() {
-    const tab = pfTabOf(route().qs);
-    return shell("partners", '<div class="pt pt-' + tab + '">' + pfTabs(tab) + (tab === "partners" ? ptBody() : pageFamily()) + "</div>", "", "vd-pt-page");
-  }
+  // 파트너스(강사 입점) 랜딩 · 패밀리 랜딩 — 서로 다른 화면 (탭 없음 · 2026-11-15)
+  function pagePartners() { return shell("partners", '<div class="pt pt-partners">' + ptBody() + "</div>", "", "vd-pt-page"); }
+  function pageFamilyLp() { return shell("family", '<div class="pt pt-family">' + pageFamily() + "</div>", "", "vd-pt-page"); }
   const ptSec = (id, eb, h, sub, body, cls) => '<section class="pt-sec' + (cls ? " " + cls : "") + '"' + (id ? ' id="' + id + '"' : "") + '><div class="vd-wrap"><div class="pt-sec-h" data-rv><small>' + eb + "</small><h2>" + h + "</h2>" + (sub ? "<p>" + sub + "</p>" : "") + "</div>" + body + "</div></section>";
-  /* 패밀리 탭 (기본) — 히어로 → 띠 → 두 팀 → 온드미디어팀 → 두잉고 세일즈팀 → 센터 · 체험 계정 · 정산 → 합류 절차 → 자주 묻는 질문 → 마지막 안내
+  /* 패밀리 (#/vod/family · 주소로만) — 히어로 → 띠 → 두 팀 → 온드미디어팀 → 두잉고 세일즈팀 → 센터 · 체험 계정 · 정산 → 합류 절차 → 자주 묻는 질문 → 마지막 안내
      합류는 지원서 대신 카카오톡 채널(@두고클래스)로 (소개서와 같게) · 소개서 버튼은 FM_DECK 링크가 있을 때만 */
   function pageFamily() {
     const F = familyView();
@@ -3556,7 +3549,7 @@
     const flt = '<a class="pt-float fm-float" href="' + esc(opsKk().chat) + '" target="_blank" rel="noopener" data-kk-ops aria-label="카카오톡으로 패밀리 합류 상담하기"><img src="' + PT_MS + 'mascot-cheer.webp" alt="" width="48" height="52"><span><small>내 채널 · 인맥이 수익으로</small><b>패밀리 합류 상담하기</b></span>' + icon("arrowRight", "sm") + "</a>";
     return hero + strip + teams + media + sales + centers + flow + faq + end + flt;
   }
-  /* 파트너스 탭 (강사 입점) — 예전 ‘두고 파트너스’ 소개 그대로 + 강사 입점 소개서(새 창) */
+  /* 파트너스 (강사 입점 · #/vod/partners) — 예전 ‘두고 파트너스’ 소개 · 연한 분홍 (소개서는 지원서를 보내면 메일로) */
   function ptBody() {
     const { ts, cs, p0, kinds } = partnersView();
     const phT = (t) => t.ph || insPhoto(t.iid);
@@ -3593,11 +3586,11 @@
     const who = sec("", "WHO WE LOOK FOR", "이런 분을 찾고 있어요", "", '<div class="pt-who" data-rv-kids>' + [["trophy", "직접 해서 결과를 낸 분", "매출 · 수익 · 성장처럼 숫자로 보여 줄 수 있는 경험이 있어요."], ["users", "알려 주는 게 즐거운 분", "내가 걸어온 길을 처음 시작하는 사람에게 차근차근 알려 줄 수 있어요."], ["refresh", "꾸준히 다듬어 갈 분", "시장이 바뀌면 강의도 바뀌어요. 최신 내용으로 업데이트할 수 있어요."], ["sparkles", "채널이 없어도 괜찮아요", "유튜브 · 블로그 · 인스타가 있으면 좋지만, 없어도 지원할 수 있어요."]].map((x) => '<div class="pt-who-c"><span>' + icon(x[0], "sm") + "</span><b>" + x[1] + "</b><p>" + x[2] + "</p></div>").join("") + "</div>" +
       '<div class="pt-cats" data-rv><b>이런 분야를 찾고 있어요</b>' + ptCatRows(cs) + '<span class="pt-cat pt-cat-etc">' + icon("plus", "xs") + "그 밖의 분야도 환영해요</span></div>", "pt-whos");
     const types = sec("", "WHAT YOU CAN OPEN", "이런 클래스를 열 수 있어요", "하나로 시작해도 되고, 함께 열면 수강생이 이어서 들어요.", '<div class="pt-kinds pt-kinds-' + kinds.length + '" data-rv-kids>' + kinds.map((x) => '<div class="pt-kind">' + icon(x[0], "sm") + "<b>" + x[1] + "</b><p>" + x[2] + "</p></div>").join("") + "</div>", "pt-types");
-    const flow = sec("pt-flow", "HOW IT WORKS", "지원부터 오픈까지, 이렇게 진행돼요", "", '<ol class="pt-flow" data-rv-kids>' + PT_FLOW.map((x, i) => '<li><span class="pt-fl-n">' + String(i + 1).padStart(2, "0") + '</span><span class="pt-fl-ic">' + icon(x[2], "sm") + "</span><b>" + x[0] + "</b><p>" + x[1] + "</p></li>").join("") + "</ol>" + '<div class="pt-flow-cta" data-rv>' + ptCta("vd-btn-xl", "지원서 쓰러 가기") + ptDeck("vd-btn vd-btn-xl pt-deck-o") + "</div>", "pt-flows");
+    const flow = sec("pt-flow", "HOW IT WORKS", "지원부터 오픈까지, 이렇게 진행돼요", "", '<ol class="pt-flow" data-rv-kids>' + PT_FLOW.map((x, i) => '<li><span class="pt-fl-n">' + String(i + 1).padStart(2, "0") + '</span><span class="pt-fl-ic">' + icon(x[2], "sm") + "</span><b>" + x[0] + "</b><p>" + x[1] + "</p></li>").join("") + "</ol>" + '<div class="pt-flow-cta" data-rv>' + ptCta("vd-btn-xl", "지원서 쓰러 가기") + "</div>" + ptDeckNote(), "pt-flows");
     const faq = '<section class="pt-faqs" id="pt-faq"><div class="vd-wrap pt-faq-w"><img class="pt-faq-ms" data-rv="pop" src="' + PT_MS + 'mascot-faq.webp" alt="" width="380" height="408" loading="lazy"><h2 class="pt-faq-h" data-rv>자주 묻는 질문</h2>' +
       '<div class="pt-faq" data-rv-kids>' + PT_FAQ.map((x, i) => '<details class="pt-faq-it"' + (i ? "" : " open") + "><summary><span>Q. " + esc(x[0]) + "</span>" + icon("chevDown", "sm") + '</summary><div class="pt-faq-a"><p>' + esc(x[1]) + "</p></div></details>").join("") + "</div></div></section>";
-    // 마지막 안내: 지원하기 · 강사 입점 소개서(새 창) — 카카오톡 버튼은 뺐어요 (2026-11-14 대표님 요청)
-    const end = '<section class="pt-end"><div class="vd-wrap"><small data-rv>DOOGO PARTNERS</small><h2 data-rv>노하우는 이미 충분해요.<br>이제 <em>클래스</em>로 만들 차례예요.</h2><div class="pt-end-btns" data-rv>' + ptCta("vd-btn-xl") + ptDeck("vd-btn vd-btn-xl pt-end-deck") + "</div></div></section>";
+    // 마지막 안내: 지원하기 (강사 입점 소개서는 지원하면 메일로 · 2026-11-15 · 카카오톡 버튼은 2026-11-14 에 뺐어요)
+    const end = '<section class="pt-end"><div class="vd-wrap"><small data-rv>DOOGO PARTNERS</small><h2 data-rv>노하우는 이미 충분해요.<br>이제 <em>클래스</em>로 만들 차례예요.</h2><div class="pt-end-btns" data-rv>' + ptCta("vd-btn-xl") + "</div></div></section>";
     const flt = '<a class="pt-float" href="' + PT_APPLY + '" aria-label="두고 파트너스 지원하기"><img src="' + PT_MS + 'mascot-hero.webp" alt="" width="48" height="42"><span><small>노하우를 클래스로, 첫걸음</small><b>두고 파트너스 지원하기</b></span>' + icon("arrowRight", "sm") + "</a>";
     return hero + strip + voices + why + who + types + flow + faq + end + flt;
   }
@@ -3730,9 +3723,18 @@
       });
       if (!r || r.error || r.ok === false) return { ok: false, err: r && r.error === "locked" ? "지원이 많이 들어와 잠시 막혔어요. 조금 뒤에 다시 보내 주세요." : "보내지 못했어요. 입력한 내용을 확인하고 잠시 후 다시 시도해 주세요." };
       ss.set(PT_DRAFT, null); ss.set(PT_SEC, null);
-      return { ok: true, sum: { name: v("name"), topic: v("topic"), cat, kinds, phone: v("phone"), email: v("email") } };
+      // mailed: 서버가 지원자 이메일로 강사 입점 제안서를 보냈는지 (api/_lib/ptmail.js — 이메일이 연결 안 됐으면 false)
+      return { ok: true, sum: { name: v("name"), topic: v("topic"), cat, kinds, phone: v("phone"), email: v("email"), mailed: !!r.mailed } };
     } catch (e) { return { ok: false, err: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." }; }
   }
+  /** 접수 화면 ‘강사 입점 제안서’ 안내 (2026-11-15) — 보냈으면 그 이메일로 먼저 보냈다고, 못 보냈으면 MD님이 연락드릴 때 함께 보내 드린다고
+   *  → { mailed, h: 굵은 제목, p: 설명 } (예전 화면 · React 화면 같이 씀) */
+  function ptDoneMailTx(S) {
+    return S && S.mailed
+      ? { mailed: true, h: "강사 입점 제안서를 메일로 먼저 보내 드렸어요", p: "MD님이 연락드리기 전에, 두고클래스의 시스템 구성과 수익 구조를 담은 강사 입점 제안서를 " + (S.email || "남겨 주신 이메일") + "(으)로 먼저 보내 드렸어요. 한번 확인해 주세요. 메일이 보이지 않으면 스팸함도 살펴봐 주세요." }
+      : { mailed: false, h: "강사 입점 제안서는 MD님이 연락드릴 때 함께 보내 드려요", p: "두고클래스의 시스템 구성과 수익 구조를 담은 강사 입점 제안서를 " + (S && S.email ? S.email : "남겨 주신 이메일") + "(으)로 보내 드릴게요." };
+  }
+  const ptDoneMail = (S) => { const t = ptDoneMailTx(S); return '<div class="pt-done-mail' + (t.mailed ? " ok" : "") + '"><span class="pt-done-mail-ic">' + icon("mail", "sm") + "</span><div><b>" + esc(t.h) + "</b><p>" + esc(t.p) + "</p></div></div>"; };
   async function doPartnerApply(f) {
     const err = document.getElementById("pt-err");
     // 모든 섹션 확인 — 빈 * 질문이 있는 섹션으로 데려가요
@@ -3746,7 +3748,7 @@
       const box = document.getElementById("pt-ap-main");
       if (box) {
         box.innerHTML = '<div class="pt-gf-ban pt-gf-ban-done" aria-hidden="true"><div class="pt-gf-ban-tx"><small>DOOGO PARTNERS</small><b>지원해 주셔서<br>고마워요!</b></div><img src="' + PT_MS + 'mascot-cheer.webp" alt="" width="420" height="454"></div>' +
-          '<div class="pt-gf-card pt-gf-title pt-done"><span class="vd-done-ic">' + icon("check") + "</span><h1>지원서가 접수됐어요</h1><p>" + esc(v("name")) + " 강사님, 소중한 지원 고마워요. 담당자가 들어온 순서대로 꼼꼼히 읽고, 남겨 주신 연락처로 연락드릴게요.</p>" +
+          '<div class="pt-gf-card pt-gf-title pt-done"><span class="vd-done-ic">' + icon("check") + "</span><h1>지원서가 접수됐어요</h1><p>" + esc(v("name")) + " 강사님, 소중한 지원 고마워요. 담당자가 들어온 순서대로 꼼꼼히 읽고, 남겨 주신 연락처로 연락드릴게요.</p>" + ptDoneMail(S) +
           '<dl class="pt-done-sum">' + [["클래스 주제", v("topic")], ["강의 분야", cat], ["열고 싶은 클래스", kinds.join(", ") || "-"], ["연락처", v("phone")], ["이메일", v("email")]].map((x) => "<div><dt>" + x[0] + "</dt><dd>" + esc(x[1]) + "</dd></div>").join("") + "</dl>" +
           '<ol class="pt-done-next">' + [["지원서 확인", "담당자가 지원서를 열람해요"], ["상담 연락", "연락처 · 이메일로 연락드려요"], ["계약 · 제작", "함께 기획하고 촬영해요"]].map((x, i) => "<li><i>" + (i + 1) + "</i><b>" + x[0] + "</b><small>" + x[1] + "</small></li>").join("") + "</ol>" +
           '<div class="pt-done-btns"><a class="vd-btn vd-btn-p" href="#/vod">DOOGO CLASS 둘러보기</a>' + kkBtn("vd-btn vd-btn-o", "카카오톡 문의하기") + "</div></div>";
@@ -3844,10 +3846,6 @@
   // 두고 파트너스: 오른쪽 아래 떠 있는 지원 상자는 첫 화면 · 마지막 안내 · 바닥이 안 보일 때만 · 자주 묻는 질문은 하나만 열려요
   function wirePt() {
     if (ui.pto) { ui.pto.disconnect(); ui.pto = null; }
-    // 패밀리 ↔ 파트너스 탭을 바꾸면(주소 ?tab= 만 바뀌어도) 새 탭의 맨 위에서 시작
-    const pfOn = root.querySelector(".pf-tab.on"), pfNow = pfOn ? pfOn.dataset.pfTab : null;
-    if (pfNow && ui.pfTab && pfNow !== ui.pfTab) toTop();
-    ui.pfTab = pfNow;
     root.querySelectorAll(".pt-faq-it").forEach((d) => d.addEventListener("toggle", () => { if (d.open) root.querySelectorAll(".pt-faq-it[open]").forEach((o) => { if (o !== d) o.open = false; }); }));
     const fl = root.querySelector(".pt-float");
     if (!fl) return;
@@ -3878,10 +3876,12 @@
     clearInterval(ui.timer); clearInterval(ui.cd); if (ui.fb) { ui.fb.disconnect(); ui.fb = null; }
     syncFreeLive();
     let html;
-    // 예전 강사 모집 주소(#/vod/recruit · 첫 화면 배너)는 파트너스(강사 입점) 탭으로
+    // 예전 강사 모집 주소(#/vod/recruit · 첫 화면 배너)는 파트너스(강사 입점)로 · 예전 패밀리 탭 주소(#/vod/partners?tab=family)는 #/vod/family 로
     if (a === "recruit") { ROUTE.replace("#/vod/partners"); return render(); }
+    if (a === "partners" && !b && pfTabOf(r.qs) === "family") { ROUTE.replace(PF_FAMILY); return render(); }
     if (!a) html = pageHome();
     else if (a === "partners") html = b === "apply" ? pagePartnerApply() : pagePartners();
+    else if (a === "family") html = pageFamilyLp();
     else if (a === "c") html = !b || b === "all" || cats().some((x) => x.key === b) ? pageAll(b === "all" ? "" : b) : listPage(b);
     else if (a === "teachers") html = b ? pageTeacher(decodeURIComponent(b)) : pageTeachers();
     else if (a === "dg") html = pageDg();
@@ -4041,7 +4041,7 @@
         .concat([I("#/vod/teachers", "강사진", { ic: "users", tone: "violet" }), I("#/vod/c/soon", "오픈 예정", { img: "soon" })])],
       ["분야", cats().map((c) => I("#/vod/c/" + c.key, c.label, MG_IMG[c.key] ? { img: c.key } : { ic: c.icon || "layers", tone: "gray" }))],
       ["마이페이지", [I("#/vod/my/classes", "내 강의실", { ic: "monitorPlay", tone: "blue" }), I("#/vod/my/likes", "찜 · 관심 부업", { ic: "heart", tone: "pink" }), I("#/vod/my/coupons", "쿠폰", { ic: "coins", tone: "amber" }), I("#/vod/my/orders", "주문 · 결제 내역", { ic: "file", tone: "green" }), I("#/vod/my/help", "고객센터 · 1:1 문의", { ic: "headset", tone: "sky" })]],
-      ["DOOGO CLASS", [I("#/vod/about", "DOOGO CLASS 소개", { ic: "store", tone: "orange" }), I(PF_FAMILY, "두고 패밀리 (온드미디어 · 세일즈)", { ic: "users", tone: "pink" }), I("#/vod/partners", "두고 파트너스 (강사 지원)", { ic: "handshake", tone: "teal" }), I("#/doinggo", "두잉고 (기수 강의)", { ic: "arrowUpRight", tone: "dg" }), I("#/center", "강사센터 (강사 · 코치 로그인)", { ic: "monitor", tone: "slate" }), I(opsKk().chat, "카카오톡 상담 (문의하기)", { ic: "message", tone: "kakao", kk: 1 })]
+      ["DOOGO CLASS", [I("#/vod/about", "DOOGO CLASS 소개", { ic: "store", tone: "orange" }), I("#/vod/partners", "두고 파트너스 (강사 지원)", { ic: "handshake", tone: "teal" }), I("#/doinggo", "두잉고 (기수 강의)", { ic: "arrowUpRight", tone: "dg" }), I("#/center", "강사센터 (강사 · 코치 로그인)", { ic: "monitor", tone: "slate" }), I(opsKk().chat, "카카오톡 상담 (문의하기)", { ic: "message", tone: "kakao", kk: 1 })]
         .concat(m ? [I("", "로그아웃", { ic: "logout", tone: "gray", out: 1 })] : [])]
     ];
   }
@@ -4210,7 +4210,7 @@
       logoutAll(); closeModal(); toast("로그아웃했어요."); ROUTE.hash = "#/vod"; render(); return;
     }
     if (v === "print") { window.print(); return; }
-    if (v === "jump") { const s = document.getElementById(t.dataset.to), pf = document.querySelector(".pf-tabs"); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 130 - (pf ? pf.offsetHeight : 0), behavior: "smooth" }); return; }
+    if (v === "jump") { const s = document.getElementById(t.dataset.to); if (s) window.scrollTo({ top: s.getBoundingClientRect().top + window.scrollY - 130, behavior: "smooth" }); return; }
     if (v === "copy") { const tx = t.dataset.t || ""; (navigator.clipboard ? navigator.clipboard.writeText(tx) : Promise.reject()).then(() => toast("계좌번호를 복사했어요. " + tx), () => toast("계좌번호: " + tx)); return; }
     if (v === "share") { const u = location.href; if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("주소를 복사했어요."), () => toast("주소: " + u)); else toast("주소: " + u); return; }
     if (v === "refund") { modal("환불 규정", '<div class="vd-modal-b">' + refundHtml() + "</div>"); return; }
@@ -4607,7 +4607,7 @@
     // VOD 강의실 · 전자책 · 입장 안내 (4-4)
     logStudy, eventTime, cdTxt, vimeoSrc,
     // 스토어 공개 화면
-    legalBody, teachersView, teacherView, tcView, tqNorm, aboutView, AB_SLIDES, partnersView, familyView, pfTabOf, PF_TABS, PT_DECK,
+    legalBody, teachersView, teacherView, tcView, tqNorm, aboutView, AB_SLIDES, partnersView, familyView, pfTabOf, PF_FAMILY, PT_DECK_TX, ptDoneMailTx,
     // 스토어 홈: 배너 몇 번째 · 자동 넘김 멈춤 · 분야 탭 (다시 그려도 · 다른 화면에 다녀와도 남아요 — 예전 화면과 같은 값) · 학습 시스템 그림 · 카테고리 아이콘
     homeUi: (o) => { if (o && o.slide !== undefined) ui.slide = o.slide; if (o && o.paused !== undefined) ui.paused = o.paused; if (o && o.hcat !== undefined) ui.hcat = o.hcat; return { slide: ui.slide || 0, paused: !!ui.paused, hcat: ui.hcat || "" }; },
     SYS, tileBiz,

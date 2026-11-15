@@ -54,7 +54,9 @@ module.exports = {
     };
     const freeNo = await checkout(freeLive.id, null, null);
     await run.check(/^DC\d{12}$/.test(freeNo || "") && /완료/.test((await L.text(mem, ".vd-done h1")) || ""), "무료 LIVE 신청 → 신청 완료 · 주문 번호", { freeNo, h1: await L.text(mem, ".vd-done h1") }, mem);
-    // 3) 유료 클래스 무통장 주문 → 입금 대기 (계좌 안내)
+    // 3) 유료 클래스 무통장 주문 → 입금 대기 (계좌 안내) — 무통장은 2026-11-15 부터 받지 않아서, 이미 들어온 무통장 주문 처리 확인용으로 이 시험 DB 에만 예전 값 bankMode "on"
+    await FL.master(adm, base, info);
+    await adm.evaluate(() => fetch("/api/bootstrap", { credentials: "same-origin" }).then((r) => r.json()).then((j) => { const d = (j.docs || []).find((x) => x[0] === "meta"), m = JSON.parse(JSON.stringify(d[1])); m.vod.settings = Object.assign({}, m.vod.settings, { bankMode: "on" }); return fetch("/api/sync", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ changes: [{ k: "meta", base: d[2], put: m }] }) }); }));
     const no = await checkout(paid.id, "180", "bank");
     await run.check(/^DC\d{12}$/.test(no || "") && !!(await mem.$(".vd-done-bank")), "무통장 주문 → 주문 접수 · 입금 계좌 안내", { no, h1: await L.text(mem, ".vd-done h1") }, mem);
     await L.open(mem, base, "/vod/my/pending");

@@ -78,7 +78,7 @@ async function startServer(dbFile, opts) {
     if (!/2부 B2/.test(out)) throw new Error("영역 표 맞추기 기록이 없어요: " + out.slice(-300));
   }
   // opts.env: 이 시험에만 더 넣을 서버 설정 (예: 시험용 가짜 토스 키 · 결제수단 TOSS_METHODS — 결제 화면 모양 시험)
-  const env = cleanEnv(Object.assign(dbEnv, st ? st.env : {}, areas, (opts && opts.env) || {}, { VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1" }));
+  const env = cleanEnv(Object.assign(dbEnv, st ? st.env : {}, areas, (opts && opts.env) || {}, { VOD_SERVER_AUTH: "1", MASTER_PASSWORD: MASTER_PW, NODE_NO_WARNINGS: "1", DC_DEMO_SWEEP: "off" })); // 체험 주문 1시간 정리는 화면 테스트 중엔 끄기 (테스트가 1시간을 넘기면 체험 계정 강의가 사라져요 · 서버 시험이 따로 확인)
   // E2E_SERVER=next: Next.js 서버로 (Next.js 전환 1단계~ · 먼저 저장소 맨 위에서 node class/scripts/site.js public && npx next build)
   const next = process.env.E2E_SERVER === "next", repo = path.join(ROOT, "..");
   if (next && !fs.existsSync(path.join(repo, ".next", "BUILD_ID"))) throw new Error("Next.js 빌드가 없어요: 저장소 맨 위에서 node class/scripts/site.js public && npx next build");

@@ -3924,35 +3924,71 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .pt-end-kk:hover { background: #f5dc00 !important; }
 .pt-end-kk .vd-kk-ic { width: 18px; height: 18px; }
 .pt-flow-cta { flex-wrap: wrap; gap: 10px; }
-/* 강사 입점 소개서 (새 창) 버튼 — 진행 과정 아래는 흰 테두리 버튼 · 마지막 안내(검정 바탕)는 흰 선 버튼 */
-.vd .pt-deck-o { background: #fff !important; color: var(--on1) !important; box-shadow: inset 0 0 0 1.5px var(--lnb) !important; }
-.vd .pt-deck-o:hover { box-shadow: inset 0 0 0 1.5px var(--on1) !important; }
-/* 마지막 안내(검정 바탕 · 2026-11-14 카카오 버튼 대신): 소개서는 꽉 찬 버튼 — 파트너스 강사 입점 = 흰색 · 패밀리 온드미디어 = 빨강 · 두잉고 = 파랑 / 체험 계정은 흰 선 */
-.vd .pt-end-deck { background: #fff !important; color: var(--on1) !important; box-shadow: none !important; }
-.vd .pt-end-deck:hover { background: #f1f1f3 !important; }
+/* 패밀리 마지막 안내(검정 바탕 · 2026-11-14 카카오 버튼 대신): 소개서는 꽉 찬 버튼 — 온드미디어 = 빨강 · 두잉고 = 파랑
+   (파트너스 강사 입점 소개서 버튼은 2026-11-15 에 없앴어요 — 지원서를 보내면 메일로) */
 .vd .fm-end-deck { color: #fff !important; box-shadow: none !important; }
 .vd .fm-end-md { background: #fc1c49 !important; }
 .vd .fm-end-sl { background: #2f6bff !important; }
 .vd .fm-end-deck:hover { filter: brightness(.94); }
-.pt-deck-o .icon:last-child, .pt-end-deck .icon:last-child, .fm-end-deck .icon:last-child, .fm-team-deck .icon:last-child { opacity: .6; }
+.fm-end-deck .icon:last-child, .fm-team-deck .icon:last-child { opacity: .6; }
 
-/* ---------- 패밀리 · 파트너스 위 탭 (2026-11-14) — 머리띠 바로 아래에 붙어서 따라와요 · 왼쪽 패밀리(기본) · 오른쪽 파트너스 ---------- */
-.pf-tabs { position: sticky; top: var(--vd-top, 117px); z-index: 30; background: rgba(255, 255, 255, .97); box-shadow: inset 0 -1px 0 var(--ln10); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.pf-tabs-in { display: flex; justify-content: center; gap: 8px; }
-.vd .pf-tab { position: relative; display: flex; align-items: center; gap: 12px; min-width: 248px; height: 72px; padding: 0 22px; color: var(--on3); text-decoration: none; -webkit-tap-highlight-color: transparent; }
-.pf-tab-ic { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--s1); color: var(--on3); transition: background-color .2s ease, color .2s ease, box-shadow .2s ease; }
-.pf-tab-tx { display: grid; gap: 2px; text-align: left; }
-.pf-tab-tx b { font-size: 18px; font-weight: 800; letter-spacing: -.03em; color: var(--on2); transition: color .2s ease; }
-.pf-tab-tx small { font-size: 12.5px; font-weight: 600; color: var(--on4); }
-.pf-tab:hover .pf-tab-tx b { color: var(--on1); }
-.pf-tab::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--vd-pri); transform: scaleX(0); transition: transform .25s ease; }
-.pf-tab.on::after { transform: scaleX(1); }
-.pf-tab.on .pf-tab-ic { background: var(--vd-pri); color: #fff; box-shadow: 0 6px 14px rgba(252, 28, 73, .28); }
-.pf-tab.on .pf-tab-tx b { color: var(--vd-pri); }
-.pf-tab.on .pf-tab-tx small { color: var(--on3); }
-.pf-tab:focus-visible { outline: 2px solid var(--vd-pri); outline-offset: -4px; border-radius: 10px; }
+/* ---------- 파트너스 랜딩 연한 분홍 (2026-11-15 대표님 요청) — 탭을 풀고 강사 입점 랜딩만 /vod/partners
+   진한 빨강 첫 화면 · 검정 띠 · 검정 마지막 안내 → 흰 빛이 도는 연한 분홍 + 진한 글씨. 포인트(버튼 · 강조 · 아이콘)는 두고 빨강 그대로
+   (패밀리 /vod/family 는 따로 — 패밀리 분홍(.fm-hero)보다 더 연하고 살구빛이 조금 섞였어요) ---------- */
+.pt-partners .pt-hero { color: var(--on1); background: radial-gradient(760px 560px at 78% 44%, rgba(255, 255, 255, .9) 0%, rgba(255, 255, 255, 0) 62%), radial-gradient(620px 460px at 0% 100%, rgba(255, 186, 205, .5) 0%, rgba(255, 186, 205, 0) 70%), radial-gradient(460px 340px at 100% 0%, rgba(255, 216, 196, .5) 0%, rgba(255, 216, 196, 0) 70%), linear-gradient(118deg, #ffe2ea 0%, #ffeff4 52%, #fff8fa 100%); }
+.pt-partners .pt-hero-bg b { background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .04)); }
+.pt-partners .pt-hero .pt-eyebrow { background: rgba(252, 28, 73, .09); color: #e0244a; }
+.pt-partners .pt-hero-tx h1, .vd.mo .pt-partners .pt-hero [data-eg].is-split.is-in .eg-c { color: #1d1d22; }
+.pt-partners .pt-hero [data-eg] .eg-accent, .vd.mo .pt-partners .pt-hero [data-eg].is-split .eg-c, .vd.mo .pt-partners .pt-hero [data-eg].is-split.is-in .eg-accent .eg-c { color: var(--vd-pri); }
+.pt-partners .pt-hero [data-eg] .eg-accent::after { background: #ffd0dc; height: .14em; }
+.pt-partners .pt-hero-tx > p { color: #4a4a55; }
+.vd .pt-partners .pt-hero .pt-btn-w { background: #fc1c49 !important; color: #fff !important; box-shadow: 0 12px 24px -8px rgba(252, 28, 73, .5); }
+.vd .pt-partners .pt-hero .pt-btn-w:hover { background: #e8143f !important; }
+.pt-partners .pt-btn-line { background: rgba(255, 255, 255, .7) !important; color: #e0244a !important; box-shadow: inset 0 0 0 1.5px rgba(224, 36, 74, .38) !important; }
+.pt-partners .pt-btn-line:hover { background: #fff !important; }
+.pt-partners .pt-hero-note { color: #6a6a74; }
+.pt-partners .pt-hero-note .icon { color: var(--vd-pri); }
+.pt-partners .pt-orb { background: radial-gradient(circle at 38% 32%, rgba(255, 255, 255, .95), rgba(255, 226, 234, .55) 58%, rgba(255, 255, 255, 0) 72%); }
+.pt-partners .pt-mascot { filter: drop-shadow(0 28px 30px rgba(214, 40, 84, .2)); }
+.pt-partners .pt-chip { box-shadow: 0 12px 26px rgba(214, 40, 84, .13); }
+/* 띠: 검정 → 흰 분홍 (위아래 옅은 분홍 선) */
+.pt-partners .pt-strip { background: #fff6f8; color: var(--on1); box-shadow: inset 0 1px 0 #ffe0e8, inset 0 -1px 0 #ffe0e8; }
+.pt-partners .pt-st + .pt-st { box-shadow: inset 1px 0 0 #ffdbe4; }
+.pt-partners .pt-st .icon { color: var(--vd-pri); }
+.pt-partners .pt-st small { color: var(--on3); }
+/* 자주 묻는 질문 바탕 · 마지막 안내: 회색 · 검정 → 옅은 분홍 */
+.pt-partners .pt-faqs { background: #fff4f7; }
+.pt-partners .pt-end { color: var(--on1); background: radial-gradient(640px 360px at 50% 0%, rgba(255, 255, 255, .85) 0%, rgba(255, 255, 255, 0) 70%), linear-gradient(180deg, #ffeaf0 0%, #ffdbe5 100%); }
+.pt-partners .pt-end small, .pt-partners .pt-end em { color: var(--vd-pri); }
+.pt-partners .pt-end h2 { color: #1d1d22; }
+.vd .pt-partners .pt-end .vd-btn-p { box-shadow: 0 12px 24px -8px rgba(252, 28, 73, .5); }
+/* 떠 있는 지원 상자: 검정 → 흰 상자 + 분홍 테두리 */
+.pt-partners .pt-float { background: #fff; color: var(--on1) !important; box-shadow: 0 0 0 1.5px #ffd3de, 0 18px 40px rgba(214, 40, 84, .2); }
+.pt-partners .pt-float small { color: var(--on3); }
+.pt-partners .pt-float b { color: var(--vd-pri); }
+.pt-partners .pt-float > .icon { color: var(--vd-pri); }
+/* 진행 과정 아래: 소개서는 지원서를 보내면 메일로 보내 드린다는 한 줄 */
+.pt-deck-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 18px auto 0 !important; max-width: 640px; padding: 12px 16px; border-radius: 12px; background: #fff1f4; color: var(--on2); font-size: 14.5px; line-height: 1.55; text-align: center; }
+.pt-deck-note .icon { flex: none; color: var(--vd-pri); }
+.pt-deck-note b { color: var(--vd-pri); font-weight: 800; }
+/* 접수 화면: 강사 입점 제안서 메일 안내 (보냈으면 분홍 · 못 보냈으면 회색) */
+.pt-done-mail { display: flex; align-items: flex-start; gap: 12px; width: 100%; max-width: 520px; margin: 8px 0 2px; padding: 16px 18px; border-radius: 14px; background: var(--s1); text-align: left; }
+.pt-done-mail.ok { background: #fff1f4; box-shadow: inset 0 0 0 1px #ffd6df; }
+.pt-done-mail-ic { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 50%; background: #fff; color: var(--on3); box-shadow: 0 2px 8px rgba(23, 27, 31, .06); }
+.pt-done-mail.ok .pt-done-mail-ic { background: var(--vd-pri); color: #fff; box-shadow: 0 6px 14px rgba(252, 28, 73, .28); }
+.pt-done-mail b { display: block; font-size: 15px; font-weight: 800; color: var(--on1); }
+.pt-done-mail.ok b { color: #e0244a; }
+.pt-done-mail p { margin-top: 4px !important; font-size: 13.5px; line-height: 1.6; color: var(--on2); overflow-wrap: anywhere; }
+@media (max-width: 1023px) {
+  .pt-partners .pt-st:nth-child(3) { box-shadow: inset 0 1px 0 #ffdbe4; }
+  .pt-partners .pt-st:nth-child(4) { box-shadow: inset 1px 0 0 #ffdbe4, inset 0 1px 0 #ffdbe4; }
+}
+@media (max-width: 640px) {
+  .pt-deck-note { align-items: flex-start; text-align: left; font-size: 13.5px; }
+  .pt-deck-note .icon { margin-top: 3px; }
+}
 
-/* ---------- 패밀리 탭 (온드미디어팀 · 두잉고 세일즈팀) — 파트너스 탭과 같은 틀(.pt-*) + 패밀리 칸(.fm-*)
+/* ---------- 패밀리 (/vod/family · 온드미디어팀 · 두잉고 세일즈팀) — 파트너스와 같은 틀(.pt-*) + 패밀리 칸(.fm-*)
    색: 온드미디어 = 두고 빨강 · 두잉고 세일즈 = 두잉고 파랑 (스토어 두잉고 칩과 같게) · 바탕은 흰색 + 옅은 색 ---------- */
 /* 패밀리 첫 화면 (2026-11-14 대표님 요청): 파트너스 탭(진한 빨강)과 탭이 바뀐 게 느껴지게 — 연한 분홍 바탕 + 진한 글씨 · 포인트(수익 · 버튼 · 배지)는 두고 빨강 그대로 */
 .pt-hero.fm-hero { color: var(--on1); background: radial-gradient(720px 560px at 76% 44%, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, 0) 64%), radial-gradient(560px 440px at 4% 100%, rgba(255, 176, 198, .5) 0%, rgba(255, 176, 198, 0) 70%), linear-gradient(112deg, #ffd3df 0%, #ffe3eb 48%, #fff1f5 100%); }
@@ -4319,8 +4355,8 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .pt-done { padding: 40px 18px; }
   .pt-done-sum dt { width: 92px; }
 }
-@media (prefers-reduced-motion: reduce) { .vd.mo .pt-ft-vis[data-rv="open"]::before, .vd.mo .pt-ft-vis[data-rv="open"]::after { display: none; } .pt-chip, .pt-mk-tag, .pt-prop, .pt-mascot, .pt-orb2, .pt-hero-bg b, .pt-float img, .pt-cheer-img, .pt-faq-ms { animation: none !important; } .pt-float { transition: opacity .2s ease, visibility 0s; transform: none; } .pf-tab::after { transition: none; } }
-/* 패밀리 탭 · 위 탭 줄: 태블릿 · 휴대폰 */
+@media (prefers-reduced-motion: reduce) { .vd.mo .pt-ft-vis[data-rv="open"]::before, .vd.mo .pt-ft-vis[data-rv="open"]::after { display: none; } .pt-chip, .pt-mk-tag, .pt-prop, .pt-mascot, .pt-orb2, .pt-hero-bg b, .pt-float img, .pt-cheer-img, .pt-faq-ms { animation: none !important; } .pt-float { transition: opacity .2s ease, visibility 0s; transform: none; } }
+/* 패밀리: 태블릿 · 휴대폰 */
 @media (max-width: 1023px) {
   .fm-steps-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fm-steps-4 li::after { display: none; }
@@ -4331,14 +4367,6 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .fm-teams, .fm-ctrs { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
-  .pf-tabs-in { gap: 0; }
-  .vd .pf-tab { flex: 1 1 50%; justify-content: center; gap: 8px; min-width: 0; height: 58px; padding: 0 8px; }
-  .pf-tab-ic { width: 30px; height: 30px; border-radius: 9px; }
-  .pf-tab-ic .icon { width: 16px; height: 16px; }
-  .pf-tab-tx { gap: 0; }
-  .pf-tab-tx b { font-size: 16px; }
-  .pf-tab-tx small { font-size: 10.5px; letter-spacing: -.03em; }
-  .pf-tab::after { left: 10px; right: 10px; }
   .pt-mascot.fm-mascot { width: min(230px, 62%); }
   .pt-sec.fm-media, .pt-sec.fm-sales, .pt-sec.fm-centers { padding-top: 64px; }
   .fm-team { padding: 24px 20px 22px; border-radius: 20px; }
@@ -4395,9 +4423,6 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .fm-pay small { font-size: 12px; }
   .pt-flow-cta .vd-btn-xl { flex: 1 1 100%; width: 100%; }
   .fm-float img { width: 34px; }
-}
-@media (max-width: 359px) {
-  .pf-tab-tx small { display: none; }
 }
 
 /* 휴대폰 아래 구매 막대: 버튼 글씨가 잘리지 않게 (2026-11) — 칸 사이를 줄이고, 긴 문구(재수강 할인 · 입금 대기 등)는 두 줄로,

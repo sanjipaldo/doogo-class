@@ -87,10 +87,13 @@ export default function PartnerApply() {
   const sec = (n, body) => <section className="pt-gf-sec" data-sec={n} hidden={n !== cur} aria-labelledby={"pt-sh-" + n}><div className="pt-gf-card pt-gf-sh"><span>섹션 {n} / 5</span><h2 id={"pt-sh-" + n} tabIndex={seen[n] ? -1 : undefined}>{S[n - 1][0]}</h2><p>{S[n - 1][1]}</p></div>{body}{nav(n)}</section>;
 
   if (done) {
+    // 강사 입점 제안서 메일 안내 (2026-11-15 · 예전 ptDoneMail) — 서버가 보냈으면 ‘먼저 보내 드렸어요’, 아니면 ‘MD님이 연락드릴 때 함께’
+    const dm = X.ptDoneMailTx(done);
     return (
       <div className="pt pt-gf"><div className="pt-gf-w" id="pt-ap-main">
         <div className="pt-gf-ban pt-gf-ban-done" aria-hidden="true"><div className="pt-gf-ban-tx"><small>DOOGO PARTNERS</small><b>지원해 주셔서<br />고마워요!</b></div><img src={X.PT_MS + "mascot-cheer.webp"} alt="" width="420" height="454" /></div>
         <div className="pt-gf-card pt-gf-title pt-done"><span className="vd-done-ic"><Icon n="check" /></span><h1>지원서가 접수됐어요</h1><p>{done.name} 강사님, 소중한 지원 고마워요. 담당자가 들어온 순서대로 꼼꼼히 읽고, 남겨 주신 연락처로 연락드릴게요.</p>
+          <div className={"pt-done-mail" + (dm.mailed ? " ok" : "")}><span className="pt-done-mail-ic"><Icon n="mail" c="sm" /></span><div><b>{dm.h}</b><p>{dm.p}</p></div></div>
           <dl className="pt-done-sum">{[["클래스 주제", done.topic], ["강의 분야", done.cat], ["열고 싶은 클래스", done.kinds.join(", ") || "-"], ["연락처", done.phone], ["이메일", done.email]].map((x) => <div key={x[0]}><dt>{x[0]}</dt><dd>{x[1]}</dd></div>)}</dl>
           <ol className="pt-done-next">{[["지원서 확인", "담당자가 지원서를 열람해요"], ["상담 연락", "연락처 · 이메일로 연락드려요"], ["계약 · 제작", "함께 기획하고 촬영해요"]].map((x, i) => <li key={i}><i>{i + 1}</i><b>{x[0]}</b><small>{x[1]}</small></li>)}</ol>
           <div className="pt-done-btns"><a className="vd-btn vd-btn-p" href="#/vod">DOOGO CLASS 둘러보기</a><KakaoBtn cls="vd-btn vd-btn-o" label="카카오톡 문의하기" /></div></div>

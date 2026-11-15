@@ -1,5 +1,5 @@
 "use client";
-/* 패밀리 탭 (/vod/partners?tab=family — 오른쪽 탭) = 온드미디어팀 + 두잉고 세일즈팀 — 예전 vod.js pageFamily 를 React 로 (2026-11-14)
+/* 패밀리 (/vod/family — 2026-11-15 부터 따로 떨어진 랜딩 · 주소로만 · 예전 ?tab=family 탭) = 온드미디어팀 + 두잉고 세일즈팀 — 예전 vod.js pageFamily 를 React 로 (2026-11-14)
  *  · 글 · 숫자는 예전 화면과 같은 곳(VOD().familyView() — 온드미디어 · 두잉고 세일즈 소개서에서 옮긴 값)에서 받아요 → 두 화면 글이 어긋나지 않게
  *  · 화면 구조는 예전 화면(pageFamily)과 똑같이 그려요 (e2e react.js 가 #root 구조를 비교해요)
  *  · 합류는 지원서 대신 카카오톡 채널 · 소개서 버튼은 링크(familyView().deck)가 있을 때만 · 체험 계정은 강사센터 로그인 ‘마스터 · 패밀리’ 탭으로 */

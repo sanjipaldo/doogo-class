@@ -12,6 +12,7 @@ const auth = require("./_lib/auth");
 const edge = require("./_lib/edge");
 const kakao = require("./_lib/kakao");
 const V = require("./_lib/vod");
+const DEMO = require("./_lib/demoorders");
 
 const on = () => process.env.VOD_SERVER_AUTH === "1";
 const pwOk = (s) => typeof s === "string" && s.length >= 8 && s.length <= 64 && /[A-Za-z]/.test(s) && /\d/.test(s);
@@ -45,6 +46,8 @@ async function login(req, res, b, ip) {
   if (!m || !m.pwHash || !V.checkPw(String(b.pw || ""), m.pwHash)) { await store.rlFail(keys); return send(res, 401, { ok: false, message: m && !m.pwHash && m.via === "kakao" ? "카카오로 가입한 계정이에요. ‘카카오로 1초 만에 시작하기’로 로그인해 주세요." : "이메일 또는 비밀번호가 맞지 않아요. 다시 확인해 주세요." }); }
   if (m.blocked || m.withdrawnAt) return send(res, 403, { ok: false, message: "이용이 중지된 계정이에요. 고객센터로 문의해 주세요." });
   if (m.demo && (await demoOff())) return send(res, 403, { ok: false, message: "체험 계정은 지금 쉬고 있어요. 이메일로 회원가입해 주세요." });
+  // 체험 계정이 로그인할 때 1시간 지난 체험 주문을 먼저 정리 (2026-11-15 · _lib/demoorders.js)
+  if (m.demo) await DEMO.sweep({ force: true }).catch((e) => console.error("[demo-orders]", e && e.message));
   await store.rlClear(["vem:" + email]);
   const next = await V.update(V.K.member(m.id), (cur) => cur && Object.assign(cur, { lastLoginAt: Date.now(), loginN: (cur.loginN || 0) + 1 }));
   V.login(req, res, m.id);

@@ -16,8 +16,8 @@ const PUB = ["/terms", "/privacy", "/refund", "/vod/legal/privacy", "/vod/teache
   // 클래스 목록: 전체 · 종류 탭 · 정렬 · 분야 · 분야 + 종류 · 꺼진 종류 · 오픈 예정 · BEST · 새로 열린 · 무료 특강 · 없는 분야 · 검색(빈 · 있음 · 없음)
   "/vod/c/all", "/vod/c", "/vod/c/all?tab=vod", "/vod/c/all?tab=ebook&sort=low", "/vod/c/all?tab=premium", "/vod/c/all?tab=free", "/vod/c/commerce", "/vod/c/ai?tab=vod&sort=new", "/vod/c/money",
   "/vod/c/soon", "/vod/c/best", "/vod/c/new?sort=like", "/vod/c/free", "/vod/c/nothing", "/vod/search", "/vod/search?q=%EC%87%BC%ED%95%91", "/vod/search?q=zzqq",
-  // 소개 · 패밀리 · 파트너스(강사) · 지원서 · 스토어 홈 (대표 주소 · /vod)
-  "/vod/about", "/vod/partners", "/vod/partners?tab=family", "/vod/partners/apply", "/", "/vod",
+  // 소개 · 파트너스(강사) · 패밀리(주소로만 · 예전 ?tab=family 주소도) · 지원서 · 스토어 홈 (대표 주소 · /vod)
+  "/vod/about", "/vod/partners", "/vod/family", "/vod/partners?tab=family", "/vod/partners/apply", "/", "/vod",
   // 클래스 상세: VOD(수강권 · 코칭) · 오픈 예정 · 전자책 · LIVE · 무료 LIVE · 강사 없는 VOD · 종이책 · 숨긴 클래스 · 없는 클래스
   "/vod/p/v2", "/vod/p/v3", "/vod/p/v4", "/vod/p/v5", "/vod/p/v8", "/vod/p/v9", "/vod/p/v11", "/vod/p/v12", "/vod/p/fl-choi", "/vod/p/fl-farmer-0", "/vod/p/v14", "/vod/p/b1", "/vod/p/v1", "/vod/p/nope"];
 module.exports = {
@@ -114,6 +114,10 @@ module.exports = {
       const pl = X.defPlan ? X.defPlan(p) : null;
       return fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid: p.id, kind: "course", plan: pl && pl.d, method: "bank", depositor: "체험회원" }) }).then((r) => r.json()).then((j) => ({ ok: !!j.ok, no: j.no, msg: j.message })); }, i);
     // (시험 DB 에서 체험 회원이 아직 안 산 유료 클래스가 하나라서, 먼저 결제 화면(React)으로 주문 → 취소한 뒤 같은 클래스를 다시 주문해 입금 확인해요)
+    // 무통장은 2026-11-15 부터 받지 않아요 — 아래 무통장 주문 · 결제 대기 취소 · 계좌 환불 흐름(이미 들어온 무통장 주문 처리)을 확인하려고 이 시험 DB 에만 예전 값 bankMode "on"
+    { const a0 = await L.newPage(browser); await F.master(a0, base, info);
+      await a0.evaluate(() => fetch("/api/bootstrap", { credentials: "same-origin" }).then((r) => r.json()).then((j) => { const d = (j.docs || []).find((x) => x[0] === "meta"), m = JSON.parse(JSON.stringify(d[1])); m.vod.settings = Object.assign({}, m.vod.settings, { bankMode: "on" }); return fetch("/api/sync", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ changes: [{ k: "meta", base: d[2], put: m }] }) }); }));
+      await a0.context().close(); }
     // 결제 화면(React): 수강권 바꾸면 금액이 다시 계산되고 · 전체 동의 · 무통장 → 주문 확인(React)으로
     await L.open(page, base, "/vod/checkout/v8");
     const co0 = { react: await isReact(page), tot: await L.text(page, "[data-co-tot]") };
@@ -271,7 +275,9 @@ module.exports = {
       for (const u of PUB) {
         const a = meta(await (await fetch(base + u, { headers: { cookie: "dc_next=off" } })).text()), b = meta(await (await fetch(base + u, { headers: { cookie: "dc_next=all" } })).text());
         const diff = ["title", "canon", "robots", "metas", "ld", "seoText"].filter((k) => a[k] !== b[k]);
-        if (a.react || !b.react || diff.length || !b.seo || !/index/.test(b.robots || "") || /noindex/.test(b.robots || "")) seoBad.push({ u, diff, a: diff.map((k) => [k, String(a[k]).slice(0, 300)]), b: diff.map((k) => [k, String(b[k]).slice(0, 300)]) });
+        // 패밀리(/vod/family · 2026-11-15 주소로만)는 예전 화면 · React 모두 검색 제외(noindex) · 나머지는 검색 허용
+        const hide = /^\/vod\/family\/?$/.test(u.split("?")[0]), rbOk = hide ? /noindex/.test(b.robots || "") : /index/.test(b.robots || "") && !/noindex/.test(b.robots || "");
+        if (a.react || !b.react || diff.length || !b.seo || !rbOk) seoBad.push({ u, diff, a: diff.map((k) => [k, String(a[k]).slice(0, 300)]), b: diff.map((k) => [k, String(b[k]).slice(0, 300)]) });
       }
       const priv = meta(await (await fetch(base + "/vod/my", { headers: { cookie: "dc_next=all" } })).text());
       await run.check(!seoBad.length && priv.react && /noindex/.test(priv.robots || ""), "공개 화면 " + PUB.length + "개: React 화면도 서버가 같은 제목 · 모든 meta(설명 · 공유 정보 · 검색 허용) · 대표 주소 · 구조화 데이터(JSON-LD) 전부 · 검색용 안내 글 / 마이페이지(React)는 검색 제외(noindex)", seoBad.slice(0, 1).concat([{ priv }]), pg);
@@ -393,11 +399,11 @@ module.exports = {
         await step(out, () => pg.click(".vd-nav-r a[href='#/vod/about']"), 400);
         await step(out, () => pg.click(".vd-top a.vd-ptl"), 500);
         // 자주 묻는 질문은 스크롤 없이 눌러요 (눌러서 스크롤되면 브라우저의 스크롤 고정이 위치를 조금씩 다르게 잡아요 — 화면 모양과 상관없이)
-        // 파트너스 탭(기본 · 왼쪽) 자주 묻는 질문 → 위 탭 ‘패밀리’ → 패밀리 자주 묻는 질문 → 다시 ‘파트너스’ → 지원하기 (2026-11-14)
+        // 파트너스 자주 묻는 질문 → 패밀리(주소로만 · 2026-11-15 탭 · 링크 없음) 자주 묻는 질문 → 다시 파트너스 → 지원하기
         await step(out, () => pg.$eval(".pt-faq-it:nth-child(3) summary", (el) => el.click()));
-        await step(out, () => pg.click(".pf-tab[data-pf-tab='family']"), 600);
+        await L.open(pg, base, "/vod/family"); await stayOn();
         await step(out, () => pg.$eval(".pt-faq-it:nth-child(3) summary", (el) => el.click()));
-        await step(out, () => pg.click(".pf-tab[data-pf-tab='partners']"), 600);
+        await L.open(pg, base, "/vod/partners"); await stayOn();
         await step(out, () => pg.$eval(".pt-faq-it:nth-child(5) summary", (el) => el.click()));
         await step(out, () => pg.click(".pt-hero a[href='#/vod/partners/apply']"), 500);
         await pg.evaluate(() => { try { sessionStorage.removeItem("dc:pt-draft"); sessionStorage.removeItem("dc:pt-sec"); } catch (e) { /* 없어도 돼요 */ } });

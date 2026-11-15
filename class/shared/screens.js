@@ -29,9 +29,9 @@
     ["vod-teachers", /^\/vod\/teachers(\/[^/]+)?\/?$/, "강사진 · 강사 페이지", { pub: true }],
     // 클래스 목록: 전체 클래스 · 분야 · 오픈 예정 · BEST · 새로 열린 · 무료 특강 · 검색 (공개 화면)
     ["vod-list", /^\/vod\/(c(\/[^/]+)?|search)\/?$/, "클래스 목록 · 분야 · 오픈 예정 · 검색", { pub: true }],
-    // DOOGO CLASS 소개 · 두고 파트너스 (강사 모집) · 지원서 (공개 화면)
+    // DOOGO CLASS 소개 · 두고 파트너스 (강사 모집) · 지원서 · 패밀리 (/vod/family — 주소로만 · 검색 제외는 pagemeta) (공개 화면)
     ["vod-about", /^\/vod\/about\/?$/, "DOOGO CLASS 소개", { pub: true }],
-    ["vod-partners", /^\/vod\/partners(\/apply)?\/?$/, "두고 파트너스 · 지원서", { pub: true }],
+    ["vod-partners", /^\/vod\/(partners(\/apply)?|family)\/?$/, "두고 파트너스 · 지원서 · 패밀리", { pub: true }],
     // 스토어 홈 (대표 주소 / · /vod — 공개 화면)
     ["vod-home", /^\/(vod\/?)?$/, "스토어 홈", { pub: true }],
     // 클래스 상세 (공개 화면 — 클래스마다 제목 · 설명 · 사진 미리보기)

@@ -1,8 +1,9 @@
 "use client";
-/* 패밀리 · 파트너스 (/vod/partners) — 예전 vod.js pagePartners 를 React 로 (Next.js 전환 · 스토어 공개 화면)
- *  · 2026-11-14: 위에 탭 두 개 — 왼쪽 ‘파트너스’(기본 · 강사 입점 = 예전 두고 파트너스 소개) · 오른쪽 ‘패밀리’(?tab=family · 온드미디어팀 + 두잉고 세일즈팀 → FamilyTab.jsx)
- *    (처음엔 패밀리가 왼쪽 · 기본이었는데 같은 날 대표님 요청으로 파트너스가 먼저 — 순서 · 주소는 예전 vod.js PF_TABS · pfTabOf 하나로)
- *    탭은 주소(?tab=)로 — 공유 · 뒤로 가기 그대로 · 탭을 바꾸면 새 탭의 맨 위에서 움직임과 함께 시작 (예전 wirePt 와 같게)
+/* 파트너스 (/vod/partners) · 패밀리 (/vod/family) — 예전 vod.js pagePartners · pageFamilyLp 를 React 로 (Next.js 전환 · 스토어 공개 화면)
+ *  · 2026-11-15 대표님 요청: 탭을 풀고 서로 다른 랜딩으로
+ *    파트너스 /vod/partners = 강사 입점 랜딩 (연한 분홍) · 강사 입점 소개서 버튼은 없애고, 지원서를 보내면 지원자 이메일로 (서버 ptmail.js)
+ *    패밀리   /vod/family   = 온드미디어팀 + 두잉고 세일즈팀 (FamilyTab.jsx) — 수강생도 보는 스토어라 메뉴 · 바닥 · 사이트맵에 없고 주소로만 (noindex)
+ *    예전 주소 /vod/partners?tab=family 는 /vod/family 로 바꿔요 (예전 vod.js 와 같게)
  *  · 글 · 그림은 예전 화면이 그린 모양 그대로 옮겼어요 (예전 화면 출력을 JSX 로 바꿔서 — 틀린 글자가 없게)
  *  · 움직이는 곳만 React: 강사 카드 · 분야 줄 · 대표 클래스 그림 · 이번 달 · 열 수 있는 클래스 종류 · 카카오 문의 주소
  *  · 오른쪽 아래 지원 상자는 첫 화면 · 마지막 안내 · 바닥이 안 보일 때만 · 자주 묻는 질문은 하나만 열려요 (예전 wirePt · ptKit.jsx)
@@ -18,12 +19,8 @@ import Family from "./FamilyTab.jsx";
 import { jump, faqOne, useFloat } from "./ptKit.jsx";
 
 const TITLE = "DOOGO CLASS — 돈 되는 클래스";
-/** 위 탭 줄 (예전 pfTabs 와 같은 모양) — 머리띠 바로 아래에 붙어서 따라와요 */
-function PfTabs({ on }) {
-  return <nav className="pf-tabs" aria-label="패밀리 · 파트너스"><div className="vd-wrap pf-tabs-in">{VOD().PF_TABS.map((t) => <a key={t[0]} className={"pf-tab" + (t[0] === on ? " on" : "")} href={t[1]} data-pf-tab={t[0]} aria-current={t[0] === on ? "page" : undefined}><span className="pf-tab-ic"><Icon n={t[2]} c="sm" /></span><span className="pf-tab-tx"><b>{t[3]}</b><small>{t[4]}</small></span></a>)}</div></nav>;
-}
-/** 강사 입점 소개서 (DocSend) 새 창 버튼 — 예전 ptDeck */
-const Deck = ({ cls }) => <a className={cls} href={VOD().PT_DECK} target="_blank" rel="noopener"><Icon n="file" c="sm" /><span>강사 입점 소개서 보기</span><Icon n="arrowUpRight" c="xs" /></a>;
+/** 소개서 안내 한 줄 (진행 과정 아래 · 예전 ptDeckNote) — 소개서는 지원서를 보내면 메일로 */
+const DeckNote = () => <p className="pt-deck-note" data-rv=""><Icon n="mail" c="xs" /><span dangerouslySetInnerHTML={{ __html: VOD().PT_DECK_TX }} /></p>;
 /** 흐르는 분야 줄 (예전 ptCatRows 의 한 줄) — 10개가 넘게 이어 붙여 두 번 */
 function CatRow({ list, rev }) {
   const X = VOD();
@@ -31,25 +28,28 @@ function CatRow({ list, rev }) {
   return <div className={"vd-chiprow pt-catrow" + (rev ? " rev" : "")} aria-hidden="true"><div className="vd-chipmq" style={{ "--dur": a.length * 4 + "s" }}>{a.concat(a).map((c, i) => <span key={i} className="pt-cat">{X.MG_IMG[c.key] ? <img src={X.tileImg(c.key)} alt="" loading="lazy" /> : <Icon n={c.icon || "layers"} c="xs" />}{c.label}</span>)}</div></div>;
 }
 
-/** /vod/partners (파트너스 탭 · 기본) · /vod/partners?tab=family (패밀리 탭) · /vod/partners/apply (지원서) */
+/** /vod/partners (파트너스 · 강사 입점) · /vod/partners/apply (지원서) · /vod/family (패밀리 · 주소로만) */
 export default function PartnersPage({ n, moved }) {
-  const r = storeRoute(), apply = r.path[1] === "apply", tab = VOD().pfTabOf(r.qs);
-  // 탭만 바뀌면(주소 ?tab= — 같은 화면이라 moved 가 아님) 이번 그리기도 ‘처음 그림’처럼 움직여요
-  const prev = useRef(tab), tabMoved = !apply && prev.current !== tab;
-  useMotion(n, moved || tabMoved);
+  let r = storeRoute();
+  // 예전 패밀리 탭 주소(/vod/partners?tab=family)는 /vod/family 로 (기록 없이 주소만 바꾸고 그대로 패밀리를 그려요)
+  if (r.path[0] === "partners" && !r.path[1] && VOD().pfTabOf(r.qs) === "family") { window.ROUTE.replace(VOD().PF_FAMILY); r = storeRoute(); }
+  const apply = r.path[0] === "partners" && r.path[1] === "apply", fam = r.path[0] === "family", key = apply ? "apply" : fam ? "family" : "partners";
+  // 파트너스 ↔ 패밀리는 같은 React 화면이라 moved 가 아닐 수 있어요 — 바뀌면 이번 그리기도 ‘처음 그림’처럼 움직이고 맨 위에서 시작
+  const prev = useRef(key), keyMoved = prev.current !== key;
+  useMotion(n, moved || keyMoved);
   useEffect(() => {
     document.title = TITLE;
     if (window.applyStudentTheme) window.applyStudentTheme(null);
     try { sessionStorage.setItem("dc:last", window.ROUTE.hash); } catch (e) { /* 기억만 못 해요 */ }
     if (moved) window.scrollTo(0, 0);
   }, [n, moved]);
-  // 패밀리 ↔ 파트너스 탭을 바꾸면 새 탭의 맨 위에서 시작
-  useEffect(() => { if (prev.current !== tab) { prev.current = tab; window.scrollTo(0, 0); } }, [tab]);
+  useEffect(() => { if (prev.current !== key) { prev.current = key; window.scrollTo(0, 0); } }, [key]);
   if (apply) return <Shell nav="partners" tab="" cls="vd-pt-page vd-pt-gf" n={n}><PartnerApply /></Shell>;
-  return <Shell nav="partners" tab="" cls="vd-pt-page" n={n}><div className={"pt pt-" + tab}><PfTabs on={tab} />{tab === "partners" ? <Partners /> : <Family />}</div></Shell>;
+  if (fam) return <Shell nav="family" tab="" cls="vd-pt-page" n={n}><div className="pt pt-family"><Family /></div></Shell>;
+  return <Shell nav="partners" tab="" cls="vd-pt-page" n={n}><div className="pt pt-partners"><Partners /></div></Shell>;
 }
 
-/** 파트너스 탭 (강사 입점) — 예전 ptBody */
+/** 파트너스 (강사 입점) — 예전 ptBody */
 function Partners() {
   const X = VOD(), { ts, cs, p0, kinds } = X.partnersView();
   const phT = (t) => t.ph || X.insPhoto(t.iid), vcTx = (t) => t.tag || ((t.ps || [])[0] || {}).title || "";
@@ -227,7 +227,8 @@ function Partners() {
               </li>
               <li><span className="pt-fl-n">05</span><span className="pt-fl-ic"><Icon n="store" c="sm" /></span><b>오픈 · 판매</b><p>스토어에 오픈하고 알려요. 판매 · 정산은 강사센터에서 바로 확인해요.</p></li>
             </ol>
-            <div className="pt-flow-cta" data-rv=""><a className="vd-btn vd-btn-p vd-btn-xl" href="#/vod/partners/apply">지원서 쓰러 가기<Icon n="arrowRight" c="sm" /></a><Deck cls="vd-btn vd-btn-xl pt-deck-o" /></div>
+            <div className="pt-flow-cta" data-rv=""><a className="vd-btn vd-btn-p vd-btn-xl" href="#/vod/partners/apply">지원서 쓰러 가기<Icon n="arrowRight" c="sm" /></a></div>
+            <DeckNote />
           </div>
         </section>
         <section className="pt-faqs" id="pt-faq">
@@ -272,7 +273,6 @@ function Partners() {
             <h2 data-rv="">노하우는 이미 충분해요.<br />{"이제 "}<em>클래스</em>로 만들 차례예요.</h2>
             <div className="pt-end-btns" data-rv="">
               <a className="vd-btn vd-btn-p vd-btn-xl" href="#/vod/partners/apply">두고 파트너스 지원하기<Icon n="arrowRight" c="sm" /></a>
-              <Deck cls="vd-btn vd-btn-xl pt-end-deck" />
             </div>
           </div>
         </section>

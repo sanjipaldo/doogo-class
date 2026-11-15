@@ -17,15 +17,11 @@ async function info() {
   const x = s.bank && s.account ? s : bl.bank && bl.account ? bl : null;
   return x ? { bank: String(x.bank).slice(0, 20), account: String(x.account).slice(0, 40), holder: String(x.holder || s.holder || bl.holder || "").slice(0, 30), days: Math.min(14, Math.max(1, Number(s.payDays) || 3)) } : null;
 }
-/** 새 무통장 주문을 받는지 — 마스터 › 정산 · 입금 설정 ‘무통장 입금 받기’(settings.bankMode · 2026-11-11 · 결제 화면 vod.js bankOpen 과 같은 규칙)
- *  auto(기본): 토스페이먼츠 라이브 키가 들어가면 받지 않아요 (가상계좌가 대신) · on: 늘 받기 · off: 받지 않기
+/** 새 무통장 주문을 받는지 (결제 화면 vod.js bankOpen 과 같은 규칙)
+ *  2026-11-15 대표님 요청: 무통장 입금은 받지 않아요 — 결제는 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌(토스페이먼츠)만.
+ *  마스터 설정 ‘무통장 입금 받기’도 없앴어요 · 예전 ‘자동’(토스 라이브 키 전엔 받기)도 이제 닫혀요. settings.bankMode === "on" 일 때만 열려요(화면에 켜는 곳 없음 · 일회성 작업이 운영의 예전 "on" 을 지워요)
  *  이미 들어온 무통장 주문(입금 확인 · 입금 전 취소 · 환불 송금)은 이 값과 상관없이 처리돼요 */
-function openOf(s) {
-  const m = s && s.bankMode;
-  if (m === "on" || m === "off") return m === "on";
-  const T = require("./toss");
-  return !(T.on() && !T.testKey());
-}
+function openOf(s) { return !!s && s.bankMode === "on"; }
 async function open() { const r = await store.getDoc("meta"); return openOf((((r && r.v) || {}).vod || {}).settings || {}); }
 /** 이름 비교용: 띄어쓰기 · 괄호 · 점 빼고 소문자 (은행 앱마다 ‘홍길동’ · ‘홍 길동’ · ‘(주)두고’ 처럼 달라서) */
 const nameKey = (x) => String(x || "").replace(/[\s()（）[\].,·_-]/g, "").toLowerCase();

@@ -43,7 +43,8 @@ export function MasterPartners({ only }) {
       <Isl html={A.inqTrack(x)} />
       <dl className="a-inq-info"><div><dt>이메일</dt><dd><a href={"mailto:" + (x.email || "")}>{x.email}</a></dd></div><div><dt>연락처</dt><dd><a href={"tel:" + String(x.phone || "").replace(/[^0-9+]/g, "")}>{x.phone}</a></dd></div>
         <div><dt>강의 · 활동하는 곳</dt><dd>{String(x.where || "").replace(/^\[[^\]]*\]\s*/, "") || "-"}</dd></div><div><dt>대표 채널 · 포트폴리오</dt><dd><Isl html={A.inqLink(x.link)} /></dd></div>
-        {x.ref || x.byPartner ? <div><dt>추천</dt><dd>{(x.ref ? "추천 코드 " + x.ref : "") + (x.byPartner ? (x.ref ? " · " : "") + "패밀리가 직접 추천" : "")}</dd></div> : null}</dl>
+        {x.ref || x.byPartner ? <div><dt>추천</dt><dd>{(x.ref ? "추천 코드 " + x.ref : "") + (x.byPartner ? (x.ref ? " · " : "") + "패밀리가 직접 추천" : "")}</dd></div> : null}
+        {A.inqDeckTx(x) ? <div><dt>제안서 메일</dt><dd className={x.deckMail.ok ? "a-inq-mail-ok" : "a-inq-mail-no"}>{A.inqDeckTx(x)}</dd></div> : null}</dl>
       <div className="a-inq-block"><b>어떤 강의인가요</b><p>{x.course}</p></div>
       {x.form ? <div className="a-inq-block a-inq-pt"><b><Icon n="handshake" c="xs" />두고 파트너스 지원서</b><dl className="a-inq-info">{A.inqFormRows(x.form).map((rr, i) => <div key={i} className={rr[2] ? "wide" : undefined}><dt>{rr[0]}</dt><dd><Isl html={rr[1]} /></dd></div>)}</dl></div> : null}
       {x.message ? <div className="a-inq-block"><b>남긴 말</b><p>{x.message}</p></div> : null}

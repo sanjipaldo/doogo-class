@@ -2545,6 +2545,13 @@
     const fall = () => { if (ta) { ta.focus(); ta.select(); toast("내용을 골라 뒀어요. 길게 눌러 복사해 주세요."); } else toast("복사하지 못했어요.", "warn"); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast(msg), fall); else fall();
   }
+  /** 강사 입점 제안서 메일 (2026-11-15 · 서버 ptmail.js 가 지원서를 받을 때 지원자에게 보냄) → 지원서 카드 한 줄 글 (없으면 "") */
+  const inqDeckTx = (x) => {
+    const d = x && x.deckMail;
+    if (!d) return "";
+    if (d.ok) return "보냄 · " + fmtStamp(d.at);
+    return "못 보냄 · " + (d.why === "off" ? "메일 연결 전" : d.why === "timeout" ? "응답 늦음" : "발송 오류") + " — 소개서를 직접 보내 주세요";
+  };
   /** 두고 파트너스 지원서 칸 (form) → [이름, 화면 HTML] */
   const inqLink = (u) => (/^https?:\/\//i.test(u || "") ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(u) + "</a>" : esc(u || "-"));
   const inqFormRows = (F) => (F ? [["활동명", esc(F.nick || "")], ["연락받기 편한 시간", esc(F.ctime || "")], ["강의 분야", esc(F.cat || "")], ["열고 싶은 클래스", esc((F.kinds || []).join(", "))], ["클래스 주제", esc(F.topic || ""), 1], ["수강 대상", esc(F.target || ""), 1], ["강사 소개 · 이력", esc(F.career || ""), 1], ["직접 낸 결과", esc(F.result || ""), 1], ["커리큘럼 초안", esc(F.curri || ""), 1], ["강의 경험", esc(F.exp || "")], ["강의 자료 준비", esc(F.ready || "")], ["촬영 방식", esc(F.film || "")], ["원하는 오픈 시기", esc(F.when || "")], ["희망 판매가", esc(F.price || "")], ["채널 규모", esc(F.reach || "")], ["다른 주소", F.link2 ? inqLink(F.link2) : ""], ["알게 된 곳", esc(F.from || "")]].filter((r) => r[1]) : []);
@@ -2651,7 +2658,8 @@
         inqTrack(x) +
         '<dl class="a-inq-info"><div><dt>이메일</dt><dd><a href="mailto:' + esc(x.email) + '">' + esc(x.email) + "</a></dd></div><div><dt>연락처</dt><dd><a href=\"tel:" + esc(String(x.phone || "").replace(/[^0-9+]/g, "")) + '">' + esc(x.phone) + "</a></dd></div>" +
           "<div><dt>강의 · 활동하는 곳</dt><dd>" + esc(String(x.where || "").replace(/^\[[^\]]*\]\s*/, "") || "-") + "</dd></div><div><dt>대표 채널 · 포트폴리오</dt><dd>" + link(x.link) + "</dd></div>" +
-          (x.ref || x.byPartner ? "<div><dt>추천</dt><dd>" + (x.ref ? "추천 코드 " + esc(x.ref) : "") + (x.byPartner ? (x.ref ? " · " : "") + "패밀리가 직접 추천" : "") + "</dd></div>" : "") + "</dl>" +
+          (x.ref || x.byPartner ? "<div><dt>추천</dt><dd>" + (x.ref ? "추천 코드 " + esc(x.ref) : "") + (x.byPartner ? (x.ref ? " · " : "") + "패밀리가 직접 추천" : "") + "</dd></div>" : "") +
+          (inqDeckTx(x) ? '<div><dt>제안서 메일</dt><dd class="' + (x.deckMail.ok ? "a-inq-mail-ok" : "a-inq-mail-no") + '">' + esc(inqDeckTx(x)) + "</dd></div>" : "") + "</dl>" +
         '<div class="a-inq-block"><b>어떤 강의인가요</b><p>' + esc(x.course) + "</p></div>" +
         (x.form ? '<div class="a-inq-block a-inq-pt"><b>' + icon("handshake", "xs") + "두고 파트너스 지원서</b><dl class=\"a-inq-info\">" + inqFormRows(x.form).map((r) => "<div" + (r[2] ? ' class="wide"' : "") + "><dt>" + r[0] + "</dt><dd>" + r[1] + "</dd></div>").join("") + "</dl></div>" : "") +
         (x.message ? '<div class="a-inq-block"><b>남긴 말</b><p>' + esc(x.message) + "</p></div>" : "") +
@@ -3509,7 +3517,7 @@
   /* 무통장 입금 — 정식 서버에서는 입금 확인 · 취소를 서버가 해요 (확인하는 순간 회원 수강이 열려요) */
   const vdSrv = () => !!(DB.remote && DB.remote.on);
   const vdDep = (o) => o.depositor || (o.buyer && o.buyer.name) || (vdMember(o.mid) || {}).name || "";
-  /** 무통장 입금 받기 (settings.bankMode) — auto(기본 · 토스 라이브 키가 들어가면 받지 않아요) · on · off · 결제 화면 vod.js bankOpen · 서버 _lib/bank.js open 이 같은 값을 봐요 */
+  /** 무통장 입금 받기 (settings.bankMode) — 2026-11-15 부터 화면 스위치 없음 · "on" 일 때만 열려요(결제 화면 vod.js bankOpen · 서버 _lib/bank.js openOf) · 아래 목록은 예전 값 읽기용 */
   const VD_BANK_MODES = [["auto", "자동 — 토스페이먼츠 라이브 키가 들어가면 받지 않아요"], ["on", "늘 받기"], ["off", "받지 않기"]];
   const vdBankMode = (s) => (s && (s.bankMode === "on" || s.bankMode === "off") ? s.bankMode : "auto");
   const vdGrpAmt = (o) => o.amount + VD().orders.filter((x) => x.grp === o.no && x.status === o.status).reduce((a, x) => a + (Number(x.amount) || 0), 0);
@@ -5010,7 +5018,8 @@
             '<div class="a-field"><label for="vda-adsp">광고비 강사 분담 (%)</label><input class="a-input" id="vda-adsp" name="adSplit" type="number" min="0" max="100" value="' + esc(VX().adSplitOf()) + '"><small class="a-muted">기본 50 · 달마다 적은 광고비 중 강사 몫 (VOD 매출 · 주문 › 정산 비율 · 광고비)</small></div></div>' +
           '<div class="a-form-row"><div class="a-field"><label for="vda-bank">무통장 은행</label><input class="a-input" id="vda-bank" name="bank" value="' + esc(s.bank || "") + '" maxlength="20" placeholder="' + esc(b.bank || "비우면 기수 입금 계좌") + '"></div><div class="a-field"><label for="vda-holder">예금주</label><input class="a-input" id="vda-holder" name="holder" value="' + esc(s.holder || "") + '" maxlength="30" placeholder="' + esc(b.holder || "(주)두고홀딩스") + '"></div></div>' +
           '<div class="a-field"><label for="vda-account">계좌번호</label><input class="a-input" id="vda-account" name="account" value="' + esc(s.account || "") + '" maxlength="40" placeholder="' + esc(b.account || "비우면 기수 입금 계좌") + '"></div>' +
-          '<div class="a-field"><label for="vda-bankmode">무통장 입금 받기</label><select class="a-input" id="vda-bankmode" name="bankMode">' + VD_BANK_MODES.map((x) => '<option value="' + x[0] + '"' + (vdBankMode(s) === x[0] ? " selected" : "") + ">" + x[1] + "</option>").join("") + '</select><small class="a-muted">받지 않아도 이미 들어온 무통장 주문(입금 대기 · 환불 송금 대기)은 그대로 처리돼요 · 새 결제는 가상계좌로 받아요 (입금 확인 · 현금영수증 · 환불을 토스페이먼츠가 해요)</small></div>' +
+          // 무통장 입금 받기 스위치는 없앴어요 (2026-11-15 대표님 요청 — 무통장 · 퀵계좌이체 없이 네 가지만)
+          '<div class="a-field"><label>무통장 입금</label><p class="a-muted p-small">받지 않아요 — 결제는 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌(토스페이먼츠)로만 받아요. 이미 들어온 무통장 주문(입금 대기 · 환불 송금 대기)은 그대로 처리돼요.</p></div>' +
           '<label class="a-check vda-demo"><input type="checkbox" name="demoLogin"' + (s.demoLogin === false ? "" : " checked") + '><span><b>체험 계정 쓰기</b> · vod@gmail.com / vod <small class="a-muted">로그인 화면에 안내가 보이고 누구나 이 계정으로 들어와 산 강의 6개를 볼 수 있어요. 정식 오픈 전에 끄면 안내가 사라지고 로그인이 막혀요.</small></span></label>' +
           '<div class="a-form-row"><div class="a-field"><label for="vda-days">입금 기한 (일)</label><input class="a-input" id="vda-days" name="payDays" type="number" min="1" max="14" value="' + esc(s.payDays || 3) + '"></div><div class="a-field"><label for="vda-rp">후기 작성 포인트 (P)</label><input class="a-input" id="vda-rp" name="reviewPoint" type="number" min="0" max="100000" step="100" value="' + esc(s.reviewPoint == null ? 500 : s.reviewPoint) + '"><small class="a-muted">수강 후기를 쓴 회원에게 주는 포인트 · 1P = 1원</small></div></div>' +
           '<h3 class="vda-set-h">수강권 · 부가 상품 기본값 <small>클래스에서 비워 둔 칸은 이 값을 써요</small></h3>' +
@@ -7071,7 +7080,7 @@
         (refd.length ? '<div class="a-table-wrap"><table class="a-table"><thead><tr><th>환불일</th><th>회원</th><th>클래스</th><th class="right">결제 · 환불</th><th>방식</th><th>결제 취소 · 송금</th><th>강사 정산 반영</th><th>사유 · 처리</th></tr></thead><tbody>' + refd.slice(0, 50).map((o) => { const k = RF_KIND[rfKindOf(o)], st0 = vdRfSettle(o); return '<tr><td class="vda-nw">' + esc(o.refundedAt ? DB.date.toStr(new Date(o.refundedAt)) : "-") + '</td><td class="vda-nw"><a class="a-link" href="#/center/master/vod-crm/' + esc(o.mid) + '">' + esc(nm(o)) + "</a></td><td>" + esc(o.title) + '<small class="a-memo num">' + esc(o.no) + '</small></td><td class="right num">' + won(o.amount) + '<small class="a-memo"><b>' + won(o.refundAmount != null ? o.refundAmount : o.amount) + " 환불</b></small></td><td>" + pill(k[0], k[1]) + "</td><td>" + rfPg(o) + "</td><td><small>" + esc(st0.t) + '</small><small class="a-memo">' + esc(vdKeyName(vdKey(o))) + " 정산 - " + won(st0.ins) + "</small></td><td>" + esc(o.refundWhy || "-") + '<small class="a-memo">' + esc(o.refundBy || "") + "</small></td></tr>"; }).join("") + "</tbody></table></div>" : emptyBox("refresh", "아직 환불 내역이 없어요.")) + "</section>" +
       '<section class="a-card crm-card rf-pg"><div class="a-card-head"><h2>결제(PG) 연결</h2>' + (pgOn ? pill("토스페이먼츠 연결됨", "ok") : pill("시안 · 연결 전", "warn")) + "</div>" +
         "<p>" + (pgOn ? "회원 바로 취소 · 마스터 환불을 누르면 토스페이먼츠로 결제가 자동 취소돼요 (가상계좌는 적은 환불 계좌로 · 영업일 2일). 부분 환불은 그 금액만큼만 취소해요." : "지금은 시안이라 환불 · 취소 기록만 남고 실제 결제는 취소되지 않아요. 정식 서버에 토스페이먼츠 키를 넣으면 같은 버튼이 결제를 자동으로 취소해요.") + "</p>" +
-        (pgOn && X.payOpts ? '<p class="a-muted p-small">결제 화면에 열린 결제수단: <b>' + esc(X.payOpts().filter((z) => !z[3]).map((z) => z[2]).join(" · ")) + "</b><br>토스 결제수단은 Vercel 환경 변수 TOSS_METHODS 로 바꿔요 (예: card,transfer,vbank,naver,kakao — 네이버페이 · 카카오페이는 토스페이먼츠에서 승인된 뒤에 넣어요).</p>" : "") + "</section>";
+        (pgOn && X.payOpts ? '<p class="a-muted p-small">결제 화면에 열린 결제수단: <b>' + esc(X.payOpts().filter((z) => !z[3]).map((z) => z[2]).join(" · ")) + "</b><br>토스 결제수단은 Vercel 환경 변수 TOSS_METHODS 로 바꿔요 (card,vbank,naver,kakao — 네이버페이 · 카카오페이는 토스페이먼츠에서 승인된 뒤에 넣어요 · 퀵계좌이체 · 무통장은 받지 않아요).</p>" : "") + "</section>";
   }
   function saveVodRfPolicy() {
     const f = document.getElementById("vda-rf-form"); if (!f) return;

@@ -274,10 +274,20 @@ async function sitemap() {
   }
 }
 
+/* ---------- 검색에서 빼는 공개 화면 ---------- */
+// 패밀리(/vod/family · 온드미디어팀 · 두잉고 세일즈팀)는 수강생도 보는 스토어에서 숨긴 화면이라 주소를 아는 사람만 — 검색 · 사이트맵에서 빼요 (2026-11-15)
+const HIDDEN = /^\/vod\/family\/?$/;
+function noindex(html) {
+  const tag = '<meta name="robots" content="noindex, nofollow" />';
+  const s = String(html);
+  return /<meta name="robots" content="[^"]*"\s*\/?>/.test(s) ? s.replace(/<meta name="robots" content="[^"]*"\s*\/?>/, tag) : s.replace("</head>", "  " + tag + "\n</head>");
+}
+
 /** 주소 → 미리보기 정보를 넣은 html (해당 없음 · 꺼짐 · 오류면 받은 html 그대로) */
 async function render(pathname, html) {
   try {
     const p = String(pathname || "");
+    if (HIDDEN.test(p)) return noindex(html);
     // 스토어 홈 · 두잉고 소개 · 약관 (끝 빗금 하나는 같은 주소로)
     const one = /^\/(doinggo|terms|privacy|refund)?\/?$/.exec(p);
     if (one) {
@@ -309,4 +319,4 @@ async function render(pathname, html) {
   }
 }
 
-module.exports = { render, vodDetail, landingPage, freePage, storeHome, doinggoPage, legalPage, legalText, sitemap, sitemapXml, sitemapBase, shown, imageOf, whenTxt, joinUniq, SWITCHES, LEGAL, ORIGIN };
+module.exports = { render, noindex, HIDDEN, vodDetail, landingPage, freePage, storeHome, doinggoPage, legalPage, legalText, sitemap, sitemapXml, sitemapBase, shown, imageOf, whenTxt, joinUniq, SWITCHES, LEGAL, ORIGIN };

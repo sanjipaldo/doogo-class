@@ -193,8 +193,11 @@ async function prepare(res, m, b) {
   const orders = await V.ordersOf(m.id), q = await V.quote(m, b, orders);
   if (!q.ok) return fail(res, 409, q.message);
   const method = String(b.method || "card");
+  // 체험 계정(demo · 누구나 쓰는 공개 계정)의 주문은 1시간 뒤 지워져요(_lib/demoorders.js) — 그래서 토스 라이브 키(실제 돈)가 들어간 뒤로는 체험 계정의 유료 결제를 막아요
+  // (토스 시험 키 · 키 없는 시험 서버는 그대로 · 0원 · 포인트 · 쿠폰 전액 주문은 그대로 · 2026-11-15)
+  if (m.demo && q.total > 0 && toss.on() && !toss.testKey()) return fail(res, 403, "체험 계정으로는 실제 결제를 할 수 없어요. 회원가입한 뒤 결제해 주세요.");
   if (q.total > 0) {
-    if (isPgMethod(method) && !(toss.on() && toss.methods().indexOf(method) >= 0)) return fail(res, 409, toss.on() ? "이 결제수단은 아직 열리지 않았어요. 다른 결제 방법을 골라 주세요." : "카드 · 계좌이체 · 가상계좌는 PG 심사가 끝나면 열려요. 지금은 무통장 입금으로 결제해 주세요.");
+    if (isPgMethod(method) && !(toss.on() && toss.methods().indexOf(method) >= 0)) return fail(res, 409, toss.on() ? "이 결제수단은 받지 않아요. 다른 결제 방법을 골라 주세요." : "결제 준비 중이에요. 결제가 열리면 바로 알려 드릴게요.");
     if (!isPgMethod(method) && method !== "bank") return fail(res, 400, "결제 방법을 골라 주세요.");
   }
   // 무통장 입금: 마스터 ‘무통장 입금 받기’ — 자동이면 토스 라이브 키가 들어간 뒤로는 받지 않아요 (가상계좌로) · 이미 들어온 무통장 주문은 그대로 처리돼요
@@ -219,6 +222,7 @@ async function prepare(res, m, b) {
     let no = V.newNo(); const it = q.items[i];
     const ch = ["web", "ins", "ad"].indexOf(b.ch) >= 0 ? b.ch : "web";
     const o = Object.assign({ id: "", no, mid: m.id, method: q.total > 0 ? method.slice(0, 12) : q.points ? "point" : "free", status: bank ? "pending" : "ready", createdAt: at, at, paymentId, ch }, it, i ? { grp: nos[0] } : {}, buyer ? { buyer } : {}, bank ? { pg: { st: "bank" }, depositor, dueAt: at + bk.days * 864e5, bankTo: { bank: bk.bank, account: bk.account, holder: bk.holder } } : {});
+    if (m.demo) o.demo = true; // 체험 계정 주문 — 1시간 뒤 정리 (_lib/demoorders.js)
     if (i === 0 && cr) o.cashRcpt = { type: cr.type, no: crNo };
     if (i === 0 && rs) o.rs = rs;
     if (i === 0 && it.kind === "tea" && b.tea && typeof b.tea === "object") o.tea = { d1: String(b.tea.d1 || "").slice(0, 10), d2: String(b.tea.d2 || "").slice(0, 10), slot: String(b.tea.slot || "").slice(0, 30), mode: "online", topic: String(b.tea.topic || "").slice(0, 500), st: "req" };

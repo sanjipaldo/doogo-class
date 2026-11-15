@@ -1261,6 +1261,52 @@ function moonLibFiles(get, opt) {
   return { writes: { [k]: nc }, result: { attached: done, kept } };
 }
 
+/* ---------- 정식 운영 전 테스트 주문 정리 (2026-11-15 대표님 요청) ----------
+ * ① 대표님이 알려 준 테스트 주문 3건(TEST_NOS)을 낸 회원들의 주문을 모두 지워요 — 운영팀이 테스트로 낸 주문 (2026-11-16 0시 전에 만든 주문만)
+ * ② 체험 계정(회원 demo: true) 주문 전부 — 대시보드에 보이던 체험회원 0원 주문들 (앞으로는 1시간 뒤 저절로 · _lib/demoorders.js)
+ *    ①② 같이: 결제 묶음(vpay:) · 회원 주문 목록(orderNos · paidPays) · 그 주문에 쓴 쿠폰 · 포인트는 회원에게 돌려놓아요 (회원 계정 · 후기 · 다짐은 그대로)
+ * ③ 무통장 입금 받기 설정(settings.bankMode)을 지워요 — 이제 무통장 · 퀵계좌이체는 받지 않아요 (네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌만)
+ * 회원 이름 · 이메일은 저장소에 쓰지 않아요 (주문 번호로만 찾고 결과엔 이름을 가려 남겨요). 배포 직전 자동 백업(마스터 › 데이터 백업)으로 되돌릴 수 있어요 */
+const TEST_NOS = ["DC261103733435", "DC261031897485", "DC261030835011"];
+const TEST_BEFORE = Date.parse("2026-11-16T00:00:00+09:00");
+function launchOrdersClean(get, keys) {
+  const writes = {}, result = { orders: [], members: [], demo: 0, bankMode: "" };
+  const orders = keys("vo:").map((k) => [k, get(k)]).filter((x) => isObj(x[1]));
+  const noOf = (x) => x[1].no || x[0].slice(3);
+  const testMids = new Set(orders.filter((x) => TEST_NOS.indexOf(noOf(x)) >= 0).map((x) => x[1].mid).filter(Boolean));
+  const demoMids = new Set();
+  keys("vm:").forEach((k) => { const m = get(k); if (isObj(m) && m.demo === true) demoMids.add(m.id || k.slice(3)); });
+  const gone = [];
+  orders.forEach((x) => {
+    const o = x[1], t = Number(o.createdAt) || Number(o.at) || 0;
+    if (o.demo === true || demoMids.has(o.mid)) gone.push([x[0], o, "demo"]);
+    else if (testMids.has(o.mid) && t < TEST_BEFORE) gone.push([x[0], o, "test"]);
+  });
+  const goneNos = new Set(gone.map(noOf)), pays = new Set(gone.map((x) => x[1].paymentId).filter(Boolean));
+  gone.forEach((x) => { writes[x[0]] = null; if (x[2] === "demo") result.demo++; else result.orders.push(noOf(x) + " · " + (x[1].status || "") + " · " + (Number(x[1].amount) || 0) + "원"); });
+  pays.forEach((p) => { const v = get("vpay:" + p); if (isObj(v) && (v.nos || []).every((n) => goneNos.has(n) || !isObj(get("vo:" + n)))) writes["vpay:" + p] = null; });
+  const byMid = {};
+  gone.forEach((x) => { (byMid[x[1].mid] = byMid[x[1].mid] || []).push(x[1]); });
+  Object.keys(byMid).forEach((mid) => {
+    const m = get("vm:" + mid); if (!isObj(m)) return;
+    const mine = byMid[mid], nm = clone(m), used = mine.filter((o) => o.status === "paid" || o.status === "pending");
+    nm.orderNos = (nm.orderNos || []).filter((n) => !goneNos.has(n));
+    if (Array.isArray(nm.paidPays)) nm.paidPays = nm.paidPays.filter((p) => !pays.has(p));
+    let cp = 0;
+    (nm.coupons || []).forEach((c) => { if (isObj(c) && c.orderNo && goneNos.has(c.orderNo)) { c.usedAt = null; c.orderNo = ""; cp++; } });
+    const pt = used.reduce((a, o) => a + (Number(o.pointOff) || 0), 0);
+    if (pt > 0) { nm.points = (Number(nm.points) || 0) + pt; (nm.pointLog = nm.pointLog || []).push({ at: Date.now(), amt: pt, why: "테스트 주문 정리 · 포인트 돌려받음" }); }
+    writes["vm:" + mid] = nm;
+    result.members.push(maskNm(m.name) + " (" + mid + ") · 주문 " + mine.length + "건" + (cp ? " · 쿠폰 " + cp + "장 돌려줌" : "") + (pt ? " · 포인트 " + pt + "P 돌려줌" : ""));
+  });
+  const meta = get("meta");
+  if (isObj(meta) && isObj(meta.vod) && isObj(meta.vod.settings) && meta.vod.settings.bankMode != null) {
+    const nm = clone(meta); result.bankMode = String(nm.vod.settings.bankMode) + " → 지움(받지 않기)"; delete nm.vod.settings.bankMode; writes.meta = nm;
+  }
+  if (!gone.length && !writes.meta) return { writes: {}, result: { skipped: "지울 주문 없음" } };
+  return { writes, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1308,6 +1354,7 @@ const OPS = [
   { id: "2026-11-15-moon-lib-items", note: "문대표 자료 파일: 마진 계산기는 그대로 · 예전 예시 4개(건강식품 리스트 150 · 키워드 리스트 · 상세페이지 템플릿 · CS 답변 템플릿) 지우고 실전 문서 5개(공동구매 제안서 · DM 템플릿 · 판매 플랫폼 정리 · 손익분기점 계산표 · 월별 이벤트 캘린더 · 프리랜서 계약서) 글 넣기", run: moonLibItems },
   { id: "2026-11-15-moon-lib-files", note: "문대표 자료 파일 첨부: 잠근 묶음을 DC_FILES_KEY 로 열어 엑셀 · PDF 5개를 비공개 파일로 (문대표 수강생 · 운영자만 · 강사센터에서 이미 올린 자료는 그대로)", run: moonLibFiles, when: () => !!String(process.env.DC_FILES_KEY || "").trim() },
   { id: "2026-11-14-partners-tab-links", note: "패밀리 · 파트너스 한 화면: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners · 강사 모집)면 파트너스(강사) 탭 #/vod/partners?tab=partners 로 — /vod/partners 는 이제 패밀리 탭이 기본", run: partnersTabLinks },
+  { id: "2026-11-15-launch-orders-clean", note: "정식 운영 전 주문 정리: 운영팀 테스트 주문(알려 준 주문 3건을 낸 회원들의 11/16 전 주문 전부) · 체험 계정 주문 전부 지우기(쓴 쿠폰 · 포인트는 돌려줌 · 회원 계정은 그대로) · 무통장 입금 받기 설정 지우기 (Vercel 배포 때만 — 로컬 화면 테스트 DB 의 체험 계정 강의는 그대로)", run: launchOrdersClean, when: () => !!process.env.VERCEL },
 ];
 
-module.exports = { OPS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

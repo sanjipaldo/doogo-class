@@ -166,7 +166,8 @@ function Header({ nav, open }) {
       <a className="vd-logo" href="#/vod" aria-label="DOOGO CLASS 홈"><img fetchPriority="high" className="vd-logo-img" src={LOGO_SRC} alt="DOOGO CLASS" /></a><SiteSwitch on="vod" />
       <SearchForm cls="vd-search" value={r.path[0] === "search" ? r.qs.get("q") || "" : ""} />
       <div className="vd-top-r">
-        <a className={"vd-ptl vd-ic-pc" + (nav === "partners" ? " on" : "")} href="#/vod/partners">패밀리 · 파트너스{nav === "partners" ? null : <span className="vd-ptl-tip" aria-hidden="true">패밀리 · 강사 모집 중</span>}</a>
+        {/* 파트너스 지원 (탈잉 ‘튜터 지원’처럼 · 2026-11-15) — 패밀리는 수강생도 보는 스토어에서 숨겨요 (/vod/family 주소로만) */}
+        <a className={"vd-ptl vd-ic-pc" + (nav === "partners" ? " on" : "")} href="#/vod/partners">파트너스 지원{nav === "partners" ? null : <span className="vd-ptl-tip" aria-hidden="true">파트너 강사로 지원하기</span>}</a>
         <a className="vd-tl vd-ic-pc" href="#/vod/my/classes" aria-label="내 강의실" title="내 강의실"><svg className="icon sm" viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: BOOK }} /><span>내 강의실</span></a>
         <a className="vd-ic vd-ic-pc" href="#/vod/my/likes" aria-label="찜한 강의" title="찜한 강의"><Icon n="heart" c="sm" /></a>
         {m ? <button type="button" className="vd-acct" data-v="acct" aria-haspopup="dialog" aria-label={m.name + "님 내 계정 메뉴"} onClick={() => open("acct")}><span className="vd-me-av">{m.name.slice(0, 1)}</span><span className="vd-acct-n"><small>안녕하세요</small><b>{m.name}님</b></span><Icon n="chevDown" c="xs" /></button>
@@ -197,7 +198,7 @@ function Footer({ open }) {
         <nav className="vd-gf-grid" aria-label="바로가기">
           {col("클래스", [["#/vod", "돈되는 클래스"], ["#/vod/c/all?tab=vod", "VOD 강의"], X.bizOn("ebook") && ["#/vod/c/all?tab=ebook", "전자책"], X.bizOn("flive") && ["#/vod/c/all?tab=flive", "무료 LIVE"], X.bizOn("live") && ["#/vod/c/all?tab=premium", "LIVE · 오프라인 강의"], X.bizOn("free") && ["#/vod/c/all?tab=free", "무료강의"], ["#/vod/teachers", "강사진"], ["#/vod/c/soon", "오픈 예정"]].filter(Boolean))}
           {col("마이페이지", [["#/vod/my/classes", "내 강의실"], ["#/vod/my/coupons", "쿠폰"], ["#/vod/my/orders", "주문 · 결제 내역"], ["#/vod/my/account", "회원 정보 수정"]])}
-          {col("DOOGO CLASS", [["#/vod/about", "두고클래스 소개"], ["#/vod/partners?tab=family", "두고 패밀리"], ["#/vod/partners", "두고 파트너스"], ["#/doinggo", "두잉고"], ["#/center", "강사센터"]])}
+          {col("DOOGO CLASS", [["#/vod/about", "두고클래스 소개"], ["#/vod/partners", "두고 파트너스"], ["#/doinggo", "두잉고"], ["#/center", "강사센터"]])}
         </nav>
         <div className="vd-gf-help"><b>도움이 필요하신가요?</b><p>수강 · 결제 · 환불 문의를 남겨 주시면<br />영업일 기준 하루 안에 답해 드려요.</p><div className="vd-gf-hbtn"><a className="vd-btn vd-btn-p" href="#/vod/my/help">1:1 문의하기 <Icon n="arrowRight" c="xs" /></a><KakaoBtn cls="vd-btn vd-btn-kakao" label="카카오톡 상담" /></div>
           {S.phone || S.hours ? <p className="vd-gf-cs">{S.phone ? <b>{tel(S.phone)}</b> : null}{S.hours ? <small>{S.hours}</small> : null}</p> : null}</div></div>

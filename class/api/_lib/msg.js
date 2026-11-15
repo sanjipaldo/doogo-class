@@ -88,7 +88,8 @@ const alimText = (text, m, opt) => { const v = alimVars(m, opt); return String(t
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function mailHtml(text, ad) {
   return '<div style="font-family:Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;font-size:15px;line-height:1.7;color:#222;max-width:560px">' +
-    escHtml(text).replace(/\n/g, "<br>") +
+    // text 가 { html } 이면 이미 만든 HTML 을 그대로 (지원서 접수 메일처럼 버튼 · 목록이 있는 정보성 메일)
+    (text && typeof text === "object" && text.html != null ? String(text.html) : escHtml(text).replace(/\n/g, "<br>")) +
     '<hr style="border:0;border-top:1px solid #eee;margin:24px 0"><p style="font-size:12px;color:#888">DOOGO CLASS · 주식회사 두고홀딩스 · doogobiz@gmail.com' +
     (ad ? '<br>이 메일은 소식 받기에 동의한 회원에게 보내는 광고성 메일이에요. 더 받지 않으려면 DOOGO CLASS 마이페이지 › 회원 정보 수정에서 소식 받기를 끄거나 이 메일에 ‘수신 거부’라고 답장해 주세요.' : "") + "</p></div>";
 }
@@ -97,6 +98,14 @@ async function resend(mails) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { const e = new Error((j && (j.message || j.name)) || "resend " + r.status); e.status = r.status; throw e; }
   return { ids: ((j && j.data) || []).map((x) => x.id) };
+}
+/** 정보성 메일 한 통 (광고 아님 — 지원서 접수 안내처럼 그 사람이 요청한 일의 안내) · 광고 표시 · 수신 거부 문구 없이
+ *  m: { to, subject, text, html? } → { ok: true, id } · 이메일이 연결 안 됐으면 { ok: false, why: "off" } (보내지 않아요) */
+async function mail1(m) {
+  if (!emailOn()) return { ok: false, why: "off" };
+  const x = { from: env().MAIL_FROM, to: [m.to], subject: m.subject, html: mailHtml(m.html != null ? { html: m.html } : m.text, false), text: m.text };
+  const r = await resend([x]);
+  return { ok: true, id: r.ids[0] || "" };
 }
 
 /** 보내기 — members: 회원 문서 배열 · opt: { text, subject, templateId, at, optout, targeting } → { sent, failed, skip:{이유:명}, group } */
@@ -127,4 +136,4 @@ async function send(ch, members, opt) {
   return { ok: true, sent, failed, skip, group, to: list.map((m) => m.id) };
 }
 
-module.exports = { status, on, send, why, textFor, brandClosed, smsNight, kstHour };
+module.exports = { status, on, send, mail1, why, textFor, brandClosed, smsNight, kstHour };

@@ -6,6 +6,7 @@ const store = require("./_lib/store");
 const auth = require("./_lib/auth");
 const access = require("./_lib/access");
 const init = require("./_lib/init");
+const DEMO = require("./_lib/demoorders");
 
 module.exports = handler(["GET"], async (req, res) => {
   const q = query(req);
@@ -14,6 +15,8 @@ module.exports = handler(["GET"], async (req, res) => {
   const ids = await auth.identify(req);
   const now = Date.now();
   const pre = access.prefixesFor(ids);
+  // 마스터 · 운영자처럼 모든 주문을 보는 사람이 불러올 때: 1시간 지난 체험 계정 주문을 먼저 정리 (5분에 한 번까지 · 2026-11-15 · _lib/demoorders.js)
+  if (!pre || pre.indexOf("vo:%") >= 0) await DEMO.sweep({ now }).catch((e) => console.error("[demo-orders]", e && e.message));
   const rows = await store.listDocs({ since, prefixes: pre ? pre.concat("sys") : null });
   const docs = [];
   let epoch = null;

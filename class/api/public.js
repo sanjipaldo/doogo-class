@@ -4,6 +4,7 @@
  *  { action: "partner-apply", name, email, phone, where, course, link, message, agree, source?, form?, ref? }
  *                                                       강사 입점 문의 (마스터 → 입점 문의에서 관리)
  *                                                       source "partners" = 두고클래스 ‘두고 파트너스’ 지원서 (form = 지원서 칸들)
+ *                                                       → 지원자 이메일로 강사 입점 제안서 메일 (ptmail.js) · 답 { ok, mailed }
  *  { action: "track-apply", want: "live"|"vod", name, email, phone, where, course, link, message, agree, form? }
  *                                                       강사센터의 잠긴 영역(LIVE 두잉고 · DOOGO CLASS) 입점 신청 — 로그인한 강사 본인만 (2026-11)
  *  { action: "vdur", urls: [...] }                     강의 영상(비메오 · 유튜브)의 실제 길이(초) */
@@ -12,6 +13,7 @@ const crypto = require("crypto");
 const { send, body, handler, ip } = require("./_lib/http");
 const store = require("./_lib/store");
 const auth = require("./_lib/auth");
+const ptmail = require("./_lib/ptmail");
 
 const LIMIT = 15;
 const kstToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -88,7 +90,15 @@ async function partnerApply(req, res, b) {
   const doc = Object.assign({ id: uid("inq"), at: Date.now(), status: "new", memo: "" }, a);
   await store.writeDoc("inq:" + doc.id, doc, null);
   await store.rlFail([k]);
-  send(res, 200, { ok: true });
+  // 두고 파트너스 지원서면 지원자 이메일로 ‘강사 입점 제안서’ 메일 (2026-11-15 · api/_lib/ptmail.js) — 접수를 먼저 저장한 뒤에 보내고,
+  // 보냈는지(deckMail)를 지원서 문서에 남겨요 (마스터 카드에 보여요) · 이메일이 연결 안 됐으면 보내지 않고 mailed: false
+  if (a.source !== "partners") return send(res, 200, { ok: true });
+  const dm = await ptmail.sendDeck({ name: a.name, email: a.email, topic: form && form.topic });
+  try {
+    const row = await store.getDoc("inq:" + doc.id);
+    if (row && row.v) await store.writeDoc("inq:" + doc.id, Object.assign({}, row.v, { deckMail: dm }), row.ver);
+  } catch (e) { /* 남기지 못해도 접수는 됐어요 */ }
+  send(res, 200, { ok: true, mailed: !!dm.ok });
 }
 
 /* 강사센터 잠긴 영역 입점 신청 (2026-11) — VOD 로 들어온 강사는 LIVE 두잉고, LIVE 로 들어온 강사는 DOOGO CLASS 가 잠겨 있어요.
