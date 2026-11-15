@@ -3481,6 +3481,15 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "화면 비교(e2e domShape)는 썸네일 판 표시(?v=)를 빼고 비교 — 예전 화면 · React 를 찍는 사이에 5분 경계를 넘어도 같게");
   }
 
+  {
+    console.log("64) 마스터 관리 영역 탭 ‘두고클래스’ · 메뉴 · 첫 화면 제목 ‘대시보드’ (2026-11-15)");
+    const ad64 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), dc64 = fs.readFileSync(path.join(ROOT, "../ui/center/MasterDc.jsx"), "utf8");
+    ok(/data-action="mtab" data-k="dc">두고클래스<\/button>/.test(ad64) && !/data-k="dc">DOOGO CLASS</.test(ad64) &&
+      /\["DOOGO CLASS 운영", \[\["master\/dc", "대시보드", "grid"\]/.test(ad64) && /return head\("대시보드", "VOD 스토어의/.test(ad64) && /<Head title="대시보드" sub="VOD 스토어의/.test(dc64) &&
+      /tab\("vod", "DOOGO CLASS"\)/.test(ad64) && /\["", "DOOGO CLASS 대시보드", "grid"\]/.test(ad64),
+      "마스터: 관리 영역 탭 ‘두잉고 · 두고클래스’ · 왼쪽 메뉴와 첫 화면 제목 ‘대시보드’ (예전 화면 = React 같은 함수 · 강사센터 탭 · 메뉴는 그대로)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

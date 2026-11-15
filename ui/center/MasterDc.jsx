@@ -21,7 +21,7 @@ export function MasterDc() {
     [alarmN, "오픈 알림 신청", "오픈 예정 클래스 알림 신청자에게 오픈 소식 · 쿠폰을 보내요", "#/center/master/vod-classes"], [coOpen, "답변 대기 1:1 코칭 질문", "강사별 코칭 질문 답변이 밀리지 않았는지 확인해요", "#/center/master/vod?tab=care"], [teaReq, "TEA TIME 일정 확정 대기", "강사가 희망 날짜를 보고 확정해야 해요", "#/center/master/vod?tab=care"], [iqOpen.length, "답변 대기 1:1 문의", "고객센터 문의에 답해 주세요", "#/center/master/vod-inquiries"], [rec, "새 두고 파트너스 지원", "패밀리 강사 지원서를 확인하고 연락해 주세요", "#/center/master/vod-recruit"], [v.products.filter((p) => p.status === "soon").length, "오픈 예정 클래스", "오픈 일정 · 알림 신청 수를 확인해요", "#/center/master/vod-classes"]];
   const Ava = ({ id }) => <span className="a-avatar">{String((M(id) || {}).name || "?").slice(0, 1)}</span>;
   return <>
-    <Head title="DOOGO CLASS 대시보드" sub="VOD 스토어의 주문 · 매출 · 회원 · 1:1 문의를 한눈에 봐요. 두잉고(강사 플랫폼) 운영은 왼쪽 위 ‘두잉고’ 탭에서 해요." right={<Store href="#/vod" label="스토어 미리보기" />} />
+    <Head title="대시보드" sub="VOD 스토어의 주문 · 매출 · 회원 · 1:1 문의를 한눈에 봐요. 두잉고(강사 플랫폼) 운영은 왼쪽 위 ‘두잉고’ 탭에서 해요." right={<Store href="#/vod" label="스토어 미리보기" />} />
     <div className="a-kpis a-kpis-5">
       <Kpi label="오늘 결제" value={todayO.length + "건"} sub={won(sum(todayO))} href="#/center/master/vod" tone={todayO.length ? "ok" : ""} />
       <Kpi label="이번 달 매출" value={won(sum(mon))} sub={"VOD " + won(byT("vod")) + " (부가 " + won(sum(mon.filter((o) => !X.isAccess(o)))) + ") · 전자책 " + won(byT("ebook")) + (byT("book") ? " · 종이책 " + won(byT("book")) : "") + " · LIVE · 오프 " + won(byT("event"))} href="#/center/master/vod-sales" />
