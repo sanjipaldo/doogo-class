@@ -151,13 +151,14 @@ function Library({ r, n }) {
   );
   else body = X.readyFirst(items).map((it, i) => {
     // 설명 글 · 첨부 파일이 있는 자료(2026-11-15)는 자료 화면에서 읽고 내려받아요 — 예전 화면과 같은 모양
-    const nA = (it.attachments || []).length, doc = X.resDoc(it), href = "#/library/" + cat + "/" + it.id, exts = X.resExts(it);
+    const nA = (it.attachments || []).length + (it.url ? 1 : 0), doc = X.resDoc(it), href = "#/library/" + cat + "/" + it.id, tag = X.resTagHtml(it);
     const action = it.tool === "calculator" ? <a className="btn btn-primary btn-sm" href="#/library/file?tool=calculator"><Icon n="calculator" c="sm" />계산기 열기</a>
       : doc ? <a className={"btn " + (nA ? "btn-primary" : "btn-tertiary") + " btn-sm"} href={href}><Icon n={nA ? "download" : "arrowRight"} c="sm" />{nA ? "자료 받기" : "자세히 보기"}</a>
-      : it.url ? <a className="btn btn-tertiary btn-sm" href={it.url} target="_blank" rel="noopener"><Icon n={cat === "ebook" ? "book" : "download"} c="sm" />{cat === "ebook" ? "열람" : "다운로드"}</a>
+      : it.url ? <a className="btn btn-tertiary btn-sm" href={it.url} target="_blank" rel="noopener"><Icon n={cat === "ebook" ? "book" : "download"} c="sm" />{cat === "ebook" ? "열람" : X.isDrive(it.url) ? "Google Drive에서 받기" : "다운로드"}</a>
         : <button className="btn btn-secondary btn-sm" data-action="not-ready" onClick={() => X.toast("자료를 준비 중이에요. 곧 알려 드릴게요.")}>준비 중</button>;
+    // 칩(파일 형식 · Google Drive · 링크)은 예전 화면과 같은 HTML (X.resTagHtml)
     return <div key={it.id || i} className={"res-item" + (doc ? " has-doc" : "")}><span className={"res-icon " + c.cls}><Icon n={it.tool ? "calculator" : c.icon} /></span><div style={{ minWidth: "0" }}>{doc ? <a className="m-title" href={href}>{it.title}</a> : <div className="m-title">{it.title}</div>}<div className="m-desc">{[it.meta, it.desc].filter(Boolean).join(" · ")}</div>
-      {exts.length ? <span className="res-exts">{exts.map((x) => <i key={x} className={"e-" + x.toLowerCase()}>{x}</i>)}{nA > 1 ? <small>파일 {nA}개</small> : null}</span> : null}</div>{action}</div>;
+      {tag ? <RawOne html={tag} /> : null}</div>{action}</div>;
   });
   // 계산기는 다시 그릴 때마다(예전 render) 그때 숫자로 새로 — n 이 바뀌면 새로 그려요
   return <div className="page">{head}<Warn />{showCalc ? <div style={{ marginTop: "14px" }}><Calculator key={n} /></div> : null}<div style={{ marginTop: "14px" }}>{body}</div></div>;

@@ -164,7 +164,19 @@
   const resReady = (it) => !!(it && (it.tool === "calculator" || it.url || resDoc(it)));
   /** 자료 파일 · 전자책 (2026-11-15): 설명 글 · 첨부 파일이 있으면 자료 화면(#/library/<분류>/<자료>)에서 읽고 내려받아요 */
   const resDoc = (it) => !!(it && !it.tool && (it.body || (it.attachments || []).length));
-  const resExts = (it) => (it.attachments || []).map((f) => extOf(f.name).toUpperCase()).filter((x, i, a) => a.indexOf(x) === i);
+  const resExts = (it) => (it.attachments || []).filter((f) => f.data).map((f) => extOf(f.name).toUpperCase()).filter((x, i, a) => a.indexOf(x) === i);
+  /** Google Drive 링크 (2026-11-15 · 대표님 요청 — 자료 파일은 구글 드라이브로): 수강생 화면에 ‘Google Drive에서 받기’ 줄로 */
+  const isDrive = (u) => /^https?:\/\/(drive|docs)\.google\.com\//i.test(String(u || ""));
+  const GD_LOGO = '<svg class="gd-logo" viewBox="0 0 87.3 78" aria-hidden="true"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0-1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>';
+  // 받을 링크: 자료의 다운로드 링크(url) + 강사센터 ‘링크 추가’로 넣은 첨부(주소만 있는 것)
+  const resLinks = (it) => (it.url ? [{ name: "", url: it.url }] : []).concat((it.attachments || []).filter((f) => !f.data && f.url));
+  /** 목록 칩: 파일 형식(XLSX · PDF …) + Google Drive · 링크 — 예전 화면 · React 같은 HTML */
+  function resTagHtml(it) {
+    const exts = resExts(it), nF = (it.attachments || []).filter((f) => f.data).length, ls = resLinks(it), gd = ls.some((l) => isDrive(l.url));
+    if (!exts.length && !ls.length) return "";
+    return '<span class="res-exts">' + exts.map((x) => '<i class="e-' + esc(x.toLowerCase()) + '">' + esc(x) + "</i>").join("") + (nF > 1 ? "<small>파일 " + nF + "개</small>" : "") +
+      (gd ? '<i class="e-gdrive">' + GD_LOGO + "Google Drive</i>" : ls.length ? '<i class="e-link">링크</i>' : "") + "</span>";
+  }
   const readyFirst = (list) => list.filter(resReady).concat(list.filter((x) => !resReady(x)));
   const resOf = (id) => (id === "lesson" ? lessonFiles() : TRACK === "vod" ? (D.resources[id] || []).filter(resOk) : D.resources[id] || []);
   function lessonFiles() {
@@ -2014,13 +2026,13 @@
           ((it.attachments || []).length ? "<span>" + icon("paperclip", "xs") + "첨부 " + it.attachments.length + "</span>" : "") + "</span></span></a>").join("") + "</div>";
     } else {
       body = readyFirst(items).map((it) => {
-        const nA = (it.attachments || []).length, doc = resDoc(it);
+        const nA = (it.attachments || []).length + (it.url ? 1 : 0), doc = resDoc(it);
         const action = it.tool === "calculator"
           ? '<a class="btn btn-primary btn-sm" href="#/library/file?tool=calculator">' + icon("calculator", "sm") + "계산기 열기</a>"
           : doc ? '<a class="btn ' + (nA ? "btn-primary" : "btn-tertiary") + ' btn-sm" href="#/library/' + cat + "/" + esc(it.id) + '">' + icon(nA ? "download" : "arrowRight", "sm") + (nA ? "자료 받기" : "자세히 보기") + "</a>"
-          : it.url ? '<a class="btn btn-tertiary btn-sm" href="' + esc(it.url) + '" target="_blank" rel="noopener">' + icon(cat === "ebook" ? "book" : "download", "sm") + (cat === "ebook" ? "열람" : "다운로드") + "</a>"
+          : it.url ? '<a class="btn btn-tertiary btn-sm" href="' + esc(it.url) + '" target="_blank" rel="noopener">' + icon(cat === "ebook" ? "book" : "download", "sm") + (cat === "ebook" ? "열람" : isDrive(it.url) ? "Google Drive에서 받기" : "다운로드") + "</a>"
           : '<button class="btn btn-secondary btn-sm" data-action="not-ready">준비 중</button>';
-        const exts = resExts(it), tag = exts.length ? '<span class="res-exts">' + exts.map((x) => '<i class="e-' + esc(x.toLowerCase()) + '">' + esc(x) + "</i>").join("") + (nA > 1 ? "<small>파일 " + nA + "개</small>" : "") + "</span>" : "";
+        const tag = resTagHtml(it);
         return '<div class="res-item' + (doc ? " has-doc" : "") + '"><span class="res-icon ' + c.cls + '">' + icon(it.tool ? "calculator" : c.icon) + '</span><div style="min-width:0">' + (doc ? '<a class="m-title" href="#/library/' + cat + "/" + esc(it.id) + '">' + esc(it.title) + "</a>" : '<div class="m-title">' + esc(it.title) + "</div>") + '<div class="m-desc">' + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</div>" + tag + "</div>" + action + "</div>";
       }).join("");
     }
@@ -2053,15 +2065,19 @@
       pager(prev ? { href: "#/library/" + c.id + "/" + prev.id, label: "이전 자료", title: prev.title } : null, next ? { href: "#/library/" + c.id + "/" + next.id, label: "다음 자료", title: next.title } : null, "#/library/" + c.id) +
       "</div>";
   }
-  // 자료 파일 · 전자책 화면 맨 위: 받을 파일(내려받기) + 바로가기 주소 — 파일이 아직 없으면 ‘곧 올라와요’
+  // 자료 파일 · 전자책 화면 맨 위 ‘받을 자료’: 올린 파일(다운로드) + Google Drive · 다운로드 링크(새 창) — 아무것도 없으면 ‘곧 올려 드릴게요’
   function resFilesTop(it) {
-    const fs = it.attachments || [];
-    return '<div class="res-dl"><p class="side-label">' + icon("download", "xs") + (fs.length ? "받을 자료 " + fs.length + "개" : "받을 자료") + "</p>" +
-      (fs.length ? '<ul class="att-list">' + fs.map((f) => { const ext = extOf(f.name).toUpperCase(), href = f.data || f.url || "#", dl = !!f.data;
-        return '<li><span class="att-ext e-' + esc(ext.toLowerCase()) + '">' + esc(ext) + '</span><span class="att-name">' + esc(f.name) + (f.size ? "<small>" + fileSize(f.size) + "</small>" : f.url ? "<small>링크</small>" : "") + "</span>" +
-          '<a class="btn ' + (dl ? "btn-primary" : "btn-tertiary") + ' btn-sm" href="' + esc(href) + '"' + (dl ? ' download="' + esc(f.name) + '"' : ' target="_blank" rel="noopener"') + ">" + icon(dl ? "download" : "arrowUpRight", "sm") + (dl ? "다운로드" : "열기") + "</a></li>"; }).join("") + "</ul>"
-        : '<p class="res-dl-none">' + icon("clock", "xs") + "파일을 곧 올려 드릴게요.</p>") +
-      (it.url ? '<a class="btn btn-tertiary btn-sm res-dl-link" href="' + esc(it.url) + '" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "바로가기</a>" : "") + "</div>";
+    const fs = (it.attachments || []).filter((f) => f.data), ls = resLinks(it), n = fs.length + ls.length;
+    const fileRow = (f) => { const ext = extOf(f.name).toUpperCase();
+      return '<li><span class="att-ext e-' + esc(ext.toLowerCase()) + '">' + esc(ext) + '</span><span class="att-name">' + esc(f.name) + (f.size ? "<small>" + fileSize(f.size) + "</small>" : "") + "</span>" +
+        '<a class="btn btn-primary btn-sm" href="' + esc(f.data) + '" download="' + esc(f.name) + '">' + icon("download", "sm") + "다운로드</a></li>"; };
+    const linkRow = (l) => isDrive(l.url)
+      ? '<li class="res-gd"><span class="gd-ic">' + GD_LOGO + '</span><span class="att-name">' + esc(l.name || "Google Drive에서 다운로드") + "<small>새 창에서 구글 드라이브가 열려요 · ‘다운로드’를 누르면 내 컴퓨터에 저장돼요</small></span>" +
+        '<a class="btn btn-primary btn-sm gd-btn" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + icon("download", "sm") + "Google Drive에서 받기</a></li>"
+      : '<li><span class="att-ext e-link">' + icon("link", "sm") + '</span><span class="att-name">' + esc(l.name || "다운로드 링크") + "<small>새 창에서 열려요</small></span>" +
+        '<a class="btn btn-primary btn-sm" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "다운로드 링크 열기</a></li>";
+    return '<div class="res-dl"><p class="side-label">' + icon("download", "xs") + (n ? "받을 자료 " + n + "개" : "받을 자료") + "</p>" +
+      (n ? '<ul class="att-list">' + ls.map(linkRow).join("") + fs.map(fileRow).join("") + "</ul>" : '<p class="res-dl-none">' + icon("clock", "xs") + "파일을 곧 올려 드릴게요.</p>") + "</div>";
   }
   // 자료실 이용 안내 팝업 + 열람자 표시(워터마크)
   function libNoticeModal() {
@@ -2929,7 +2945,7 @@
     // 지금 상태 (수강생 · 강사 · 콘텐츠 · 기수 · 진행 기록 · 버전 · 미리보기 · VOD 강의실)
     st: () => ({ me, INS, D, CO, P, TRACK, preview, previewBy, VP, botOpen, botThinking, chipTab }),
     prep, route, setVp, NAV, NAV_DEFS, navLabel, on, ML, NT, libList, LV, unreadNotices, newAnswers, newFixes,
-    lessonLong, readyFirst, resReady, resDoc, resExts, resFilesTop,
+    lessonLong, readyFirst, resReady, resDoc, resExts, resFilesTop, resTagHtml, isDrive,
     isOpen, weekStats, overallStats, nextMissionOverall, myEvents, isUnread, kindOf, kindCount, findWeek, findMission, openOf, deadlineOf, missionState, lastSub, isDone, daysUntil, greetWord,
     guideGroup, guideDoneCheck, quickList: () => DB.quickLinksOf(D).filter((l) => l.url && (/^https?:/i.test(l.url) || linkOk([l.title, l.url]))), linkOk, mainLec,
     vodList, vodPct, vodPctOf, vodNext, coachN, addPid, coachEnd, myCoachQs, vodExp, learnHref, vodMode, applyTheme,

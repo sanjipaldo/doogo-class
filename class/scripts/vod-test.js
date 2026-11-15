@@ -3265,10 +3265,14 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(/const resDoc = \(it\) => !!\(it && !it\.tool && \(it\.body \|\| \(it\.attachments \|\| \[\]\)\.length\)\);/.test(ap61) && /\(nA \? "자료 받기" : "자세히 보기"\)/.test(ap61) && /function resFilesTop\(it\)/.test(ap61) &&
       /\(docCat \? resFilesTop\(it\) : ""\)/.test(ap61) && /<RawOne html=\{X\.resFilesTop\(it\)\} \/>/.test(lb61) && /\{nA \? "자료 받기" : "자세히 보기"\}/.test(lb61) && /resDoc, resExts, resFilesTop,/.test(ap61),
       "수강생 자료 파일: 설명 · 파일이 있으면 ‘자료 받기’ → 자료 화면(맨 위 받을 자료 · 아래 설명) · 파일 형식 칩 (예전 화면 = React)");
-    ok(/COLL\["res-file"\] = \{[^\n]*\n[^\n]*\n\s*F\("attachments", "자료 파일/.test(ad61) && /F\("body", "자세한 설명/.test(ad61) && /function libDashCard\(\)/.test(ad61) && /libDashCard\(\) \+\n\s*'<div class="a-grid-2">'/.test(ad61) &&
+    ok(/COLL\["res-file"\] = \{[^\n]*\n[^\n]*\n\s*F\("url", "Google Drive 다운로드 링크", "url"/.test(ad61) && /F\("attachments", "자료 파일 더 넣기/.test(ad61) && /pill\(links\.some\(isDrive\) \? "Google Drive 연결됨" : "링크 연결됨", "ok"\)/.test(ad61) && /F\("body", "자세한 설명/.test(ad61) && /function libDashCard\(\)/.test(ad61) && /libDashCard\(\) \+\n\s*'<div class="a-grid-2">'/.test(ad61) &&
       /<Isl html=\{A\.libDashCard\(\)\} \/>/.test(db61) && /<Isl html=\{A\.resPills\(it, isVideo\)\} \/>/.test(c261) && /case "lib-go": ui\.libTab = d\.k \|\| "file"; ROUTE\.hash = "#\/center\/library";/.test(ad61) &&
       /const MAX_SRV_FILE = 3 \* 1024 \* 1024;/.test(ad61) && /scope: "content:" \+ IID\(\)/.test(ad61) && /파일을 올리는 중이에요\. 다 올라간 뒤에 저장해 주세요\./.test(ad61),
-      "강사센터: 자료 파일 = 파일 올리기(서버에선 바로 비공개 저장 · 3MB) + 자세한 설명 + 바로가기 · 대시보드 ‘자료 파일’ 카드(바로 수정) · 올리는 중엔 저장 막기 (예전 화면 = React)");
+      "강사센터: 자료 파일 = Google Drive 다운로드 링크(맨 위) + 파일 더 넣기(서버에선 바로 비공개 저장 · 3MB) + 자세한 설명 · ‘Google Drive 연결됨’ 표시 · 대시보드 ‘자료 파일’ 카드(바로 수정) · 올리는 중엔 저장 막기 (예전 화면 = React)");
+    ok(/const isDrive = \(u\) => \/\^https\?:/.test(ap61) && /const GD_LOGO = '<svg class="gd-logo"/.test(ap61) && /"Google Drive에서 받기<\/a><\/li>"/.test(ap61) && /"다운로드 링크 열기<\/a><\/li>"/.test(ap61) &&
+      /const resLinks = \(it\) => \(it\.url \? \[\{ name: "", url: it\.url \}\] : \[\]\)\.concat/.test(ap61) && /function resTagHtml\(it\)/.test(ap61) && /\{tag \? <RawOne html=\{tag\} \/> : null\}/.test(lb61) && /X\.isDrive\(it\.url\) \? "Google Drive에서 받기"/.test(lb61) &&
+      !/파일을 곧 올려 드릴게요[^;]*바로가기/.test(ap61),
+      "수강생 자료 화면: Google Drive 링크 = 드라이브 로고 + ‘Google Drive에서 받기’(새 창) · 다른 링크 = ‘다운로드 링크 열기’ · 목록 칩 ‘Google Drive’ · 링크가 있으면 ‘곧 올려 드릴게요’ 대신 받기 줄 (예전 화면 = React)");
     ok(/content:\[\\w-\]\{1,40\}\)\$\/\.test\(scope\)/.test(fa61) && /if \(\/\^content:\/\.test\(scope\) && !access\.writer\(scope, ids, false\)\) return send\(res, 403/.test(fa61),
       "파일 올리기 API: content:<강사> 범위는 그 강사 콘텐츠를 고칠 수 있는 사람만");
     // 잠근 묶음: 공개 저장소의 파일은 열쇠 없이는 못 읽어요 (PDF · 엑셀 머리가 그대로 보이지 않음)

@@ -1266,12 +1266,12 @@
       fields: [F("title", "영상 제목"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }), F("minutes", "영상 길이 (예: 31:57)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }), F("date", "올린 날", "date")] }
   };
   COLL["res-ebook"] = { name: "자료", list: (c) => c.resources.ebook, idp: "e", fields: [F("title", "자료 이름"), F("meta", "형식 (예: 전자책 · 86쪽)"), F("desc", "한 줄 설명"), F("url", "열람·다운로드 주소 (구글 드라이브 등)", "url")] };
-  // 자료 파일 (2026-11-15): 파일을 바로 올리고(수강생만 받음) · 자세한 설명 글까지 — 파일을 바꿀 땐 휴지통으로 지우고 새로 올려요
+  // 자료 파일 (2026-11-15): Google Drive 다운로드 링크(대표님 요청 — 파일은 구글 드라이브로) · 또는 파일 직접 올리기(수강생만 받음) · 자세한 설명 글
   COLL["res-file"] = { name: "자료", list: (c) => c.resources.file, idp: "f", init: () => ({ attachments: [] }),
     fields: [F("title", "자료 이름"), F("meta", "형식 (예: 엑셀 2개 · PDF)"), F("desc", "한 줄 설명 (목록에 보여요)"),
-      F("attachments", "자료 파일 (엑셀 · PDF · 워드 · 한글 등 — 수강생이 내려받아요)", "attachments"),
-      F("body", "자세한 설명 (자료 화면에 보여요 · 언제 쓰는지 · 들어 있는 것 · 활용 팁)", "textarea", { rows: 12, rich: true }),
-      F("url", "바로가기 주소 (선택 · 노션 · 구글 드라이브 등)", "url", { hint: "파일 말고 다른 곳에서 보게 하려면 적어요. 비워 두면 버튼이 안 보여요." })] };
+      F("url", "Google Drive 다운로드 링크", "url", { hint: "구글 드라이브에서 파일(또는 폴더) › 공유 › 일반 액세스를 ‘링크가 있는 모든 사용자’로 바꾼 뒤 ‘링크 복사’ → 여기에 붙여 넣어요. 수강생 화면에 ‘Google Drive에서 받기’ 버튼으로 보여요. 다른 다운로드 주소도 돼요." }),
+      F("attachments", "자료 파일 더 넣기 (선택 · 파일 직접 올리기 3MB까지 · 또는 ‘링크 추가’로 Google Drive 파일을 하나씩)", "attachments"),
+      F("body", "자세한 설명 (자료 화면에 보여요 · 언제 쓰는지 · 들어 있는 것 · 활용 팁)", "textarea", { rows: 12, rich: true })] };
   ["vod", "senior"].forEach((k) => { COLL["res-" + k] = { name: "영상", list: (c) => c.resources[k], idp: k[0], init: () => ({ body: "", attachments: [] }),
     fields: [F("title", "영상 제목 (팝업 제목)"), F("meta", "형식 (예: 기초 · 15분)"), F("desc", "한 줄 설명 (목록에 보여요)"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
       F("body", "본문 (게시판처럼 글을 쓰고, 사진은 [사진1] 자리에 들어가요)", "textarea", { rows: 14, rich: true, photos: true }), F("images", "사진 (여러 장 가능 · 첫 사진은 영상이 없을 때 썸네일)", "images"),
@@ -1905,11 +1905,21 @@
         simpleList("res-" + k, items, (it) => '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</small></div>" + resPills(it, isVideo), "아직 자료가 없어요.") + "</section>";
   }
   // 자료 상태 표시: 파일 N개 · 계산기 · 링크 · 설명만 · 준비 중 (React 화면도 같이 씀)
+  const isDrive = (u) => /^https?:\/\/(drive|docs)\.google\.com\//i.test(String(u || ""));
   function resPills(it, isVideo) {
-    const nA = (it.attachments || []).length;
+    const at = it.attachments || [], nA = at.length;
     if (isVideo) return (nA ? pill("첨부 " + nA, "info") : "") + ytBadge(it);
     if (it.tool) return pill("계산기", "info");
-    return nA ? pill("파일 " + nA + "개", "ok") + (it.url ? pill("링크", "info") : "") : it.url ? pill("링크 연결됨", "ok") : it.body ? pill("설명만 · 파일 없음", "warn") : pill("준비 중", "mute");
+    const nF = at.filter((f) => f.data).length, links = (it.url ? [it.url] : []).concat(at.filter((f) => !f.data && f.url).map((f) => f.url));
+    const lp = links.length ? pill(links.some(isDrive) ? "Google Drive 연결됨" : "링크 연결됨", "ok") : "";
+    return nF || links.length ? lp + (nF ? pill("파일 " + nF + "개", "ok") : "") : it.body ? pill("설명만 · 링크 · 파일 없음", "warn") : pill("준비 중", "mute");
+  }
+  // 대시보드 카드 작은 글: Google Drive · 다운로드 링크 N개 · 올린 파일(형식 · 개수)
+  function lib1Line(it, fs, ext) {
+    const files = fs.filter((f) => f.data), links = (it.url ? [it.url] : []).concat(fs.filter((f) => !f.data && f.url).map((f) => f.url));
+    const a = links.length ? (links.some(isDrive) ? "Google Drive 다운로드 링크" : "다운로드 링크") + (links.length > 1 ? " " + links.length + "개" : "") : "";
+    const b = files.length ? files.map((f) => esc(ext(f.name).toUpperCase())).filter((x, i, arr) => arr.indexOf(x) === i).join(" · ") + " · 파일 " + files.length + "개" : "";
+    return [a, b].filter(Boolean).join(" · ");
   }
   /** 대시보드 ‘자료 파일’ 카드 (2026-11-15): 수강생 자료실 ‘자료 파일’ 목록 그대로 · 바로 수정(파일 바꾸기 · 글 고치기) */
   function libDashCard() {
@@ -1917,11 +1927,11 @@
     const list = (C().resources || {}).file || [];
     if (!list.length) return "";
     const ext = (n) => (String(n || "").match(/\.([a-z0-9]{2,5})$/i) || [])[1] || "file";
-    return '<section class="a-card a-libdash"><div class="a-card-head"><h2>' + icon("fileSheet", "sm") + "자료 파일</h2>" + '<span class="a-muted">수강생 ‘강의 자료함 › 자료 파일’에 보이는 자료 ' + list.length + "개 · 수정을 누르면 파일 · 글을 바로 바꿔요</span>" +
+    return '<section class="a-card a-libdash"><div class="a-card-head"><h2>' + icon("fileSheet", "sm") + "자료 파일</h2>" + '<span class="a-muted">수강생 ‘강의 자료함 › 자료 파일’에 보이는 자료 ' + list.length + "개 · 수정에서 Google Drive 링크 · 글을 바로 바꿔요</span>" +
       '<button type="button" class="a-link" data-action="lib-go" data-k="file">강의 자료함 ' + icon("arrowRight", "xs") + "</button></div>" +
       '<ul class="a-items">' + list.map((it) => { const fs = it.attachments || [];
         return '<li><span class="a-lib-ic">' + icon(it.tool ? "calculator" : "fileSheet", "sm") + '</span><div class="a-item-main"><b>' + esc(it.title) + "</b><small>" +
-          (it.tool ? "바로 쓰는 계산기" : fs.length ? fs.map((f) => esc(ext(f.name).toUpperCase())).filter((x, i, a) => a.indexOf(x) === i).join(" · ") + " · 파일 " + fs.length + "개" : esc(it.desc || it.meta || "")) + "</small></div>" + resPills(it, false) +
+          (it.tool ? "바로 쓰는 계산기" : lib1Line(it, fs, ext) || esc(it.desc || it.meta || "")) + "</small></div>" + resPills(it, false) +
           '<div class="a-row-actions">' + btn(icon("pen", "sm") + "수정", "item-edit", "a-btn-ghost a-btn-sm", ' data-coll="res-file" data-id="' + esc(it.id) + '"') + "</div></li>"; }).join("") + "</ul></section>";
   }
   function pageMotivation() {
