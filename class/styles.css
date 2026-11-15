@@ -472,6 +472,23 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .res-foot { margin-top: auto; display: flex; justify-content: flex-end; }
 .res-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 18px 20px; background: var(--canvas); border-radius: var(--r-xl); }
 .res-item + .res-item { margin-top: 10px; }
+.res-item.has-doc a.m-title { color: inherit; text-decoration: none; }
+.res-item.has-doc a.m-title:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+/* 자료 파일 · 전자책 (2026-11-15): 파일 형식 칩 · 자료 화면 맨 위 ‘받을 자료’ */
+.res-exts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.res-exts i { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .02em; color: #fff; background: #6b7280; padding: 2px 8px; border-radius: 999px; }
+.res-exts small { font-size: 12px; color: var(--mute); }
+.res-exts i.e-xlsx, .res-exts i.e-xls, .res-exts i.e-csv, .res-dl .att-ext.e-xlsx, .res-dl .att-ext.e-xls, .res-dl .att-ext.e-csv { background: #1f9d55; color: #fff; }
+.res-exts i.e-pdf, .res-dl .att-ext.e-pdf { background: #e03131; color: #fff; }
+.res-exts i.e-docx, .res-exts i.e-doc, .res-dl .att-ext.e-docx, .res-dl .att-ext.e-doc { background: #2b6cb0; color: #fff; }
+.res-exts i.e-hwp, .res-exts i.e-hwpx, .res-dl .att-ext.e-hwp, .res-dl .att-ext.e-hwpx { background: #0e7490; color: #fff; }
+.res-exts i.e-zip, .res-dl .att-ext.e-zip { background: #6b7280; color: #fff; }
+.res-dl { padding: 18px; border-radius: var(--r-lg); background: var(--primary-pale); margin-bottom: 26px; }
+.res-dl .side-label { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; color: var(--ink); font-weight: 800; }
+.res-dl .att-list li { box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+.res-dl-none { display: flex; align-items: center; gap: 6px; margin: 0; padding: 12px 14px; border-radius: var(--r-md); background: var(--canvas); color: var(--mute); font-size: 14px; }
+.res-dl-link { margin-top: 10px; }
+@media (max-width: 720px) { .res-item { grid-template-columns: auto minmax(0, 1fr); } .res-item > .btn { grid-column: 1 / -1; justify-content: center; } }
 .calc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .calc .field label { font-size: 13px; }
 .calc-out { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
@@ -972,6 +989,26 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .n-ic { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--canvas-softer); color: var(--body); }
 
 .cw-list { display: grid; gap: 16px; }
+/* 주차별 강의 한 주씩 (2026-11-15): 위 줄 = 이전 · 주차 점 · 다음 / 넓은 화면은 카드 양옆에 큰 화살표도 (테마 색을 따라가요) */
+.cw-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; }
+.cw-pg-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--canvas); color: var(--ink); font-size: 14px; font-weight: 800; text-decoration: none; white-space: nowrap; transition: border-color .15s, background-color .15s; }
+.cw-pg-btn:hover { border-color: var(--primary); background: var(--primary-pale); }
+.cw-pg-btn.off { visibility: hidden; }
+.cw-pg-dots { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.cw-pg-dot { display: grid; place-items: center; min-width: 34px; height: 34px; padding: 0 6px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--canvas); color: var(--body); font-size: 13px; font-weight: 800; text-decoration: none; }
+.cw-pg-dot:hover { border-color: var(--primary); }
+.cw-pg-dot.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.cw-pg-dot.lock { color: var(--mute); background: var(--canvas-softer); }
+.cw-pg-dot.lock.on { color: var(--on-primary); background: var(--primary); }
+.cw-pg-dot .icon { width: 13px; height: 13px; }
+.cw-one { position: relative; }
+.cw-side { position: absolute; top: 72px; z-index: 2; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line); background: var(--canvas); color: var(--ink); box-shadow: 0 8px 22px -12px rgba(0, 0, 0, .35); text-decoration: none; transition: transform .15s, border-color .15s; }
+.cw-side:hover { border-color: var(--primary); transform: scale(1.06); }
+.cw-side .icon { width: 22px; height: 22px; }
+.cw-side.prev { left: -68px; }
+.cw-side.next { right: -68px; }
+@media (max-width: 1240px) { .cw-side { display: none; } }
+@media (max-width: 720px) { .cw-pg-btn { padding: 0 10px; font-size: 13px; } .cw-pg-btn span { display: none; } .cw-pg-btn { width: 40px; justify-content: center; padding: 0; } .cw-pg-dot { min-width: 30px; height: 30px; } }
 .cw { padding: 28px; }
 .cw + .cw { margin-top: 0; }
 .cw-head { display: flex; align-items: flex-start; gap: 16px; }
@@ -2553,3 +2590,9 @@ a.login-vod:hover { filter: brightness(.97); }
 .mv-player-wrap .video .vp-img { opacity: 1; mix-blend-mode: normal; }
 .mv-player-wrap .video .video-ph::after { display: none; }
 .mv-player-wrap .video .vp-title { visibility: hidden; }
+/* 수강생 대시보드 ‘오늘의 응원 영상’ (2026-11-15 대표님 요청): 위 큰 화면처럼 유튜브 썸네일 원래 색 그대로 — 테마 색 · 고사리 그림을 덮지 않고,
+   썸네일 위 제목 글자는 숨겨요(제목은 영상 아래 줄에 있어요). 썸네일이 있는 유튜브 영상만(.video[data-yid]) — 비메오 · 준비 중 칸은 테마 그대로 */
+.home-mv .video[data-yid], .home-mv .video[data-yid] .video-ph { background: #000; }
+.home-mv .video[data-yid] .vp-img { opacity: 1; mix-blend-mode: normal; }
+.home-mv .video[data-yid] .video-ph::after { display: none; }
+.home-mv .video[data-yid] .vp-title { visibility: hidden; }

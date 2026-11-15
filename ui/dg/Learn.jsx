@@ -66,13 +66,32 @@ function CurWeek({ w, now }) {
     </section>
   );
 }
-function Curriculum() {
+/* 주차별 강의는 한 주씩 (2026-11-15): 왼쪽 · 오른쪽 화살표 · 주차 점 — 주소 #/curriculum?w=2 · 예전 app.js cwPick · cwPager · cwSide 와 같은 모양 */
+function CwPager({ w, D }) {
+  const X = DGA(), i = D.weeks.indexOf(w);
+  const btn = (d) => {
+    const x = D.weeks[i + d] || null, ic = <Icon n={d < 0 ? "chevLeft" : "chevRight"} c="sm" />, cls = "cw-pg-btn " + (d < 0 ? "prev" : "next");
+    if (!x) return <span className={cls + " off"} aria-hidden="true">{d < 0 ? <>{ic}<span>이전 주차</span></> : <><span>다음 주차</span>{ic}</>}</span>;
+    return <a className={cls} href={"#/curriculum?w=" + x.no} aria-label={(d < 0 ? "이전" : "다음") + " 주차 · " + x.no + "주차"}>{d < 0 ? <>{ic}<span>{x.no}주차</span></> : <><span>{x.no}주차</span>{ic}</>}</a>;
+  };
+  return (
+    <nav className="cw-pager" aria-label="주차 넘기기">{btn(-1)}
+      <ol className="cw-pg-dots">{D.weeks.map((x) => { const o = X.isOpen(x); return <li key={x.no}><a className={"cw-pg-dot" + (x === w ? " on" : "") + (o ? "" : " lock")} href={"#/curriculum?w=" + x.no} aria-label={x.no + "주차" + (o ? "" : " · " + fmtMD(X.openOf(x)) + " 공개")} aria-current={x === w ? "page" : undefined}>{o ? x.no : <Icon n="lock" c="xs" />}</a></li>; })}</ol>
+      {btn(1)}</nav>
+  );
+}
+function CwSide({ w, D, d }) {
+  const x = D.weeks[D.weeks.indexOf(w) + d] || null;
+  return x ? <a className={"cw-side " + (d < 0 ? "prev" : "next")} href={"#/curriculum?w=" + x.no} aria-label={(d < 0 ? "이전" : "다음") + " 주차 · " + x.no + "주차"}><Icon n={d < 0 ? "chevLeft" : "chevRight"} /></a> : null;
+}
+function Curriculum({ r }) {
   const X = DGA(), S = st(), D = S.D, ml = X.mainLec();
   const cur = D.weeks.find((w) => X.isOpen(w) && todayStr() <= X.deadlineOf(w)) || D.weeks.filter(X.isOpen).slice(-1)[0];
+  const n = Number(r && r.params ? r.params.get("w") : 0), pick = D.weeks.find((w) => w.no === n) || cur || D.weeks[0];
   return (
     <div className="page"><PageHead title={X.ML("curriculum")} sub={ml ? "메인 강의는 " + (ml.platform || "외부 강의실") + "에서 듣고, 여기서는 주차마다 " + X.lessonWord() + "을 보며 과제를 바로 따라 해요." : "주차마다 무엇을 배우고 어떤 과제를 하는지 순서대로 정리했어요."} />
       <MainLecCard compact />
-      {D.weeks.length ? <div className="cw-list">{D.weeks.map((w) => <CurWeek key={w.no} w={w} now={cur === w} />)}</div> : <section className="card"><Empty ic="book">커리큘럼을 준비하고 있어요.</Empty></section>}</div>
+      {D.weeks.length ? <><CwPager w={pick} D={D} /><div className="cw-one"><CwSide w={pick} D={D} d={-1} /><CurWeek key={pick.no} w={pick} now={cur === pick} /><CwSide w={pick} D={D} d={1} /></div></> : <section className="card"><Empty ic="book">커리큘럼을 준비하고 있어요.</Empty></section>}</div>
   );
 }
 function Lesson({ id }) {
@@ -101,7 +120,7 @@ function Lesson({ id }) {
     </div>
   );
 }
-export function CurriculumPage({ r }) { return r.parts[1] ? <Lesson key={r.parts[1]} id={r.parts[1]} /> : <Curriculum />; }
+export function CurriculumPage({ r }) { return r.parts[1] ? <Lesson key={r.parts[1]} id={r.parts[1]} /> : <Curriculum r={r} />; }
 
 /* ---------- 과제 ---------- */
 const typeText = (m) => ({ image: "사진 · PDF 업로드", link: "링크 제출", text: "글 작성" }[m.type] || "") + (m.check && m.check.minLength ? " · 최소 " + m.check.minLength + "자" : "");

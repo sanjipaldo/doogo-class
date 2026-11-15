@@ -726,15 +726,16 @@ body[data-master="1"] .a-logo-role { padding: 2px 10px; border-radius: 8px; back
 .a-lv { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; background: #f5f5f5; font-size: 12px; font-weight: 800; color: #0e0f0c; white-space: nowrap; }
 .a-lv small { font-weight: 600; color: #999999; }
 .a-lv .icon { width: 13px; height: 13px; }
-.a-lv.lv-leaf { background: #e8f6dc; }
-.a-lv.lv-branch { background: #d7f0c2; }
-.a-lv.lv-tree { background: #b9e59a; }
-.a-lv.lv-forest { background: #163300; color: #9fe870; }
-.a-lv.lv-forest small { color: #c5edab; }
+/* 2026-11-15: 단계 칩 · 막대는 그 강사의 강의실 색(--lv-c · admin.js lvVarList — 수강생 화면 성장 단계와 같은 색)으로. 색 정보가 없으면 예전 연두 */
+.a-lv.lv-leaf { background: color-mix(in srgb, var(--lv-c, #9fe870) 14%, #fff); }
+.a-lv.lv-branch { background: color-mix(in srgb, var(--lv-c, #9fe870) 26%, #fff); }
+.a-lv.lv-tree { background: color-mix(in srgb, var(--lv-c, #9fe870) 42%, #fff); }
+.a-lv.lv-forest { background: var(--lv-c, #163300); color: var(--lv-on, #9fe870); }
+.a-lv.lv-forest small { color: var(--lv-on, #c5edab); opacity: .8; }
 .a-lvboard { display: grid; gap: 10px; }
 .a-lvrow { display: grid; grid-template-columns: 96px 1fr 48px; align-items: center; gap: 6px 12px; }
 .a-lvbar { height: 10px; border-radius: 999px; background: #f5f5f5; overflow: hidden; }
-.a-lvbar span { display: block; height: 100%; border-radius: inherit; background: #9fe870; min-width: 2px; }
+.a-lvbar span { display: block; height: 100%; border-radius: inherit; background: var(--lv-c, #9fe870); min-width: 2px; }
 .a-lvrow b { text-align: right; font-size: 13px; }
 .a-lvwho { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
 .a-lvchip { border: 1px solid #e6e6e6; background: #fff; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
@@ -3703,3 +3704,9 @@ body[data-ath="nz"] .a-vpbar-t small { color: #9cc3ee; }
   .a-scal .cal-nav { width: 100%; }
   .a-scal .cal-nav select { flex: 1; }
 }
+
+/* 대시보드 ‘자료 파일’ 카드 (2026-11-15): 수강생 자료실 목록 그대로 · 바로 수정 */
+.a-libdash .a-card-head h2 { display: flex; align-items: center; gap: 8px; }
+.a-libdash .a-card-head .a-link { margin-left: auto; background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.a-libdash .a-lib-ic { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--lv-pale, var(--m-surface-soft, #f3f4f6)); color: var(--lv-c, var(--m-primary)); }
+.a-libdash .a-items li { gap: 12px; }

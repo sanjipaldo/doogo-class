@@ -28,11 +28,14 @@
   const weekDeadline = (co, no) => { const f = dueOver(co, no); if (f) return f; const d = addDays(co.startDate, (no - 1) * 7 + 6), v = dateOver(co, no); return v && v > d ? v : d; };
   /** 주차 강의 날짜: 주차별로 바꾼 날 → 매주 강의 요일 → 주차 시작일 */
   const classDate = (co, no) => dateOver(co, no) || baseClassDate(co, no);
-  /** 주차가 수강생에게 열리는 날 (2026-11-09): 그 주 강의일 5일 전부터 — 예: 11/21(토) 강의면 11/16부터 (강의일 포함 6일 전)
-   *  원래 열리던 날(주차 시작 · 앞당긴 강의일)이 더 빠르면 그 날 그대로 — 지금 보이는 주차가 늦게 열리는 일은 없어요.
-   *  과제 마감 · 이번 주차 · ‘N주차 무슨 요일’ 일정은 예전 그대로 weekOpen 으로 */
-  const OPEN_BEFORE = 5;
-  const weekUnlock = (co, no) => { const o = weekOpen(co, no), e = addDays(classDate(co, no), -OPEN_BEFORE); return e < o ? e : o; };
+  /** 주차가 수강생에게 열리는 날 (2026-11-15 대표님 요청 · 모든 강사 같은 규칙): 그 주 강의일 이전(같은 날 포함) **수요일 0시**
+   *  — 예: 11/28(토) 강의 → 11/25(수) 0시 · 12/15(화) 강의 → 12/9(수) 0시. 1주차는 날짜와 상관없이 늘 열려 있어요(화면 isOpen — FIRST_ALWAYS).
+   *  (예전 2026-11-09 규칙: 강의일 5일 전) · 과제 마감 · 이번 주차 · ‘N주차 무슨 요일’ 일정은 예전 그대로 weekOpen 으로 */
+  const OPEN_DOW = 3; // 수요일
+  const FIRST_ALWAYS = true;
+  const weekUnlock = (co, no) => { const c = classDate(co, no); return addDays(c, -((parseDate(c).getDay() - OPEN_DOW + 7) % 7)); };
+  /** 오늘(today) 그 주차가 열려 있나 — 1주차는 늘 · 2주차부터 weekUnlock 날짜부터 */
+  const weekIsOpen = (co, no, today) => (FIRST_ALWAYS && Number(no) === 1) || today >= weekUnlock(co, no);
   /** 기수가 끝나는 날 (마지막 주차 마감까지) */
   const cohortEnd = (co, weeks) => { const n = Math.max(1, weeks), e = addDays(co.startDate, n * 7 - 1), d = weekDeadline(co, n); return d > e ? d : e; };
   /** 오늘(today) 기준 기수 상태: upcoming(모집 중) · running(진행 중) · ended(종료) */
@@ -50,5 +53,5 @@
   }
   /** 모든 기수에 들어가는 일정(‘N주차 무슨 요일’)의 날짜 */
   const weekDow = (co, week, dow) => { const open = weekOpen(co, Number(week) || 1); return addDays(open, ((Number(dow) - parseDate(open).getDay()) + 7) % 7); };
-  return { dateOver, dueOver, baseOpen, baseClassDate, weekOpen, weekUnlock, OPEN_BEFORE, weekDeadline, classDate, cohortEnd, cohortStatus, currentWeek, weekDow };
+  return { dateOver, dueOver, baseOpen, baseClassDate, weekOpen, weekUnlock, weekIsOpen, OPEN_DOW, FIRST_ALWAYS, weekDeadline, classDate, cohortEnd, cohortStatus, currentWeek, weekDow };
 });

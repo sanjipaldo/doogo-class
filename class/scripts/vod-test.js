@@ -2827,19 +2827,21 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   }
 
   {
-    console.log("43) 주차가 강의일 5일 전부터 열려요 · 강사센터 커리큘럼은 지금 기수가 쓰는 것부터 (2026-11-09)");
+    console.log("43) 주차 열림 = 1주차 늘 · 2주차부터 강의일 전 수요일 0시 (2026-11-15 · 모든 강사) · 강사센터 커리큘럼은 지금 기수가 쓰는 것부터");
     const SC43 = require(path.join(ROOT, "shared/schedule.js"));
     const c3 = { startDate: "2026-11-21", classDow: 6, classDates: { "2": "2026-11-22" } };
-    ok(SC43.weekUnlock(c3, 1) === "2026-11-16" && SC43.weekUnlock(c3, 2) === "2026-11-17" && SC43.weekUnlock(c3, 3) === "2026-11-30" && SC43.weekUnlock(c3, 4) === "2026-12-07" &&
-      SC43.weekOpen(c3, 1) === "2026-11-21" && SC43.weekDeadline(c3, 1) === "2026-11-27" && SC43.currentWeek(c3, 4, "2026-11-16") === 0 && SC43.OPEN_BEFORE === 5,
-      "3기처럼 11/21(토) 첫 강의 · 2주차 11/22 로 바꾼 기수: 1주차 11/16 · 2주차 11/17 · 3주차 11/30 · 4주차 12/7 부터 열려요 (강의일 5일 전) · 마감 · 이번 주차 · 일정은 그대로");
-    const cm = { startDate: "2026-11-16", classDow: 0 }, cp = { startDate: "2026-11-16" };
-    ok(SC43.weekUnlock(cm, 1) === "2026-11-16" && SC43.weekUnlock(cm, 2) === "2026-11-23" && SC43.weekUnlock(cp, 1) === "2026-11-11" && SC43.weekUnlock({ startDate: "2026-11-16", classDow: 3, classDates: { "1": "2026-11-14" } }, 1) === "2026-11-09",
-      "원래 더 일찍 열리던 주차(월요일 시작 · 일요일 강의)는 그대로 · 강의 요일을 안 정한 기수는 주차 시작일 5일 전 · 앞당긴 강의일도 그 날 5일 전");
+    ok(SC43.weekUnlock(c3, 1) === "2026-11-18" && SC43.weekUnlock(c3, 2) === "2026-11-18" && SC43.weekUnlock(c3, 3) === "2026-12-02" && SC43.weekUnlock(c3, 4) === "2026-12-09" &&
+      SC43.weekOpen(c3, 1) === "2026-11-21" && SC43.weekDeadline(c3, 1) === "2026-11-27" && SC43.currentWeek(c3, 4, "2026-11-16") === 0 && SC43.OPEN_DOW === 3 && SC43.FIRST_ALWAYS === true,
+      "11/21(토) 첫 강의 · 2주차를 11/22(일)로 바꾼 기수: 2주차 11/18(수) · 3주차 12/2(수) · 4주차 12/9(수)부터 (강의일 전 수요일) · 마감 · 이번 주차 · 일정은 그대로");
+    const mo = { startDate: "2026-11-21", classDow: 6, classDates: { "5": "2026-12-15", "3": "2026-12-02" } }, cp = { startDate: "2026-11-16" };
+    ok(SC43.weekUnlock(mo, 2) === "2026-11-25" && SC43.weekUnlock(mo, 4) === "2026-12-09" && SC43.weekUnlock(mo, 5) === "2026-12-09" && SC43.weekUnlock(mo, 3) === "2026-12-02" && SC43.weekUnlock(cp, 1) === "2026-11-11",
+      "문대표 3기처럼: 2주차 11/28(토) → 11/25(수) · 5주차 12/15(화) → 12/9(수) · 강의가 수요일이면 그 날 · 강의 요일을 안 정한 기수는 주차 시작일 이전 수요일");
+    ok(SC43.weekIsOpen(mo, 1, "2026-10-01") && !SC43.weekIsOpen(mo, 2, "2026-11-24") && SC43.weekIsOpen(mo, 2, "2026-11-25") && !SC43.weekIsOpen(mo, 3, "2026-12-01") && SC43.weekIsOpen(mo, 5, "2026-12-09"),
+      "1주차는 날짜와 상관없이 늘 열림 · 2주차는 11/24(화)엔 잠김 → 11/25(수) 0시부터 열림");
     const ap43 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), ad43 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), hp43 = fs.readFileSync(path.join(ROOT, "../ui/dg/HomePage.jsx"), "utf8");
-    ok(/const openOf = \(w\) => DB\.weekUnlock\(CO, w\.no\);/.test(ap43) && /const isOpen = \(w\) => \(!!me && !!me\.demo && !preview\) \|\| todayStr\(\) >= openOf\(w\);/.test(ap43) && /fmtMD\(openOf\(D\.weeks\[0\]\)\) \+ "에 1주차가 열려요/.test(ap43) && /fmtMD\(X\.openOf\(D\.weeks\[0\]\)\) \+ "에 1주차가 열려요/.test(hp43) &&
-      /const open = DB\.weekUnlock\(co, w\.no\), dl = DB\.weekDeadline\(co, w\.no\);/.test(ad43),
-      "강의실(예전 화면 · React)은 주차를 강의일 5일 전부터 열고 ‘N일부터 공개’ 도 그 날 · 체험(테스트) 계정은 예전처럼 다 열려요 · 강사센터 기수 주차 줄도 그 날부터");
+    ok(/const openOf = \(w\) => DB\.weekUnlock\(CO, w\.no\);/.test(ap43) && /const isOpen = \(w\) => \(!!me && !!me\.demo && !preview\) \|\| DB\.weekIsOpen\(CO, w\.no, todayStr\(\)\);/.test(ap43) && /fmtMD\(openOf\(D\.weeks\[0\]\)\) \+ "에 1주차가 열려요/.test(ap43) && /fmtMD\(X\.openOf\(D\.weeks\[0\]\)\) \+ "에 1주차가 열려요/.test(hp43) &&
+      /const open = DB\.weekUnlock\(co, w\.no\), dl = DB\.weekDeadline\(co, w\.no\);/.test(ad43) && /DB\.weekIsOpen\(co, w\.no, t\) \? "now" : "next"/.test(ad43),
+      "강의실(예전 화면 · React)은 같은 규칙(DB.weekIsOpen)으로 열고 ‘N일부터 공개’ 도 그 날 · 체험(테스트) 계정은 예전처럼 다 열려요 · 강사센터 기수 주차 줄도 같은 규칙");
     ok(/if \(!ui\.curId \|\| ui\.curFor !== IID\(\)\) \{ const now = DB\.currentCohort\(IID\(\)\); ui\.curFor = IID\(\); ui\.curId = \(now && now\.curriculumId\) \|\| "main"; \}/.test(ad43) && /function curWarn\(cur, used\)/.test(ad43) && /case "cur-go": ui\.curId = d\.id;/.test(ad43) && /case "cur-use": \{ const co = DB\.cohort\(d\.co\); if \(co\) planForm\(co\.instructorId, Object\.assign\(\{\}, co, \{ curriculumId: d\.id \}\)\); break; \}/.test(ad43) && /'<section class="a-card a-cur-bar">' \+ curWarn\(cur, used\)/.test(ad43),
       "강사센터 커리큘럼: 처음엔 지금 기수(진행 중 → 모집 중)가 쓰는 커리큘럼 · 다른 커리큘럼을 고치면 ‘지금 N기 수강생 화면에는 …’ 안내 + 바로 가기 (예전 화면 · React 같은 줄)");
   }
@@ -3044,7 +3046,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     console.log("55) 문대표 3기 5주차 12/15(화) 온라인 강의 · 주차별 녹화본 업로드 · 과제 마감일 (2026-11-10)");
     const SCH = require(path.join(ROOT, "shared/schedule.js")), OO = require(path.join(ROOT, "api/_lib/oneoff.js"));
     const co = { startDate: "2026-11-21", classDow: 6, classDates: { 5: "2026-12-15" }, classOver: { 5: { mode: "online", replay: "2026-12-16", due: "2026-12-18" }, 3: { due: "nope" } } };
-    ok(SCH.weekDeadline(co, 5) === "2026-12-18" && SCH.weekDeadline(co, 4) === "2026-12-18" && SCH.weekDeadline(co, 3) === "2026-12-11" && SCH.classDate(co, 5) === "2026-12-15" && SCH.weekUnlock(co, 5) === "2026-12-10" &&
+    ok(SCH.weekDeadline(co, 5) === "2026-12-18" && SCH.weekDeadline(co, 4) === "2026-12-18" && SCH.weekDeadline(co, 3) === "2026-12-11" && SCH.classDate(co, 5) === "2026-12-15" && SCH.weekUnlock(co, 5) === "2026-12-09" &&
       SCH.cohortEnd(co, 5) === "2026-12-25" && SCH.dueOver(co, 5) === "2026-12-18" && SCH.dueOver(co, 3) === null && SCH.weekDeadline({ startDate: "2026-11-21", classDates: { 5: "2026-12-30" } }, 5) === "2026-12-30",
       "과제 마감일: 주차별로 정한 날(classOver.due) → 없으면 예전 규칙(주차 시작 + 6일 · 늦춘 강의일) · 잘못된 날짜는 무시 · 기수 기간은 그대로");
     const db55 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), ad55 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8");
@@ -3232,6 +3234,86 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(nb40 && nb40.map((b) => b.href).join(" ") === "#/vod/partners?tab=partners #/vod/partners?tab=partners #/vod/c/all #/vod/partners?tab=partners #/vod/partners/apply" && nb40[0].title === "강사 모집" && r40.writes.meta.other === 1 && r40.writes.meta.vod.products.length === 1 &&
       bn40[0].href === "#/vod/partners" && !Object.keys(r40b.writes).length && !Object.keys(OF40.partnersTabLinks(() => null).writes).length && OF40.OPS.some((x) => x.id === "2026-11-14-partners-tab-links" && x.run === OF40.partnersTabLinks),
       "일회성(2026-11-14-partners-tab-links): ‘강사 모집’ 배너 등 예전 주소 링크만 파트너스 탭으로 · 다른 링크 · 지원서 링크 · 다른 칸 그대로 · 원본은 안 건드림 · 다시 돌리면 그대로 · 데이터 없으면 건너뜀", r40.result);
+  }
+
+  {
+    console.log("60) 주차별 강의 한 주씩(화살표) · 성장 단계 색 = 강사 강의실 색 · 응원 영상 썸네일 원래 색 (2026-11-15)");
+    const ap60 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), ln60 = fs.readFileSync(path.join(ROOT, "../ui/dg/Learn.jsx"), "utf8"), st60 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"),
+      ad60 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ac60 = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
+    ok(/cwPager\(pick\) \+ '<div class="cw-one">' \+ cwSide\(pick, -1\) \+ curWeekCard\(pick, cur === pick\) \+ cwSide\(pick, 1\)/.test(ap60) && !/D\.weeks\.map\(\(w\) => curWeekCard/.test(ap60) &&
+      /const n = Number\(r\.params\.get\("w"\)\);\s*return D\.weeks\.find\(\(w\) => w\.no === n\) \|\| cur \|\| D\.weeks\[0\];/.test(ap60) &&
+      /<CwPager w=\{pick\} D=\{D\} \/><div className="cw-one"><CwSide w=\{pick\} D=\{D\} d=\{-1\} \/><CurWeek key=\{pick\.no\} w=\{pick\} now=\{cur === pick\} \/><CwSide w=\{pick\} D=\{D\} d=\{1\} \/><\/div>/.test(ln60) &&
+      /pick = D\.weeks\.find\(\(w\) => w\.no === n\) \|\| cur \|\| D\.weeks\[0\]/.test(ln60) && /<Curriculum r=\{r\} \/>/.test(ln60) && /\.cw-side\.prev \{ left: -68px; \}/.test(st60),
+      "주차별 강의: 한 주만 보여요 · 위 줄(이전 · 주차 점 · 다음) + 카드 양옆 화살표 · #/curriculum?w=N · 처음엔 이번 주 (예전 화면 = React)");
+    ok(/\.home-mv \.video\[data-yid\] \.vp-img \{ opacity: 1; mix-blend-mode: normal; \}/.test(st60) && /\.home-mv \.video\[data-yid\] \.video-ph::after \{ display: none; \}/.test(st60),
+      "대시보드 ‘오늘의 응원 영상’: 유튜브 썸네일 원래 색 그대로 (뉴질랜드 남색 · 고사리 덮개 없음)");
+    ok(/function lvVarList\(iid\) \{\s*const t = DB\.themeOf\(/.test(ad60) && /const iid = rows\[0\]\.s && rows\[0\]\.s\.instructorId, sty = iid \? lvStyle\(iid\) : "";/.test(ad60) &&
+      /if \(!master\) lvVarList\(IID\(\)\)\.forEach/.test(ad60) && /\.a-lvbar span \{[^}]*background: var\(--lv-c, #9fe870\)/.test(ac60) && /\.a-lv\.lv-forest \{ background: var\(--lv-c, #163300\)/.test(ac60),
+      "강사센터 성장 단계 막대 · 칩 = 그 강사가 고른 강의실 색(수강생 화면과 같은 --primary) · 마스터 강사별 보드는 강사마다 · 색 정보 없으면 예전 연두");
+    const dr60 = fs.readFileSync(path.join(ROOT, "shared/data-rules.js"), "utf8");
+    ok(/nz: \{ label: "뉴질랜드"[^}]*primary: "#0b2a5b"[^}]*onPrimary: "#ffffff"/.test(dr60), "뉴질랜드 색 = #0b2a5b · 글자 흰색 (강사센터 성장 단계도 이 남색)");
+  }
+
+  {
+    console.log("61) 문대표 자료 파일 6개 · 자료 화면(받을 자료 + 설명) · 강사센터 파일 올리기 · 대시보드 카드 · 잠근 파일 묶음 (2026-11-15)");
+    const ap61 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), lb61 = fs.readFileSync(path.join(ROOT, "../ui/dg/Lib.jsx"), "utf8"), ad61 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"),
+      db61 = fs.readFileSync(path.join(ROOT, "../ui/center/Dashboard.jsx"), "utf8"), c261 = fs.readFileSync(path.join(ROOT, "../ui/center/Content2.jsx"), "utf8"), fa61 = fs.readFileSync(path.join(ROOT, "api/file.js"), "utf8");
+    const seed61 = require(path.join(ROOT, "api/_lib/seed.js")).loadSeed().content.moon.resources.file;
+    ok(seed61.map((x) => x.id).join() === "f3,mf1,mf2,mf3,mf4,mf5" && seed61[0].tool === "calculator" && seed61.slice(1).every((x) => x.body && x.body.length > 200 && Array.isArray(x.attachments) && !x.attachments.length) &&
+      /공동구매 제안서/.test(seed61[1].title) && /프리랜서/.test(seed61[5].title) && !seed61.some((x) => /건강식품 리스트 150|CS 답변 템플릿/.test(x.title)),
+      "처음 데이터(문대표): 자료 파일 = 마진 계산기 + 실전 문서 5개(노션 글) · 예전 예시 4개 없음 · 공개 저장소에는 글만(첨부 비어 있음)", seed61.map((x) => x.id));
+    ok(/const resDoc = \(it\) => !!\(it && !it\.tool && \(it\.body \|\| \(it\.attachments \|\| \[\]\)\.length\)\);/.test(ap61) && /\(nA \? "자료 받기" : "자세히 보기"\)/.test(ap61) && /function resFilesTop\(it\)/.test(ap61) &&
+      /\(docCat \? resFilesTop\(it\) : ""\)/.test(ap61) && /<RawOne html=\{X\.resFilesTop\(it\)\} \/>/.test(lb61) && /\{nA \? "자료 받기" : "자세히 보기"\}/.test(lb61) && /resDoc, resExts, resFilesTop,/.test(ap61),
+      "수강생 자료 파일: 설명 · 파일이 있으면 ‘자료 받기’ → 자료 화면(맨 위 받을 자료 · 아래 설명) · 파일 형식 칩 (예전 화면 = React)");
+    ok(/COLL\["res-file"\] = \{[^\n]*\n[^\n]*\n\s*F\("attachments", "자료 파일/.test(ad61) && /F\("body", "자세한 설명/.test(ad61) && /function libDashCard\(\)/.test(ad61) && /libDashCard\(\) \+\n\s*'<div class="a-grid-2">'/.test(ad61) &&
+      /<Isl html=\{A\.libDashCard\(\)\} \/>/.test(db61) && /<Isl html=\{A\.resPills\(it, isVideo\)\} \/>/.test(c261) && /case "lib-go": ui\.libTab = d\.k \|\| "file"; ROUTE\.hash = "#\/center\/library";/.test(ad61) &&
+      /const MAX_SRV_FILE = 3 \* 1024 \* 1024;/.test(ad61) && /scope: "content:" \+ IID\(\)/.test(ad61) && /파일을 올리는 중이에요\. 다 올라간 뒤에 저장해 주세요\./.test(ad61),
+      "강사센터: 자료 파일 = 파일 올리기(서버에선 바로 비공개 저장 · 3MB) + 자세한 설명 + 바로가기 · 대시보드 ‘자료 파일’ 카드(바로 수정) · 올리는 중엔 저장 막기 (예전 화면 = React)");
+    ok(/content:\[\\w-\]\{1,40\}\)\$\/\.test\(scope\)/.test(fa61) && /if \(\/\^content:\/\.test\(scope\) && !access\.writer\(scope, ids, false\)\) return send\(res, 403/.test(fa61),
+      "파일 올리기 API: content:<강사> 범위는 그 강사 콘텐츠를 고칠 수 있는 사람만");
+    // 잠근 묶음: 공개 저장소의 파일은 열쇠 없이는 못 읽어요 (PDF · 엑셀 머리가 그대로 보이지 않음)
+    const FP = require(path.join(ROOT, "api/_lib/filepack.js")), enc = fs.readFileSync(path.join(ROOT, "api/_lib/packs/moon-lib-2026-11-15.enc"));
+    const encTxt = enc.toString("latin1");
+    ok(enc.subarray(0, 5).toString() === "DCFP1" && enc.length > 1000000 && !/%PDF|PK\x03\x04|\xD0\xCF\x11\xE0|공동구매/.test(encTxt) && !/[0-9a-f]{64}/i.test(fs.readFileSync(path.join(ROOT, "api/_lib/oneoff.js"), "utf8")),
+      "잠근 파일 묶음(packs/moon-lib-2026-11-15.enc): AES-256-GCM · PDF · 엑셀 머리 · 글자가 그대로 보이지 않아요 · 열쇠는 코드에 없음 (Vercel 환경 변수 DC_FILES_KEY)", enc.length);
+    const k61 = crypto.randomBytes(32).toString("hex"), k61b = crypto.randomBytes(32).toString("hex");
+    const sealed = FP.seal({ v: 1, files: { a: { name: "가.pdf", mime: "application/pdf", b64: Buffer.from("%PDF-1.4 시험").toString("base64") } } }, k61);
+    let wrong = null; try { FP.open(sealed, k61b); } catch (e) { wrong = e.code; }
+    let wrongEnc = null; try { FP.open(enc, k61); } catch (e) { wrongEnc = e.code; }
+    ok(FP.open(sealed, k61).files.a.name === "가.pdf" && wrong === "KEY" && wrongEnc === "KEY" && !FP.keyOk("abc") && FP.keyOk(k61),
+      "묶음 열기: 같은 열쇠면 그대로 · 다른 열쇠면 못 열어요(KEY)", { wrong, wrongEnc });
+    // 일회성 작업: 글(늘) → 파일(열쇠가 있을 때) · 강사센터에서 이미 올린 파일은 그대로 · 열쇠가 틀리면 기록하지 않고 다음 배포 때 다시
+    const O61 = require(path.join(ROOT, "api/_lib/oneoff.js"));
+    const fake = (n) => ({ name: n, mime: /xls/.test(n) ? "application/vnd.ms-excel" : "application/pdf", b64: crypto.randomBytes(200).toString("base64") });
+    const tmpPack = path.join(TMP, "lib61.enc");
+    fs.writeFileSync(tmpPack, FP.seal({ v: 1, files: { proposal: fake("제안서.xlsx"), dm: fake("DM.xlsx"), channels: fake("판로.pdf"), bep: fake("손익.xls"), calendar: fake("캘린더.pdf") } }, k61));
+    const old61 = { resources: { file: [{ id: "f1", title: "뉴질랜드 건강식품 리스트 150" }, { id: "f2", title: "건강식품 키워드 리스트" }, { id: "f3", title: "마진 계산기", tool: "calculator", meta: "바로 사용" }, { id: "f4", title: "상세페이지 템플릿" }, { id: "f5", title: "CS 답변 템플릿" }] } };
+    let doc61 = old61;
+    const get61 = (k) => (k === "content:moon" ? JSON.parse(JSON.stringify(doc61)) : null);
+    const i1 = O61.moonLibItems(get61); doc61 = i1.writes["content:moon"];
+    const f1 = O61.moonLibFiles(get61, { key: k61, file: tmpPack }), fl = f1.writes["content:moon"].resources.file;
+    doc61 = JSON.parse(JSON.stringify(doc61)); doc61.resources.file[3].attachments = [{ id: "mine", name: "내가 올린 파일.xls", data: "/api/file?h=abc" }];
+    const f2 = O61.moonLibFiles(get61, { key: k61, file: tmpPack }), f3 = O61.moonLibFiles(get61, { key: k61b, file: tmpPack });
+    const opF = O61.OPS.find((o) => o.id === "2026-11-15-moon-lib-files"), opI = O61.OPS.find((o) => o.id === "2026-11-15-moon-lib-items");
+    const kEnv = process.env.DC_FILES_KEY; delete process.env.DC_FILES_KEY; const whenOff = opF.when(); process.env.DC_FILES_KEY = k61; const whenOn = opF.when(); if (kEnv === undefined) delete process.env.DC_FILES_KEY; else process.env.DC_FILES_KEY = kEnv;
+    ok(i1.result.removed.length === 4 && doc61 && fl.map((x) => x.id).join() === "f3,mf1,mf2,mf3,mf4,mf5" && fl[0].meta === "바로 사용" &&
+      fl[1].attachments.length === 2 && fl[1].attachments.every((a) => /^data:application\/[a-z.-]+;base64,/.test(a.data) && a.size === 200) && fl[2].attachments[0].name === "판로.pdf" && !fl[5].attachments.length &&
+      f2.result.kept.join() === "플랫폼별 손익분기점 계산표" && f2.writes["content:moon"].resources.file[3].attachments[0].id === "mine" && f3.retry === true && !Object.keys(f3.writes).length &&
+      !opI.when && whenOff === false && whenOn === true,
+      "일회성 작업: 마진 계산기는 그대로 · 예전 4개 지움 · 5개 글 → 묶음 파일 첨부(저장 때 비공개 파일로) · 강사센터에서 올린 파일은 그대로 · 열쇠가 틀리면 다음 배포 때 다시 · 파일 작업은 DC_FILES_KEY 가 있을 때만",
+      { items: i1.result, files: f1.result, kept: f2.result, wrong: f3.result });
+    // 서버: 강사센터가 바로 올리는 파일(content:moon) → 문대표만 올림 · 그 강사 수강생 · 운영자만 받음
+    const pdf61 = Buffer.from("%PDF-1.4 자료 파일 " + crypto.randomBytes(30).toString("hex"));
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "moon" }) });
+    let r61 = await call("file", { body: { data: "data:application/pdf;base64," + pdf61.toString("base64"), scope: "content:moon" } });
+    const h61 = r61.json && r61.json.ok ? new URL("http://x" + r61.json.url).searchParams.get("h") : "";
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "choi" }) });
+    const other = await call("file", { body: { data: "data:application/pdf;base64," + pdf61.toString("base64"), scope: "content:moon" } });
+    const otherGet = await call("file", { method: "GET", query: { h: h61 } });
+    useJar({ dc_s: auth.sign({ r: "student", sid: "s1", iid: "moon" }) }); const stuGet = await call("file", { method: "GET", query: { h: h61 } });
+    useJar({}); const visGet = await call("file", { method: "GET", query: { h: h61 } });
+    ok(h61 && other.status === 403 && otherGet.status === 403 && stuGet.status === 200 && Buffer.isBuffer(stuGet.body) && stuGet.body.equals(pdf61) && visGet.status === 403,
+      "강사센터 파일 올리기(content:moon): 문대표 200 · 다른 강사는 올리기 · 받기 403 · 문대표 수강생 200(같은 바이트) · 방문자 403", { up: r61.status, other: other.status, og: otherGet.status, stu: stuGet.status, vis: visGet.status });
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

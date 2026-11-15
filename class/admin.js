@@ -146,13 +146,22 @@
   // 수강생 성장 단계 (과제 성취 기준): 씨앗 → 풀잎 → 가지 → 나무 → 숲
   const levelOfStudent = (s) => DB.level(DB.progress(s.id), s.instructorId, DB.studentCohort(s));
   const lvBadge = (lv) => '<span class="a-lv lv-' + lv.cur.key + '" title="' + esc(lv.cur.name + " · " + (lv.idx + 1) + "/" + lv.steps.length + "단계" + (lv.next ? " · 다음까지 " + lv.needText : "")) + '">' + icon(lv.cur.icon, "xs") + esc(lv.cur.name) + "<small>" + (lv.idx + 1) + "/" + lv.steps.length + "</small></span>";
+  /* 성장 단계 색 (2026-11-15 대표님 요청): 강사센터 성장 단계(보드 · 단계 칩)도 그 강사가 ‘기본 정보 · 색상’에서 고른 강의실 색을 따라가요
+   *  — 수강생 화면 성장 단계(theme --primary)와 같은 색. 강사 · 코치 화면은 body 에, 마스터의 강사별 보드는 그 보드에 붙여요 (없으면 예전 연두) */
+  const LV_VARS = ["--lv-c", "--lv-on", "--lv-pale", "--lv-rgb"];
+  function lvVarList(iid) {
+    const t = DB.themeOf(((DB.content(iid) || {}).brand || {}).theme);
+    return t && t.primary ? [["--lv-c", t.primary], ["--lv-on", t.onPrimary || t.deep || "#fff"], ["--lv-pale", t.pale || "#f5f5f5"], ["--lv-rgb", t.rgb || "0,0,0"]] : [];
+  }
+  const lvStyle = (iid) => lvVarList(iid).map((kv) => kv[0] + ":" + kv[1]).join(";");
   // 단계별 인원과 이름 (대시보드 · 마스터)
   function levelBoard(rows, compact) {
     if (!rows.length) return emptyBox("users", "수강 중인 학생이 없어요.");
     const keys = {}; rows.forEach((r) => r.lv.steps.forEach((st) => { keys[st.key] = true; }));
     const steps = DB.LEVEL_SET.filter((st) => keys[st.key]);
     const max = Math.max(1, ...steps.map((st) => rows.filter((r) => r.lv.cur.key === st.key).length));
-    return '<div class="a-lvboard">' + steps.slice().reverse().map((st) => {
+    const iid = rows[0].s && rows[0].s.instructorId, sty = iid ? lvStyle(iid) : "";
+    return '<div class="a-lvboard"' + (sty ? ' style="' + esc(sty) + '"' : "") + ">" + steps.slice().reverse().map((st) => {
       const who = rows.filter((r) => r.lv.cur.key === st.key).sort((a, b) => b.st.pct - a.st.pct);
       return '<div class="a-lvrow"><span class="a-lv lv-' + st.key + '">' + icon(st.icon, "xs") + esc(st.name) + "</span>" +
         '<div class="a-lvbar"><span style="width:' + Math.round(who.length / max * 100) + '%"></span></div><b class="num">' + who.length + "명</b>" +
@@ -625,6 +634,7 @@
         kpi("검수 대기 · 미답변", n.review + " · " + n.questions, "과제 검수 / 1:1 요청", "#/center/reviews", n.review + n.questions ? "info" : "") +
       "</div>" +
       (co ? '<section class="a-card"><div class="a-card-head"><h2>' + esc(co.name) + " 주차 일정</h2>" + pill(DB.STATUS_LABEL[DB.cohortStatus(co)], COHORT_CLS[DB.cohortStatus(co)]) + '<a class="a-link" href="#/center/cohorts">기수 관리 ' + icon("arrowRight", "xs") + "</a></div>" + weekStrip(co) + "</section>" : "") +
+      libDashCard() +
       '<div class="a-grid-2">' +
         '<section class="a-card"><div class="a-card-head"><h2>승인 대기</h2><a class="a-link" href="#/center/students?status=pending">전체 ' + icon("arrowRight", "xs") + "</a></div>" +
           (pend.length ? '<ul class="a-list">' + pend.map((s) => '<li><div class="a-who"><span class="a-avatar">' + esc(s.name.slice(0, 1)) + "</span><div><b>" + esc(s.name) + "</b><small>" + esc(cohortName(s.cohortId)) + " · 뒷자리 " + esc(s.phone4) + " · " + fmtMD(s.appliedAt) + " 신청</small></div></div>" +
@@ -643,8 +653,8 @@
     const c = { weeks: DB.weeksOf(co) };
     const t = todayStr();
     return '<div class="a-weeks">' + c.weeks.map((w) => {
-      const open = DB.weekUnlock(co, w.no), dl = DB.weekDeadline(co, w.no); // 수강생에게 열리는 날(강의일 5일 전)부터
-      const st = t > dl ? "past" : t >= open ? "now" : "next";
+      const open = DB.weekUnlock(co, w.no), dl = DB.weekDeadline(co, w.no); // 수강생에게 열리는 날(1주차 늘 · 2주차부터 강의일 전 수요일)부터
+      const st = t > dl ? "past" : DB.weekIsOpen(co, w.no, t) ? "now" : "next";
       const ov = (co.classOver || {})[w.no], lc = (co.classDates && co.classDates[w.no]) || ov ? DB.lectureOf(co.instructorId, co, w) : null;
       const moved = lc ? '<em class="a-week-mv">강의 ' + esc(mdDow(lc.date) + (lc.time ? " " + lc.time + (lc.end ? "~" + lc.end : "") : "") + (lc.mode === "online" ? " · 온라인" : lc.place ? " · " + lc.place : "")) + "</em>" : "";
       return '<div class="a-week ' + st + '"><b>' + w.no + "주차" + moved + "</b><span>" + fmtMD(open) + " ~ " + fmtMD(dl) + "</span><small>" + esc(w.title) + "</small></div>";
@@ -1255,7 +1265,13 @@
     mv: { name: "응원 영상", prepend: true, list: (c) => c.motivation, idp: "mv", init: () => ({ date: todayStr() }),
       fields: [F("title", "영상 제목"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }), F("minutes", "영상 길이 (예: 31:57)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }), F("date", "올린 날", "date")] }
   };
-  ["ebook", "file"].forEach((k) => { COLL["res-" + k] = { name: "자료", list: (c) => c.resources[k], idp: k[0], fields: [F("title", "자료 이름"), F("meta", "형식 (예: 전자책 · 86쪽)"), F("desc", "한 줄 설명"), F("url", "열람·다운로드 주소 (구글 드라이브 등)", "url")] }; });
+  COLL["res-ebook"] = { name: "자료", list: (c) => c.resources.ebook, idp: "e", fields: [F("title", "자료 이름"), F("meta", "형식 (예: 전자책 · 86쪽)"), F("desc", "한 줄 설명"), F("url", "열람·다운로드 주소 (구글 드라이브 등)", "url")] };
+  // 자료 파일 (2026-11-15): 파일을 바로 올리고(수강생만 받음) · 자세한 설명 글까지 — 파일을 바꿀 땐 휴지통으로 지우고 새로 올려요
+  COLL["res-file"] = { name: "자료", list: (c) => c.resources.file, idp: "f", init: () => ({ attachments: [] }),
+    fields: [F("title", "자료 이름"), F("meta", "형식 (예: 엑셀 2개 · PDF)"), F("desc", "한 줄 설명 (목록에 보여요)"),
+      F("attachments", "자료 파일 (엑셀 · PDF · 워드 · 한글 등 — 수강생이 내려받아요)", "attachments"),
+      F("body", "자세한 설명 (자료 화면에 보여요 · 언제 쓰는지 · 들어 있는 것 · 활용 팁)", "textarea", { rows: 12, rich: true }),
+      F("url", "바로가기 주소 (선택 · 노션 · 구글 드라이브 등)", "url", { hint: "파일 말고 다른 곳에서 보게 하려면 적어요. 비워 두면 버튼이 안 보여요." })] };
   ["vod", "senior"].forEach((k) => { COLL["res-" + k] = { name: "영상", list: (c) => c.resources[k], idp: k[0], init: () => ({ body: "", attachments: [] }),
     fields: [F("title", "영상 제목 (팝업 제목)"), F("meta", "형식 (예: 기초 · 15분)"), F("desc", "한 줄 설명 (목록에 보여요)"), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "유튜브 · 비메오 주소를 붙여 넣어요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
       F("body", "본문 (게시판처럼 글을 쓰고, 사진은 [사진1] 자리에 들어가요)", "textarea", { rows: 14, rich: true, photos: true }), F("images", "사진 (여러 장 가능 · 첫 사진은 영상이 없을 때 썸네일)", "images"),
@@ -1351,17 +1367,29 @@
   const MAX_FILE = 2 * 1024 * 1024;
   const fsize = (n) => (!n ? "" : n < 1048576 ? Math.max(1, Math.round(n / 1024)) + "KB" : (n / 1048576).toFixed(1) + "MB");
   function attEditorHtml() {
-    return (attDraft.length ? '<ul class="a-att-list">' + attDraft.map((f, i) => '<li><span class="a-att-ext">' + esc((f.name.split(".").pop() || "").toUpperCase().slice(0, 4)) + '</span><span class="a-att-name">' + esc(f.name) + "<small>" + (f.data ? "파일 · " + fsize(f.size) : "링크 · " + esc(f.url)) + '</small></span><button type="button" class="a-icon-btn sm" data-action="att-remove" data-i="' + i + '" aria-label="삭제">' + icon("trash", "sm") + "</button></li>").join("") + "</ul>" : '<p class="a-muted a-att-empty">아직 첨부한 자료가 없어요.</p>') +
+    return (attDraft.length ? '<ul class="a-att-list">' + attDraft.map((f, i) => '<li><span class="a-att-ext">' + esc((f.name.split(".").pop() || "").toUpperCase().slice(0, 4)) + '</span><span class="a-att-name">' + esc(f.name) + "<small>" + (f.up ? "올리는 중…" : f.data ? "파일 · " + fsize(f.size) : "링크 · " + esc(f.url)) + '</small></span><button type="button" class="a-icon-btn sm" data-action="att-remove" data-i="' + i + '" aria-label="삭제">' + icon("trash", "sm") + "</button></li>").join("") + "</ul>" : '<p class="a-muted a-att-empty">아직 첨부한 자료가 없어요.</p>') +
       '<div class="a-att-add"><label class="a-btn a-btn-ghost a-btn-sm">' + icon("paperclip", "sm") + '파일 올리기<input type="file" id="att-file" class="sr-only" multiple></label>' +
-      '<span class="a-muted">파일은 2MB까지 · 큰 파일은 링크로</span></div>' +
+      '<span class="a-muted">파일은 ' + (attSrv() ? "3MB" : "2MB") + "까지 · 큰 파일은 링크로 · 바꿀 땐 휴지통으로 지우고 새로 올려요</span></div>" +
       '<div class="a-att-link"><input class="a-input a-sm" id="att-link-name" placeholder="자료 이름 (예: 1주차 교습지.pdf)"><input class="a-input a-sm" id="att-link-url" type="url" placeholder="https://drive.google.com/…">' + btn(icon("link", "sm") + "링크 추가", "att-link-add", "a-btn-ghost a-btn-sm") + "</div>";
   }
   const refreshAtt = () => { const el = document.getElementById("att-editor"); if (el) el.innerHTML = attEditorHtml(); };
+  // 서버에서는 고르는 즉시 파일 저장소로 올려요(/api/file · 범위 content:<강사> = 그 강사 수강생 · 운영자만) — 저장할 때 큰 파일이 한꺼번에 가지 않게 · 3MB까지
+  const MAX_SRV_FILE = 3 * 1024 * 1024;
+  const attSrv = () => !!(DB.remote && DB.remote.on) && TRK() !== "vod";
   function addAttFiles(files) {
     Array.from(files || []).forEach((file) => {
-      if (file.size > MAX_FILE) { toast("2MB 넘는 파일은 링크로 추가해 주세요.", "warn"); return; }
+      const srv = attSrv(), max = srv ? MAX_SRV_FILE : MAX_FILE;
+      if (file.size > max) { toast((srv ? "3MB" : "2MB") + " 넘는 파일은 링크로 추가해 주세요.", "warn"); return; }
       const r = new FileReader();
-      r.onload = () => { attDraft.push({ id: DB.uid("a"), name: file.name, data: r.result, size: file.size }); refreshAtt(); };
+      r.onload = () => {
+        if (!srv) { attDraft.push({ id: DB.uid("a"), name: file.name, data: r.result, size: file.size }); refreshAtt(); return; }
+        const tmp = { id: DB.uid("a"), name: file.name, size: file.size, up: true };
+        attDraft.push(tmp); refreshAtt();
+        fetch("/api/file", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: r.result, scope: "content:" + IID() }) })
+          .then((x) => x.json().catch(() => null).then((j) => ({ ok: x.ok, j })))
+          .then((o) => { if (!o.ok || !o.j || !o.j.url) throw new Error((o.j && o.j.message) || "upload"); delete tmp.up; tmp.data = o.j.url; refreshAtt(); })
+          .catch(() => { const i = attDraft.indexOf(tmp); if (i >= 0) attDraft.splice(i, 1); refreshAtt(); toast("‘" + file.name + "’을 올리지 못했어요. 다시 올려 주세요.", "warn"); });
+      };
       r.readAsDataURL(file);
     });
   }
@@ -1419,7 +1447,7 @@
       if (!el) continue;
       let v;
       if (f.type === "checkbox") v = el.checked;
-      else if (f.type === "attachments") v = attDraft.slice();
+      else if (f.type === "attachments") { if (attDraft.some((x) => x.up)) { err.textContent = "파일을 올리는 중이에요. 다 올라간 뒤에 저장해 주세요."; return false; } v = attDraft.slice(); }
       else if (f.type === "images") v = imgDraft.slice();
       else if (f.type === "lines") v = LINES(el.value);
       else if (f.type === "tags") v = TAGS(el.value);
@@ -1874,7 +1902,27 @@
       '<section class="a-card a-libnote"><div class="a-card-head"><span class="a-menu-ico">' + icon("shield", "sm") + '</span><div class="a-grow"><h2>자료실 이용 안내 팝업</h2><p class="a-muted">수강생이 자료실에 들어올 때마다 떠요. ‘' + esc(ln.button) + "’을 눌러야 자료가 보이고, 자료실 화면에는 열람자 이름 · 기수 · 시각이 옅게 표시돼요.</p></div>" +
         btn(icon("pen", "sm") + "문구 수정", "libnote-edit", "a-btn-ghost a-btn-sm") + "</div></section>" +
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs.map((t) => '<button type="button" class="a-tab' + (k === t[0] ? " on" : "") + '" data-action="lib-tab" data-k="' + t[0] + '">' + t[1] + ' <span class="num">' + c.resources[t[0]].length + "</span></button>").join("") + "</div></div>" +
-        simpleList("res-" + k, items, (it) => '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</small></div>" + ((it.attachments || []).length ? pill("첨부 " + it.attachments.length, "info") : "") + (it.tool ? pill("계산기", "info") : isVideo ? ytBadge(it) : it.url ? pill("링크 연결됨", "ok") : pill("준비 중", "mute")), "아직 자료가 없어요.") + "</section>";
+        simpleList("res-" + k, items, (it) => '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</small></div>" + resPills(it, isVideo), "아직 자료가 없어요.") + "</section>";
+  }
+  // 자료 상태 표시: 파일 N개 · 계산기 · 링크 · 설명만 · 준비 중 (React 화면도 같이 씀)
+  function resPills(it, isVideo) {
+    const nA = (it.attachments || []).length;
+    if (isVideo) return (nA ? pill("첨부 " + nA, "info") : "") + ytBadge(it);
+    if (it.tool) return pill("계산기", "info");
+    return nA ? pill("파일 " + nA + "개", "ok") + (it.url ? pill("링크", "info") : "") : it.url ? pill("링크 연결됨", "ok") : it.body ? pill("설명만 · 파일 없음", "warn") : pill("준비 중", "mute");
+  }
+  /** 대시보드 ‘자료 파일’ 카드 (2026-11-15): 수강생 자료실 ‘자료 파일’ 목록 그대로 · 바로 수정(파일 바꾸기 · 글 고치기) */
+  function libDashCard() {
+    if (TRK() === "vod" || !can("library")) return "";
+    const list = (C().resources || {}).file || [];
+    if (!list.length) return "";
+    const ext = (n) => (String(n || "").match(/\.([a-z0-9]{2,5})$/i) || [])[1] || "file";
+    return '<section class="a-card a-libdash"><div class="a-card-head"><h2>' + icon("fileSheet", "sm") + "자료 파일</h2>" + '<span class="a-muted">수강생 ‘강의 자료함 › 자료 파일’에 보이는 자료 ' + list.length + "개 · 수정을 누르면 파일 · 글을 바로 바꿔요</span>" +
+      '<button type="button" class="a-link" data-action="lib-go" data-k="file">강의 자료함 ' + icon("arrowRight", "xs") + "</button></div>" +
+      '<ul class="a-items">' + list.map((it) => { const fs = it.attachments || [];
+        return '<li><span class="a-lib-ic">' + icon(it.tool ? "calculator" : "fileSheet", "sm") + '</span><div class="a-item-main"><b>' + esc(it.title) + "</b><small>" +
+          (it.tool ? "바로 쓰는 계산기" : fs.length ? fs.map((f) => esc(ext(f.name).toUpperCase())).filter((x, i, a) => a.indexOf(x) === i).join(" · ") + " · 파일 " + fs.length + "개" : esc(it.desc || it.meta || "")) + "</small></div>" + resPills(it, false) +
+          '<div class="a-row-actions">' + btn(icon("pen", "sm") + "수정", "item-edit", "a-btn-ghost a-btn-sm", ' data-coll="res-file" data-id="' + esc(it.id) + '"') + "</div></li>"; }).join("") + "</ul></section>";
   }
   function pageMotivation() {
     return head("응원 영상" + (TRK() === "vod" ? " · VOD 버전" : ""), "맨 위 영상이 수강생 홈의 ‘오늘의 응원 영상’으로 보여요. 새로 올린 영상은 맨 위에 들어가요. 한마디 문구는 기본 정보에서 고쳐요.", addBtn("mv", "영상 추가")) +
@@ -8474,6 +8522,9 @@
     if (isCoach()) coachListCheck();
     document.body.dataset.coach = isCoach() ? "1" : "";
     document.body.dataset.ath = master ? "" : athOf(IID());
+    // 성장 단계 색 = 그 강사가 고른 강의실 색 (수강생 화면과 같게 · 2026-11-15) — 마스터는 강사마다 보드에 따로 붙여요
+    LV_VARS.forEach((k) => document.body.style.removeProperty(k));
+    if (!master) lvVarList(IID()).forEach((kv) => document.body.style.setProperty(kv[0], kv[1]));
     const k0 = r.parts[0] || "", pt0 = pageTrack(k0), offTrack = !master && ((pt0 && !OPEN()[pt0]) || (TRK() === "vod" && LIVE_ONLY_PAGES.indexOf(k0) >= 0) || (TRK() !== "vod" && VOD_ONLY_PAGES.indexOf(k0) >= 0));
     return { area: "center", master, offTrack, k0, r };
   }
@@ -8760,6 +8811,7 @@
       case "q-tab": ui.qFilter = d.k; render(); break;
       // 콘텐츠
       case "lib-tab": ui.libTab = d.k; render(); break;
+      case "lib-go": ui.libTab = d.k || "file"; ROUTE.hash = "#/center/library"; break;
       case "faq-bulk": faqBulkModal(); break;
       case "gl-bulk": glBulkModal(); break;
       case "showcase-from": showcaseFrom(a.dataset.sid, a.dataset.mid); break;
@@ -9134,7 +9186,7 @@
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
-    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,

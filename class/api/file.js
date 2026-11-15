@@ -2,6 +2,7 @@
  * POST /api/file { data: "data:…;base64,…", scope }  운영자(마스터 · 강사 · 코치)가 파일 하나 올리기 → { url }
  *   내용은 FILES_STORE=supabase 면 Supabase Storage 비공개 버킷에 (2부 B1 · api/_lib/blob.js) · 아니면 예전처럼 DB 에 — 주소는 어느 쪽이든 같아요
  *   scope: pub (클래스 사진 · 배너 — 누구나) · adm (제출 서류 — 운영자만) · vodp:<클래스> (수업 자료 · 전자책 — 그 클래스를 산 회원 · 운영자만)
+ *          content:<강사> (두잉고 강의실 자료 파일 · 첨부 — 그 강사 수강생 · 운영자만 · 그 강사 콘텐츠를 고칠 수 있는 사람만 올림 · 2026-11-15)
  *   전자책 파일을 산 회원이 받아 가면 그 주문에 내려받은 때(dlAt)를 남겨요 → 바로 취소(100% 환불) 판단 */
 "use strict";
 const crypto = require("crypto");
@@ -18,7 +19,9 @@ async function upload(req, res) {
   const b = await body(req), data = String(b.data || ""), m = data.match(DATA_RE);
   const scope = String(b.scope || "pub");
   if (!m) return send(res, 400, { error: "input" });
-  if (!/^(pub|adm|vodp:[\w-]{1,40})$/.test(scope)) return send(res, 400, { error: "scope" });
+  if (!/^(pub|adm|vodp:[\w-]{1,40}|content:[\w-]{1,40})$/.test(scope)) return send(res, 400, { error: "scope" });
+  // 강사 콘텐츠 범위: 그 콘텐츠를 저장할 수 있는 사람만 (다른 강사 자료함에 몰래 올리지 못하게)
+  if (/^content:/.test(scope) && !access.writer(scope, ids, false)) return send(res, 403, { error: "forbidden" });
   const b64 = data.slice(m[0].length);
   if (b64.length > MAX_B64) return send(res, 413, { error: "too-large" });
   const h = crypto.createHash("sha256").update(b64).digest("hex").slice(0, 40);

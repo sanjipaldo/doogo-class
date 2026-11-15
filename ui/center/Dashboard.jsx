@@ -32,6 +32,8 @@ function InsDash() {
       <Kpi label="검수 대기 · 미답변" value={n.review + " · " + n.questions} sub="과제 검수 / 1:1 요청" href="#/center/reviews" tone={n.review + n.questions ? "info" : ""} />
     </div>
     {co ? <section className="a-card"><div className="a-card-head"><h2>{co.name} 주차 일정</h2><Pill cls={A.COHORT_CLS[cs]}>{DB.STATUS_LABEL[cs]}</Pill><More href="#/center/cohorts">기수 관리</More></div><Isl html={A.weekStrip(co)} /></section> : null}
+    {/* 자료 파일 카드 (2026-11-15) — 바로 수정(파일 바꾸기 · 글 고치기) · 예전 HTML 그대로 */}
+    <Isl html={A.libDashCard()} />
     <div className="a-grid-2">
       <section className="a-card"><div className="a-card-head"><h2>승인 대기</h2><More href="#/center/students?status=pending">전체</More></div>{pend.length ? <PendList pend={pend} /> : <Empty ic="check">대기 중인 신청이 없어요.</Empty>}</section>
       <section className="a-card"><div className="a-card-head"><h2>최근 과제 제출</h2><More href="#/center/reviews">과제 검수</More></div>

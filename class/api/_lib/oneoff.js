@@ -1223,6 +1223,44 @@ function partnersTabLinks(get) {
   return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result: { banners: n + "개 → 파트너스 탭(?tab=partners)" } };
 }
 
+/* ---------- 문대표 자료 파일 (2026-11-15 · 대표님 요청 · 노션 ‘E셀러 필수 자료실 - 문서’와 같게) ----------
+ * 1) 글: 마진 계산기는 그대로 두고 나머지(예전 예시 4개 등)는 지운 뒤, 실전 문서 5개(처음 데이터 data.js 와 같은 글)를 넣어요 — 늘 돌아요
+ * 2) 파일: 잠근 묶음(packs/moon-lib-2026-11-15.enc)을 Vercel 환경 변수 DC_FILES_KEY 로 열어 1)의 자료에 첨부해요
+ *    → 저장할 때 서버가 비공개 파일(범위 content:moon · 문대표 수강생 · 운영자만)로 바꿔요. 열쇠가 생긴 배포 때 처음 돌아요.
+ *    이미 강사센터에서 파일을 올린 자료는 건드리지 않아요. */
+const LIB_PACK = "moon-lib-2026-11-15.enc";
+const LIB_FILES = { mf1: ["proposal", "dm"], mf2: ["channels"], mf3: ["bep"], mf4: ["calendar"] };
+const libSeed = () => clone(require("./seed").loadSeed().content.moon.resources.file);
+function moonLibItems(get) {
+  const k = "content:moon", c = get(k);
+  if (!isObj(c) || !isObj(c.resources) || !Array.isArray(c.resources.file)) return { writes: {}, result: { skipped: "문대표 자료 파일 없음" } };
+  const seed = libSeed(), cur = c.resources.file;
+  const calc = cur.find((x) => isObj(x) && x.tool === "calculator") || seed.find((x) => x.tool === "calculator");
+  const fresh = seed.filter((x) => x.tool !== "calculator").map((x) => { const was = cur.find((y) => isObj(y) && y.id === x.id); return was && (was.attachments || []).length ? Object.assign(x, { attachments: was.attachments }) : x; });
+  const removed = cur.filter((x) => isObj(x) && x !== calc && !fresh.some((y) => y.id === x.id)).map((x) => x.title);
+  const nc = clone(c);
+  nc.resources.file = [calc].concat(fresh);
+  return { writes: { [k]: nc }, result: { items: nc.resources.file.map((x) => x.title), removed } };
+}
+function moonLibFiles(get, opt) {
+  const k = "content:moon", c = get(k), key = (opt && opt.key) || process.env.DC_FILES_KEY;
+  if (!isObj(c) || !isObj(c.resources) || !Array.isArray(c.resources.file)) return { writes: {}, result: { skipped: "문대표 자료 파일 없음" } };
+  const FP = require("./filepack");
+  let pack;
+  try { pack = FP.openFile((opt && opt.file) || require("path").join(__dirname, "packs", LIB_PACK), key); }
+  catch (e) { return { writes: {}, result: { error: "파일 묶음을 열지 못했어요: " + (e && e.message) }, retry: true }; }
+  const nc = clone(c), done = [], kept = [];
+  nc.resources.file.forEach((it) => {
+    const tags = isObj(it) && LIB_FILES[it.id];
+    if (!tags) return;
+    if ((it.attachments || []).length) { kept.push(it.title); return; } // 강사센터에서 이미 올렸으면 그대로
+    it.attachments = tags.filter((t) => pack.files[t]).map((t) => FP.asAttachment(pack.files[t], "a-" + it.id + "-" + t));
+    done.push(it.title + " · " + it.attachments.length + "개");
+  });
+  if (!done.length) return { writes: {}, result: { skipped: "넣을 자료 없음", kept } };
+  return { writes: { [k]: nc }, result: { attached: done, kept } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1267,7 +1305,9 @@ const OPS = [
   { id: "2026-11-09-menu-order", note: "수강생 메뉴 순서: 주차별 강의 → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (강사마다 저장된 순서 · 켜기 · 이름은 그대로 · VOD 메뉴는 그대로)", run: menuOrder },
   { id: "2026-11-12-family-demo", note: "패밀리 체험 계정 만들기: 영업 패밀리 partner / partner · 온드미디어 owned / owned (로그인 · 로그아웃할 때 처음 상태로 · 비밀번호는 못 바꿈 · 체험 링크 주문엔 RS 없음) — 이미 있거나 아이디가 겹치면 건너뜀", run: familyDemo },
   { id: "2026-11-15-pg-fee-75", note: "PG 결제 수수료 7.5% 확정: 온드미디어 RS 기준의 PG 공제가 예전 기본값 5%로 저장돼 있으면 7.5%로 (강사 정산 공제 7.5%는 코드 기본값 · 2026-11-15 결제분부터)", run: pgFee75 },
+  { id: "2026-11-15-moon-lib-items", note: "문대표 자료 파일: 마진 계산기는 그대로 · 예전 예시 4개(건강식품 리스트 150 · 키워드 리스트 · 상세페이지 템플릿 · CS 답변 템플릿) 지우고 실전 문서 5개(공동구매 제안서 · DM 템플릿 · 판매 플랫폼 정리 · 손익분기점 계산표 · 월별 이벤트 캘린더 · 프리랜서 계약서) 글 넣기", run: moonLibItems },
+  { id: "2026-11-15-moon-lib-files", note: "문대표 자료 파일 첨부: 잠근 묶음을 DC_FILES_KEY 로 열어 엑셀 · PDF 5개를 비공개 파일로 (문대표 수강생 · 운영자만 · 강사센터에서 이미 올린 자료는 그대로)", run: moonLibFiles, when: () => !!String(process.env.DC_FILES_KEY || "").trim() },
   { id: "2026-11-14-partners-tab-links", note: "패밀리 · 파트너스 한 화면: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners · 강사 모집)면 파트너스(강사) 탭 #/vod/partners?tab=partners 로 — /vod/partners 는 이제 패밀리 탭이 기본", run: partnersTabLinks },
 ];
 
-module.exports = { OPS, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

@@ -370,8 +370,9 @@ module.exports = {
       await run.check(!!back && !back.err, "되돌리기: 강의 영상 칸을 원래 값으로", back, ap);
       await ap.context().close();
     }
-    // 1-9) 주차가 강의일 5일 전부터 열려요 (2026-11-09): 강사 ‘수강생 화면’(체험 계정과 달리 실제 일정 그대로)으로 — 3기 1주차 강의 11/21(토)
-    //      → 11/15 엔 잠김(‘11/16부터 공개’) · 11/16 엔 열림 (예전 화면 = React · 브라우저 시계만 그 날로)
+    // 1-9) 주차 열림 (2026-11-15 · 모든 강사): 1주차는 늘 · 2주차부터 강의일 전 수요일 0시 — 강사 ‘수강생 화면’(체험 계정과 달리 실제 일정 그대로)으로
+    //      3기: 1주차 강의 11/21(토) · 2주차 11/28(토) → 11/15 엔 1주차 열림 · 2주차 잠김(‘11/25부터’) · 11/25 0시 지나면 2주차 열림
+    //      주차별 강의는 한 주씩 — #/curriculum = 이번 주 · #/curriculum?w=2 = 2주차 (예전 화면 = React · 브라우저 시계만 그 날로)
     {
       const at = async (iso) => {
         const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: "Asia/Seoul" });
@@ -380,21 +381,31 @@ module.exports = {
         const pg = await ctx.newPage(); run.watch(pg, "주차 열림 " + iso.slice(0, 10));
         await FL.instructor(pg, base, info);
         const out = {};
+        const look = () => pg.evaluate(() => { const c = document.querySelector(".cw"), co = window.DB.currentCohort((window.DB.session.student() || {}).instructorId), on = document.querySelector(".cw-pg-dot.on");
+          return { co: co && co.name, cls2: window.DB.classDate(co, 2), unlock2: window.DB.weekUnlock(co, 2), cards: document.querySelectorAll(".cw").length, on: on ? on.getAttribute("href") : null, title: c ? (c.querySelector("h2") || {}).textContent || "" : "",
+            locked: !!(c && c.classList.contains("cw-locked")), msg: c ? (c.querySelector(".cw-lock") || {}).textContent || "" : null, lessons: c ? c.querySelectorAll("a[href*='curriculum/']").length : 0,
+            next: (document.querySelector(".cw-pg-btn.next") || {}).getAttribute ? document.querySelector(".cw-pg-btn.next").getAttribute("href") : null, prev: (document.querySelector("a.cw-pg-btn.prev") || { getAttribute: () => null }).getAttribute("href") }; });
         for (const mode of ["off", "all"]) {
           await L.reactCookie(pg, base, mode); await L.open(pg, base, "/center"); await pg.waitForTimeout(600);
           await pg.click('[data-action="preview"]'); await pg.waitForTimeout(900);
           await pg.evaluate(() => { window.ROUTE.hash = "#/curriculum"; }); await pg.waitForTimeout(900);
-          out[mode] = await pg.evaluate(() => { const c = document.querySelector(".cw"), co = window.DB.currentCohort((window.DB.session.student() || {}).instructorId); return { co: co && co.name, cls: window.DB.classDate(co, 1), unlock: window.DB.weekUnlock(co, 1), locked: !!(c && c.classList.contains("cw-locked")), msg: c ? (c.querySelector(".cw-lock") || {}).textContent || "" : null, lessons: c ? c.querySelectorAll("a[href*='curriculum/']").length : 0 }; });
+          const w1 = await look();
+          await pg.evaluate(() => { window.ROUTE.hash = "#/curriculum?w=2"; }); await pg.waitForTimeout(900);
+          out[mode] = { w1, w2: await look() };
           await pg.evaluate(() => { window.ROUTE.hash = "#/center"; }).catch(() => {});
         }
         await ctx.close();
         return out;
       };
-      const d15 = await at("2026-11-15T12:00:00+09:00"), d16 = await at("2026-11-16T09:00:00+09:00");
-      const lockedOk = (o) => o.co === "3기" && o.cls === "2026-11-21" && o.unlock === "2026-11-16" && o.locked && /11\/16|11월 16일/.test(o.msg);
-      const openOk = (o) => o.co === "3기" && !o.locked && o.lessons >= 1;
-      await run.check(lockedOk(d15.off) && lockedOk(d15.all) && openOk(d16.off) && openOk(d16.all),
-        "주차 열림: 3기 1주차 강의 11/21 → 11/15 엔 잠김(‘11/16부터 공개’) · 11/16 엔 열림 (강의일 5일 전 · 강사 ‘수강생 화면’ · 예전 화면 = React)", { d15, d16 });
+      // 시험 DB 의 3기 날짜는 운영과 다를 수 있어요 → 2주차 강의일에서 ‘그 전 수요일’을 계산해 맞는지 보고, 그날 0시 30분에 열리는지 봐요
+      const d15 = await at("2026-11-15T12:00:00+09:00"), u2 = d15.off.w2.unlock2 || "2026-11-25", d25 = await at(u2 + "T00:30:00+09:00");
+      const wedOf = (ymd) => { const d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 3 + 7) % 7)); return d.toISOString().slice(0, 10); };
+      const md = (ymd) => Number(ymd.slice(5, 7)) + "/" + Number(ymd.slice(8, 10));
+      const firstOk = (o) => o.co === "3기" && o.cards === 1 && /^1주차/.test(o.title) && !o.locked && o.lessons >= 1 && o.on === "#/curriculum?w=1" && o.next === "#/curriculum?w=2" && !o.prev;
+      const lockedOk = (o) => o.co === "3기" && o.cards === 1 && /^2주차/.test(o.title) && !!o.cls2 && o.unlock2 === wedOf(o.cls2) && o.unlock2 > "2026-11-15" && o.locked && o.msg.indexOf(md(o.unlock2) + " (수)") >= 0 && o.prev === "#/curriculum?w=1";
+      const openOk = (o) => o.co === "3기" && /^2주차/.test(o.title) && !o.locked;
+      await run.check(firstOk(d15.off.w1) && firstOk(d15.all.w1) && lockedOk(d15.off.w2) && lockedOk(d15.all.w2) && openOk(d25.off.w2) && openOk(d25.all.w2),
+        "주차별 강의 한 주씩 · 열림: 11/15 엔 1주차(늘 열림)만 보이고 → 화살표로 2주차(잠김 · ‘강의일 전 수요일부터’ · 왼쪽 = 1주차) · 그 수요일 0시 지나면 2주차 열림 (강사 ‘수강생 화면’ · 예전 화면 = React)", { d15, d25 });
     }
     // 1-10) 수강생마다 커리큘럼 (2026-11-09): 강사센터 › 수강생 관리 › 상세 ‘커리큘럼’ → 이 수강생만 다른 커리큘럼 → 수강생 주차별 강의(예전 화면 = React)가 그 커리큘럼
     //       → ‘기수 커리큘럼 그대로’로 되돌리면 다시 기수 커리큘럼

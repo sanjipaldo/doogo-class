@@ -46,11 +46,12 @@
   const allMissions = () => D.weeks.flatMap((w) => w.missions.map((m) => Object.assign({ weekNo: w.no }, m)));
   const findWeek = (no) => D.weeks.find((w) => w.no === Number(no));
   const findMission = (id) => allMissions().find((m) => m.id === id);
-  // 주차가 열리는 날: 그 주 강의일 5일 전부터 (예: 11/21 강의 → 11/16 · 2026-11-09 — shared/schedule.js weekUnlock)
+  // 주차가 열리는 날 (2026-11-15 · 모든 강사): 1주차는 늘 열려 있고, 2주차부터 그 주 강의일 이전(같은 날 포함) 수요일 0시
+  //  (예: 11/28(토) 강의 → 11/25(수) — shared/schedule.js weekUnlock · weekIsOpen)
   const openOf = (w) => DB.weekUnlock(CO, w.no);
   const deadlineOf = (w) => DB.weekDeadline(CO, w.no);
   // 체험 계정은 모든 주차를 열어 둔다 (강사 미리보기는 실제 수강생과 같은 일정으로)
-  const isOpen = (w) => (!!me && !!me.demo && !preview) || todayStr() >= openOf(w);
+  const isOpen = (w) => (!!me && !!me.demo && !preview) || DB.weekIsOpen(CO, w.no, todayStr());
   const lastSub = (id) => DB.lastSub(P, id);
   const missionState = (id) => DB.subState(P, id);
   const isDone = (id) => missionState(id) === "done";
@@ -148,7 +149,7 @@
   NAV_DEFS.forEach((n) => { if (!n.label) n.label = DEF_LABEL(n.id); });
   const LIB = [
     { id: "ebook", label: "전자책 · 가이드북", icon: "book", cls: "ri-1", desc: () => D.brand.instructor + " 전자책과 가이드북을 웹에서 열람" },
-    { id: "file", label: "자료 파일", icon: "fileSheet", cls: "ri-2", desc: () => "상품 리스트 · 키워드 · 마진 계산기 등 실전 자료" },
+    { id: "file", label: "자료 파일", icon: "fileSheet", cls: "ri-2", desc: () => "마진 계산기 · 실전 문서 · 엑셀 템플릿 등 바로 쓰는 자료" },
     { id: "vod", label: "이커머스 실전 VOD", icon: "circlePlay", cls: "ri-3", desc: () => "쿠팡 · 네이버 판매, 도매몰 발주 · 대량 발주 강의 영상" },
     { id: "senior", label: "시니어 기초 가이드", icon: "book", cls: "ri-4", desc: () => "처음 시작하시는 분들을 위한 친절한 기초 안내" }
   ];
@@ -160,7 +161,10 @@
   // VOD 버전 자료함: 내려받을 수 있는 자료만 (주소가 없는 ‘준비 중’ 자료는 숨김) + 강의마다 올린 수업 자료 모음
   const resOk = (it) => !!(it.url || it.tool || (it.attachments || []).length || (it.images || []).length || it.video || it.youtube || it.body);
   /** 자료 목록 (2026-11-10): 바로 쓸 수 있는 것(파일 주소 · 계산기)을 위로, ‘준비 중’은 아래로 — 같은 묶음 안 순서는 그대로 */
-  const resReady = (it) => !!(it && (it.tool === "calculator" || it.url));
+  const resReady = (it) => !!(it && (it.tool === "calculator" || it.url || resDoc(it)));
+  /** 자료 파일 · 전자책 (2026-11-15): 설명 글 · 첨부 파일이 있으면 자료 화면(#/library/<분류>/<자료>)에서 읽고 내려받아요 */
+  const resDoc = (it) => !!(it && !it.tool && (it.body || (it.attachments || []).length));
+  const resExts = (it) => (it.attachments || []).map((f) => extOf(f.name).toUpperCase()).filter((x, i, a) => a.indexOf(x) === i);
   const readyFirst = (list) => list.filter(resReady).concat(list.filter((x) => !resReady(x)));
   const resOf = (id) => (id === "lesson" ? lessonFiles() : TRACK === "vod" ? (D.resources[id] || []).filter(resOk) : D.resources[id] || []);
   function lessonFiles() {
@@ -1166,10 +1170,33 @@
   function pageCurriculum(r) {
     if (r.parts[1]) return pageLesson(r.parts[1]);
     const cur = D.weeks.find((w) => isOpen(w) && todayStr() <= deadlineOf(w)) || D.weeks.filter(isOpen).slice(-1)[0];
+    const pick = cwPick(r, cur);
     return '<div class="page">' + pageHead(ML("curriculum"), mainLec() ? "메인 강의는 " + (mainLec().platform || "외부 강의실") + "에서 듣고, 여기서는 주차마다 " + lessonWord() + "을 보며 과제를 바로 따라 해요." : "주차마다 무엇을 배우고 어떤 과제를 하는지 순서대로 정리했어요.") +
       mainLecCard(true) +
-      (D.weeks.length ? '<div class="cw-list">' + D.weeks.map((w) => curWeekCard(w, cur === w)).join("") + "</div>"
+      (D.weeks.length ? cwPager(pick) + '<div class="cw-one">' + cwSide(pick, -1) + curWeekCard(pick, cur === pick) + cwSide(pick, 1) + "</div>"
         : '<section class="card">' + empty("book", "커리큘럼을 준비하고 있어요.") + "</section>") + "</div>";
+  }
+  /* 주차별 강의는 한 주씩 (2026-11-15 대표님 요청): 왼쪽 · 오른쪽 화살표로 이전 · 다음 주차 — 주소 #/curriculum?w=2 (공유 · 뒤로 가기 · 새로 고침 그대로)
+   *  처음엔 이번 주(없으면 마지막으로 열린 주차 · 그것도 없으면 1주차). 아직 안 열린 주차도 넘겨 볼 수 있고 ‘언제 열리는지’만 보여요. React(ui/dg/Learn.jsx)와 같은 모양 */
+  function cwPick(r, cur) {
+    const n = Number(r.params.get("w"));
+    return D.weeks.find((w) => w.no === n) || cur || D.weeks[0];
+  }
+  const cwNear = (w, d) => D.weeks[D.weeks.indexOf(w) + d] || null;
+  function cwPager(w) {
+    const btn = (d) => {
+      const x = cwNear(w, d), ic = icon(d < 0 ? "chevLeft" : "chevRight", "sm"), cls = "cw-pg-btn " + (d < 0 ? "prev" : "next");
+      if (!x) return '<span class="' + cls + ' off" aria-hidden="true">' + (d < 0 ? ic + "<span>이전 주차</span>" : "<span>다음 주차</span>" + ic) + "</span>";
+      return '<a class="' + cls + '" href="#/curriculum?w=' + x.no + '" aria-label="' + (d < 0 ? "이전" : "다음") + " 주차 · " + x.no + '주차">' + (d < 0 ? ic + "<span>" + x.no + "주차</span>" : "<span>" + x.no + "주차</span>" + ic) + "</a>";
+    };
+    return '<nav class="cw-pager" aria-label="주차 넘기기">' + btn(-1) +
+      '<ol class="cw-pg-dots">' + D.weeks.map((x) => '<li><a class="cw-pg-dot' + (x === w ? " on" : "") + (isOpen(x) ? "" : " lock") + '" href="#/curriculum?w=' + x.no + '" aria-label="' + x.no + "주차" + (isOpen(x) ? "" : " · " + fmtMD(openOf(x)) + " 공개") + '"' + (x === w ? ' aria-current="page"' : "") + ">" + (isOpen(x) ? x.no : icon("lock", "xs")) + "</a></li>").join("") + "</ol>" +
+      btn(1) + "</nav>";
+  }
+  // 카드 양옆 큰 화살표 (넓은 화면) — 휴대폰은 위 줄(cw-pager)로
+  function cwSide(w, d) {
+    const x = cwNear(w, d);
+    return x ? '<a class="cw-side ' + (d < 0 ? "prev" : "next") + '" href="#/curriculum?w=' + x.no + '" aria-label="' + (d < 0 ? "이전" : "다음") + " 주차 · " + x.no + '주차">' + icon(d < 0 ? "chevLeft" : "chevRight") + "</a>" : "";
   }
   function curWeekCard(w, now) {
     const open = isOpen(w), st = weekStats(w);
@@ -1987,11 +2014,14 @@
           ((it.attachments || []).length ? "<span>" + icon("paperclip", "xs") + "첨부 " + it.attachments.length + "</span>" : "") + "</span></span></a>").join("") + "</div>";
     } else {
       body = readyFirst(items).map((it) => {
+        const nA = (it.attachments || []).length, doc = resDoc(it);
         const action = it.tool === "calculator"
           ? '<a class="btn btn-primary btn-sm" href="#/library/file?tool=calculator">' + icon("calculator", "sm") + "계산기 열기</a>"
+          : doc ? '<a class="btn ' + (nA ? "btn-primary" : "btn-tertiary") + ' btn-sm" href="#/library/' + cat + "/" + esc(it.id) + '">' + icon(nA ? "download" : "arrowRight", "sm") + (nA ? "자료 받기" : "자세히 보기") + "</a>"
           : it.url ? '<a class="btn btn-tertiary btn-sm" href="' + esc(it.url) + '" target="_blank" rel="noopener">' + icon(cat === "ebook" ? "book" : "download", "sm") + (cat === "ebook" ? "열람" : "다운로드") + "</a>"
           : '<button class="btn btn-secondary btn-sm" data-action="not-ready">준비 중</button>';
-        return '<div class="res-item"><span class="res-icon ' + c.cls + '">' + icon(it.tool ? "calculator" : c.icon) + '</span><div style="min-width:0"><div class="m-title">' + esc(it.title) + '</div><div class="m-desc">' + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</div></div>" + action + "</div>";
+        const exts = resExts(it), tag = exts.length ? '<span class="res-exts">' + exts.map((x) => '<i class="e-' + esc(x.toLowerCase()) + '">' + esc(x) + "</i>").join("") + (nA > 1 ? "<small>파일 " + nA + "개</small>" : "") + "</span>" : "";
+        return '<div class="res-item' + (doc ? " has-doc" : "") + '"><span class="res-icon ' + c.cls + '">' + icon(it.tool ? "calculator" : c.icon) + '</span><div style="min-width:0">' + (doc ? '<a class="m-title" href="#/library/' + cat + "/" + esc(it.id) + '">' + esc(it.title) + "</a>" : '<div class="m-title">' + esc(it.title) + "</div>") + '<div class="m-desc">' + esc([it.meta, it.desc].filter(Boolean).join(" · ")) + "</div>" + tag + "</div>" + action + "</div>";
       }).join("");
     }
     return '<div class="page">' + pageHead(c.label, c.desc(), crumb([[ML("library"), "#/library"], [c.label]])) + warn +
@@ -2012,14 +2042,26 @@
     const body = it.body ? DB.rich(it.body, { token: (n) => { const im = imgs[n - 1]; if (!im) return ""; used[n - 1] = true; return fig(im); } }) : "";
     const rest = imgs.filter((_, k) => !used[k]);
     const prev = list[i - 1], next = list[i + 1];
+    const docCat = c.id === "file" || c.id === "ebook";
     return '<div class="page">' + pageHead(it.title, [it.meta, it.desc].filter(Boolean).join(" · "), crumb([[ML("library"), "#/library"], [c.label, "#/library/" + c.id], [it.title]])) +
       '<article class="card res-article">' + (DB.vidOk(it.youtubeId) ? video(it) : "") +
+        (docCat ? resFilesTop(it) : "") +
         '<div class="body">' + body + (rest.length ? '<div class="n-imgs">' + rest.map(fig).join("") + "</div>" : "") + "</div>" +
-        attachmentList(it.attachments) +
+        (docCat ? "" : attachmentList(it.attachments)) +
         (!body && !imgs.length && !DB.vidOk(it.youtubeId) && !(it.attachments || []).length ? empty(c.icon, "내용을 준비하고 있어요.") : "") +
       "</article>" +
       pager(prev ? { href: "#/library/" + c.id + "/" + prev.id, label: "이전 자료", title: prev.title } : null, next ? { href: "#/library/" + c.id + "/" + next.id, label: "다음 자료", title: next.title } : null, "#/library/" + c.id) +
       "</div>";
+  }
+  // 자료 파일 · 전자책 화면 맨 위: 받을 파일(내려받기) + 바로가기 주소 — 파일이 아직 없으면 ‘곧 올라와요’
+  function resFilesTop(it) {
+    const fs = it.attachments || [];
+    return '<div class="res-dl"><p class="side-label">' + icon("download", "xs") + (fs.length ? "받을 자료 " + fs.length + "개" : "받을 자료") + "</p>" +
+      (fs.length ? '<ul class="att-list">' + fs.map((f) => { const ext = extOf(f.name).toUpperCase(), href = f.data || f.url || "#", dl = !!f.data;
+        return '<li><span class="att-ext e-' + esc(ext.toLowerCase()) + '">' + esc(ext) + '</span><span class="att-name">' + esc(f.name) + (f.size ? "<small>" + fileSize(f.size) + "</small>" : f.url ? "<small>링크</small>" : "") + "</span>" +
+          '<a class="btn ' + (dl ? "btn-primary" : "btn-tertiary") + ' btn-sm" href="' + esc(href) + '"' + (dl ? ' download="' + esc(f.name) + '"' : ' target="_blank" rel="noopener"') + ">" + icon(dl ? "download" : "arrowUpRight", "sm") + (dl ? "다운로드" : "열기") + "</a></li>"; }).join("") + "</ul>"
+        : '<p class="res-dl-none">' + icon("clock", "xs") + "파일을 곧 올려 드릴게요.</p>") +
+      (it.url ? '<a class="btn btn-tertiary btn-sm res-dl-link" href="' + esc(it.url) + '" target="_blank" rel="noopener">' + icon("arrowUpRight", "sm") + "바로가기</a>" : "") + "</div>";
   }
   // 자료실 이용 안내 팝업 + 열람자 표시(워터마크)
   function libNoticeModal() {
@@ -2887,7 +2929,7 @@
     // 지금 상태 (수강생 · 강사 · 콘텐츠 · 기수 · 진행 기록 · 버전 · 미리보기 · VOD 강의실)
     st: () => ({ me, INS, D, CO, P, TRACK, preview, previewBy, VP, botOpen, botThinking, chipTab }),
     prep, route, setVp, NAV, NAV_DEFS, navLabel, on, ML, NT, libList, LV, unreadNotices, newAnswers, newFixes,
-    lessonLong, readyFirst, resReady,
+    lessonLong, readyFirst, resReady, resDoc, resExts, resFilesTop,
     isOpen, weekStats, overallStats, nextMissionOverall, myEvents, isUnread, kindOf, kindCount, findWeek, findMission, openOf, deadlineOf, missionState, lastSub, isDone, daysUntil, greetWord,
     guideGroup, guideDoneCheck, quickList: () => DB.quickLinksOf(D).filter((l) => l.url && (/^https?:/i.test(l.url) || linkOk([l.title, l.url]))), linkOk, mainLec,
     vodList, vodPct, vodPctOf, vodNext, coachN, addPid, coachEnd, myCoachQs, vodExp, learnHref, vodMode, applyTheme,
