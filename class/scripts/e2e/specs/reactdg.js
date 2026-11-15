@@ -722,8 +722,8 @@ module.exports = {
         const lib = await pg.evaluate(() => { const rows = Array.from(document.querySelectorAll(".res-item")).map((x) => !x.querySelector('[data-action="not-ready"]')); return { rows, sorted: rows.every((v, i) => i === 0 || rows[i - 1] || !v), anyReady: rows.some(Boolean), anyWait: rows.some((v) => !v) }; });
         r[mode] = { cur, lib }; await pg.context().close();
       }
-      await run.check(["off", "all"].every((m) => r[m].cur.n > 0 && r[m].cur.ok && r[m].cur.clamp === "3" && r[m].lib.sorted && r[m].lib.anyReady && r[m].lib.anyWait) && JSON.stringify(r.off) === JSON.stringify(r.all),
-        "강의 목록 설명은 요약(서식 기호 없이 · 휴대폰 세 줄 · 길면 ‘자세히 보기’) · 자료 파일은 다운로드 · 계산기 먼저, ‘준비 중’은 아래 (예전 화면 = React)", r);
+      await run.check(["off", "all"].every((m) => r[m].cur.n > 0 && r[m].cur.ok && r[m].cur.clamp === "3" && r[m].lib.sorted && r[m].lib.anyReady) && JSON.stringify(r.off) === JSON.stringify(r.all),
+        "강의 목록 설명은 요약(서식 기호 없이 · 휴대폰 세 줄 · 길면 ‘자세히 보기’) · 자료 파일은 계산기 · 자료 받기 · 자세히 보기 먼저, ‘준비 중’(있으면)은 아래 (예전 화면 = React) — 2026-11-15 문대표 자료 6개는 모두 바로 볼 수 있어 ‘준비 중’이 없어요", r);
     }
     // 1-20) 첫 책 1,000원 할인 쿠폰 (2026-11-10): 회원이면 한 장 · 책 상세 ‘쿠폰 적용가 14,900원’ · 종이책 결제 화면에 쿠폰이 골라져 18,400원 · 서버도 18,400원 (예전 화면 = React)
     {
