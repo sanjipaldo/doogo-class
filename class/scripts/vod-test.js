@@ -3511,10 +3511,23 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const OF65 = require(path.join(ROOT, "api/_lib/oneoff.js")), op65 = OF65.OPS.find((x) => x.id === "2026-11-15-moon-senior-cats");
     const src65 = { resources: { senior: [{ id: "s1", title: "챗GPT 회원가입 및 첫 사용 방법" }, { id: "s2", title: "상품 이미지 누끼 따는 방법" }, { id: "s3", title: "네이버 웨일(Whale) 설치하는 방법" }, { id: "s4", title: "쿠팡 로켓그로스 입점" }, { id: "s5", title: "스마트스토어 정산 보기" }, { id: "s6", title: "홈택스 공동인증서", cat: "lc-etc" }, { id: "s7", title: "카카오톡 고객 응대" }] } };
     const w65 = OF65.moonSeniorCats((k) => (k === "content:moon" ? src65 : null)), n65 = w65.writes["content:moon"], cat65 = (id) => (n65.resources.senior.find((x) => x.id === id) || {}).cat;
-    ok(op65 && op65.run === OF65.moonSeniorCats && !op65.when && n65.libCats.senior.map((x) => x.name).join("|") === "배송|쿠팡|상품등록|컴퓨터|빽형 건기식 AI 마스터툴 VOD|기타|네이버" &&
+    ok(op65 && op65.run === OF65.moonSeniorCats && !op65.when && n65.libCats.senior.map((x) => x.name).join("|") === "배송|쿠팡|상품등록|컴퓨터|기타|네이버" &&
       cat65("s1") === "lc-pc" && cat65("s2") === "lc-reg" && cat65("s3") === "lc-pc" && cat65("s4") === "lc-coupang" && cat65("s5") === "lc-naver" && cat65("s6") === "lc-etc" && cat65("s7") === undefined && w65.result.none === 1 && !src65.libCats &&
       OF65.moonSeniorCats(() => n65).result.skipped && OF65.moonSeniorCats(() => null).result.skipped,
-      "일회성: 문대표 시니어 기초 가이드 카테고리 7개(보내 준 화면 그대로) · 제목으로 골라 넣기(웨일 · 크롬 · 챗GPT → 컴퓨터 · 누끼 → 상품등록 · 쿠팡 · 네이버) · 이미 고른 글 · 맞는 게 없는 글은 그대로 · 다시 돌리면 건너뜀");
+      "일회성: 문대표 시니어 기초 가이드 카테고리 6개(보내 준 화면 — 빽형은 2026-11-16 뺌) · 제목으로 골라 넣기(웨일 · 크롬 · 챗GPT → 컴퓨터 · 누끼 → 상품등록 · 쿠팡 · 네이버) · 이미 고른 글 · 맞는 게 없는 글은 그대로 · 다시 돌리면 건너뜀");
+  }
+
+  {
+    console.log("66) 시니어 기초 가이드 ‘빽형 건기식 AI 마스터툴 VOD’ 카테고리 지우기 (2026-11-16)");
+    const OF66 = require(path.join(ROOT, "api/_lib/oneoff.js")), op66 = OF66.OPS.find((x) => x.id === "2026-11-16-moon-senior-drop-bb");
+    const cats66 = [["lc-ship", "배송"], ["lc-coupang", "쿠팡"], ["lc-reg", "상품등록"], ["lc-pc", "컴퓨터"], ["lc-bb", "빽형 건기식 AI 마스터툴 VOD"], ["lc-etc", "기타"], ["lc-naver", "네이버"]].map((x) => ({ id: x[0], name: x[1] }));
+    const src66 = { libCats: { senior: cats66, file: [{ id: "f1", name: "엑셀" }] }, resources: { senior: [{ id: "a", title: "웨일", cat: "lc-pc" }, { id: "b", title: "마스터툴", cat: "lc-bb" }, { id: "c", title: "없음" }] } };
+    const w66 = OF66.moonSeniorDropBb((k) => (k === "content:moon" ? src66 : null)), n66 = w66.writes["content:moon"];
+    ok(op66 && op66.run === OF66.moonSeniorDropBb && !op66.when && OF66.OPS.indexOf(op66) === OF66.OPS.findIndex((x) => x.id === "2026-11-15-moon-senior-cats") + 1 &&
+      n66.libCats.senior.map((x) => x.name).join("|") === "배송|쿠팡|상품등록|컴퓨터|기타|네이버" && n66.libCats.file.length === 1 &&
+      n66.resources.senior.map((x) => x.cat || "-").join(",") === "lc-pc,-,-" && w66.result.cleared.join() === "마스터툴" && src66.libCats.senior.length === 7 &&
+      OF66.moonSeniorDropBb(() => n66).result.skipped && OF66.moonSeniorDropBb(() => null).result.skipped && !OF66.SENIOR_CATS.some((x) => /빽형/.test(x[1])),
+      "일회성: 빽형 카테고리만 지우기(다른 카테고리 · 다른 분류 그대로) · 그 카테고리 글은 남기고 카테고리 없이 · 이미 지웠으면 건너뜀 · 처음 셋팅 목록에서도 뺌");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
