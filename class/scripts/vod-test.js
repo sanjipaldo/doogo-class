@@ -3531,32 +3531,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   }
 
   {
-    console.log("67) 문대표 3기 수강생 명단 넣기 — 잠근 명단 묶음 · 이미 있는 수강생 건너뛰기 (2026-11-18)");
-    const OF67 = require(path.join(ROOT, "api/_lib/oneoff.js")), FP67 = require(path.join(ROOT, "api/_lib/filepack.js")), op67 = OF67.OPS.find((x) => x.id === "2026-11-18-moon-3gi-roster");
-    const key67 = require("crypto").randomBytes(32).toString("hex"), f67 = path.join(TMP, "roster67.enc");
-    fs.writeFileSync(f67, FP67.seal({ v: 1, iid: "moon", cohortStart: "2026-11-21", students: [
-      { name: "가나다", phone4: "1234", memo: "온라인" }, { name: " 라마바 ", phone4: "5678", memo: "오프라인" }, { name: "기존", phone4: "1111", memo: "온라인" }, { name: "모양틀림", phone4: "12a4", memo: "온라인" }] }, key67));
-    const db67 = { "cohorts:moon": [{ id: "c2", name: "2기", startDate: "2026-08-29" }, { id: "c4", name: "3기", startDate: "2026-11-21" }], "stu:moon:s1": { id: "s1", name: "기존", phone4: "1111", status: "approved", cohortId: "c4" }, "stu:moon:s9": { id: "s9", name: "가나다", phone4: "1234", status: "withdrawn", cohortId: "c2" } };
-    const get67 = (k) => db67[k], keys67 = (p) => Object.keys(db67).filter((k) => k.indexOf(p) === 0);
-    const w67 = OF67.moonRoster3(get67, keys67, { key: key67, file: f67 }), nw67 = Object.keys(w67.writes).map((k) => [k, w67.writes[k]]);
-    const bad67 = OF67.moonRoster3(get67, keys67, { key: "0".repeat(64), file: f67 }), noCo67 = OF67.moonRoster3((k) => (k === "cohorts:moon" ? [{ id: "c2", startDate: "2026-08-29" }] : undefined), () => [], { key: key67, file: f67 });
-    const real67 = fs.readFileSync(path.join(ROOT, "api/_lib/packs", OF67.ROSTER_PACK));
-    const env67 = [process.env.VERCEL, process.env.DC_ROSTER_KEY], when67 = [];
-    delete process.env.VERCEL; process.env.DC_ROSTER_KEY = key67; when67.push(op67.when());
-    process.env.VERCEL = "1"; when67.push(op67.when()); process.env.DC_ROSTER_KEY = "짧은열쇠"; when67.push(op67.when());
-    if (env67[0] === undefined) delete process.env.VERCEL; else process.env.VERCEL = env67[0];
-    if (env67[1] === undefined) delete process.env.DC_ROSTER_KEY; else process.env.DC_ROSTER_KEY = env67[1];
-    ok(op67 && op67.run === OF67.moonRoster3 && when67.join() === "false,true,false" &&
-      nw67.length === 2 && nw67.every(([k, s]) => k === "stu:moon:" + s.id && /^s[0-9a-z]+$/.test(s.id) && !db67[k] && s.instructorId === "moon" && s.cohortId === "c4" && s.status === "approved" && /^\d{4}-\d{2}-\d{2}$/.test(s.appliedAt) && !s.demo) &&
-      nw67.map(([, s]) => s.name + s.phone4 + s.memo).join("|") === "가나다1234온라인|라마바5678오프라인" &&
-      w67.result.added === 2 && w67.result.online === 1 && w67.result.offline === 1 && w67.result.skipped.join("|") === "기OO · 이미 있음|#4 이름 · 뒷자리 모양이 아님" && w67.result.cohort === "3기 · 2026-11-21" &&
-      bad67.retry === true && !Object.keys(bad67.writes).length && noCo67.retry === true && !Object.keys(noCo67.writes).length &&
-      real67.subarray(0, 5).toString() === "DCFP1" && real67.indexOf(Buffer.from("온라인")) < 0 && real67.indexOf(Buffer.from("moon")) < 0,
-      "일회성: 잠근 명단을 열쇠로 열어 3기(11/21) ‘수강 중’ 수강생으로 · 메모 온라인/오프라인 · 같은 이름·뒷자리로 수강 중이면 건너뜀(탈퇴한 기록은 상관없음) · 열쇠가 틀리거나 기수가 없으면 기록 안 하고 다음 배포에 다시 · 운영 배포 + 열쇠 있을 때만 · 저장소 묶음은 잠긴 모양(평문 없음)");
-  }
-
-  {
-    console.log("68) 수강 기간 (평생 · 1~24개월) — 강사센터 설정 · 기간이 끝나면 로그인 · 세션 막기 (2026-11-18)");
+    console.log("67) 수강 기간 (평생 · 1~24개월) — 강사센터 설정 · 기간이 끝나면 로그인 · 세션 막기 (2026-11-18)");
     const D68 = require(path.join(ROOT, "shared/dates.js")), st68 = require(path.join(TMP, "class/api/_lib/store.js"));
     ok(D68.addMonths("2026-11-18", 1) === "2026-12-18" && D68.addMonths("2026-11-18", 3) === "2027-02-18" && D68.addMonths("2026-01-31", 1) === "2026-02-28" && D68.addMonths("2028-01-31", 1) === "2028-02-29" && D68.addMonths("2026-12-15", 24) === "2028-12-15" &&
       !D68.accessExpired({ accessUntil: "2026-12-18" }, "2026-12-18") && D68.accessExpired({ accessUntil: "2026-12-18" }, "2026-12-19") && !D68.accessExpired({}, "2099-01-01") && !D68.accessExpired({ accessUntil: "12/18" }, "2099-01-01") &&
