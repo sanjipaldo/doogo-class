@@ -702,7 +702,7 @@
           list.map((s) => {
             const st = s.status === "approved" ? DB.stats(DB.progress(s.id), iid, DB.studentCohort(s)) : null;
             return '<tr><td' + (ui.stuStatus === "pending" ? ' class="w-check"><input type="checkbox" class="stu-pick" data-id="' + s.id + '"' + (ui.picked.has(s.id) ? " checked" : "") + ' aria-label="' + esc(s.name) + ' 선택"></td><td' : "") + '><button class="a-name" data-action="student-open" data-id="' + s.id + '">' + esc(s.name) + "</button>" + (s.demo === true ? '<span class="a-demo-tag" title="체험(테스트) 계정 · 로그인 · 로그아웃마다 처음으로">체험</span>' : "") + (s.memo ? '<small class="a-memo">' + esc(s.memo) + "</small>" : "") + "</td>" +
-              '<td class="num">' + esc(s.phone4) + "</td><td>" + esc(cohortName(s.cohortId)) + '</td><td class="num">' + (s.appliedAt ? fmtMD(s.appliedAt) : "-") + "</td><td>" + pill(STU[s.status].label, STU[s.status].cls) + "</td>" +
+              '<td class="num">' + esc(s.phone4) + "</td><td>" + esc(cohortName(s.cohortId)) + '</td><td class="num">' + (s.appliedAt ? fmtMD(s.appliedAt) : "-") + "</td><td>" + pill(STU[s.status].label, STU[s.status].cls) + accessChip(s) + "</td>" +
               "<td>" + (st ? lvBadge(levelOfStudent(s)) : '<span class="a-muted">-</span>') + "</td>" +
               "<td>" + (st ? '<div class="a-bar"><span style="width:' + st.pct + '%"></span></div><small class="num">' + st.pct + "% · 필수 " + st.reqDone + "/" + st.reqTotal + "</small>" : '<span class="a-muted">-</span>') + "</td>" +
               '<td class="right"><div class="a-row-actions">' + stuActions(s) + "</div></td></tr>";
@@ -743,6 +743,7 @@
         '<div class="a-field"><label for="sf-phone">전화번호 뒷자리</label><input class="a-input" id="sf-phone" name="phone4" inputmode="numeric" maxlength="4" value="' + esc(s.phone4) + '"></div></div>' +
         '<div class="a-form-row"><div class="a-field"><label for="sf-cohort">기수</label><select class="a-input" id="sf-cohort" name="cohortId">' + cos.map((co) => '<option value="' + co.id + '"' + (co.id === s.cohortId ? " selected" : "") + ">" + esc(co.name) + " · " + fmtMD(co.startDate) + " 시작</option>").join("") + "</select></div>" +
         '<div class="a-field"><label for="sf-status">상태</label><select class="a-input" id="sf-status" name="status">' + Object.keys(STU).map((k) => '<option value="' + k + '"' + (k === s.status ? " selected" : "") + ">" + STU[k].label + "</option>").join("") + "</select></div></div>" +
+        accessField(s, isNew) +
         stuCurField(iid, s) +
         // 체험(테스트) 계정 (2026-11-10): 강의 시연 · 남에게 보여 주기용 — 모든 주차 열림 · 로그인 · 로그아웃마다 진도 기록 처음으로 (서버 api/_lib/demoreset.js)
         '<label class="a-check a-demo-check"><input type="checkbox" name="demo"' + (s.demo === true ? " checked" : "") + '><span><b>체험(테스트) 계정</b> · 강의 시연용이에요. 일정과 상관없이 모든 주차가 열리고, 로그인 · 로그아웃할 때마다 진도 기록(과제 제출 · 체크 완료 · 강의 시청 · 노트)이 처음으로 돌아가요. <em>실제 수강생에게는 켜지 마세요.</em></span></label>' +
@@ -760,6 +761,28 @@
     return '<div class="a-act"><h4>학습 활동</h4><div class="a-act-g"><div><span>강의 시청</span><b>' + seen + " / " + lz.length + "</b></div><div><span>필독 공지 읽음</span><b>" + readP + " / " + pins.length + "</b></div><div><span>서류 준비</span><b>" + docOk + " / " + docs.length + "</b></div><div><span>학습 노트</span><b>" + Object.keys(p.journal || {}).length + "주</b></div></div>" +
       (js.length ? '<ul class="a-act-notes">' + js.map((wk) => { const j = p.journal[wk] || {}; return "<li><small>" + esc(wk) + "주차 학습 노트" + (j.at ? " · " + esc(DB.date.toStr(new Date(j.at))) : "") + "</small>" + Object.keys(j.a || {}).map((id) => "<p><b>" + esc(qOf(wk, id)) + "</b>" + esc(j.a[id]) + "</p>").join("") + "</li>"; }).join("") + "</ul>" : '<p class="a-muted p-small">아직 남긴 학습 노트가 없어요.</p>') + "</div>";
   }
+  /** 수강 기간 (2026-11-18): 평생 또는 1~24개월 — 시작일 + n개월 = 마지막 날(accessUntil · 이 날까지 들어올 수 있어요). 지나면 서버가 로그인을 막아요 (api/auth.js · _lib/auth.js) */
+  function accessNote(m, from) {
+    if (!m) return "기간 제한 없이 계속 들어올 수 있어요 (평생).";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(from || ""))) return "시작일을 골라 주세요.";
+    const until = DB.addMonths(from, m), end = todayStr() > until;
+    return "<b>" + fmtFull(until) + "</b>까지 들어올 수 있어요 (" + fmtFull(from) + " 시작 · " + m + "개월)" + (end ? ' · <em>이미 끝난 기간이에요</em>' : "");
+  }
+  function accessField(s, isNew) {
+    const m = Number(s.accessMonths) || 0, from = s.accessFrom || (isNew ? todayStr() : s.appliedAt || todayStr());
+    let opts = '<option value="">평생</option>';
+    for (let n = 1; n <= DB.ACCESS_MAX; n++) opts += '<option value="' + n + '"' + (n === m ? " selected" : "") + ">" + n + "개월</option>";
+    return '<div class="a-form-row"><div class="a-field"><label for="sf-access">수강 기간</label><select class="a-input" id="sf-access" name="accessMonths">' + opts + "</select></div>" +
+      '<div class="a-field"><label for="sf-afrom">시작일</label><input class="a-input" type="date" id="sf-afrom" name="accessFrom" value="' + esc(from) + '"></div></div>' +
+      '<p class="a-access-note" id="sf-access-note">' + accessNote(m, from) + "</p>";
+  }
+  /** 목록 칩: 기간이 있으면 ‘~12.18’ (7일 이하 남으면 D-n) · 지났으면 ‘기간 끝남’ — 평생이면 비워요 */
+  function accessChip(s) {
+    const u = DB.accessUntil(s); if (!u || !s || s.status !== "approved") return "";
+    const t = todayStr(), left = DB.date.diffDays(u, t);
+    if (t > u) return '<span class="a-acc a-acc-end" title="' + esc(fmtFull(u)) + '까지 · 로그인이 막혀요">기간 끝남</span>';
+    return '<span class="a-acc' + (left <= 7 ? " a-acc-soon" : "") + '" title="수강 기간 ' + esc(fmtFull(u)) + '까지">' + (left <= 7 ? "D-" + left : "~" + fmtMD(u).replace(/ \(.\)$/, "")) + "</span>";
+  }
   /** 수강생 커리큘럼 (2026-11-09): 커리큘럼이 2개 이상일 때 — ‘기수 커리큘럼 그대로’ 또는 이 수강생만 다른 커리큘럼 */
   function stuCurField(iid, s) {
     const curs = DB.curricula(iid); if (curs.length < 2 && !s.curriculumId) return "";
@@ -776,6 +799,8 @@
     if (!name) { err.textContent = "이름을 입력해 주세요."; return; }
     if (!/^\d{4}$/.test(phone4)) { err.textContent = "전화번호 뒷자리는 숫자 4자리예요."; return; }
     if (!f.cohortId.value) { err.textContent = "기수를 먼저 만들어 주세요."; return; }
+    const am = f.accessMonths ? Number(f.accessMonths.value) || 0 : 0, af = f.accessFrom ? f.accessFrom.value : "";
+    if (am && !/^\d{4}-\d{2}-\d{2}$/.test(af)) { err.textContent = "수강 기간 시작일을 골라 주세요."; return; }
     const id = f.dataset.id;
     const dup = DB.studentsOf(iid).find((x) => x.id !== id && x.name === name && x.phone4 === phone4 && (x.status === "approved" || x.status === "pending"));
     if (dup && (f.status.value === "approved" || f.status.value === "pending")) { err.textContent = "같은 이름·뒷자리의 수강생이 이미 있어요 (" + cohortName(dup.cohortId) + ")."; return; }
@@ -783,6 +808,8 @@
       : DB.data.students[DB.data.students.push({ id: DB.uid("s"), instructorId: iid, cohortId: f.cohortId.value, name, phone4, status: f.status.value, memo: f.memo.value.trim(), appliedAt: todayStr() }) - 1];
     // 수강생 커리큘럼: 비우거나 기수 커리큘럼과 같으면 기수 그대로(칸 지움)
     if (f.curriculumId) { const cv = f.curriculumId.value, co = DB.cohort(tgt.cohortId); if (!cv || (co && (co.curriculumId || "main") === cv)) delete tgt.curriculumId; else tgt.curriculumId = cv; }
+    // 수강 기간 — 평생이면 칸을 지워요 (마지막 날 accessUntil 은 서버가 로그인 때 봐요)
+    if (f.accessMonths) { if (am) Object.assign(tgt, { accessMonths: am, accessFrom: af, accessUntil: DB.addMonths(af, am) }); else { delete tgt.accessMonths; delete tgt.accessFrom; delete tgt.accessUntil; } }
     // 체험(테스트) 계정 표시 — 끄면 칸을 지워요
     if (f.demo) { if (f.demo.checked) tgt.demo = true; else delete tgt.demo; }
     // 저장한 수강생이 목록에 바로 보이게: 지금 탭 · 기수 필터에 안 맞으면 그 수강생 상태 · 기수로 옮김
@@ -1886,6 +1913,8 @@
   }
   // 코치 수정 창: 담당 두잉고를 바꾸면 그쪽 메뉴 묶음만 보여요 (form[data-track] · admin.css)
   document.addEventListener("change", (e) => { const t = e.target; if (!isActive() || t.name !== "ctrack" || !t.form || t.form.id !== "coach-form") return; t.form.dataset.track = t.value; });
+  // 수강 기간 · 시작일을 바꾸면 ‘언제까지 들어올 수 있어요’ 안내를 바로 다시 (수강생 추가 · 상세 창)
+  document.addEventListener("change", (e) => { const t = e.target; if (!isActive() || !t.form || t.form.id !== "student-form" || (t.name !== "accessMonths" && t.name !== "accessFrom")) return; const n = document.getElementById("sf-access-note"); if (n) n.innerHTML = accessNote(Number(t.form.accessMonths.value) || 0, t.form.accessFrom.value); });
   function pagePartners() {
     const c = C(), list = DB.partnersOf(c), G = DB.PARTNER_GROUPS;
     return head("제휴 혜택" + (TRK() === "vod" ? " · VOD 버전" : ""), "수강생 메뉴 ‘제휴 혜택’에 탭(전체보기 · 두고그룹 · 제휴사)으로 보여요. ‘맨 위에 크게’를 켠 곳(예: 두고 N카페)은 가장 위에 큰 카드와 ‘제휴 혜택 · 할인 코드 안내’ 띠로 보여요.", addBtn("partner", "제휴처 추가")) +
@@ -9245,7 +9274,7 @@
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
-    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, accessChip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,

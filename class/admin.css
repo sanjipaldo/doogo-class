@@ -3718,3 +3718,11 @@ body[data-ath="nz"] .a-vpbar-t small { color: #9cc3ee; }
 .a-libcat:hover { border-color: var(--m-ink-deep); }
 .a-libcat .num { min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--m-surface); color: var(--m-slate); font-size: 12px; font-weight: 800; text-align: center; }
 .a-libcats-h { flex-basis: 100%; margin-top: 2px; }
+
+/* 수강 기간 (2026-11-18): 수강생 창 안내 · 목록 칩 (~12.18 · D-3 · 기간 끝남) */
+.a-access-note { margin: -4px 0 14px; font-size: 12.5px; color: var(--a-muted, #6b7280); line-height: 1.5; }
+.a-access-note b { color: var(--a-text, #111827); font-weight: 800; }
+.a-access-note em { font-style: normal; color: #dc2626; font-weight: 700; }
+.a-acc { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #eef2f7; color: #475569; font-size: 11px; font-weight: 700; vertical-align: middle; white-space: nowrap; }
+.a-acc-soon { background: #fff4e5; color: #b45309; }
+.a-acc-end { background: #fee2e2; color: #b91c1c; }

@@ -3530,6 +3530,62 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "일회성: 빽형 카테고리만 지우기(다른 카테고리 · 다른 분류 그대로) · 그 카테고리 글은 남기고 카테고리 없이 · 이미 지웠으면 건너뜀 · 처음 셋팅 목록에서도 뺌");
   }
 
+  {
+    console.log("67) 문대표 3기 수강생 명단 넣기 — 잠근 명단 묶음 · 이미 있는 수강생 건너뛰기 (2026-11-18)");
+    const OF67 = require(path.join(ROOT, "api/_lib/oneoff.js")), FP67 = require(path.join(ROOT, "api/_lib/filepack.js")), op67 = OF67.OPS.find((x) => x.id === "2026-11-18-moon-3gi-roster");
+    const key67 = require("crypto").randomBytes(32).toString("hex"), f67 = path.join(TMP, "roster67.enc");
+    fs.writeFileSync(f67, FP67.seal({ v: 1, iid: "moon", cohortStart: "2026-11-21", students: [
+      { name: "가나다", phone4: "1234", memo: "온라인" }, { name: " 라마바 ", phone4: "5678", memo: "오프라인" }, { name: "기존", phone4: "1111", memo: "온라인" }, { name: "모양틀림", phone4: "12a4", memo: "온라인" }] }, key67));
+    const db67 = { "cohorts:moon": [{ id: "c2", name: "2기", startDate: "2026-08-29" }, { id: "c4", name: "3기", startDate: "2026-11-21" }], "stu:moon:s1": { id: "s1", name: "기존", phone4: "1111", status: "approved", cohortId: "c4" }, "stu:moon:s9": { id: "s9", name: "가나다", phone4: "1234", status: "withdrawn", cohortId: "c2" } };
+    const get67 = (k) => db67[k], keys67 = (p) => Object.keys(db67).filter((k) => k.indexOf(p) === 0);
+    const w67 = OF67.moonRoster3(get67, keys67, { key: key67, file: f67 }), nw67 = Object.keys(w67.writes).map((k) => [k, w67.writes[k]]);
+    const bad67 = OF67.moonRoster3(get67, keys67, { key: "0".repeat(64), file: f67 }), noCo67 = OF67.moonRoster3((k) => (k === "cohorts:moon" ? [{ id: "c2", startDate: "2026-08-29" }] : undefined), () => [], { key: key67, file: f67 });
+    const real67 = fs.readFileSync(path.join(ROOT, "api/_lib/packs", OF67.ROSTER_PACK));
+    const env67 = [process.env.VERCEL, process.env.DC_ROSTER_KEY], when67 = [];
+    delete process.env.VERCEL; process.env.DC_ROSTER_KEY = key67; when67.push(op67.when());
+    process.env.VERCEL = "1"; when67.push(op67.when()); process.env.DC_ROSTER_KEY = "짧은열쇠"; when67.push(op67.when());
+    if (env67[0] === undefined) delete process.env.VERCEL; else process.env.VERCEL = env67[0];
+    if (env67[1] === undefined) delete process.env.DC_ROSTER_KEY; else process.env.DC_ROSTER_KEY = env67[1];
+    ok(op67 && op67.run === OF67.moonRoster3 && when67.join() === "false,true,false" &&
+      nw67.length === 2 && nw67.every(([k, s]) => k === "stu:moon:" + s.id && /^s[0-9a-z]+$/.test(s.id) && !db67[k] && s.instructorId === "moon" && s.cohortId === "c4" && s.status === "approved" && /^\d{4}-\d{2}-\d{2}$/.test(s.appliedAt) && !s.demo) &&
+      nw67.map(([, s]) => s.name + s.phone4 + s.memo).join("|") === "가나다1234온라인|라마바5678오프라인" &&
+      w67.result.added === 2 && w67.result.online === 1 && w67.result.offline === 1 && w67.result.skipped.join("|") === "기OO · 이미 있음|#4 이름 · 뒷자리 모양이 아님" && w67.result.cohort === "3기 · 2026-11-21" &&
+      bad67.retry === true && !Object.keys(bad67.writes).length && noCo67.retry === true && !Object.keys(noCo67.writes).length &&
+      real67.subarray(0, 5).toString() === "DCFP1" && real67.indexOf(Buffer.from("온라인")) < 0 && real67.indexOf(Buffer.from("moon")) < 0,
+      "일회성: 잠근 명단을 열쇠로 열어 3기(11/21) ‘수강 중’ 수강생으로 · 메모 온라인/오프라인 · 같은 이름·뒷자리로 수강 중이면 건너뜀(탈퇴한 기록은 상관없음) · 열쇠가 틀리거나 기수가 없으면 기록 안 하고 다음 배포에 다시 · 운영 배포 + 열쇠 있을 때만 · 저장소 묶음은 잠긴 모양(평문 없음)");
+  }
+
+  {
+    console.log("68) 수강 기간 (평생 · 1~24개월) — 강사센터 설정 · 기간이 끝나면 로그인 · 세션 막기 (2026-11-18)");
+    const D68 = require(path.join(ROOT, "shared/dates.js")), st68 = require(path.join(TMP, "class/api/_lib/store.js"));
+    ok(D68.addMonths("2026-11-18", 1) === "2026-12-18" && D68.addMonths("2026-11-18", 3) === "2027-02-18" && D68.addMonths("2026-01-31", 1) === "2026-02-28" && D68.addMonths("2028-01-31", 1) === "2028-02-29" && D68.addMonths("2026-12-15", 24) === "2028-12-15" &&
+      !D68.accessExpired({ accessUntil: "2026-12-18" }, "2026-12-18") && D68.accessExpired({ accessUntil: "2026-12-18" }, "2026-12-19") && !D68.accessExpired({}, "2099-01-01") && !D68.accessExpired({ accessUntil: "12/18" }, "2099-01-01") &&
+      D68.kstToday(Date.parse("2026-11-18T14:59:00Z")) === "2026-11-18" && D68.kstToday(Date.parse("2026-11-18T15:00:00Z")) === "2026-11-19",
+      "날짜: 11/18 + 1개월 = 12/18 (그 날까지 들어올 수 있어요) · 말일은 그 달 마지막 날로 · 기간 없으면 평생 · 한국 날짜 기준");
+    ["dc_a", "dc_s", "dc_v"].forEach((k) => delete jar[k]);
+    const today68 = D68.kstToday(), past68 = D68.addMonths(today68, -1), until68 = D68.addMonths(past68, 1);
+    const live68 = { id: "s68a", instructorId: "moon", cohortId: "c4", name: "기간안내", phone4: "6801", status: "approved", appliedAt: today68, accessMonths: 1, accessFrom: today68, accessUntil: D68.addMonths(today68, 1) };
+    const end68 = { id: "s68b", instructorId: "moon", cohortId: "c4", name: "기간끝남", phone4: "6802", status: "approved", appliedAt: past68, accessMonths: 1, accessFrom: D68.addMonths(past68, -1), accessUntil: D68.addDays(today68, -1) };
+    await st68.writeDoc("stu:moon:s68a", live68); await st68.writeDoc("stu:moon:s68b", end68);
+    const rA = await call("auth", { body: { action: "student", iid: "moon", name: "기간안내", phone4: "6801" }, headers: { "x-forwarded-for": "10.68.0.1" } });
+    const meA = await call("bootstrap", { method: "GET" });
+    // 로그인해 둔 뒤 기간이 끝나면(강사가 기간을 줄이거나 날이 지나면) 같은 세션도 막혀요
+    const put68 = async (k, v) => st68.writeDoc(k, v, ((await st68.getDoc(k)) || {}).ver);
+    await put68("stu:moon:s68a", Object.assign({}, live68, { accessUntil: D68.addDays(today68, -1) }));
+    const meA2 = await call("bootstrap", { method: "GET" });
+    delete jar.dc_s;
+    const rB = await call("auth", { body: { action: "student", iid: "moon", name: "기간끝남", phone4: "6802" }, headers: { "x-forwarded-for": "10.68.0.2" } });
+    const app68 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), adm68 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), stu68 = fs.readFileSync(path.join(ROOT, "../ui/center/Students.jsx"), "utf8"), vp68 = fs.readFileSync(path.join(ROOT, "api/vod-pay.js"), "utf8");
+    ok(rA.json.ok && (meA.json.me || {}).student && meA.json.me.student.sid === "s68a" && !(meA2.json.me || {}).student && !rB.json.ok && rB.json.error === "expired" && rB.json.until === end68.accessUntil && !jar.dc_s,
+      "서버: 기간 안이면 로그인 · 마지막 날이 지나면 로그인 막힘(expired + 그 날짜) · 이미 로그인한 세션도 다음 요청부터 막힘", { rA: rA.json, meA: (meA.json || {}).me, meA2: (meA2.json || {}).me, rB: rB.json });
+    ok(/r\.error === "expired" \? expiredMsg\(r\.until\)/.test(app68) && /수강 기간\(" \+ DB\.date\.fmtFull\(until\) \+ "까지\)이 끝났어요/.test(app68) && /DB\.accessExpired\(s, DB\.date\.todayStr\(\)\)/.test(app68) &&
+      /accessField\(s, isNew\) \+\s*stuCurField\(iid, s\)/.test(adm68) && /name="accessMonths"/.test(adm68) && /<option value="">평생<\/option>/.test(adm68) && /n <= DB\.ACCESS_MAX/.test(adm68) && /name="accessFrom"/.test(adm68) &&
+      /Object\.assign\(tgt, \{ accessMonths: am, accessFrom: af, accessUntil: DB\.addMonths\(af, am\) \}\)/.test(adm68) && /delete tgt\.accessMonths; delete tgt\.accessFrom; delete tgt\.accessUntil;/.test(adm68) &&
+      /pill\(STU\[s\.status\]\.label, STU\[s\.status\]\.cls\) \+ accessChip\(s\)/.test(adm68) && /<Isl html=\{A\.accessChip\(s\)\} \/>/.test(stu68) && /accessExpired\(s\)\) return fail\(res, 403, "두잉고 수강 기간/.test(vp68),
+      "화면: 수강생 창 ‘수강 기간’(평생 · 1~24개월) + 시작일 · 안내 ‘○○까지 들어올 수 있어요’ · 평생이면 칸 지움 · 목록 칩(~날짜 · D-n · 기간 끝남 — 예전 = React) · 로그인 막힘 안내에 날짜 · VOD 강의실 들어가기도 막음");
+    await put68("stu:moon:s68a", null); await put68("stu:moon:s68b", null);
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

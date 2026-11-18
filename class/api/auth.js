@@ -15,6 +15,7 @@ const MD = require("./_lib/media");
 const FD = require("./_lib/familydemo");
 const COACH = require("../coach-perms");
 const DEMO = require("./_lib/demoreset");
+const DATES = require("../shared/dates");
 
 const IP_LIMIT = 40, NAME_LIMIT = 8;
 // 하루 기준 잠금 (Next.js 전환 4단계 · 2026-11): 같은 이름(아이디)으로 24시간 안에 30번 틀리면 그 24시간이 끝날 때까지 막아요.
@@ -51,6 +52,8 @@ async function studentLogin(req, res, b) {
   if (!s) { await fail(req, nameKey); return send(res, 200, { error: "notfound" }); }
   await clear(nameKey);
   if (s.status !== "approved") return send(res, 200, { error: s.status });
+  // 수강 기간(2026-11-18): 마지막 날(한국 날짜)이 지났으면 들어올 수 없어요 — 화면에 그 날짜를 보여 줘요
+  if (DATES.accessExpired(s)) return send(res, 200, { error: "expired", until: s.accessUntil });
   // 체험(테스트) 계정은 들어올 때마다 처음 상태로 (_lib/demoreset.js · 실패해도 로그인은 그대로)
   if (s.demo === true) await DEMO.resetDemo(iid, s.id).catch(() => false);
   auth.setCookie(req, res, "student", auth.sign({ r: "student", sid: s.id, iid }));

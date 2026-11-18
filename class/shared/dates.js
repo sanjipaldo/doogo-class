@@ -16,5 +16,16 @@
   /** a − b (날짜 수) */
   const diffDays = (a, b) => Math.round((parseDate(a) - parseDate(b)) / 86400000);
   const ISO_D = /^\d{4}-\d{2}-\d{2}$/;
-  return { pad, toStr, parseDate, addDays, diffDays, ISO_D };
+  /** n 개월 뒤 같은 날 (그 달에 그 날이 없으면 그 달 마지막 날 — 1/31 + 1개월 = 2/28 · 2/29) */
+  function addMonths(s, n) {
+    const [y, m, d] = String(s).split("-").map(Number), t = new Date(Date.UTC(y, (m || 1) - 1 + Number(n || 0), 1));
+    const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+    return t.getUTCFullYear() + "-" + pad(t.getUTCMonth() + 1) + "-" + pad(Math.min(d || 1, last));
+  }
+  /** 오늘 (한국 시간 · 서버가 수강 기간을 볼 때 기준) */
+  const kstToday = (now) => new Date((now == null ? Date.now() : now) + 9 * 3600e3).toISOString().slice(0, 10);
+  /** 수강 기간 (2026-11-18): 수강생 accessUntil(이 날까지 들어올 수 있어요 · 없으면 평생) — 끝났는지 */
+  const accessUntil = (s) => (s && ISO_D.test(String(s.accessUntil || "")) ? s.accessUntil : "");
+  const accessExpired = (s, today) => { const u = accessUntil(s); return !!u && String(today || kstToday()) > u; };
+  return { pad, toStr, parseDate, addDays, diffDays, ISO_D, addMonths, kstToday, accessUntil, accessExpired };
 });

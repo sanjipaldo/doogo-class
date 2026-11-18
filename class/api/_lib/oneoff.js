@@ -1293,6 +1293,39 @@ function moonLibFiles(get, opt) {
   return { writes: { [k]: nc }, result: { attached: done, kept } };
 }
 
+/* ---------- 문대표 3기(11/21 시작) 수강생 명단 넣기 (2026-11-18 대표님 요청) ----------
+ * 출석부(온라인 37 · 오프라인 22 · 총 59명)를 3기 ‘수강 중’ 수강생으로 — 메모에 온라인 · 오프라인 (강사만 보여요)
+ * 실명 · 전화번호 뒷자리는 공개 저장소에 쓰지 않으려고 잠근 묶음(packs/moon-3gi-roster-*.enc · filepack.js 와 같은 AES-256-GCM)에만 있어요.
+ * 열쇠는 Vercel 운영 환경 변수 DC_ROSTER_KEY(64자리 16진수)에만 — 열쇠가 없거나 맞지 않으면 기록하지 않고 다음 배포 때 다시.
+ * 이미 같은 이름 · 뒷자리로 수강 중 · 승인 대기인 수강생(예: 대표님이 먼저 넣은 1명)은 건너뛰어요. 결과엔 이름을 가려 남겨요 */
+const ROSTER_PACK = "moon-3gi-roster-2026-11-18.enc";
+const kstToday = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+function moonRoster3(get, keys, opt) {
+  const FP = require("./filepack"), key = (opt && opt.key) || process.env.DC_ROSTER_KEY;
+  let pack;
+  try { pack = FP.openFile((opt && opt.file) || require("path").join(__dirname, "packs", ROSTER_PACK), key); }
+  catch (e) { return { writes: {}, result: { error: "명단 묶음을 열지 못했어요: " + (e && e.message) }, retry: true }; }
+  const iid = pack.iid || "moon", list = get("cohorts:" + iid);
+  const co = Array.isArray(list) && list.find((x) => isObj(x) && x.startDate === pack.cohortStart);
+  if (!co) return { writes: {}, result: { error: pack.cohortStart + " 시작 기수를 찾지 못했어요" }, retry: true };
+  const live = (s) => isObj(s) && (s.status === "approved" || s.status === "pending");
+  const have = new Set(), ids = new Set();
+  keys("stu:" + iid + ":").forEach((k) => { const s = get(k); ids.add(k.split(":")[2]); if (live(s)) have.add(String(s.name).trim() + "|" + s.phone4); });
+  const writes = {}, result = { cohort: co.name + " · " + co.startDate, added: 0, online: 0, offline: 0, skipped: [] }, day = kstToday();
+  (pack.students || []).forEach((r, i) => {
+    const name = String((r && r.name) || "").trim(), phone4 = String((r && r.phone4) || "");
+    if (!name || !/^\d{4}$/.test(phone4)) { result.skipped.push("#" + (i + 1) + " 이름 · 뒷자리 모양이 아님"); return; }
+    const k0 = name + "|" + phone4;
+    if (have.has(k0)) { result.skipped.push(maskNm(name) + " · 이미 있음"); return; }
+    let id; do { id = "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); } while (ids.has(id));
+    ids.add(id); have.add(k0);
+    const memo = String(r.memo || "").trim();
+    writes["stu:" + iid + ":" + id] = { id, instructorId: iid, cohortId: co.id, name, phone4, status: "approved", memo, appliedAt: day };
+    result.added++; if (memo === "온라인") result.online++; else if (memo === "오프라인") result.offline++;
+  });
+  return { writes, result };
+}
+
 /* ---------- 정식 운영 전 테스트 주문 정리 (2026-11-15 대표님 요청) ----------
  * ① 대표님이 알려 준 테스트 주문 3건(TEST_NOS)을 낸 회원들의 주문을 모두 지워요 — 운영팀이 테스트로 낸 주문 (2026-11-16 0시 전에 만든 주문만)
  * ② 체험 계정(회원 demo: true) 주문 전부 — 대시보드에 보이던 체험회원 0원 주문들 (앞으로는 1시간 뒤 저절로 · _lib/demoorders.js)
@@ -1388,7 +1421,8 @@ const OPS = [
   { id: "2026-11-14-partners-tab-links", note: "패밀리 · 파트너스 한 화면: 저장된 첫 화면 배너 링크가 예전 주소(#/vod/partners · 강사 모집)면 파트너스(강사) 탭 #/vod/partners?tab=partners 로 — /vod/partners 는 이제 패밀리 탭이 기본", run: partnersTabLinks },
   { id: "2026-11-15-moon-senior-cats", note: "문대표 시니어 기초 가이드 카테고리 1차 셋팅: 배송 · 쿠팡 · 상품등록 · 컴퓨터 · 빽형 건기식 AI 마스터툴 VOD · 기타 · 네이버 (없을 때만) · 카테고리 없는 글은 제목으로 골라 넣기", run: moonSeniorCats },
   { id: "2026-11-16-moon-senior-drop-bb", note: "문대표 시니어 기초 가이드 카테고리에서 ‘빽형 건기식 AI 마스터툴 VOD’ 지우기 (그 카테고리 글은 카테고리 없이 ‘전체’에만 · 이미 지웠으면 건너뜀)", run: moonSeniorDropBb },
+  { id: "2026-11-18-moon-3gi-roster", note: "문대표 3기(11/21 시작) 수강생 명단 넣기: 출석부 59명(온라인 37 · 오프라인 22)을 ‘수강 중’으로 · 메모에 온라인/오프라인 · 이미 있는 수강생은 건너뜀 (잠근 명단 묶음을 DC_ROSTER_KEY 로 열어요 · 운영 배포 때만)", run: moonRoster3, when: () => !!process.env.VERCEL && /^[0-9a-f]{64}$/i.test(String(process.env.DC_ROSTER_KEY || "").trim()) },
   { id: "2026-11-15-launch-orders-clean", note: "정식 운영 전 주문 정리: 운영팀 테스트 주문(알려 준 주문 3건을 낸 회원들의 11/16 전 주문 전부) · 체험 계정 주문 전부 지우기(쓴 쿠폰 · 포인트는 돌려줌 · 회원 계정은 그대로) · 무통장 입금 받기 설정 지우기 (Vercel 배포 때만 — 로컬 화면 테스트 DB 의 체험 계정 강의는 그대로)", run: launchOrdersClean, when: () => !!process.env.VERCEL },
 ];
 
-module.exports = { OPS, moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonRoster3, ROSTER_PACK, moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

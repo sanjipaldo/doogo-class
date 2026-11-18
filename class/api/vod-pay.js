@@ -321,6 +321,7 @@ async function enterDg(req, res, m, b) {
     s = { id: V.uid("vs"), instructorId: iid, cohortId: "vod:" + iid, track: "vod", name: m.name || "회원", phone4: last4, status: "approved", appliedAt: new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10), vodMid: m.id, source: "doogoclass", joinedAt: Date.now() };
     if (!(await V.create("stu:" + iid + ":" + s.id, s))) return fail(res, 409, "잠시 후 다시 시도해 주세요.");
   } else if (s.status === "withdrawn") return fail(res, 403, "강사님이 두잉고 이용을 멈춘 계정이에요. 고객센터로 문의해 주세요.");
+  else if (require("../shared/dates").accessExpired(s)) return fail(res, 403, "두잉고 수강 기간(" + s.accessUntil + "까지)이 끝났어요. 강사님께 문의해 주세요.");
   else if (s.name !== m.name || (last4 && s.phone4 !== last4)) await V.update("stu:" + iid + ":" + s.id, (x) => x && Object.assign(x, { name: m.name || x.name, phone4: last4 || x.phone4 }));
   auth.setCookie(req, res, "student", auth.sign({ r: "student", iid, sid: s.id }));
   send(res, 200, { ok: true, sid: s.id, iid });

@@ -6,6 +6,7 @@
 const crypto = require("crypto");
 const store = require("./store");
 const COACH = require("../../coach-perms");
+const DATES = require("../../shared/dates"); // 수강 기간(accessUntil) — 한국 날짜로 끝났으면 수강생 세션을 열지 않아요
 
 const COOKIE = { student: "dc_s", admin: "dc_a" };
 const MAX_AGE = 30 * 24 * 3600;
@@ -81,7 +82,8 @@ async function identify(req) {
   const ins = (iid) => (docs["ins:" + iid] || {}).v;
   if (ps && ps.r === "student") {
     const i = ins(ps.iid), s = (docs["stu:" + ps.iid + ":" + ps.sid] || {}).v;
-    if (i && i.status === "active" && s && s.status === "approved") ids.student = { sid: ps.sid, iid: ps.iid, vodMid: s.vodMid || "" };
+    // 수강 기간(2026-11-18): 강사가 정한 마지막 날(accessUntil)이 지나면 로그인해 둔 세션도 막혀요 (없으면 평생)
+    if (i && i.status === "active" && s && s.status === "approved" && !DATES.accessExpired(s)) ids.student = { sid: ps.sid, iid: ps.iid, vodMid: s.vodMid || "" };
   }
   // 두고클래스 회원 (dc_v) — 없으면 두잉고 강의실에 들어온 VOD 구매자(수강생 계정에 vodMid)로
   const vmid = pv && pv.r === "vod" && pv.mid ? pv.mid : ids.student && ids.student.vodMid ? ids.student.vodMid : "";

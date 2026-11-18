@@ -495,8 +495,11 @@
     withdrawn: "탈퇴 처리된 계정이에요. 다시 수강하려면 강사님께 문의해 주세요.",
     locked: "여러 번 틀려서 잠시 로그인이 막혔어요. 15분 뒤에 다시 시도해 주세요.",
     "locked-day": "오늘 여러 번 틀려서 로그인이 막혔어요. 24시간 뒤에 다시 시도하거나 강사님께 알려 주세요.",
-    input: "이름과 전화번호 뒷자리 4자리를 확인해 주세요."
+    input: "이름과 전화번호 뒷자리 4자리를 확인해 주세요.",
+    expired: "수강 기간이 끝났어요. 다시 수강하려면 강사님께 문의해 주세요."
   };
+  // 수강 기간(2026-11-18): 강사센터에서 정한 마지막 날이 지나면 로그인이 막혀요 — 그 날짜를 같이 보여 줘요
+  const expiredMsg = (until) => until ? "수강 기간(" + DB.date.fmtFull(until) + "까지)이 끝났어요. 다시 수강하려면 강사님께 문의해 주세요." : LOGIN_ERR.expired;
   /** 두잉고 수강생 로그인 (이 화면 · 두고클래스 로그인 카드의 ‘두잉고’ 탭이 같이 써요) → Promise<{ ok } | { ok:false, msg, html?, field? }>
    *  성공하면 세션을 열고 수강생 홈으로 가요 */
   function dgLoginCore(ins, name, phone4) {
@@ -515,7 +518,7 @@
     };
     if (DB.remote.on) {
       return DB.remote.login({ action: "student", iid: ins.id, name, phone4 }).then((r) => {
-        if (r.error) return { ok: false, msg: r.error === "pending" ? "수강 신청이 접수됐어요. " + ins.displayName + " 강사님이 승인하면 로그인할 수 있어요." : LOGIN_ERR[r.error] || LOGIN_ERR.notfound };
+        if (r.error) return { ok: false, msg: r.error === "pending" ? "수강 신청이 접수됐어요. " + ins.displayName + " 강사님이 승인하면 로그인할 수 있어요." : r.error === "expired" ? expiredMsg(r.until) : LOGIN_ERR[r.error] || LOGIN_ERR.notfound };
         return DB.remote.refresh().then(() => done(r.sid, r.name));
       }).catch(() => ({ ok: false, msg: "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요." }));
     }
@@ -529,6 +532,7 @@
     if (s.status === "pending") return no("수강 신청이 접수됐어요. " + ins.displayName + " 강사님이 승인하면 로그인할 수 있어요.");
     if (s.status === "rejected") return no(LOGIN_ERR.rejected);
     if (s.status === "withdrawn") return no(LOGIN_ERR.withdrawn);
+    if (DB.accessExpired(s, DB.date.todayStr())) return no(expiredMsg(s.accessUntil));
     return Promise.resolve(done(s.id, s.name));
   }
   /* 두고클래스 로그인 카드의 ‘두잉고’ 탭이 쓰는 창구 — 강사 고르기 · 로그인은 이 화면과 똑같이 */
