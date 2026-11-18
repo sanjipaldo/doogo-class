@@ -1061,6 +1061,7 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
 - **왜**: `npm audit` · 빌드 경고 — Next.js 16.2.0 ~ 16.4.4 에 알려진 취약점 2개(보통 등급 · `'use cache'` 함수 캐시가 다른 값으로 새어 나갈 수 있음 · GHSA-mfr8-8qww-v76h · GHSA-vc7v-qv4w-wrv8). 우리 코드는 `'use cache'` · `unstable_cache` 를 쓰지 않지만 같은 16.4 계열 최신 안정판(16.4.6)으로 올렸어요.
 - **바뀐 것**: `package.json` `next` 16.4.6(정확한 버전 고정) · `package-lock.json`(Next.js 패키지만 · npm 공식 저장소). 화면 · API 코드는 그대로. 업데이트 뒤 `npm audit` 0건.
 - **테스트**: `next build` 정상(보안 경고 없음) · `node scripts/vod-test.js` 751개 · e2e 전체 266개 통과(reactpm · pay 는 테스트 기계 메모리 부족으로 브라우저가 꺼져 한 번 더 돌려 통과).
+- **운영 배포 (2026-11-18 · main `b0da46f`)**: Vercel 빌드가 Next.js 16.4.6 으로 정상 · 새 일회성 작업 없음 · 사이트 · API 정상 · 서버 오류 0.
 
 ## 수강 기간 — 평생 또는 1~24개월 (2026-11-18)
 
