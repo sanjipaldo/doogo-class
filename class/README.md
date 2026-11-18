@@ -1062,7 +1062,8 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
 - **목록**: 상태 옆 칩 — `~12/18` · 7일 이하 남으면 `D-3`(주황) · 지나면 `기간 끝남`(빨강). `admin.js accessChip` = React `ui/center/Students.jsx` 같은 HTML. 평생이면 칩 없음.
 - **막는 곳 (서버 · 한국 날짜 기준)**: 마지막 날(`accessUntil`)이 지나면 ① 수강생 로그인 → `{ error: "expired", until }` (`api/auth.js`) — 화면은 ‘수강 기간(2026.12.18까지)이 끝났어요. 다시 수강하려면 강사님께 문의해 주세요.’ (`app.js` · 두고클래스 로그인 카드의 두잉고 탭도 같은 함수) ② 이미 로그인해 둔 세션도 다음 요청부터 수강생으로 안 봐요 (`api/_lib/auth.js identify`) ③ VOD 구매 회원의 두잉고 강의실 들어가기도 막아요 (`api/vod-pay.js enterDg`). 기간을 늘리면 바로 다시 들어올 수 있어요.
 - **데이터**: 수강생 `accessMonths`(개월) · `accessFrom`(시작일) · `accessUntil`(마지막 날 · 서버가 보는 값) — 없으면 평생. 날짜 계산은 `shared/dates.js addMonths · kstToday · accessExpired`(화면 · 서버 공용).
-- **테스트**: `node scripts/vod-test.js` 67) 날짜 계산 · 로그인 막힘 · 세션 막힘 · 화면 문구.
+- **테스트**: `node scripts/vod-test.js` 67) 날짜 계산 · 로그인 막힘 · 세션 막힘 · 화면 문구. e2e `reactct · center · logins` 44개 통과.
+- **운영 배포 (2026-11-18 · main `3b9f450`)**: 빌드 정상 · 새 일회성 작업 없음(명단 작업은 뺐어요) · 수강생 표 그대로 · 서버 오류 0. 기존 수강생은 모두 평생 — 기간은 강사센터에서 정할 때만 적용돼요.
 
 ## 문대표 3기 수강생 명단 (2026-11-18)
 
