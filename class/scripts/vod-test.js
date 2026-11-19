@@ -3561,6 +3561,52 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     await put68("stu:moon:s68a", null); await put68("stu:moon:s68b", null);
   }
 
+  {
+    console.log("68) 스토어 카드 썸네일 아래 보강 — 종류 칩(▶ VOD) · 보조 칩 · 할인율 + 월 가격 · 혜택 칩 (탈잉 · Class101 참고 · 2026-11-19)");
+    // cardInfo ~ perksHtml 만 떼어 실제로 계산해 봐요 (바깥 함수는 뜻이 같은 작은 가짜로)
+    const vj69 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), a69 = vj69.indexOf("  const KTAG = "), b69 = vj69.indexOf("  /** 썸네일 위 찜 수 글자");
+    const won69 = (n) => Number(n).toLocaleString("ko-KR") + "원", esc69 = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const sb69 = {
+      typeOf: (p) => p.type || "vod", priceOf: (p) => (p.sale != null ? p.sale : p.price), y365: (p) => p.y || null, seatsLeft: (p) => (p.left == null ? null : p.left), lessons: (p) => p.lz || [], totalMin: (p) => p.min || 0,
+      aboutTxt: (m) => "약 " + m + "분", fmtOpen: (s) => s + " 오픈", fmtLive: (s) => "LIVE " + s, placeShort: (s) => s || "", shipFeeTxt: () => "배송비 3,500원", stockLeft: (p) => (p.stock == null ? null : p.stock), viaOf: () => "줌",
+      isUpd: (p) => !!p.upd, BADGE: { BEST: ["BEST", "best"], NEW: ["NEW", "new"], UPDATE: ["업데이트", "upd"], HOT: ["HOT", "hot"], NICE: ["추천", "nice"] }, pctOf: (p) => p.pct || 0, accessTxt: () => "12개월 시청",
+      plgView: (p) => ({ give: !!p.plg, amt: 5000 }), dgOpen: (p) => !!p.dg, catOf: (c) => ({ label: c === "shop" ? "쇼핑몰 · 커머스" : "" }), won: won69, esc: esc69, icon: (n) => '<svg data-i="' + n + '"></svg>'
+    };
+    require("vm").createContext(sb69); require("vm").runInContext(vj69.slice(a69, b69) + "\n;this.out = { cardInfo, ctagsHtml, cpriceHtml, perksHtml, KTAG };", sb69);
+    const T69 = sb69.out, J = (o) => JSON.stringify(o);
+    const vodY = T69.cardInfo({ type: "vod", price: 273000, sale: 197000, y: { label: "12개월", sale: 197000, list: 273000, month: 16500 }, badges: ["HOT"], level: "입문 · 실전", lz: [1, 2, 3, 4, 5, 6, 7], min: 120, plg: 1, dg: 1, cat: "shop" });
+    ok(a69 > 0 && b69 > a69 && J(vodY.kind) === J({ t: "VOD", k: "vod", ic: "play" }) && J(vodY.badge) === J({ t: "HOT", k: "hot" }) && vodY.subs.join("|") === "입문|총 7강|약 120분" && vodY.cat === "쇼핑몰 · 커머스" &&
+      vodY.price.pct === 28 && vodY.price.main === "월 16,500원" && vodY.price.note === "12개월 수강권 · 총 197,000원" && !vodY.price.was &&
+      vodY.perks.map((x) => x.k + ":" + x.ic + ":" + x.t).join("|") === "cp:gift:다짐 쿠폰 5,000원|dg:sparkles:두잉고 강의실 포함",
+      "VOD 수강권: [▶ VOD] [HOT] [입문] [총 7강] [약 2시간] · 강사 | 분야 · ‘28% 월 16,500원’(상세와 같은 12개월 기준) + ‘12개월 수강권 · 총 197,000원’ · 혜택 칩(다짐 쿠폰 · 두잉고 강의실 — 해당될 때만)", vodY);
+    const soon = T69.cardInfo({ status: "soon", price: 149000, openAt: "11월 20일(금)", badges: ["NEW"] }), freeV = T69.cardInfo({ price: 0 }), freeL = T69.cardInfo({ type: "live", price: 0, eventAt: "12/1", left: null });
+    const vodN = T69.cardInfo({ type: "vod", price: 99000, sale: 69000, pct: 30, accessDays: 365, lz: [], min: 0, upd: 1 });
+    ok(J(soon.kind) === J({ t: "오픈 예정", k: "soon", ic: "" }) && soon.subs.join("|") === "11월 20일(금) 오픈" && soon.price.main === "오픈 예정" && soon.price.was === "149,000원" && soon.price.note === "알림 받으면 오픈 할인" && soon.price.k === "soon" &&
+      freeV.kind.t === "무료 특강" && freeV.kind.ic === "play" && freeV.price.main === "무료" && freeV.price.k === "free" && freeL.kind.t === "무료 LIVE" && !freeL.kind.ic &&
+      vodN.badge.t === "업데이트" && vodN.subs.join("|") === "입문" && vodN.price.pct === 30 && vodN.price.main === "69,000원" && vodN.price.was === "99,000원" && vodN.price.note === "12개월 시청" && !vodN.perks.length,
+      "오픈 예정(날짜 칩 · ‘오픈 예정’ + 예정가 · 알림 받으면 오픈 할인) · 무료 특강(▶) · 무료 LIVE · 수강권 없는 VOD는 할인율 + 판매가 + 정가 + 시청 기간 · 업데이트 배지는 isUpd 로도 · 빈 칩은 빼요");
+    const eb = T69.cardInfo({ type: "ebook", price: 19000, format: "PDF", pages: 64 }), bk = T69.cardInfo({ type: "book", price: 15900, pages: 168, stock: 0 });
+    const lv = T69.cardInfo({ type: "live", price: 59000, eventAt: "12/1", left: 3 }), off = T69.cardInfo({ type: "offline", price: 99000, eventAt: "12/7", place: "강남", left: 0 });
+    ok(eb.kind.t === "전자책" && eb.subs.join("|") === "PDF 64쪽|평생 소장" && eb.price.main === "19,000원" && bk.kind.t === "종이책" && bk.subs.join("|") === "168쪽|배송비 3,500원|품절" &&
+      lv.kind.t === "LIVE" && lv.subs.join("|") === "LIVE 12/1|줌|잔여 3석" && off.kind.t === "오프라인" && off.subs.join("|") === "강남|LIVE 12/7|잔여 0석" &&
+      [vodY, soon, eb, bk, lv, off].every((x) => x.subs.length <= 3),
+      "전자책(형식 · 쪽수 · 평생 소장) · 종이책(쪽수 · 배송비 · 품절) · LIVE(날짜 · 방식 · 잔여 석) · 오프라인(장소 · 날짜 · 잔여 석) · 보조 칩은 3개까지");
+    const th69 = T69.ctagsHtml({ kind: { t: "VOD", k: "vod", ic: "play" }, badge: { t: "HOT", k: "hot" }, subs: ["<b>"] }), ph69 = T69.cpriceHtml(vodN.price), pe69 = T69.perksHtml(vodY.perks);
+    ok(th69 === '<span class="vd-ctags"><span class="vd-ctag vd-ctag-k vd-ctag-vod"><svg data-i="play"></svg>VOD</span><span class="vd-ctag vd-ctag-b vd-ctag-b-hot">HOT</span><span class="vd-ctag">&lt;b&gt;</span></span>' &&
+      ph69 === '<div class="vd-cprice"><span class="vd-cpr"><em>30%</em><strong>69,000원</strong><s>99,000원</s></span><small>12개월 시청</small></div>' && T69.perksHtml([]) === "" && (pe69.match(/class="vd-perk vd-perk-/g) || []).length === 2,
+      "HTML: 종류 칩(▶ 아이콘) · 배지 · 보조 칩(글자 이스케이프) · 가격 줄 class 는 vd-cpr(쿠폰 표 .vd-cp 와 겹치지 않게) · 혜택 없으면 빈 값");
+    const cj69 = fs.readFileSync(path.join(ROOT, "../ui/store/Card.jsx"), "utf8"), css69 = fs.readFileSync(path.join(ROOT, "vod.css"), "utf8"), tail69 = css69.slice(css69.indexOf("/* ---------- 카드 썸네일 아래 (2026-11-19"));
+    const ci69 = vj69.slice(vj69.indexOf("  function cardInfo(p)"), vj69.indexOf("  const ctagsHtml = "));
+    const ck69 = {
+      card: /o = o \|\| \{\}; const m = me\(\), lk = likersOf\(p\), left = seatsLeft\(p\), x = cardInfo\(p\);/.test(vj69), body: /'<div class="vd-card-b">' \+ ctagsHtml\(x\) \+ '<b class="vd-title">'/.test(vj69), price: /cpriceHtml\(x\.price\) \+ perksHtml\(x\.perks\)/.test(vj69),
+      xcard: /ctagsHtml\(xcardInfo\(it\)\)/.test(vj69), exp: /fmtOpen, cardInfo, xcardInfo, NAV/.test(vj69), old: !/function cardMetaParts|function cardMeta\(|cardMonth/.test(vj69), noStars: !/review|rating|stars|후기|수강생|soldOf/.test(ci69),
+      rCard: /x = X\.cardInfo\(p\)/.test(cj69), rBody: /<CTags x=\{x\} \/><b className="vd-title">/.test(cj69), rPrice: /<CPrice pc=\{x\.price\} \/><Perks ps=\{x\.perks\} \/>/.test(cj69), rX: /<CTags x=\{X\.xcardInfo\(it\)\} \/>/.test(cj69), rCls: /className="vd-cpr"/.test(cj69), rOld: !/CardMeta/.test(cj69),
+      css: tail69.length > 100 && !/\.vd-cp[\s,{]/.test(tail69) && /\.vd-cpr strong \{/.test(tail69), oneRow: /\.vd-ctags \{[^}]*flex-wrap: wrap;[^}]*height: 24px; overflow: hidden; \}/.test(tail69)
+    };
+    ok(Object.keys(ck69).every((k) => ck69[k]),
+      "예전 카드 · React 카드가 같은 cardInfo 를 써요(옛 한 줄 정보 함수는 지움) · 별점 · 후기 · 수강생 수는 카드에 넣지 않아요 · 칩은 한 줄(넘치면 통째로 숨김)", Object.keys(ck69).filter((k) => !ck69[k]));
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

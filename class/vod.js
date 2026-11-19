@@ -1441,50 +1441,54 @@
   }
   const badgeHtml = (list) => (list.length ? '<div class="vd-badges">' + list.map((b) => '<span class="vd-badge vd-b-' + b[1] + '">' + esc(b[0]) + "</span>").join("") + "</div>" : "");
   const priceHtml = (p) => { const pr = priceOf(p), pct = pctOf(p); return p.status === "soon" ? '<span class="vd-p-soon">오픈 예정</span>' + (pr ? "<s>" + won(pr) + "</s>" : "") : pr === 0 ? '<span class="vd-p-free">무료</span>' : (pct ? "<em>" + pct + "%</em>" : "") + "<strong>" + won(pr) + "</strong>"; };
-  // 카드의 월 가격: 12개월 이상 보는 VOD만 (스낵클처럼 ‘월 OO원’)
-  const cardMonth = (p) => (y365(p) ? Math.floor(y365(p).sale / 12) : typeOf(p) === "vod" && p.accessDays && p.accessDays >= 365 && priceOf(p) > 0 ? Math.floor(priceOf(p) / monthsOf(p)) : 0);
-  function cardMeta(p) {
-    const t = typeOf(p), pr = priceOf(p), mo = cardMonth(p), left = seatsLeft(p);
-    if (p.status === "soon") return (p.openAt ? fmtOpen(p.openAt) : "오픈 예정") + " · 알림 받으면 오픈 할인";
-    if (t === "ebook") return "전자책 · " + (p.format || "PDF") + " " + (Number(p.pages) || 0) + "쪽 · 평생 소장";
-    if (t === "book") return "종이책 · " + (Number(p.pages) ? Number(p.pages) + "쪽 · " : "") + shipFeeTxt(p) + (stockLeft(p) === 0 ? " · 품절" : "");
-    if (t === "live") return "LIVE 클래스 · " + fmtLive(p.eventAt) + (p.replayDays ? " · 다시보기 포함" : "") + " · 라이브 " + durTxt(Number(p.eventMin) || totalMin(p)) + (left != null ? " · 잔여 " + left + "석" : "");
-    if (t === "offline") return "오프라인 클래스 · " + fmtLive(p.eventAt) + " · " + (placeShort(p.place) || "현장") + (left != null ? " · 잔여 " + left + "석" : "");
-    return (pr === 0 ? "무료 특강 · " : "VOD 클래스 · ") + accessTxt(p) + (mo ? (y365(p) ? " · 12개월 총 " + won(y365(p).sale) : " · 총 " + won(pr)) : "");
-  }
+  // 종류 이름 (내 강의실 카드 칩 · React MyTabs 도 X.CHIP 으로 같이 써요)
   const CHIP = { vod: "VOD 클래스", ebook: "전자책", book: "종이책", live: "LIVE 클래스", offline: "오프라인 클래스" };
-  function cardMetaHtml(p) {
-    const x = cardMetaParts(p), chip = x.chip, parts = x.parts;
-    return '<span class="vd-cmeta"><span class="vd-kchip vd-kchip-' + chip[1] + '">' + esc(chip[0]) + '</span><span class="vd-cm">' + parts.filter(Boolean).map((y) => "<span>" + esc(y) + "</span>").join("") + "</span></span>";
-  }
-  /** 카드 종류 칩 [글자, 색] · 기간 · 분량 조각 — React 카드(ui/store/Card.jsx)도 같이 써요 */
-  function cardMetaParts(p) {
-    const t = typeOf(p), pr = priceOf(p), left = seatsLeft(p);
-    const chip = p.status === "soon" ? ["오픈 예정", "soon"] : pr === 0 ? [t === "live" ? "무료 LIVE" : "무료 특강", "free"] : [CHIP[t] || "클래스", t];
-    const parts = p.status === "soon" ? [p.openAt ? fmtOpen(p.openAt) : "오픈 예정", "알림 받으면 오픈 할인"]
+  /* 카드 썸네일 아래 정보 (2026-11-19 · 탈잉 · Class101 처럼 — 휴대폰에서 아래가 비어 보이지 않게)
+   *  종류 칩(탈잉 [VOD] 처럼 테두리 · VOD 는 ▶) + 배지(NEW · UPDATE …) + 보조 칩(난이도 · 강의 수 · 길이 / 쪽수 / 날짜 · 장소)
+   *  → 제목 → 강사 | 분야 → 할인율 + 가격(수강권 강의는 상세와 같은 12개월 기준 ‘월 OO원’) + 작은 안내(‘12개월 수강권 · 총 OO원’)
+   *  → 혜택 칩(다짐 쿠폰 · 두잉고 강의실 — 해당될 때만) → ‘OO님이 찜했어요’. 별점 · 후기 수 · 수강생 수는 예전처럼 카드에 넣지 않아요
+   *  React 카드(ui/store/Card.jsx)도 이 값을 그대로 써요 */
+  const KTAG = { vod: "VOD", ebook: "전자책", book: "종이책", live: "LIVE", offline: "오프라인" };
+  function cardInfo(p) {
+    const t = typeOf(p), pr = priceOf(p), y = y365(p), soon = p.status === "soon", free = !soon && pr === 0, left = seatsLeft(p), lz = lessons(p), mins = totalMin(p);
+    const kind = soon ? { t: "오픈 예정", k: "soon", ic: "" } : free ? { t: t === "live" ? "무료 LIVE" : "무료 특강", k: "free", ic: t === "vod" ? "play" : "" } : { t: KTAG[t] || "클래스", k: t, ic: t === "vod" ? "play" : "" };
+    const bk = ["NEW", "UPDATE", "HOT", "NICE"].find((b) => (p.badges || []).indexOf(b) >= 0 || (b === "UPDATE" && isUpd(p)));
+    const badge = bk ? { t: BADGE[bk][0], k: BADGE[bk][1] } : null;
+    const subs = (soon ? [p.openAt ? fmtOpen(p.openAt) : ""]
       : t === "ebook" ? [(p.format || "PDF") + " " + (Number(p.pages) || 0) + "쪽", "평생 소장"]
       : t === "book" ? [Number(p.pages) ? Number(p.pages) + "쪽" : "", shipFeeTxt(p), stockLeft(p) === 0 ? "품절" : ""]
-      : t === "live" ? [fmtLive(p.eventAt), viaOf(p) + " " + durTxt(Number(p.eventMin) || totalMin(p))].concat(p.replayDays ? ["다시보기"] : []).concat(left != null ? ["잔여 " + left + "석"] : pr === 0 ? ["누구나"] : [])
-      : t === "offline" ? [fmtLive(p.eventAt), placeShort(p.place) || "현장"].concat(left != null ? ["잔여 " + left + "석"] : [])
-      : [y365(p) ? "12개월 수강권" : accessTxt(p).replace(" 시청", ""), aboutTxt(totalMin(p)), String(p.level || "입문").split(/\s*·\s*/)[0]];
-    return { chip, parts };
+      : t === "live" ? [fmtLive(p.eventAt), viaOf(p)].concat(left != null ? ["잔여 " + left + "석"] : [])
+      : t === "offline" ? [placeShort(p.place) || "현장", fmtLive(p.eventAt)].concat(left != null ? ["잔여 " + left + "석"] : [])
+      : [String(p.level || "입문").split(/\s*·\s*/)[0], lz.length ? "총 " + lz.length + "강" : "", mins ? aboutTxt(mins) : ""]).filter(Boolean).slice(0, 3);
+    let price;
+    if (soon) price = { k: "soon", pct: 0, main: "오픈 예정", was: pr ? won(pr) : "", note: "알림 받으면 오픈 할인" };
+    else if (free) price = { k: "free", pct: pctOf(p), main: "무료", was: "", note: "" };
+    else if (y) price = { k: "", pct: y.list > y.sale ? Math.round((1 - y.sale / y.list) * 100) : 0, main: "월 " + won(y.month), was: "", note: y.label + " 수강권 · 총 " + won(y.sale) };
+    else { const pct = pctOf(p); price = { k: "", pct, main: won(pr), was: pct ? won(p.price) : "", note: t === "vod" && p.accessDays ? accessTxt(p) : "" }; }
+    const g = plgView(p), perks = [];
+    if (g.give) perks.push({ t: "다짐 쿠폰 " + won(g.amt), k: "cp", ic: "gift" });
+    if (dgOpen(p)) perks.push({ t: "두잉고 강의실 포함", k: "dg", ic: "sparkles" });
+    return { kind, badge, subs, cat: catOf(p.cat).label || "", price, perks };
   }
+  const ctagsHtml = (x) => '<span class="vd-ctags"><span class="vd-ctag vd-ctag-k vd-ctag-' + x.kind.k + '">' + (x.kind.ic ? icon(x.kind.ic, "xs") : "") + esc(x.kind.t) + "</span>" +
+    (x.badge ? '<span class="vd-ctag vd-ctag-b vd-ctag-b-' + x.badge.k + '">' + esc(x.badge.t) + "</span>" : "") + x.subs.map((s) => '<span class="vd-ctag">' + esc(s) + "</span>").join("") + "</span>";
+  const cpriceHtml = (pc) => '<div class="vd-cprice' + (pc.k ? " vd-cprice-" + pc.k : "") + '"><span class="vd-cpr">' + (pc.pct ? "<em>" + pc.pct + "%</em>" : "") + "<strong>" + esc(pc.main) + "</strong>" + (pc.was ? "<s>" + esc(pc.was) + "</s>" : "") + "</span>" + (pc.note ? "<small>" + esc(pc.note) + "</small>" : "") + "</div>";
+  const perksHtml = (ps) => (ps.length ? '<span class="vd-perks">' + ps.map((x) => '<span class="vd-perk vd-perk-' + x.k + '">' + icon(x.ic, "xs") + esc(x.t) + "</span>").join("") + "</span>" : "");
   /** 썸네일 위 찜 수 글자: 0이면 비워요(하트만) · 10 이상은 10단위 + (패스트캠퍼스 ‘250+’ 처럼) */
   const likeNum = (n) => (n > 0 ? likeTxt(n) : "");
   // 썸네일 오른쪽 위 찜 버튼 = 패스트캠퍼스처럼 ‘찜 수 ♡’ 알약 (2026-11-08) — 누르면 찜 · 찜하면 빨간 하트
   const likeBtn = (p, m) => '<button type="button" class="vd-like' + (liked(m && m.id, p.id) ? " on" : "") + '" data-v="like" data-id="' + esc(p.id) + '" aria-label="' + (p.status === "soon" ? "오픈 알림 받기" : "찜하기") + '"><small>' + likeNum(likeCount(p)) + "</small>" + icon("heart", "sm") + "</button>";
-  // 둥근 썸네일(찜 수 ♡ 알약) → 제목 → 강사 → 월 가격 → 종류 · 기간 → ‘OO님이 찜했어요’
+  // 둥근 썸네일(찜 수 ♡ 알약) → 종류 칩 · 보조 칩 → 제목 → 강사 | 분야 → 할인율 + 가격 · 안내 → 혜택 칩 → ‘OO님이 찜했어요’ (cardInfo)
   //  2026-11-08: 찜 수는 패스트캠퍼스처럼 썸네일 위로 · 별점 · 후기 수는 카드에서 뺐어요 (막 시작한 스토어라 ‘후기 0’ 이 오히려 망설이게 해서 — 후기 · 다짐은 클래스 상세에서)
   function card(p, o) {
-    o = o || {}; const m = me(), pr = priceOf(p), mo = cardMonth(p), pct = pctOf(p), lk = likersOf(p), left = seatsLeft(p);
+    o = o || {}; const m = me(), lk = likersOf(p), left = seatsLeft(p), x = cardInfo(p);
     const se = saleEndOf(p), eb = ebOf(p), dleft = se ? DB.date.diffDays(se.slice(0, 10), today()) : null;
     const ov = o.rank ? '<span class="vd-rank">BEST ' + o.rank + "</span>" : left === 0 ? '<span class="vd-ov">마감</span>' : stockLeft(p) === 0 ? '<span class="vd-ov">품절</span>' : eb ? '<span class="vd-ov vd-ov-eb">얼리버드 ' + (dleft ? "D-" + dleft : "오늘 마감") + "</span>" : dleft != null && dleft >= 0 && dleft <= 7 ? '<span class="vd-ov vd-ov-dd">할인 ' + (dleft ? "D-" + dleft : "오늘 마감") + "</span>" : "";
     const cnt = o.rank && soldOf(p) >= 100 ? '<span class="vd-cnt">' + icon("users", "xs") + '<b><i data-count="' + soldOf(p) + '" data-cid="' + esc(p.id) + '">' + soldOf(p).toLocaleString() + "</i>+</b></span>" : "";
     return '<a class="vd-card" href="#/vod/p/' + esc(p.id) + '"><div class="vd-thumb vd-th-' + typeOf(p) + (ov ? " has-ov" : "") + '">' + thumbArt(p) + (ov || cnt ? '<span class="vd-ovs">' + ov + cnt + "</span>" : "") + likeBtn(p, m) + "</div>" +
-      '<div class="vd-card-b"><b class="vd-title">' + esc(p.title) + "</b>" +
-        '<span class="vd-cr">' + crName(p) + "</span>" +
-        '<div class="vd-price">' + (p.status === "soon" ? "<strong>오픈 예정</strong>" + (pr ? "<s>" + won(pr) + "</s>" : "") : pr === 0 ? "<strong>무료</strong>" : "<strong>" + won(y365(p) ? y365(p).sale : pr) + "</strong>" + (pct ? "<em>" + pct + "%</em>" : "")) + "</div>" +
-        cardMetaHtml(p) +
+      '<div class="vd-card-b">' + ctagsHtml(x) + '<b class="vd-title">' + esc(p.title) + "</b>" +
+        '<span class="vd-cr">' + crName(p) + (x.cat ? '<i></i><span class="vd-xcat">' + esc(x.cat) + "</span>" : "") + "</span>" +
+        cpriceHtml(x.price) + perksHtml(x.perks) +
         (lk.length ? '<span class="vd-social"><span class="vd-avs">' + lk.map((n) => av(n)).join("") + "</span><span><b>" + esc(lk[0]) + "</b>님이 " + (p.status === "soon" ? "알림 신청했어요" : "찜했어요") + "</span></span>" : "") +
       "</div></a>";
   }
@@ -1492,9 +1496,11 @@
   function xcard(it) {
     const p = it.p;
     return '<a class="vd-card" href="' + esc(it.href) + '"><div class="vd-thumb vd-th-' + typeOf(p) + '">' + thumbArt(p) + "</div>" +
-      '<div class="vd-card-b"><b class="vd-title">' + esc(p.title) + '</b><span class="vd-cr">' + crName(p) + '<i></i><span class="vd-xcat">' + esc(p.catLabel || "") + "</span></span>" +
-        '<div class="vd-price">' + (p.priceTxt ? "<strong>" + esc(p.priceTxt) + "</strong>" : "") + '</div><span class="vd-cmeta"><span class="vd-kchip vd-kchip-cohort">' + esc(p.catLabel || "두잉고") + '</span><span class="vd-cm">' + (p.meta || []).map((x) => "<span>" + esc(x) + "</span>").join("") + "</span></span></div></a>";
+      '<div class="vd-card-b">' + ctagsHtml(xcardInfo(it)) + '<b class="vd-title">' + esc(p.title) + '</b><span class="vd-cr">' + crName(p) + "</span>" +
+        (p.priceTxt ? cpriceHtml({ k: "", pct: 0, main: p.priceTxt, was: "", note: "" }) : "") + "</div></a>";
   }
+  /** 두잉고 카드 칩: [두잉고 분야] + 일정 · 분량 조각 (React XCard 도 같이) */
+  const xcardInfo = (it) => ({ kind: { t: it.p.catLabel || "두잉고", k: "cohort", ic: "" }, badge: null, subs: (it.p.meta || []).filter(Boolean).slice(0, 3) });
   const anyCard = (it, o) => (it.ext ? xcard(it) : card(it.p || it, o));
   const pager = (id) => '<div class="vd-pager" data-pager="' + id + '"><span class="vd-pager-n"><b>1</b> / 1</span><button type="button" data-v="rail" data-r="' + id + '" data-d="-1" aria-label="이전">' + icon("chevLeft", "sm") + '</button><button type="button" data-v="rail" data-r="' + id + '" data-d="1" aria-label="다음">' + icon("chevRight", "sm") + "</button></div>";
   const emptyBox = (ic, t, p, btn) => '<div class="vd-empty">' + icon(ic) + "<b>" + t + "</b>" + (p ? "<p>" + p + "</p>" : "") + (btn || "") + "</div>";
@@ -4594,7 +4600,7 @@
   // 마이페이지에 처음 들어오면(다른 화면 · 계정 메뉴에서) 고른 메뉴가 휴대폰 메뉴 줄 안에 보이게 가운데로
   function myNavFocus() { const n = root.querySelector(".vd-my-nav"), on = n && n.querySelector("a.on"); if (!on || n.scrollWidth <= n.clientWidth + 1) return; n.scrollLeft = Math.max(0, on.offsetLeft - (n.clientWidth - on.offsetWidth) / 2); }
   // React 화면(ui/store/…)이 쓰는 계산 · 데이터 — 화면 그리기는 React 가 해요 (Next.js 전환 4-4 · 화면을 다 옮기면 공용 모듈로)
-  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, cardMonth, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardMetaParts, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroPh, heroWire, heroSnd, heroPause, heroToggle, tStart, bestOf, rvPlN, likeNum, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
+  Object.assign(window.VOD, { me, myData, MYNAV, MYT, BADGES, myTopics, setTopics, streakOf, myCoupons, DOWK, today, now, liked, likersOf, saleEndOf, y365, aboutTxt, placeShort, shipFeeTxt, fmtLive, fmtOpen, cardInfo, xcardInfo, NAV, opsKk, cats, listed, sortList, mgKind, MG_KINDS, MG_IMG, tileImg, drawerSecs, heroOf, heroPh, heroWire, heroSnd, heroPause, heroToggle, tStart, bestOf, rvPlN, likeNum, STORE_TITLE, STORE_TAG, headView, cmtHtml, plgView, plPct, plHint, plKeep, SW_KEY, ss, ls, KEY_TOPIC, devTopics, isMyPath: isMy, likeFlip, topicFlip, logoutAll, legalDoc, LEGAL_TABS, acctCounts: (m) => ({ d: myData(m), cps: myCoupons(m.id).filter((x) => x.st === "ok").length }), likeTxt, crPhoto: phOf, liveBanners, avOf: (nick) => ({ c: AV_C[hash(String(nick)) % AV_C.length], t: String(nick).split(" ").pop().slice(0, 1) }), lSec, shipStOf, claimOf, SHIP_ST, CHIP, ownOrder, download, stars, doCoupon, doInquiry, doAcct, kakaoLink, kakaoUnlink, myDevices, devId, DEV_MAX,
     // React 화면이 처음 그리기 전에 한 번: 예전 VodApp.mount 와 같은 일 (결제 · 로그인 설정 받기 → 카카오 · 결제에서 돌아온 것 처리 · 봇 막기)
     //  — 설정(CFG)을 받기 전에는 쿠폰 받기 · 결제가 서버를 거치지 않는 시안 방식으로 처리돼요 (4-4 시험에서 찾음 · 11/4 마스터 환불 버그와 같은 종류)
     reactBoot: () => loadCfg().then(() => { kkReturn(); pgReturn(); tsMount(); }),

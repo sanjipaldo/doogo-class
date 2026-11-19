@@ -4722,3 +4722,39 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-dr-logo .vd-logo-img { height: 20px; width: auto; }
 .vd-dr-logo small { font-size: 12.5px; font-weight: 500; line-height: 1.3; color: #8b8f99; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .vd-dr-logo:focus-visible { outline: 2px solid var(--vd-pri); outline-offset: 3px; border-radius: 4px; }
+
+/* ---------- 카드 썸네일 아래 (2026-11-19 · 탈잉 · Class101 처럼 — 휴대폰에서 비어 보이지 않게) ----------
+ * 종류 칩(탈잉 [VOD] 처럼 진한 테두리 · VOD 는 ▶) + 배지 + 보조 칩(회색 테두리) → 제목 → 강사 | 분야 → 할인율(빨강) + 가격(진하게) · 작은 안내 → 혜택 칩
+ * 마크업: vod.js cardInfo · ctagsHtml · cpriceHtml · perksHtml = React ui/store/Card.jsx CTags · CPrice · Perks */
+/* 한 줄만 — 칸이 모자라면 넘치는 칩은 다음 줄로 내려가 통째로 숨어요 (반쯤 잘린 칩 없게) */
+.vd-ctags { display: flex; align-items: center; align-content: flex-start; flex-wrap: wrap; gap: 6px 5px; max-width: 100%; min-width: 0; height: 24px; overflow: hidden; }
+.vd-ctag { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 24px; padding: 0 8px; border-radius: 6px; border: 1px solid #dddde3; background: #fff; color: #55555d; font-size: 12.5px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; }
+.vd-ctag-k { border-color: #1c1d21; color: #1c1d21; font-weight: 700; }
+.vd-ctag-k .icon { width: 9px !important; height: 9px !important; fill: currentColor; stroke: currentColor; stroke-width: 2 !important; }
+.vd-ctag-k.vd-ctag-free { border-color: #e0103a; color: #e0103a; }
+.vd-ctag-k.vd-ctag-soon { border-color: #c25400; color: #c25400; }
+.vd-ctag-k.vd-ctag-live { border-color: #d4127a; color: #d4127a; }
+.vd-ctag-b { border: 0; padding: 0 7px; background: #fff0f3; color: #e0103a; font-size: 11.5px; font-weight: 800; letter-spacing: 0; }
+.vd-ctag-b-upd { background: #eef4ff; color: #1d5bd8; }
+.vd-ctag-b-hot { background: #fff2e5; color: #c25400; }
+.vd-ctag-b-nice { background: #edfaf2; color: #0f8a4f; }
+.vd-card .vd-cr .vd-xcat { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-cprice { display: grid; justify-items: start; gap: 3px; margin-top: 1px; min-width: 0; }
+.vd-cpr { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; }
+.vd-cpr em { font-style: normal; font-size: 19px; font-weight: 800; color: var(--vd-pri); letter-spacing: -0.02em; }
+.vd-cpr strong { font-size: 19px; font-weight: 800; color: var(--on1); letter-spacing: -0.03em; }
+.vd-cpr s { font-size: 13px; color: var(--on4); }
+.vd-cprice small { font-size: 12.5px; font-weight: 500; color: var(--on3); letter-spacing: -0.02em; line-height: 1.4; }
+.vd-cprice-free strong { color: var(--vd-pri); }
+.vd-cprice-soon strong { color: var(--o-ink, #c25400); }
+.vd-perks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.vd-perk { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+.vd-perk .icon { width: 13px !important; height: 13px !important; stroke-width: 2.2 !important; }
+.vd-perk-cp { background: #fff0f3; color: #e0103a; }
+.vd-perk-dg { background: #f1efff; color: #5a3fd1; }
+@media (max-width: 639px) {
+  .vd-ctags { height: 23px; }
+  .vd-ctag { height: 23px; padding: 0 7px; font-size: 12px; }
+  .vd-cpr em, .vd-cpr strong { font-size: 18px; }
+  .vd-cprice small { font-size: 12px; }
+}
