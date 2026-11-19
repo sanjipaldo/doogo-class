@@ -1090,7 +1090,7 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
 - **넣지 않은 것**: 별점 · 후기 수 · 수강생 수 — 2026-11-08 결정 그대로(후기 · 다짐은 클래스 상세에서).
 - **어디**: 계산은 `vod.js cardInfo` 하나 — 예전 화면 `ctagsHtml · cpriceHtml · perksHtml` = React `ui/store/Card.jsx` `CTags · CPrice · Perks`(같은 값 · 같은 HTML). CSS 는 `vod.css` 맨 끝 묶음(`.vd-ctags · .vd-ctag · .vd-cprice · .vd-cpr · .vd-perks`). 가격 줄 class 는 `vd-cpr` — 이미 있는 쿠폰 표 `.vd-cp`(테두리 상자)와 이름이 겹쳐 가격이 상자처럼 보이던 것을 피했어요. 쓰는 곳이 없어진 옛 한 줄 정보 함수(`cardMeta · cardMonth · cardMetaParts`)는 지웠어요.
 - **크기**: 휴대폰 홈 카드 높이 358 → 408px · PC 441px(같은 줄 카드는 높이가 같아요).
-- **테스트**: `node scripts/vod-test.js` 68) VOD 수강권(칩 · 월 가격 · 혜택) · 오픈 예정 · 무료 · 수강권 없는 VOD · 전자책 · 종이책 · LIVE · 오프라인 · HTML(이스케이프 · `vd-cpr`) · 예전 = React 같은 함수 · 별점/후기/수강생 수 없음 · 칩 한 줄.
+- **테스트**: `node scripts/vod-test.js` 68) VOD 수강권(칩 · 월 가격 · 혜택) · 오픈 예정 · 무료 · 수강권 없는 VOD · 전자책 · 종이책 · LIVE · 오프라인 · HTML(이스케이프 · `vd-cpr`) · 예전 = React 같은 함수 · 별점/후기/수강생 수 없음 · 칩 한 줄 (756개 통과). `next build` 정상 · e2e `routes · store · react` 112개 통과(예전 화면 = React 같은 모양 포함). 로컬 화면에서 휴대폰 · 태블릿 · PC 홈 · 전체 클래스 · 오픈 예정 · 상품 아래 ‘함께 많이 보는 클래스’ 확인(화면 오류 0).
 
 ## 강의실 영상 카드 썸네일 원래 색 그대로 — 모든 강사 (2026-11-15)
 
