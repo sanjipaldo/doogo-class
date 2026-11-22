@@ -3641,6 +3641,54 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "화면 안에서 주소를 옮길 때(main.js go): 두잉고 소개로 오면 두잉고 아이콘, 나가면 두고클래스 아이콘 (icons.js siteIcons · 서버와 같은 ?v= · 이미 맞으면 그대로)");
   }
 
+  {
+    console.log("70) 과제 검수 — 전체 선택 표시 · 이미 승인된 과제는 다시 승인 안 함 · 승인 취소(검수 대기로) · 검수 기록 (2026-11-22)");
+    const aj70 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), cut70 = (a, b) => { const i = aj70.indexOf(a), j = aj70.indexOf(b, i); return i >= 0 && j > i ? aj70.slice(i, j) : ""; };
+    const code70 = cut70("  const revState = (sub)", "  /** 검수 창의 검수 기록") + cut70("  function revBulkBtns(filter) {", "  function bulkBar(shown) {") + cut70("  function reviewBtns(sid, mid, st) {", "\n  }\n") + "\n  }\n";
+    let now70 = 1000;
+    const sb70 = { actor: () => ({ by: "테스트 강사", byId: "t", role: "instructor" }), Date: { now: () => now70 }, btn: (label, act, cls, extra) => "[" + act + (/data-status="(\w+)"/.exec(extra || "") || ["", ""])[1] + ":" + label + "]", icon: () => "" };
+    require("vm").createContext(sb70); require("vm").runInContext(code70 + "\n;this.out = { revState, setReview, revBulkBtns, reviewBtns };", sb70);
+    const R70 = sb70.out, sub70 = { at: 1, result: { pass: true } }, steps70 = [];
+    steps70.push(R70.setReview(sub70, "approved", "좋아요"), R70.revState(sub70) === "approved" && sub70.review.at === 1000 && sub70.review.by === "테스트 강사");
+    now70 = 2000; steps70.push(R70.setReview(sub70, "approved", "") === false, sub70.review.at === 1000 && sub70.review.comment === "좋아요" && !sub70.reviewLog);
+    now70 = 3000; steps70.push(R70.setReview(sub70, "pending"), !sub70.review && R70.revState(sub70) === "pending" && sub70.reviewLog.length === 1);
+    const lg70 = sub70.reviewLog[0];
+    steps70.push(lg70.status === "approved" && lg70.at === 1000 && lg70.end === "undo" && lg70.endAt === 3000 && lg70.endBy === "테스트 강사", R70.setReview(sub70, "pending") === false);
+    now70 = 4000; steps70.push(R70.setReview(sub70, "fix", "다시 찍어 주세요"), R70.setReview(sub70, "fix", "x", true) === false && sub70.review.comment === "다시 찍어 주세요");
+    now70 = 5000; steps70.push(R70.setReview(sub70, "fix", "전체가 보이게 다시 찍어 주세요"), sub70.review.comment === "전체가 보이게 다시 찍어 주세요" && sub70.reviewLog.length === 2 && sub70.reviewLog[1].end === "fix");
+    now70 = 6000; steps70.push(R70.setReview(sub70, "approved", ""), sub70.reviewLog.length === 3 && sub70.reviewLog[2].status === "fix" && sub70.reviewLog[2].end === "approved");
+    for (let i = 0; i < 16; i++) { now70 += 10; R70.setReview(sub70, i % 2 ? "approved" : "pending"); } // 취소할 때마다 기록 1개 → 3 + 8 = 11 → 최근 10개만
+    steps70.push(sub70.reviewLog.length === 10, true);
+    ok(steps70.every(Boolean),
+      "검수 바꾸기: 승인 → 다시 승인은 그대로(시각 · 말 · 기록 그대로) → 승인 취소 = 강사 결과 지움(검수 대기) + 기록(누가 · 언제 승인 · 언제 취소) → 보완 요청 · 일괄 보완 요청은 이미 보완이면 그대로 · 낱개는 내용 고치기 → 기록은 최근 10개", steps70.map((x, i) => i + ":" + !!x).filter((x) => /false/.test(x)));
+    const acts70 = (f) => R70.revBulkBtns(f).map((b) => b[2] + "/" + b[1]).join(" ");
+    ok(acts70("pending") === "rev-bulk-fix/선택 보완 요청 rev-bulk-approve/선택 승인" && acts70("approved") === "rev-bulk-fix/선택 보완 요청 rev-bulk-undo/선택 승인 취소" &&
+      acts70("fix") === "rev-bulk-undo/선택 보완 요청 취소 rev-bulk-approve/선택 승인" && acts70("all") === acts70("pending") &&
+      R70.reviewBtns("s", "m", "pending") === '<span class="a-spacer"></span>[review-savefix:보완 요청][review-saveapproved:승인]' &&
+      R70.reviewBtns("s", "m", "approved") === '<span class="a-spacer"></span>[review-undo:승인 취소][review-savefix:보완 요청]' &&
+      R70.reviewBtns("s", "m", "fix") === '<span class="a-spacer"></span>[review-undo:보완 요청 취소][review-savefix:보완 요청 고치기][review-saveapproved:승인]',
+      "버튼: 검수 대기 탭 = 보완 요청 · 승인 / 승인 탭 = 보완 요청 · 선택 승인 취소(‘선택 승인’ 없음) / 보완 요청 탭 = 보완 요청 취소 · 승인 · 검수 창도 지금 상태에 맞게(승인된 과제엔 ‘승인’ 대신 ‘승인 취소’)", [acts70("pending"), acts70("approved"), acts70("fix"), R70.reviewBtns("s", "m", "approved")]);
+    ok(/if \(setReview\(l\[l\.length - 1\], status, comment, true\)\) \{ n\+\+; changed = true; \} else skip\+\+;/.test(aj70) && /if \(changed\) DB\.saveProgress\(sid, p\);/.test(aj70) && /이미 승인된 " \+ S\.approved \+ "개는 그대로 둬요/.test(aj70) &&
+      /case "rev-bulk-undo": \{/.test(aj70) && /\(\) => bulkReview\("pending"\)\);/.test(aj70) && /case "review-undo": \{/.test(aj70) && /const ok = !!sub && setReview\(sub, "pending"\);/.test(aj70) &&
+      /if \(!setReview\(sub, d\.status, comment\.trim\(\)\)\) \{ closeModal\(\); render\(\); toast\("이미 승인된 과제예요\."\); break; \}/.test(aj70) && /revLogHtml\(sub\) \+/.test(aj70) && /revBulkBtns\(ui\.revFilter\)\.map\(\(b\) => btn\(icon\(b\[0\], "sm"\) \+ b\[1\], b\[2\], b\[3\]\)\)/.test(aj70) &&
+      /reviewPill, revBulkBtns, cohortName,/.test(aj70) && (aj70.match(/\.review = Object\.assign\(/g) || []).length === 1,
+      "일괄 승인 · 보완 요청 · 되돌리기 = 같은 setReview(이미 그 상태면 건너뛰고 개수를 알려 줌 · 바뀐 수강생만 저장) · 낱개 승인도 다시 승인 안 함 · 검수 창에 검수 기록 · 검수 결과를 쓰는 곳은 setReview 한 곳");
+    const rj70 = fs.readFileSync(path.join(ROOT, "../ui/center/Reviews.jsx"), "utf8");
+    ok(/\{A\.revBulkBtns\(ui\.revFilter\)\.map\(\(b\) => <Btn key=\{b\[2\]\} action=\{b\[2\]\} cls=\{b\[3\]\}><Icon n=\{b\[0\]\} c="sm" \/>\{b\[1\]\}<\/Btn>\)\}/.test(rj70) && !/선택 승인<\/Btn>/.test(rj70) &&
+      /<input key=\{on \? "on" : "off"\} type="checkbox" className="rev-pick" data-key=\{key\} defaultChecked=\{on\}/.test(rj70) && /<input key=\{"all2-" \+ allOn\} type="checkbox" id="rev-all-2" defaultChecked=\{allOn\} \/>/.test(rj70) && /<input key=\{"all-" \+ allOn\} type="checkbox" id="rev-all"/.test(rj70),
+      "React 과제 검수(운영 화면): 일괄 버튼은 예전 화면과 같은 revBulkBtns · 체크 칸은 고른 상태가 바뀌면 다시 그려서 ‘전체 선택’하면 줄마다 체크가 보여요(예전엔 처음 값만 → 개수만 바뀌고 줄은 빈 칸)");
+    const AC70 = require(path.join(ROOT, "api/_lib/access.js"));
+    const old70 = { submissions: { m1: [{ at: 1, review: { status: "approved", by: "강사" }, reviewLog: [{ status: "fix", end: "approved" }] }], m2: [{ at: 5, reviewLog: [{ status: "approved", end: "undo" }] }] } };
+    const stuW70 = AC70.writer("prog:moon:s1", { student: { sid: "s1", iid: "moon" } }, false);
+    const sent70 = { submissions: { m1: [{ at: 1, review: { status: "approved", by: "나" }, reviewLog: [] }], m2: [{ at: 5 }, { at: 9, review: { status: "approved" }, reviewLog: [{ status: "x" }] }] } };
+    const got70 = stuW70.fix(JSON.parse(JSON.stringify(old70)), sent70);
+    const insW70 = AC70.writer("prog:moon:s1", { admin: { role: "instructor", iid: "moon" } }, false), undone70 = { submissions: { m1: [{ at: 1, reviewLog: [{ status: "approved", end: "undo" }] }] } };
+    ok(got70.submissions.m1[0].review.by === "강사" && got70.submissions.m1[0].reviewLog.length === 1 && got70.submissions.m1[0].reviewLog[0].end === "approved" &&
+      got70.submissions.m2[0].reviewLog.length === 1 && !got70.submissions.m2[1].review && !got70.submissions.m2[1].reviewLog &&
+      !insW70.fix(JSON.parse(JSON.stringify(old70)), JSON.parse(JSON.stringify(undone70))).submissions.m1[0].review,
+      "서버: 수강생이 저장해도 검수 결과 · 검수 기록은 서버 값 그대로(지우거나 바꾸기 · 새 제출에 끼워 넣기 안 됨) · 강사는 승인 취소(검수 결과 지우기)를 저장할 수 있어요");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

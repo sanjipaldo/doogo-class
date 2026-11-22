@@ -280,14 +280,15 @@ function fixBill(o, n, K) {
   BILL_EDIT.forEach((k) => { if (n[k] !== undefined) b[k] = billValue(k, n[k]); else delete b[k]; });
   return b;
 }
-/** 수강생이 자기 기록을 고쳐도 강사 검수 결과와 답변은 바꾸지 못하게 서버 값으로 되돌린다 */
+/** 수강생이 자기 기록을 고쳐도 강사 검수 결과 · 검수 기록(reviewLog — 승인 취소 등 · 2026-11-22)과 답변은 바꾸지 못하게 서버 값으로 되돌린다 */
 function keepStaffFields(o, n) {
   o = o || {};
   const subs = (n && n.submissions) || {};
   Object.keys(subs).forEach((mid) => {
     (subs[mid] || []).forEach((s, i) => {
-      const os = ((o.submissions || {})[mid] || [])[i];
-      if (os && os.at === s.at && os.review) s.review = os.review; else delete s.review;
+      const os = ((o.submissions || {})[mid] || [])[i], same = !!os && os.at === s.at;
+      if (same && os.review) s.review = os.review; else delete s.review;
+      if (same && os.reviewLog) s.reviewLog = os.reviewLog; else delete s.reviewLog;
     });
   });
   ((n && n.questions) || []).forEach((q) => {

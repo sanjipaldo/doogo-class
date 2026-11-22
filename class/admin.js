@@ -1105,25 +1105,63 @@
           "</tbody></table></div>" : emptyBox("inbox", ui.revFilter === "pending" ? "검수할 제출물이 없어요." : "해당하는 제출물이 없어요.")) +
       "</section>";
   }
+  /* 검수 결과 바꾸기 (2026-11-22) — 승인 · 보완 요청 · 검수 대기로 되돌리기
+   *  · 이미 승인된 과제는 다시 승인하지 않아요(중복 승인 막기) · 일괄 보완 요청도 이미 보완 요청한 과제는 그대로(낱개 창에서는 내용 고치기)
+   *  · 실수로 승인했으면 ‘승인 취소’ → 검수 대기: 강사 결과를 지우면 수강생 화면은 예전처럼 자동검수 결과만 보여요(다시 검수할 수 있어요)
+   *  · 바꾸거나 되돌리면 예전 결과를 검수 기록(reviewLog · 최근 10개 — 누가 · 언제)에 남겨요. 수강생은 못 고쳐요(서버 access.js keepStaffFields) */
+  const revState = (sub) => (sub && sub.review ? sub.review.status : "pending");
+  const REV_TXT = { approved: "승인", fix: "보완 요청", pending: "검수 대기" };
+  function setReview(sub, status, comment, bulk) {
+    const cur = revState(sub);
+    if (status === "pending" ? cur === "pending" : cur === status && (status === "approved" || bulk)) return false;
+    if (sub.review) {
+      const r = sub.review;
+      sub.reviewLog = (Array.isArray(sub.reviewLog) ? sub.reviewLog : []).concat([{ status: r.status, by: r.by || "", at: r.at || 0, end: status === "pending" ? "undo" : status, endBy: actor().by, endAt: Date.now() }]).slice(-10);
+    }
+    if (status === "pending") delete sub.review;
+    else sub.review = Object.assign({ status, comment: comment || "", at: Date.now() }, actor());
+    return true;
+  }
+  /** 검수 창의 검수 기록 (최근 3개 · 접어 둠) */
+  function revLogHtml(sub) {
+    const L = (Array.isArray(sub.reviewLog) ? sub.reviewLog : []).slice(-3).reverse();
+    return L.length ? '<details class="a-rev-log"><summary>검수 기록 ' + L.length + "</summary><ul>" + L.map((x) => "<li>" + fmtStamp(x.at) + " " + (REV_TXT[x.status] || "") + (x.by ? " · " + esc(x.by) : "") +
+      " → " + fmtStamp(x.endAt) + " " + (x.end === "undo" ? "취소(검수 대기로)" : (REV_TXT[x.end] || "") + "으로 바꿈") + (x.endBy ? " · " + esc(x.endBy) : "") + "</li>").join("") + "</ul></details>" : "";
+  }
+  /** 고른 과제들의 마지막 제출 → 상태별 개수 { approved, fix, pending } */
+  function pickedStates() {
+    const n = { approved: 0, fix: 0, pending: 0 };
+    ui.revPicked.forEach((k) => { const [sid, mid] = k.split("|"), l = (DB.progress(sid).submissions || {})[mid]; if (l && l.length) n[revState(l[l.length - 1])]++; });
+    return n;
+  }
+  /** 탭에 맞는 일괄 버튼 [아이콘, 글자, 동작, 모양] — 승인 탭은 ‘선택 승인’ 대신 ‘선택 승인 취소’, 보완 요청 탭은 ‘선택 보완 요청 취소’ (React Reviews.jsx 도 같이) */
+  function revBulkBtns(filter) {
+    const B = { fix: ["alert", "선택 보완 요청", "rev-bulk-fix", "a-btn-ghost a-btn-sm danger"], approve: ["check", "선택 승인", "rev-bulk-approve", "a-btn-primary a-btn-sm"],
+      undo: ["refresh", filter === "fix" ? "선택 보완 요청 취소" : "선택 승인 취소", "rev-bulk-undo", "a-btn-outline a-btn-sm"] };
+    return (filter === "approved" ? ["fix", "undo"] : filter === "fix" ? ["undo", "approve"] : ["fix", "approve"]).map((k) => B[k]);
+  }
   function bulkBar(shown) {
     const keys = shown.map((x) => x.s.id + "|" + x.m.id);
     const n = keys.filter((k) => ui.revPicked.has(k)).length;
     return '<div class="a-bulk a-rev-bulk"><label class="a-check"><input type="checkbox" id="rev-all-2"' + (n && n === keys.length ? " checked" : "") + '><span>전체 선택 (' + keys.length + ')</span></label><span class="a-muted">' + n + "개 선택</span>" +
-      btn(icon("alert", "sm") + "선택 보완 요청", "rev-bulk-fix", "a-btn-ghost a-btn-sm danger") + btn(icon("check", "sm") + "선택 승인", "rev-bulk-approve", "a-btn-primary a-btn-sm") + "</div>";
+      revBulkBtns(ui.revFilter).map((b) => btn(icon(b[0], "sm") + b[1], b[2], b[3])).join("") + "</div>";
   }
   function bulkReview(status, comment) {
     const keys = Array.from(ui.revPicked);
     const bySid = {};
     keys.forEach((k) => { const [sid, mid] = k.split("|"); (bySid[sid] = bySid[sid] || []).push(mid); });
-    let n = 0;
+    let n = 0, skip = 0;
     Object.keys(bySid).forEach((sid) => {
       const p = DB.progress(sid);
-      bySid[sid].forEach((mid) => { const l = p.submissions[mid]; if (l && l.length) { l[l.length - 1].review = Object.assign({ status, comment: comment || "", at: Date.now() }, actor()); n++; } });
-      DB.saveProgress(sid, p);
+      let changed = false;
+      bySid[sid].forEach((mid) => { const l = p.submissions[mid]; if (!l || !l.length) return; if (setReview(l[l.length - 1], status, comment, true)) { n++; changed = true; } else skip++; });
+      if (changed) DB.saveProgress(sid, p);
     });
     ui.revPicked.clear();
     closeModal(); render();
-    toast(n + "개를 " + (status === "approved" ? "승인했어요." : "보완 요청했어요."));
+    const done = status === "approved" ? "승인했어요" : status === "fix" ? "보완 요청했어요" : "검수 대기로 되돌렸어요", was = status === "approved" ? "이미 승인" : status === "fix" ? "이미 보완 요청" : "이미 검수 대기";
+    if (n) toast(n + "개를 " + done + (skip ? " · " + was + " " + skip + "개는 그대로" : ""));
+    else toast("바꿀 과제가 없어요 (" + was + ")", "warn");
   }
   // 검수 중인 제출물로 모범 과제 만들기: 사진 · 과제 · 주차 · 가린 이름을 채운 편집 창을 연다 (강사가 코멘트를 적고 저장)
   function showcaseFrom(sid, mid) {
@@ -1161,9 +1199,18 @@
       '<div class="a-auto ' + (sub.result.pass ? "ok" : "warn") + '"><b>' + icon(sub.result.pass ? "check" : "alert", "sm") + "자동검수 " + (sub.result.pass ? "통과" : "보완 필요") + "</b>" +
         (sub.result.pass ? (sub.result.ok.length ? "<span>" + esc(sub.result.ok.join(" · ")) + "</span>" : "") : "<span>" + esc(sub.result.reasons.join(" / ")) + "</span>") + "</div>" +
       (sub.review ? '<p class="a-muted">현재 검수: <b>' + (sub.review.status === "approved" ? "승인" : "보완 요청") + "</b> · " + (sub.review.by ? '<span class="a-by">' + icon("user", "xs") + esc(sub.review.by) + "</span> · " : "") + fmtStamp(sub.review.at) + "</p>" : "") +
+      revLogHtml(sub) +
       '<div class="a-field"><label for="rv-comment">수강생에게 남길 말 <small>(보완 요청 시 꼭 적어 주세요)</small></label><textarea class="a-input" id="rv-comment" rows="3" placeholder="예: 사업자등록증 전체가 보이게 다시 찍어 주세요.">' + esc(sub.review ? sub.review.comment || "" : "") + "</textarea></div>",
       (DB.menuOn(IID(), "showcase") && can("showcase") ? btn(icon("trophy", "sm") + "모범 과제로 올리기", "showcase-from", "a-btn-ghost", ' data-sid="' + sid + '" data-mid="' + mid + '"') : "") +
-      '<span class="a-spacer"></span>' + btn(icon("alert", "sm") + "보완 요청", "review-save", "a-btn-outline danger", ' data-sid="' + sid + '" data-mid="' + mid + '" data-status="fix"') + btn(icon("check", "sm") + "승인", "review-save", "a-btn-primary", ' data-sid="' + sid + '" data-mid="' + mid + '" data-status="approved"'), "lg");
+      // 지금 상태에 맞는 버튼만 (2026-11-22): 승인된 과제엔 ‘승인’ 대신 ‘승인 취소’(검수 대기로) · 보완 요청한 과제엔 ‘보완 요청 취소’ · 보완 요청은 내용 고치기
+      reviewBtns(sid, mid, revState(sub)), "lg");
+  }
+  function reviewBtns(sid, mid, st) {
+    const dd = ' data-sid="' + sid + '" data-mid="' + mid + '"';
+    return '<span class="a-spacer"></span>' +
+      (st !== "pending" ? btn(icon("refresh", "sm") + (st === "approved" ? "승인 취소" : "보완 요청 취소"), "review-undo", "a-btn-ghost", dd) : "") +
+      btn(icon("alert", "sm") + (st === "fix" ? "보완 요청 고치기" : "보완 요청"), "review-save", "a-btn-outline danger", dd + ' data-status="fix"') +
+      (st === "approved" ? "" : btn(icon("check", "sm") + "승인", "review-save", "a-btn-primary", dd + ' data-status="approved"'));
   }
 
   /* ---------------- 강사: 문의 답변 ---------------- */
@@ -8864,14 +8911,30 @@
       // 검수 · 문의
       case "rev-tab": ui.revFilter = d.k; ui.revPicked.clear(); render(); break;
       case "review-open": if (e.target.closest(".rev-pick, .w-check")) break; e.stopPropagation(); reviewModal(d.sid, d.mid); break;
-      case "rev-bulk-approve":
+      // 일괄 검수 (2026-11-22): 이미 그 상태인 과제는 건너뛰어요 — 승인된 과제를 또 승인하지 않게 · 몇 개가 바뀌는지 창에 먼저 보여 줘요
+      case "rev-bulk-approve": {
         if (!ui.revPicked.size) { toast("승인할 과제를 선택해 주세요.", "warn"); break; }
-        { const n = ui.revPicked.size; confirmModal("선택 승인", n + "개 과제를 한 번에 승인할까요?<br>수강생 화면에 ‘강사 승인’으로 표시돼요.", "승인", false, () => bulkReview("approved")); }
+        const S = pickedStates(), n = S.pending + S.fix;
+        if (!n) { toast("고른 과제는 이미 모두 승인됐어요.", "warn"); break; }
+        confirmModal("선택 승인", n + "개 과제를 한 번에 승인할까요?<br>수강생 화면에 ‘강사 승인’으로 표시돼요." + (S.approved ? "<br><small>이미 승인된 " + S.approved + "개는 그대로 둬요.</small>" : ""), "승인", false, () => bulkReview("approved"));
         break;
-      case "rev-bulk-fix":
+      }
+      case "rev-bulk-fix": {
         if (!ui.revPicked.size) { toast("보완 요청할 과제를 선택해 주세요.", "warn"); break; }
-        openModal("선택 보완 요청 (" + ui.revPicked.size + "개)", '<div class="a-field"><label for="bulk-comment">수강생에게 남길 말</label><textarea class="a-input" id="bulk-comment" rows="3" placeholder="예: 화면 전체가 보이게 다시 캡처해 주세요."></textarea></div>', btn("취소", "modal-close") + btn("보완 요청", "rev-bulk-fix-ok", "a-btn-danger"));
+        const S = pickedStates(), n = S.pending + S.approved;
+        if (!n) { toast("고른 과제는 이미 모두 보완 요청했어요.", "warn"); break; }
+        openModal("선택 보완 요청 (" + n + "개)", (S.fix ? '<p class="a-muted">이미 보완 요청한 ' + S.fix + "개는 그대로 둬요.</p>" : "") + (S.approved ? '<p class="a-muted">승인된 ' + S.approved + "개는 승인이 취소되고 보완 요청으로 바뀌어요.</p>" : "") +
+          '<div class="a-field"><label for="bulk-comment">수강생에게 남길 말</label><textarea class="a-input" id="bulk-comment" rows="3" placeholder="예: 화면 전체가 보이게 다시 캡처해 주세요."></textarea></div>', btn("취소", "modal-close") + btn("보완 요청", "rev-bulk-fix-ok", "a-btn-danger"));
         break;
+      }
+      case "rev-bulk-undo": {
+        if (!ui.revPicked.size) { toast("되돌릴 과제를 선택해 주세요.", "warn"); break; }
+        const S = pickedStates(), n = S.approved + S.fix;
+        if (!n) { toast("고른 과제는 이미 검수 대기예요.", "warn"); break; }
+        const what = S.approved && S.fix ? "‘강사 승인’ · ‘보완 요청’" : S.approved ? "‘강사 승인’" : "‘보완 요청’";
+        confirmModal(S.fix && !S.approved ? "보완 요청 취소" : "승인 취소", n + "개 과제를 ‘검수 대기’로 되돌릴까요?<br>수강생 화면의 " + what + " 표시가 사라지고 자동검수 결과만 보여요. 다시 검수할 수 있어요.", "되돌리기", false, () => bulkReview("pending"));
+        break;
+      }
       case "rev-bulk-fix-ok": { const c = document.getElementById("bulk-comment").value.trim(); if (!c) { toast("보완 요청 내용을 적어 주세요.", "warn"); break; } bulkReview("fix", c); break; }
       case "att-remove": attDraft.splice(Number(d.i), 1); refreshAtt(); break;
       case "img-remove": imgDraft.splice(Number(d.i), 1); refreshImg(); break;
@@ -8887,11 +8950,27 @@
       case "review-save": {
         const comment = (document.getElementById("rv-comment") || {}).value || "";
         if (d.status === "fix" && !comment.trim()) { toast("보완 요청 내용을 적어 주세요.", "warn"); document.getElementById("rv-comment").focus(); break; }
-        const p = DB.progress(d.sid), list = p.submissions[d.mid];
-        list[list.length - 1].review = Object.assign({ status: d.status, comment: comment.trim(), at: Date.now() }, actor());
+        const p = DB.progress(d.sid), list = p.submissions[d.mid], sub = list && list[list.length - 1];
+        if (!sub) { closeModal(); render(); break; }
+        // 이미 승인된 과제를 또 승인하지 않아요 (같은 창을 두 번 누르거나 다른 기기에서 먼저 승인한 경우)
+        if (!setReview(sub, d.status, comment.trim())) { closeModal(); render(); toast("이미 승인된 과제예요."); break; }
         DB.saveProgress(d.sid, p);
         closeModal(); render();
         toast(d.status === "approved" ? "승인했어요." : "보완을 요청했어요.");
+        break;
+      }
+      // 승인 · 보완 요청 취소 → 검수 대기 (2026-11-22 · 강사 실수 되돌리기)
+      case "review-undo": {
+        const l0 = (DB.progress(d.sid).submissions || {})[d.mid], s0 = l0 && l0[l0.length - 1];
+        if (!s0 || !s0.review) { closeModal(); render(); toast("이미 검수 대기예요."); break; }
+        const wasOk = s0.review.status === "approved";
+        confirmModal(wasOk ? "승인 취소" : "보완 요청 취소", "이 과제를 ‘검수 대기’로 되돌릴까요?<br>수강생 화면의 ‘" + (wasOk ? "강사 승인" : "보완 요청") + "’ 표시가 사라지고 자동검수 결과만 보여요. 다시 검수할 수 있어요.", "되돌리기", false, () => {
+          const p = DB.progress(d.sid), l = p.submissions[d.mid], sub = l && l[l.length - 1];
+          const ok = !!sub && setReview(sub, "pending");
+          if (ok) DB.saveProgress(d.sid, p);
+          closeModal(); render();
+          toast(ok ? "검수 대기로 되돌렸어요." : "이미 검수 대기예요.");
+        });
         break;
       }
       case "q-tab": ui.qFilter = d.k; render(); break;
@@ -9274,7 +9353,7 @@
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
-    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, accessChip, lvBadge, levelOfStudent, reviewPill, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, accessChip, lvBadge, levelOfStudent, reviewPill, revBulkBtns, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,
