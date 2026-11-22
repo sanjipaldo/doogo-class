@@ -200,11 +200,30 @@ const DG = {
   img: ORIGIN + "/assets/home/og-doinggo.jpg", // 1200×630 jpg (기본 공유 사진과 같은 크기 · 형식)
   points: ["강의 운영 — 강의 소개부터 주차별 강의 · 자료 · 공지까지 한곳에서 체계적으로 운영해요.", "수강생 관리 — 수강 승인, 진도, 과제 검수와 피드백까지 수강생을 더 가까이에서 챙겨요.", "AI 학습 지원 — 24시간 AI 조교가 과제 · 서류 · 일정 질문에 바로 답해요."]
 };
+/* 두잉고 머리 정보 (2026-11-22): 같은 사이트(www.doogoclass.com) 안의 /doinggo 라서 예전엔 아이콘 · 검색어 · 사이트 이름이 두고클래스와 같았어요.
+ *  홈 화면 · 북마크 아이콘 = 흰 바탕 두잉고(assets/brand/dg-* · 원본 dg-app-icon.svg · scripts/web-icons.js) · manifest = doinggo.webmanifest ·
+ *  아이폰 홈 화면 이름 ‘두잉고’ · 검색어 · og:site_name · 첫 로딩 로고까지 두잉고로. 화면 안에서 주소를 옮길 때는 icons.js siteIcons 가 같은 값으로 바꿔요 */
+const DG_ICON_V = "20261122"; // 두잉고 아이콘을 다시 만들면 올려요 (icons.js siteIcons · doinggo.webmanifest 와 같이)
+const DG_KEYWORDS = "두잉고, 두잉고 강의 플랫폼, 강의 운영 플랫폼, 온라인 강의 플랫폼, 강사 플랫폼, 기수제 강의, 강의 운영 시스템, 수강생 관리, 과제 검수, 강의 랜딩페이지, 무료강의 전자책, 수강생 케어, AI 조교, 강사센터, 두고클래스";
+function dgHead(html) {
+  const v = "?v=" + DG_ICON_V;
+  return String(html)
+    .replace(/(<link rel="icon" href=")\/?assets\/brand\/favicon\.svg[^"]*(")/, "$1/assets/brand/dg-favicon.svg" + v + "$2")
+    .replace(/(<link rel="icon" href=")\/?assets\/brand\/favicon\.png[^"]*(")/, "$1/assets/brand/dg-favicon.png" + v + "$2")
+    .replace(/(<link rel="apple-touch-icon" href=")\/?assets\/brand\/apple-touch-icon\.png[^"]*(")/, "$1/assets/brand/dg-apple-touch-icon.png" + v + "$2")
+    .replace(/(<link rel="manifest" href=")\/?manifest\.webmanifest[^"]*("[^>]*>)/, (m, a, b) => a + "/doinggo.webmanifest" + v + b + '\n  <meta name="apple-mobile-web-app-title" content="두잉고" />\n  <meta name="application-name" content="두잉고" />')
+    .replace(/(<meta name="keywords" content=")[^"]*(")/, (m, a, b) => a + esc(DG_KEYWORDS) + b)
+    .replace(/(<meta property="og:site_name" content=")[^"]*(")/, "$1두잉고$2")
+    .replace(/<img class="boot-logo boot-logo-dc" src="\/?assets\/brand\/doogo-class-word\.svg" alt="DOOGO CLASS" width="156" height="20"/, '<img class="boot-logo boot-logo-dg" src="/assets/brand/doinggo-word.svg" alt="두잉고" width="96" height="36"')
+    .replace(/(<div class="seo-static">\s*<header>)[\s\S]*?(<\/header>)/, '$1<a href="' + ORIGIN + '/doinggo"><strong>두잉고</strong> doinggo</a>$2');
+}
 function doinggoPage(html) {
   const url = ORIGIN + "/doinggo";
   const body = "        <h1>강의는 강사님이, 운영은 두잉고가</h1>\n" + para(DG.desc) + "        <h2>두잉고로 하는 일</h2>" + li(DG.points) + "\n" +
     '        <p><a href="' + url + '">두잉고 소개</a> · <a href="' + ORIGIN + '/login">두잉고 수강생 로그인</a> · <a href="' + ORIGIN + '/center">강사센터</a> · <a href="' + ORIGIN + '/">두고클래스</a></p>\n';
-  return inject(html, { docTitle: DG.title, title: DG.title, desc: DG.desc, url, img: DG.img, sameSize: true, body });
+  const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": url + "#webpage", url, name: DG.title, description: DG.desc, inLanguage: "ko-KR",
+    isPartOf: { "@id": ORIGIN + "/#website" }, publisher: { "@id": ORIGIN + "/#org" }, primaryImageOfPage: { "@type": "ImageObject", url: DG.img, width: 1200, height: 630 } };
+  return dgHead(inject(html, { docTitle: DG.title, title: DG.title, desc: DG.desc, url, img: DG.img, sameSize: true, ld, body }));
 }
 
 /* ---------- 약관 /terms · /privacy · /refund ---------- */
@@ -319,4 +338,4 @@ async function render(pathname, html) {
   }
 }
 
-module.exports = { render, noindex, HIDDEN, vodDetail, landingPage, freePage, storeHome, doinggoPage, legalPage, legalText, sitemap, sitemapXml, sitemapBase, shown, imageOf, whenTxt, joinUniq, SWITCHES, LEGAL, ORIGIN };
+module.exports = { render, noindex, HIDDEN, vodDetail, landingPage, freePage, storeHome, doinggoPage, dgHead, DG_ICON_V, DG_KEYWORDS, legalPage, legalText, sitemap, sitemapXml, sitemapBase, shown, imageOf, whenTxt, joinUniq, SWITCHES, LEGAL, ORIGIN };

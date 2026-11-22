@@ -2133,7 +2133,9 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "화면 쪽은 예전과 똑같아요 · 보일 클래스가 없으면 예전 index.html 그대로");
     // 두잉고 소개: 화면(home.js)과 같은 제목 · 두잉고 소개 배너(1200×630 jpg — 크기 칸 유지) · 대표 주소
     const hd = PM.doinggoPage(html), dgT = (fs.readFileSync(path.join(ROOT, "home.js"), "utf8").match(/document\.title = "(두잉고 \| [^"]+)"; \/\/ index\.html/) || [])[1];
-    ok(dgT && hd.indexOf("<title>" + dgT + "</title>") >= 0 && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/doinggo" \/>/.test(hd) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doinggo\.jpg"/.test(hd) && /og:image:width" content="1200"/.test(hd) && fs.existsSync(path.join(ROOT, "assets/home/og-doinggo.jpg")) && noMain(hd) === app0 && /<h1>강의는 강사님이, 운영은 두잉고가<\/h1>/.test(hd),
+    // 화면 쪽 비교: 첫 로딩 로고만 두잉고 것으로 바뀌어요 (2026-11-22 · 69번에서 따로 봐요)
+    const dgBoot = (h) => h.replace(/<img class="boot-logo boot-logo-dg"[^>]*>/, (html.match(/<img class="boot-logo boot-logo-dc"[^>]*>/) || [""])[0]);
+    ok(dgT && hd.indexOf("<title>" + dgT + "</title>") >= 0 && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/doinggo" \/>/.test(hd) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doinggo\.jpg"/.test(hd) && /og:image:width" content="1200"/.test(hd) && fs.existsSync(path.join(ROOT, "assets/home/og-doinggo.jpg")) && dgBoot(noMain(hd)) === app0 && /<h1>강의는 강사님이, 운영은 두잉고가<\/h1>/.test(hd),
       "두잉고 소개 /doinggo: 화면과 같은 제목 · 대표 주소 /doinggo(예전엔 / 로 겹침) · 두잉고 소개 배너 · 로봇용 소개 글 · 화면 쪽 그대로");
     // 약관: 화면(vod.js LEGAL_TABS)과 같은 이름 · 제목 · 주소 · 시행일 · 목차 — 마스터 설정으로 바뀌는 표 · 분석 도구 목록 자리는 넣지 않아요
     const vj29 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), tabs = (vj29.match(/const LEGAL_TABS = (\[\[[^;]+\]\]);/) || [])[1], L29 = PM.legalText();
@@ -3605,6 +3607,38 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     };
     ok(Object.keys(ck69).every((k) => ck69[k]),
       "예전 카드 · React 카드가 같은 cardInfo 를 써요(옛 한 줄 정보 함수는 지움) · 별점 · 후기 · 수강생 수는 카드에 넣지 않아요 · 칩은 한 줄(넘치면 통째로 숨김)", Object.keys(ck69).filter((k) => !ck69[k]));
+  }
+
+  {
+    console.log("69) 두잉고(/doinggo) 홈 화면 · 북마크 아이콘 · manifest · 검색어 · 사이트 이름 — 두고클래스와 따로 (2026-11-22)");
+    const B70 = (f) => path.join(ROOT, "assets/brand", f), png70 = (f) => { const b = fs.readFileSync(B70(f)); return b.readUInt32BE(16) + "x" + b.readUInt32BE(20); };
+    const sizes70 = { "dg-favicon.png": "64x64", "dg-apple-touch-icon.png": "180x180", "dg-icon-192.png": "192x192", "dg-icon-512.png": "512x512", "dg-icon-maskable-512.png": "512x512" };
+    const miss70 = Object.keys(sizes70).filter((f) => !fs.existsSync(B70(f)) || png70(f) !== sizes70[f]);
+    const src70 = fs.readFileSync(B70("dg-app-icon.svg"), "utf8"), fav70 = fs.readFileSync(B70("dg-favicon.svg"), "utf8"), word70 = fs.readFileSync(B70("doinggo-word.svg"), "utf8");
+    ok(!miss70.length && /<g id="art"/.test(src70) && /fill="#FFFFFF"/.test(src70) && /stroke="#FF0037"/.test(src70) && /<rect width="1024" height="1024" rx="200" fill="#FFFFFF"\/>/.test(fav70) && /aria-label="두잉고"/.test(word70) &&
+      /src: "dg-app-icon\.svg", pre: "dg-"/.test(fs.readFileSync(path.join(ROOT, "scripts/web-icons.js"), "utf8")),
+      "아이콘: 흰 바탕 두잉고(검정 글자 + 빨간 밑줄 · 원본 dg-app-icon.svg) → 탭 64 · 아이폰 180 · 안드로이드 192 · 512 · 동그랗게 잘리는 512 (scripts/web-icons.js 가 두고클래스 것과 같이 만들어요)", miss70);
+    const PM70 = require(path.join(ROOT, "api/_lib/pagemeta.js")), V70 = "?v=" + PM70.DG_ICON_V;
+    const man70 = JSON.parse(fs.readFileSync(path.join(ROOT, "doinggo.webmanifest"), "utf8")), dc70 = JSON.parse(fs.readFileSync(path.join(ROOT, "manifest.webmanifest"), "utf8"));
+    ok(man70.name === "두잉고" && man70.short_name === "두잉고" && man70.start_url === "/doinggo" && man70.id === "/doinggo" && man70.display === dc70.display && man70.icons.length === 3 &&
+      man70.icons.every((x) => x.src.indexOf("/assets/brand/dg-") === 0 && x.src.slice(-V70.length) === V70 && fs.existsSync(B70(x.src.split("?")[0].replace("/assets/brand/", "")))) && man70.icons.some((x) => x.purpose === "maskable") && dc70.icons.every((x) => x.src.indexOf("/assets/brand/dg-") < 0),
+      "manifest: 두잉고(doinggo.webmanifest · 이름 · 시작 주소 /doinggo · 아이콘 3개 · ?v=) · 두고클래스 manifest 는 그대로");
+    const idx70 = require(path.join(ROOT, "scripts/index-abs.js"))(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")), hd70 = PM70.doinggoPage(idx70), head70 = hd70.slice(0, hd70.indexOf("<body>"));
+    const ldOk70 = (head70.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g) || []).some((t) => { try { const j = JSON.parse(t.replace(/^<script[^>]*>|<\/script>$/g, "")); return j["@type"] === "WebPage" && j.url === "https://www.doogoclass.com/doinggo" && j.primaryImageOfPage && /og-doinggo\.jpg$/.test(j.primaryImageOfPage.url); } catch (e) { return false; } });
+    ok(head70.indexOf('<link rel="icon" href="/assets/brand/dg-favicon.svg' + V70 + '" type="image/svg+xml" />') >= 0 && head70.indexOf('<link rel="icon" href="/assets/brand/dg-favicon.png' + V70 + '"') >= 0 &&
+      head70.indexOf('<link rel="apple-touch-icon" href="/assets/brand/dg-apple-touch-icon.png' + V70 + '"') >= 0 && head70.indexOf('<link rel="manifest" href="/doinggo.webmanifest' + V70 + '" />') >= 0 &&
+      /<meta name="apple-mobile-web-app-title" content="두잉고" \/>/.test(head70) && /<meta name="application-name" content="두잉고" \/>/.test(head70) && !/assets\/brand\/(favicon|apple-touch-icon)\.|"\/manifest\.webmanifest/.test(head70) &&
+      head70.indexOf('<meta name="keywords" content="' + PM70.DG_KEYWORDS + '" />') >= 0 && /^두잉고, /.test(PM70.DG_KEYWORDS) && !/DOOGO CLASS|VOD 클래스|스마트스토어/.test(PM70.DG_KEYWORDS) && /<meta property="og:site_name" content="두잉고" \/>/.test(head70) && ldOk70 &&
+      /<img class="boot-logo boot-logo-dg" src="\/assets\/brand\/doinggo-word\.svg" alt="두잉고"/.test(hd70) && /<header><a href="https:\/\/www\.doogoclass\.com\/doinggo"><strong>두잉고<\/strong> doinggo<\/a><\/header>/.test(hd70),
+      "/doinggo 머리 정보: 두잉고 아이콘 · manifest · 아이폰 홈 화면 이름 ‘두잉고’ · 두잉고 검색어(두고클래스 스토어 말 빼고) · og:site_name 두잉고 · WebPage(공유 이미지 og-doinggo.jpg) · 첫 로딩 로고 · 로봇용 머리글");
+    const store70 = PM70.storeHome(idx70, { products: [{ id: "a", type: "vod", status: "on", title: "x", iid: "choi" }] }), terms70 = PM70.legalPage(idx70, "terms", PM70.legalText());
+    const dcHead70 = (h) => h.indexOf('<link rel="manifest" href="/manifest.webmanifest?v=20261102b" />') >= 0 && h.indexOf("dg-favicon") < 0 && h.indexOf("apple-mobile-web-app-title") < 0 && /og:site_name" content="두고클래스 DOOGO CLASS"/.test(h);
+    ok(dcHead70(store70) && dcHead70(terms70) && dcHead70(idx70),
+      "다른 페이지(스토어 홈 · 약관 · 기본 index.html)는 두고클래스 아이콘 · manifest · 사이트 이름 그대로");
+    const ic70 = fs.readFileSync(path.join(ROOT, "icons.js"), "utf8"), mj70 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), css70 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    ok(new RegExp('const V = \\{ dc: "20261102b", dg: "' + PM70.DG_ICON_V + '" \\}').test(ic70) && /manifest: "\/doinggo\.webmanifest\?v=" \+ V\.dg, name: "두잉고"/.test(ic70) && /if \(now === k\) return;/.test(ic70) &&
+      /if \(window\.siteIcons\) window\.siteIcons\(next === "home" \? "dg" : "dc"\);/.test(mj70) && /\.boot-logo\.boot-logo-dg \{ width: 96px; height: auto; \}/.test(css70),
+      "화면 안에서 주소를 옮길 때(main.js go): 두잉고 소개로 오면 두잉고 아이콘, 나가면 두고클래스 아이콘 (icons.js siteIcons · 서버와 같은 ?v= · 이미 맞으면 그대로)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

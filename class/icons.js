@@ -183,6 +183,35 @@
   window.doogoClassLock = (cls) => '<span class="hm-lock bg-lock ' + (cls || "") + '" role="img" aria-label="배우고">' + mk(STACK, "bg-lock-svg") + "</span>";
 })();
 
+/* ---------- 홈 화면 · 북마크 아이콘 (2026-11-22) ----------
+ * 두잉고 소개(/doinggo · 영역 home)는 흰 바탕 두잉고 아이콘 · 두잉고 manifest · 앱 이름 ‘두잉고’, 나머지는 두고클래스 아이콘.
+ * 첫 HTML 은 서버(api/_lib/pagemeta.js dgHead)가 같은 값으로 보내요 — 화면 안에서 주소를 옮길 때 main.js go() 가 이걸 불러 맞춰요.
+ * 이미 맞으면 아무것도 바꾸지 않아요 (React 화면 틀의 <head> 도 그대로) */
+(function () {
+  const V = { dc: "20261102b", dg: "20261122" }; // 아이콘을 다시 만들면 올려요 (dc: index.html · manifest.webmanifest / dg: pagemeta.js DG_ICON_V · doinggo.webmanifest)
+  const SET = {
+    dc: { svg: "/assets/brand/favicon.svg?v=" + V.dc, png: "/assets/brand/favicon.png?v=" + V.dc, touch: "/assets/brand/apple-touch-icon.png?v=" + V.dc, manifest: "/manifest.webmanifest?v=" + V.dc, name: "" },
+    dg: { svg: "/assets/brand/dg-favicon.svg?v=" + V.dg, png: "/assets/brand/dg-favicon.png?v=" + V.dg, touch: "/assets/brand/dg-apple-touch-icon.png?v=" + V.dg, manifest: "/doinggo.webmanifest?v=" + V.dg, name: "두잉고" }
+  };
+  window.siteIcons = (kind) => {
+    const k = kind === "dg" ? "dg" : "dc", head = document.head;
+    if (!head) return;
+    const man = head.querySelector('link[rel="manifest"]'), now = man && /doinggo\.webmanifest/.test(man.getAttribute("href") || "") ? "dg" : "dc";
+    if (now === k) return;
+    const S = SET[k], set = (sel, href) => { const el = head.querySelector(sel); if (el) el.setAttribute("href", href); };
+    set('link[rel="icon"][type="image/svg+xml"]', S.svg);
+    set('link[rel="icon"][type="image/png"]', S.png);
+    set('link[rel="apple-touch-icon"]', S.touch);
+    set('link[rel="manifest"]', S.manifest);
+    ["apple-mobile-web-app-title", "application-name"].forEach((n) => {
+      let m = head.querySelector('meta[name="' + n + '"]');
+      if (!S.name) { if (m) m.remove(); return; }
+      if (!m) { m = document.createElement("meta"); m.setAttribute("name", n); head.appendChild(m); }
+      m.setAttribute("content", S.name);
+    });
+  };
+})();
+
 /* ---------- 두잉고 B 로고 (doinggo · 체크 점) — black: 검정 글자 + 빨간 체크 / white: 흰 글자 + 흰 체크 (어두운 바탕) ---------- */
 (function () {
   const SVG = '<svg viewBox="-8 -14 370.7 110.2" aria-hidden="true" focusable="false"><g transform="matrix(1 0 -0.2 1 19.2 0)"><path d="M27.2 1.5Q27.2 0 35.1 0Q37.8 0 41.4 0.4Q44.9 0.7 44.9 1.3V54H48.4Q50.9 54 51.7 58.5Q51.9 59.8 51.9 62.1Q51.9 64.3 50.5 67.5Q48.5 71.9 44.1 71.9Q40.8 71.9 38.2 70.6Q35.7 69.3 34.8 67.9L33.9 66.6Q28.4 71.9 20.1 71.9Q11.8 71.9 5.9 65Q0 58.1 0 45.8Q0 33.4 6.2 26.7Q12.4 19.9 21.7 19.9Q24.4 19.9 27.2 20.5ZM23.9 35.9Q18.3 35.9 18.3 46Q18.3 51.1 19.9 53.4Q21.5 55.6 23.4 55.6Q25.4 55.6 27.2 53.9V36.9Q25.5 35.9 23.9 35.9Z" fill="currentColor"/><path d="M60.8 65Q54.5 58.1 54.5 45.9Q54.5 33.7 60.8 26.8Q67 19.9 77.6 19.9Q88.2 19.9 94.4 26.8Q100.6 33.7 100.6 45.9Q100.6 58.1 94.4 65Q88.2 71.9 77.6 71.9Q67 71.9 60.8 65ZM77.7 36.6Q72 36.6 72 45.8Q72 55 77.7 55Q83.3 55 83.3 45.8Q83.3 36.6 77.7 36.6Z" fill="currentColor"/><path d="M124 70.3Q124 71.1 114.9 71.1Q105.7 71.1 105.7 70.4V21.3Q105.7 20.6 114.9 20.6Q124 20.6 124 21.2Z" fill="currentColor"/><path d="M104.8 8L112.6 15.3L128.6 -3" fill="none" class="bw-pen" stroke="currentColor" stroke-width="5.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M151.9 70.3Q151.9 71 144.7 71Q134.7 70.7 134.7 69.9V37.5H132.1Q129.5 37.5 128.7 33.1Q128.5 31.8 128.5 30.5Q128.5 27.4 129.7 24.3Q131.5 19.9 135.3 19.9Q139.1 19.9 142.1 21.7Q145.1 23.5 146.1 25.3Q152.4 19.9 161.1 19.9Q169.8 19.9 173.7 24.6Q177.6 29.3 177.6 40V70Q177.6 71.2 169.1 71.2Q160.5 71.2 160.5 70V41.1Q160.5 36.1 157 36.1Q156 36.1 154.2 37Q152.4 37.8 151.9 38.2Z" fill="currentColor"/><path d="M202.5 70.9Q192.8 70.9 187.5 64.7Q182.2 58.4 182.2 46.2Q182.2 33.9 189.2 27Q196.1 20 207.7 20Q219.2 20 226.7 25.1V74.9Q226.7 82.3 220.7 86.2Q214.7 90.2 205.3 90.2Q195.9 90.2 188.5 87.8Q187.5 85.4 187.5 83.5Q187.5 77.1 189.6 74.1Q196.3 77 203.9 77Q209.4 77 209.4 73.1V70.1Q205.1 70.9 202.5 70.9ZM207.1 36.3Q200.4 36.3 200.4 46.4Q200.4 52.7 203 54.6Q204.7 55.9 206.4 55.9Q208.1 55.9 209.4 55.6V36.6Q208.2 36.3 207.1 36.3Z" fill="currentColor"/><path d="M252.1 70.9Q242.4 70.9 237.1 64.7Q231.8 58.4 231.8 46.2Q231.8 33.9 238.8 27Q245.7 20 257.2 20Q268.8 20 276.3 25.1V74.9Q276.3 82.3 270.3 86.2Q264.3 90.2 254.9 90.2Q245.5 90.2 238.1 87.8Q237.1 85.4 237.1 83.5Q237.1 77.1 239.2 74.1Q245.9 77 253.5 77Q259 77 259 73.1V70.1Q254.7 70.9 252.1 70.9ZM256.7 36.3Q250 36.3 250 46.4Q250 52.7 252.6 54.6Q254.3 55.9 256 55.9Q257.7 55.9 259 55.6V36.6Q257.8 36.3 256.7 36.3Z" fill="currentColor"/><path d="M287.7 65Q281.4 58.1 281.4 45.9Q281.4 33.7 287.7 26.8Q293.9 19.9 304.5 19.9Q315.1 19.9 321.3 26.8Q327.5 33.7 327.5 45.9Q327.5 58.1 321.3 65Q315.1 71.9 304.5 71.9Q293.9 71.9 287.7 65ZM304.6 36.6Q298.9 36.6 298.9 45.8Q298.9 55 304.6 55Q310.2 55 310.2 45.8Q310.2 36.6 304.6 36.6Z" fill="currentColor"/></g></svg>';

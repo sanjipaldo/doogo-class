@@ -2493,6 +2493,7 @@ a.login-vod:hover { filter: brightness(.97); }
 
 /* v19: 첫 로딩 로고 = DOOGO CLASS 글자 로고 (대표 주소가 두고클래스) */
 .boot-logo.boot-logo-dc { width: 156px; height: auto; }
+.boot-logo.boot-logo-dg { width: 96px; height: auto; } /* 두잉고 소개(/doinggo) 첫 로딩 로고 — 서버 pagemeta.js dgHead 가 바꿔 넣어요 (2026-11-22) */
 
 /* v19: 문의하기 → 운영 상담 카카오톡 채널 (두잉고 강의실 · 도움 카드) */
 .vt-kk { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; background: #fee500; color: #191600; font-size: 13px; font-weight: 800; text-decoration: none; flex: none; }

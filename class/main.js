@@ -61,6 +61,8 @@
     if (next === "admin") window.applyStudentTheme(null); else document.body.dataset.master = "";
     // 소개 화면에서 내려가며 검정으로 바뀐 휴대폰 주소창 색을 다른 화면에서는 원래대로
     if (next !== "home") { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", "#ffffff"); }
+    // 홈 화면 · 북마크 아이콘: 두잉고 소개는 두잉고 아이콘, 나머지는 두고클래스 아이콘 (icons.js · 이미 맞으면 그대로)
+    if (window.siteIcons) window.siteIcons(next === "home" ? "dg" : "dc");
     if (REACT_PAGE) { window.ReactApp.go(rk, h, changed); return; } // 팝업 닫기 · 화면 그리기는 React 가
     document.getElementById("modal-root").innerHTML = "";
     const app = next === "admin" ? window.AdminApp : next === "vod" ? window.VodApp : next === "landing" ? window.LandingApp : next === "home" ? window.HomeApp : window.StudentApp;
