@@ -53,8 +53,10 @@
 </head>
 <body>
   <div id="root">
-    <!-- 첫 로딩 화면 (자바스크립트가 켜진 방문자에게만 보임 · 앱이 그려지면 사라짐) -->
+    <!-- 첫 로딩 화면 (자바스크립트가 켜진 방문자에게만 보임 · 앱이 그려지면 사라짐)
+         바로 아래 스크립트가 이 주소 쪽 로고 · 문구로 바꿔요: 두잉고 쪽(소개 · 강의실 · 강사 소개 · 무료강의)은 두잉고 로고 · 다른 서비스에서 옮겨 오면 ‘OO로 이동중입니다’ (areas.js bootFix) -->
     <div class="boot-wait" role="status" aria-live="polite"><img class="boot-logo boot-logo-dc" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchpriority="high"><span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>
+    <script>try { if (window.DC_AREA && document.currentScript) window.DC_AREA.bootFix(document.currentScript.previousElementSibling); } catch (e) {}</script>
     <!-- 검색용 안내 글: 자바스크립트를 실행하지 않는 검색 로봇(네이버 등)도 첫 화면 내용을 읽을 수 있게. 화면이 뜨면 앱이 이 자리를 바로 바꾼다 -->
     <div class="seo-static">
       <header><a href="https://www.doogoclass.com/"><strong>두고클래스</strong> DOOGO CLASS</a></header>

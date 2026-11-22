@@ -23,16 +23,23 @@ import Center from "./center/Center.jsx";
 // 화면 키 → 화면 (키 · 주소 규칙은 class/shared/screens.js)
 const SCREENS = { "vod-my": MyPage, "vod-auth": AuthPage, "vod-order": OrderPage, "vod-checkout": CheckoutPage, "vod-learn": LearnPage, "vod-legal": LegalPage, "vod-teachers": TeachersPage, "vod-list": ListPage, "vod-about": AboutPage, "vod-partners": PartnersPage, "vod-home": HomePage, "vod-product": ProductPage, "dg-home": Classroom, "dg-learn": Classroom, "dg-board": Classroom, "dg-lib": Classroom, "dg-more": Classroom, "dg-vod": Classroom, "dg-login": DgLogin, "ct-login": Center, "ct-dash": Center, "ct-ops": Center, "ct-content": Center, "ct-vod": Center, "ct-master": Center, "ct-partner": Center, "ct-media": Center };
 
-const LOGO = <img className="boot-logo boot-logo-dc" src="/assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchPriority="high" />;
-function Boot() {
-  return <div className="boot-wait" role="status" aria-live="polite">{LOGO}<span className="boot-bar" aria-hidden="true"><i /></span><p className="boot-txt">로딩중입니다<span className="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>;
+/* 로딩 화면 로고 · 문구: 두잉고 쪽(강의실 · 강의실 로그인 dg-*)은 두잉고, 두고클래스 쪽은 DOOGO CLASS · 다른 서비스에서 옮겨 오면 ‘OO로 이동중입니다’
+ * (2026-11-22 · 첫 화면 값은 서버가 주소 · 쿠키로 정해 page.js 가 boot 로 넘겨요 — class/shared/screens.js bootOf · 예전 화면은 class/areas.js 같은 규칙) */
+const LOGOS = { dc: ["/assets/brand/doogo-class-word.svg", "DOOGO CLASS", 156, 20], dg: ["/assets/brand/doinggo-word.svg", "두잉고", 96, 36] };
+const brandK = (b) => (b === "dg" ? "dg" : "dc");
+const bootText = (b, m) => (m ? (b === "dg" ? "두잉고로" : "두고클래스로") + " 이동중입니다" : "로딩중입니다");
+function Logo({ b }) { const k = brandK(b), L = LOGOS[k]; return <img className={"boot-logo boot-logo-" + k} src={L[0]} alt={L[1]} width={L[2]} height={L[3]} fetchPriority="high" />; }
+function Boot({ b, m }) {
+  return <div className="boot-wait" role="status" aria-live="polite"><Logo b={b} /><span className="boot-bar" aria-hidden="true"><i /></span><p className="boot-txt">{bootText(brandK(b), m)}<span className="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>;
 }
-function BootFail() {
-  return <div className="boot-wait boot-err" role="alert">{LOGO}<b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onClick={() => location.reload()}>다시 시도</button></div>;
+function BootFail({ b }) {
+  return <div className="boot-wait boot-err" role="alert"><Logo b={b} /><b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onClick={() => location.reload()}>다시 시도</button></div>;
 }
 
-export default function App() {
+export default function App({ boot }) {
   const [st, setSt] = useState({ k: null, h: "", n: 0, moved: false, keep: null, fail: false });
+  // 로딩 화면 쪽 · 안내 — 처음엔 서버가 정한 값(SSR 과 같아야 해요), 다른 영역으로 옮기려고 새로 부를 때는 main.js 가 leave(쪽, 이동) 로
+  const [bt, setBt] = useState(() => ({ b: brandK(boot && boot.b), m: !!(boot && boot.m) }));
   // 화면 영역의 처음 할 일(스토어: 결제 · 로그인 설정 받기)을 마친 뒤에 그려요 — 설정 없이 그리면 버튼이 서버를 거치지 않아요
   const [ready, setReady] = useState(false);
   const booted = useRef(false);
@@ -74,11 +81,11 @@ export default function App() {
       // 예전 처리 함수가 끝에 부르는 ‘다시 그리기’ (vod.js render) — 보던 자리 그대로
       redraw() { if (pre(curK) === false) return; setSt((s) => Object.assign({}, s, { n: s.n + 1, moved: false, keep: null })); },
       fail() { setSt((s) => Object.assign({}, s, { fail: true })); },
-      // 다른 영역 · 예전 화면으로 옮기려고 페이지를 새로 부를 때: ‘로딩중입니다’ (예전 화면과 같게 — main.js moveArea)
-      leave() { setSt((s) => Object.assign({}, s, { k: null })); }
+      // 다른 영역 · 예전 화면으로 옮기려고 페이지를 새로 부를 때: 옮겨 갈 쪽 로딩 화면 · 다른 서비스면 ‘OO로 이동중입니다’ (예전 화면과 같게 — main.js moveArea)
+      leave(b, m) { setBt({ b: brandK(b), m: !!m }); setSt((s) => Object.assign({}, s, { k: null })); }
     };
     if (window.__dcReactReady) window.__dcReactReady();
   }, []);
   const Screen = st.k ? SCREENS[st.k] : null;
-  return <div id="root">{st.fail ? <BootFail /> : Screen && ready ? <Screen n={st.n} h={st.h} moved={st.moved} keep={st.keep} /> : <Boot />}</div>;
+  return <div id="root">{st.fail ? <BootFail b={bt.b} /> : Screen && ready ? <Screen n={st.n} h={st.h} moved={st.moved} keep={st.keep} /> : <Boot b={bt.b} m={bt.m} />}</div>;
 }

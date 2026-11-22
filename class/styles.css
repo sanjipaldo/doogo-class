@@ -2493,7 +2493,12 @@ a.login-vod:hover { filter: brightness(.97); }
 
 /* v19: 첫 로딩 로고 = DOOGO CLASS 글자 로고 (대표 주소가 두고클래스) */
 .boot-logo.boot-logo-dc { width: 156px; height: auto; }
-.boot-logo.boot-logo-dg { width: 96px; height: auto; } /* 두잉고 소개(/doinggo) 첫 로딩 로고 — 서버 pagemeta.js dgHead 가 바꿔 넣어요 (2026-11-22) */
+.boot-logo.boot-logo-dg { width: 96px; height: auto; } /* 두잉고 쪽(소개 · 강의실 · 강사 소개 · 무료강의 · 두잉고 강사센터) 로딩 로고 — areas.js bootFix · main.js · ui/App.jsx (2026-11-22) */
+/* 두고클래스 ↔ 두잉고 이동 안내 (2026-11-22): 페이지를 새로 부르지 않고 바로 바뀌는 이동에도 옮겨 간 쪽 로딩 화면을 잠깐 ‘OO로 이동중입니다’ (main.js moveCover)
+   누르기 · 스크롤은 막지 않고(pointer-events), 바로 보이게(지연 없이) 나타났다가 흐려지며 사라져요 */
+.boot-wait.boot-move { pointer-events: none; transition: opacity .22s ease; }
+.boot-wait.boot-move > * { animation-delay: 0s; }
+.boot-wait.boot-move.out { opacity: 0; }
 
 /* v19: 문의하기 → 운영 상담 카카오톡 채널 (두잉고 강의실 · 도움 카드) */
 .vt-kk { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; background: #fee500; color: #191600; font-size: 13px; font-weight: 800; text-decoration: none; flex: none; }

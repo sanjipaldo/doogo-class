@@ -96,5 +96,21 @@
   }
   /** 이 브라우저에서 이 경로가 React 화면인지 → 키 또는 null */
   function onHere(pathname) { const k = match(pathname); return k && here().indexOf(k) >= 0 ? k : null; }
-  return { LIST, KEYS, parse, enabled, match, isPublic, validPick, here, onHere };
+  /* 로딩 화면 쪽(브랜드) — 예전 화면 class/areas.js 와 같은 규칙 (2026-11-22)
+   *  두잉고 강의실 · 강의실 로그인(dg-*) = 두잉고 · 강사센터(ct-*) = 머리 로고 쪽 기억(쿠키 dc_ct · 없으면 null) · 나머지(vod-* 스토어 · 회원 · 약관) = 두고클래스 */
+  function brandOfKey(key, ct) {
+    if (!key) return null;
+    if (/^dg-/.test(key)) return "dg";
+    if (/^ct-/.test(key)) return ct === "dg" || ct === "dc" ? ct : null;
+    return "dc";
+  }
+  /** React 화면 첫 로딩 화면 → { b, m } — 떠난 페이지가 남긴 쿠키 dc_boot(‘쪽|m|주소’ · 이 주소일 때만)가 먼저 · 아니면 화면 쪽 (서버 page.js 가 써요) */
+  function bootOf(pathname, bootCk, ctCk) {
+    const p = String(pathname || "/").split("?")[0].split("#")[0] || "/";
+    let v = [];
+    try { v = decodeURIComponent(String(bootCk || "")).split("|"); } catch (e) { v = []; }
+    if (v.length === 3 && (v[0] === "dg" || v[0] === "dc") && v[2] === p) return { b: v[0], m: v[1] === "m" };
+    return { b: brandOfKey(match(p), ctCk) || "dc", m: false };
+  }
+  return { LIST, KEYS, parse, enabled, match, isPublic, validPick, here, onHere, brandOfKey, bootOf };
 });

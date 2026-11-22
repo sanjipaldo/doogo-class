@@ -102,6 +102,41 @@
       document.head.appendChild(l);
     });
   }
-  window.DC_AREA = { of, guess, ready, ensure, NEED, JS_ORDER, CSS_ORDER, off };
+  /* ---------- 서비스(브랜드) — 로딩 화면 · 서비스 이동 안내 (2026-11-22) ----------
+   *  두고클래스(dc) = 스토어 · 회원 · 약관(vod) / 두잉고(dg) = 두잉고 소개(home) · 강의실 · 강의실 로그인(student) · 강사 소개 · 무료강의(landing)
+   *  강사센터(admin)는 두 서비스가 같이 써요 → 머리 로고와 같은 쪽 (admin.js · ui/center/Shell.jsx 가 그릴 때 쿠키 dc_ct 에 기억)
+   *    기억이 없으면 null — 어느 쪽도 아니라서 이동 안내 없이 지금 쪽 로고 그대로
+   *  로딩 화면: 그 쪽 로고 + ‘로딩중입니다’ · 다른 서비스로 옮겨 가면 옮겨 갈 쪽 로고 + ‘두잉고로 이동중입니다’ / ‘두고클래스로 이동중입니다’
+   *  페이지를 새로 부르면 떠나는 페이지가 쿠키 dc_boot(브랜드|m|주소 · 20초)를 남겨 새 페이지 첫 로딩 화면도 같은 안내를 이어서 보여요
+   *  (React 화면은 서버가 같은 규칙으로 — class/shared/screens.js bootOf) */
+  const BRAND = { vod: "dc", home: "dg", student: "dg", landing: "dg" };
+  const LOGOS = { dc: ["assets/brand/doogo-class-word.svg", "DOOGO CLASS", 156, 20], dg: ["assets/brand/doinggo-word.svg", "두잉고", 96, 36] };
+  function cookie(n) { try { const m = document.cookie.match(new RegExp("(?:^|;\\s*)" + n + "=([^;]*)")); return m ? m[1] : ""; } catch (e) { return ""; } }
+  /** 강사센터 머리 로고 쪽 기억 — ctBrand("dg"|"dc") 로 저장(바뀔 때만) · ctBrand() 로 읽기(없으면 null) */
+  function ctBrand(b) {
+    if (b === "dg" || b === "dc") { if (cookie("dc_ct") !== b) { try { document.cookie = "dc_ct=" + b + "; path=/; max-age=31536000; samesite=lax"; } catch (e) { /* 기억만 못 해요 */ } } return b; }
+    const v = cookie("dc_ct");
+    return v === "dg" || v === "dc" ? v : null;
+  }
+  /** 영역 → "dg" · "dc" (강사센터는 기억한 쪽 · 없으면 null) */
+  const brand = (area) => (area === "admin" ? ctBrand() : BRAND[area] || null);
+  /** 경로(/doinggo · /vod/my …) → 브랜드 */
+  const pathBrand = (p) => brand(of(!p || p === "/" || p === "/index.html" ? "" : "#" + p));
+  const bootText = (b, m) => (m ? (b === "dg" ? "두잉고로" : "두고클래스로") + " 이동중입니다" : "로딩중입니다");
+  /** 이 페이지 첫 로딩 화면 → { b: 브랜드, m: 서비스를 옮겨 오는 중인지 } — 떠난 페이지가 남긴 쿠키 dc_boot(이 주소일 때만) · 아니면 주소 규칙 */
+  function bootState() {
+    let v = [];
+    try { v = decodeURIComponent(cookie("dc_boot")).split("|"); } catch (e) { v = []; }
+    if (v.length === 3 && (v[0] === "dg" || v[0] === "dc") && v[2] === location.pathname) return { b: v[0], m: v[1] === "m" };
+    return { b: brand(guess()) || "dc", m: false };
+  }
+  /** index.html 첫 로딩 화면(서버가 보낸 그대로)을 이 페이지 쪽 로고 · 문구로 — 화면이 그려지기 전에 index.html 이 바로 불러요 */
+  function bootFix(el) {
+    if (!el || !el.classList || !el.classList.contains("boot-wait")) return;
+    const s = bootState(), img = el.querySelector(".boot-logo"), txt = el.querySelector(".boot-txt"), L = LOGOS[s.b];
+    if (img && !img.classList.contains("boot-logo-" + s.b)) { img.className = "boot-logo boot-logo-" + s.b; img.setAttribute("src", L[0]); img.setAttribute("alt", L[1]); img.setAttribute("width", L[2]); img.setAttribute("height", L[3]); }
+    if (txt && txt.firstChild && txt.firstChild.nodeType === 3) txt.firstChild.nodeValue = bootText(s.b, s.m);
+  }
+  window.DC_AREA = { of, guess, ready, ensure, NEED, JS_ORDER, CSS_ORDER, off, brand, pathBrand, ctBrand, bootText, bootState, bootFix, LOGOS };
   try { preload(guess()); } catch (e) { /* 미리 받기는 덤이에요 — main.js 가 다시 받아요 */ }
 })();

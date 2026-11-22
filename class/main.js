@@ -44,8 +44,11 @@
     leaving = true;
     // 떠 있는 알림(로그아웃했어요 · 오래 사용하지 않아 로그아웃 …)은 새로 부른 페이지에서 이어서 보여요 (React 화면 ↔ 예전 화면 · 영역 옮기기)
     try { const ts = Array.from(document.querySelectorAll("#toast-root .toast")).map((t) => ({ c: t.className, h: t.innerHTML })); if (ts.length) sessionStorage.setItem("dc:toasts", JSON.stringify(ts.slice(-2))); } catch (e) { /* 알림만 못 이어요 */ }
-    // 새로 부르는 동안 ‘로딩중입니다’ (React 화면 틀은 React 가 같은 화면을 그려요)
-    if (!REACT_PAGE) root.innerHTML = bootHtml(); else if (window.ReactApp && window.ReactApp.leave) window.ReactApp.leave();
+    // 새로 부르는 동안 로딩 화면 — 옮겨 갈 쪽 로고 · 다른 서비스(두고클래스 ↔ 두잉고)면 ‘OO로 이동중입니다’ (React 화면 틀은 React 가 같은 화면을 그려요)
+    //  · 새로 부른 페이지의 첫 로딩 화면도 같은 안내를 이어서 보여요 (쿠키 dc_boot · 2026-11-22) · 강사센터처럼 어느 쪽도 아닌 곳은 지금 쪽 그대로
+    const from = curBrand(), to = window.DC_AREA.brand(next) || from, mv = to !== from;
+    bootCookie(to, mv);
+    if (!REACT_PAGE) root.innerHTML = bootHtml(to, mv); else if (window.ReactApp && window.ReactApp.leave) window.ReactApp.leave(to, mv);
     Promise.resolve(DB.remote.on ? DB.remote.flush() : null).catch(() => {}).then(() => new Promise((ok) => setTimeout(ok, 150))).then(() => location.reload());
   }
   function go(resumed) {
@@ -55,9 +58,11 @@
     const rk = reactKey(h);
     if (!!rk !== REACT_PAGE) { moveArea(next, true); return; }
     if (!window.DC_AREA.ready(next)) { moveArea(next); return; }
-    const changed = next !== mode;
+    const changed = next !== mode, fromB = changed && mode ? curBrand() : null;
     mode = next;
     document.body.dataset.mode = next;
+    // 두고클래스 ↔ 두잉고를 새로 부르지 않고 바로 옮길 때(스토어 ↔ 두잉고 강의실 등)도 옮겨 간 쪽 로딩 화면으로 0.65초 ‘OO로 이동중입니다’ (누르기는 막지 않아요 · 2026-11-22)
+    if (fromB) { const toB = window.DC_AREA.brand(next); if (toB && toB !== fromB) moveCover(toB, 650); }
     if (next === "admin") window.applyStudentTheme(null); else document.body.dataset.master = "";
     // 소개 화면에서 내려가며 검정으로 바뀐 휴대폰 주소창 색을 다른 화면에서는 원래대로
     if (next !== "home") { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", "#ffffff"); }
@@ -281,14 +286,55 @@
   document.addEventListener("contextmenu", fixCafe, true);
 
   const root = document.getElementById("root");
-  // 첫 로딩 화면: 흰 바탕 + DOOGO CLASS 글자 로고 + 진행 막대 + ‘로딩중입니다’ (index.html 에 이미 있으면 그대로 — 다시 그리면 깜박인다)
-  const LOGO = '<img class="boot-logo boot-logo-dc" src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS" width="156" height="20" fetchpriority="high">';
-  function bootHtml() { return '<div class="boot-wait" role="status" aria-live="polite">' + LOGO + '<span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p></div>'; }
+  /* 로딩 화면: 흰 바탕 + 지금 쪽 글자 로고(두고클래스 DOOGO CLASS · 두잉고) + 진행 막대 + ‘로딩중입니다’ (2026-11-22 · 쪽 나누기 규칙은 areas.js)
+   *  · 다른 서비스로 옮겨 가면 옮겨 갈 쪽 로고 + ‘두잉고로 이동중입니다’ / ‘두고클래스로 이동중입니다’
+   *  · index.html 에 이미 있으면 그대로 (다시 그리면 깜박인다 — index.html 이 이 주소 쪽으로 이미 바꿔 둬요) */
+  const AR = window.DC_AREA, BOOT0 = AR.bootState(); // 첫 로딩 화면 쪽 · 안내 (떠난 페이지가 남긴 쿠키를 지우기 전에 읽어요)
+  try { document.cookie = "dc_boot=; path=/; max-age=0; samesite=lax"; } catch (e) { /* 20초 뒤 저절로 사라져요 */ }
+  const curBrand = () => (mode ? AR.brand(mode) || "dc" : BOOT0.b);
+  const logoHtml = (b) => { const k = b === "dg" ? "dg" : "dc", L = AR.LOGOS[k]; return '<img class="boot-logo boot-logo-' + k + '" src="' + L[0] + '" alt="' + L[1] + '" width="' + L[2] + '" height="' + L[3] + '" fetchpriority="high">'; };
+  const bootInner = (b, m) => logoHtml(b) + '<span class="boot-bar" aria-hidden="true"><i></i></span><p class="boot-txt">' + AR.bootText(b === "dg" ? "dg" : "dc", m) + '<span class="boot-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>';
+  function bootHtml(b, m) { if (!b) { b = BOOT0.b; m = BOOT0.m; } return '<div class="boot-wait" role="status" aria-live="polite">' + bootInner(b, m) + "</div>"; }
+  /** 새로 부를 페이지 첫 로딩 화면에 남기는 쪽 · 안내 (20초 · 그 주소에서만 — areas.js bootState · React 는 shared/screens.js bootOf) */
+  function bootCookie(b, m, path) { try { document.cookie = "dc_boot=" + encodeURIComponent(b + "|" + (m ? "m" : "") + "|" + (path || location.pathname)) + "; path=/; max-age=20; samesite=lax"; } catch (e) { /* 새 페이지는 ‘로딩중입니다’ 로 */ } }
   function bootFail(err) {
     console.error(err);
     if (REACT_PAGE) { if (window.ReactApp) window.ReactApp.fail(); return; }
-    root.innerHTML = '<div class="boot-wait boot-err" role="alert">' + LOGO + '<b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onclick="location.reload()">다시 시도</button></div>';
+    root.innerHTML = '<div class="boot-wait boot-err" role="alert">' + logoHtml(curBrand()) + '<b>서버에 연결하지 못했어요</b><span>잠시 후 다시 시도해 주세요.</span><button type="button" onclick="location.reload()">다시 시도</button></div>';
   }
+  /** 서비스 이동 안내 덮개 — 화면 위에 옮겨 갈 쪽 로딩 화면을 ms 동안 (누르기 · 스크롤은 막지 않아요 · CSS .boot-move) */
+  function moveCover(b, ms) {
+    const old = document.getElementById("dc-move");
+    if (old) old.remove();
+    const el = document.createElement("div");
+    el.id = "dc-move"; el.className = "boot-wait boot-move"; el.setAttribute("role", "status"); el.setAttribute("aria-live", "polite");
+    el.innerHTML = bootInner(b, true);
+    document.body.appendChild(el);
+    setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 250); }, ms);
+  }
+  // 같은 사이트의 일반 링크(#/… 가 아닌 <a href="/vod/my/classes"> 등)로 다른 서비스 페이지를 새로 부를 때도 같은 안내 — 새 페이지 첫 로딩 화면까지 이어서
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+    const raw = a.getAttribute("href") || "";
+    if (!raw || raw.charAt(0) === "#") return; // #/… 링크는 화면 전환(go · moveArea)이 맡아요
+    let u = null;
+    try { u = new URL(a.href, location.href); } catch (x) { return; }
+    if (u.origin !== location.origin || u.pathname === location.pathname || /^\/(api|assets|_next)\//.test(u.pathname) || /\.[a-z0-9]{2,5}$/i.test(u.pathname)) return;
+    const from = curBrand(), to = AR.pathBrand(u.pathname);
+    // 저장하지 않은 편집이 있으면 떠나기 확인 창에서 머물 수 있어서 덮지 않아요
+    if (!to || to === from || (window.__dirty && window.__dirty())) return;
+    bootCookie(to, true, u.pathname);
+    moveCover(to, 8000);
+  });
+  // 뒤로 가기로 이 페이지가 그대로 돌아오면(bfcache) 남은 덮개 · 쿠키를 치워요
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    const el = document.getElementById("dc-move");
+    if (el) el.remove();
+    try { document.cookie = "dc_boot=; path=/; max-age=0; samesite=lax"; } catch (x) { /* 20초 뒤 저절로 사라져요 */ }
+  });
   if (!REACT_PAGE && !root.querySelector(".boot-wait")) root.innerHTML = bootHtml();
   // 이 주소 영역의 화면 파일(areas.js)은 서버 연결과 같이 받기 시작해요 — 둘 다 끝나면 그려요
   const files0 = window.DC_AREA.ensure(pick().next);

@@ -22,6 +22,8 @@ export default function Shell({ r, children, pageHtml }) {
   const cur = (master ? r.parts.slice(0, 2) : r.parts).join("/"), curKey = master || partner || media ? cur || (partner ? "partner" : media ? "media" : "master") : r.parts[0] || "";
   const ins = master || partner || media ? null : A.INS(), coach = A.isCoach(), vod = A.TRK() === "vod", dcL = master ? A.MT() === "dc" : !!ins && vod; // 관리 영역 탭이 DOOGO CLASS 면 로고도 DOOGO CLASS (2026-11-06)
   if (ins && vod && A.VPID()) DB.vodEnsure(ins.id, A.VPID());
+  // 로딩 화면도 머리 로고와 같은 쪽으로 기억 (바뀔 때만 쿠키 dc_ct · class/areas.js ctBrand · 2026-11-22)
+  if (typeof window !== "undefined" && window.DC_AREA && window.DC_AREA.ctBrand) window.DC_AREA.ctBrand(dcL ? "dc" : "dg");
   const co = ins ? DB.currentCohort(ins.id) : null, many = ins && coach && A.myCoachCourses().length > 1;
   const st = A.staffMe();
   const u = partner ? [PM.name, "영업 패밀리", "handshake", "pt"] : media ? [A.mdName(MDM), "온드미디어 · RS " + A.mdRate(MDM) + "%", "monitorPlay", "pt"] : S.role === "master" ? (st ? [st.name, A.staffRoleName(st) + " · 운영자", "shieldCheck", "ms st"] : ["ADMIN", master ? "마스터 관리자" : "마스터 · 대신 보기", "shieldCheck", "ms"]) : coach ? [(A.ME_COACH() || {}).name || "코치", "코치", "checks", "co"] : [ins.name, "강사", "user", "in"];

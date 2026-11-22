@@ -3689,6 +3689,108 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "서버: 수강생이 저장해도 검수 결과 · 검수 기록은 서버 값 그대로(지우거나 바꾸기 · 새 제출에 끼워 넣기 안 됨) · 강사는 승인 취소(검수 결과 지우기)를 저장할 수 있어요");
   }
 
+  {
+    console.log("71) 로딩 화면 — 두잉고 쪽은 두잉고 로딩 · 두고클래스 쪽은 그대로 · 서비스를 옮기면 ‘OO로 이동중입니다’ (2026-11-22)");
+    // 브라우저 흉내 (쿠키 · 주소) 위에서 areas.js 를 그대로 돌려요
+    const jar71 = {};
+    const doc71 = {
+      currentScript: { src: "https://www.doogoclass.com/areas.js?v=t" }, querySelectorAll: () => [], documentElement: { getAttribute: () => null },
+      head: { appendChild: () => {} }, body: null, createElement: () => ({ addEventListener() {}, setAttribute() {} }),
+      get cookie() { return Object.keys(jar71).map((k) => k + "=" + jar71[k]).join("; "); },
+      set cookie(s) { const p = String(s).split(";"), kv = p[0].split("="), k = kv[0].trim(), v = kv.slice(1).join("="); if (/max-age=0(\s|;|$)/.test(s)) delete jar71[k]; else jar71[k] = v; jar71.__w = (jar71.__w || 0); }
+    };
+    const loc71 = { hash: "", pathname: "/", search: "", href: "https://www.doogoclass.com/" };
+    const sb71 = { document: doc71, location: loc71, URL, localStorage: { getItem: () => null }, console };
+    sb71.window = sb71; sb71.__dcClean = true;
+    require("vm").createContext(sb71); require("vm").runInContext(fs.readFileSync(path.join(ROOT, "areas.js"), "utf8"), sb71, { filename: "areas.js" });
+    const A71 = sb71.DC_AREA, at71 = (p) => { loc71.pathname = p; loc71.href = "https://www.doogoclass.com" + p; };
+    delete jar71.__w;
+    const pb71 = ["/", "/vod", "/vod/my/classes", "/terms", "/vod/dg", "/doinggo", "/doinggo/guide", "/partner", "/login", "/home", "/missions/1/m1-7", "/vodclass/x", "/partners", "/p/moon", "/free/moon", "/center"].map((p) => p + ">" + A71.pathBrand(p)).join(" ");
+    ok(pb71 === "/>dc /vod>dc /vod/my/classes>dc /terms>dc /vod/dg>dc /doinggo>dg /doinggo/guide>dg /partner>dg /login>dg /home>dg /missions/1/m1-7>dg /vodclass/x>dg /partners>dg /p/moon>dg /free/moon>dg /center>null" &&
+      A71.brand("vod") === "dc" && A71.brand("home") === "dg" && A71.brand("student") === "dg" && A71.brand("landing") === "dg" && A71.brand("admin") === null,
+      "쪽 나누기: 두고클래스 = 스토어 · 회원 · 약관 · 두잉고 VOD 고르기(/vod/dg) / 두잉고 = 소개(/doinggo · 사용법) · 강의실 · 강의실 로그인 · VOD 강의실 · 제휴채널 · 강사 소개 · 무료강의 / 강사센터 = 기억 없으면 어느 쪽도 아님", pb71);
+    const w71 = []; const set71 = Object.getOwnPropertyDescriptor(doc71, "cookie").set;
+    Object.defineProperty(doc71, "cookie", { get: Object.getOwnPropertyDescriptor(doc71, "cookie").get, set(s) { w71.push(s); set71(s); }, configurable: true });
+    A71.ctBrand("dg"); A71.ctBrand("dg"); const ct71 = A71.brand("admin"), p71 = A71.pathBrand("/center/reviews"); A71.ctBrand("dc");
+    ok(ct71 === "dg" && p71 === "dg" && A71.brand("admin") === "dc" && w71.length === 2 && /^dc_ct=dg; path=\/; max-age=31536000; samesite=lax$/.test(w71[0]) && A71.ctBrand("x") === "dc",
+      "강사센터: 머리 로고 쪽을 쿠키 dc_ct 에 기억(바뀔 때만 써요 · 1년) → 강사센터 로딩 화면 · 이동 안내가 그 쪽을 따라가요", w71);
+    ok(A71.bootText("dg", true) === "두잉고로 이동중입니다" && A71.bootText("dc", true) === "두고클래스로 이동중입니다" && A71.bootText("dg", false) === "로딩중입니다" && A71.bootText("dc") === "로딩중입니다",
+      "문구: 다른 서비스로 옮기면 ‘두잉고로 이동중입니다’ · ‘두고클래스로 이동중입니다’ · 같은 쪽은 ‘로딩중입니다’");
+    delete jar71.dc_ct;
+    at71("/doinggo"); const s1 = A71.bootState();
+    jar71.dc_boot = encodeURIComponent("dg|m|/doinggo"); const s2 = A71.bootState();
+    at71("/vod"); const s3 = A71.bootState(); // 다른 주소에 남은 쿠키는 쓰지 않아요 (다른 창 · 늦게 연 페이지)
+    jar71.dc_boot = encodeURIComponent("dc|m|/vod"); const s4 = A71.bootState();
+    at71("/center"); jar71.dc_boot = encodeURIComponent("dg||/center"); const s5 = A71.bootState(); delete jar71.dc_boot; const s6 = A71.bootState();
+    jar71.dc_boot = "%E0%A4%A"; const s7 = A71.bootState(); delete jar71.dc_boot;
+    ok(JSON.stringify([s1, s2, s3, s4, s5, s6, s7]) === JSON.stringify([{ b: "dg", m: false }, { b: "dg", m: true }, { b: "dc", m: false }, { b: "dc", m: true }, { b: "dg", m: false }, { b: "dc", m: false }, { b: "dc", m: false }]),
+      "첫 로딩 화면 쪽: 주소 규칙(/doinggo = 두잉고) · 떠난 페이지가 남긴 쿠키 dc_boot(‘쪽|m|주소’)는 그 주소에서만 써서 ‘이동중입니다’를 이어서 · 강사센터는 쿠키 쪽 · 기억 없으면 두고클래스 · 깨진 쿠키는 무시", [s1, s2, s3, s4, s5, s6, s7]);
+    // index.html 첫 로딩 화면(서버가 보낸 DOOGO CLASS 그대로)을 bootFix 가 바꾸는 모양
+    const mkBoot71 = () => {
+      const img = { className: "boot-logo boot-logo-dc", attrs: { src: "assets/brand/doogo-class-word.svg", alt: "DOOGO CLASS", width: "156", height: "20" }, setAttribute(k, v) { this.attrs[k] = String(v); } };
+      img.classList = { contains: (c) => img.className.split(" ").indexOf(c) >= 0 };
+      const txt = { firstChild: { nodeType: 3, nodeValue: "로딩중입니다" } };
+      return { img, txt, el: { classList: { contains: (c) => c === "boot-wait" }, querySelector: (q) => (q === ".boot-logo" ? img : q === ".boot-txt" ? txt : null) } };
+    };
+    at71("/p/moon"); const b1 = mkBoot71(); A71.bootFix(b1.el);
+    at71("/"); jar71.dc_boot = encodeURIComponent("dc|m|/"); const b2 = mkBoot71(); A71.bootFix(b2.el); delete jar71.dc_boot;
+    at71("/vod"); const b3 = mkBoot71(); A71.bootFix(b3.el); A71.bootFix(null); A71.bootFix({ classList: { contains: () => false } });
+    ok(b1.img.className === "boot-logo boot-logo-dg" && b1.img.attrs.src === "assets/brand/doinggo-word.svg" && b1.img.attrs.alt === "두잉고" && b1.img.attrs.width === "96" && b1.img.attrs.height === "36" && b1.txt.firstChild.nodeValue === "로딩중입니다" &&
+      b2.img.className === "boot-logo boot-logo-dc" && b2.txt.firstChild.nodeValue === "두고클래스로 이동중입니다" && b3.img.attrs.src === "assets/brand/doogo-class-word.svg" && b3.txt.firstChild.nodeValue === "로딩중입니다",
+      "예전 화면 첫 로딩: 두잉고 쪽 주소(강사 소개 등)는 두잉고 로고(96×36)로 바꾸고 · 두잉고에서 옮겨 온 스토어는 ‘두고클래스로 이동중입니다’ · 그냥 연 스토어는 그대로 · 엉뚱한 요소는 건드리지 않아요", [b1.img, b2.txt.firstChild.nodeValue]);
+    const ix71 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    ok(/<p class="boot-txt">로딩중입니다<span class="boot-dots" aria-hidden="true"><i>\.<\/i><i>\.<\/i><i>\.<\/i><\/span><\/p><\/div>\n    <script>try \{ if \(window\.DC_AREA && document\.currentScript\) window\.DC_AREA\.bootFix\(document\.currentScript\.previousElementSibling\); \} catch \(e\) \{\}<\/script>\n    <!-- 검색용 안내 글/.test(ix71) &&
+      ix71.indexOf('<script src="areas.js"></script>') < ix71.indexOf("<body>"),
+      "index.html: 첫 로딩 화면 바로 뒤에서 bootFix (areas.js 는 <head> 에서 먼저 받아요 — 그려지기 전에 맞는 로고 · 문구)");
+    // React 화면(서버) — 같은 규칙
+    const SC71 = require(path.join(ROOT, "shared/screens.js"));
+    const keys71 = [["/vod/my", "vod-my"], ["/vod/login", "vod-auth"], ["/vod/dg", "vod-auth"], ["/vod/order/x", "vod-order"], ["/vod/checkout/x", "vod-checkout"], ["/vod/learn/x", "vod-learn"], ["/terms", "vod-legal"], ["/vod/teachers", "vod-teachers"], ["/vod/c/all", "vod-list"], ["/vod/about", "vod-about"], ["/vod/partners", "vod-partners"], ["/", "vod-home"], ["/vod/p/v5", "vod-product"],
+      ["/home", "dg-home"], ["/missions/1/m1-7", "dg-learn"], ["/schedule", "dg-board"], ["/library", "dg-lib"], ["/partners", "dg-more"], ["/vodclass/v1", "dg-vod"], ["/login", "dg-login"],
+      ["/center/login", "ct-login"], ["/center", "ct-dash"], ["/center/reviews", "ct-ops"], ["/center/curriculum", "ct-content"], ["/center/vod", "ct-vod"], ["/center/master", "ct-master"], ["/center/partner", "ct-partner"], ["/center/media", "ct-media"]];
+    const bad71 = []; jar71.dc_ct = "dg";
+    keys71.forEach((x) => { const k = SC71.match(x[0]); if (k !== x[1] || SC71.brandOfKey(k, "dg") !== A71.pathBrand(x[0])) bad71.push(x[0] + ":" + k + ":" + SC71.brandOfKey(k, "dg") + "/" + A71.pathBrand(x[0])); });
+    delete jar71.dc_ct;
+    const allKeys71 = SC71.KEYS.every((k) => keys71.some((x) => x[1] === k));
+    ok(!bad71.length && allKeys71 && SC71.brandOfKey("ct-dash") === null && SC71.brandOfKey(null) === null,
+      "React 화면 " + SC71.KEYS.length + "개 모두: 서버 규칙(screens.js brandOfKey — dg-* 두잉고 · vod-* 두고클래스 · ct-* 기억) = 예전 화면 규칙(areas.js)", bad71);
+    const r71 = [SC71.bootOf("/login"), SC71.bootOf("/vod/my/classes?x=1", "dc|m|/vod/my/classes"), SC71.bootOf("/vod/my", encodeURIComponent("dc|m|/vod/my")), SC71.bootOf("/login", "dg|m|/vod"), SC71.bootOf("/center/reviews", "", "dg"), SC71.bootOf("/center", ""), SC71.bootOf("/", "%E0%A4%A"), SC71.bootOf("/vodclass/v1", "dg|m|/vodclass/v1")];
+    ok(JSON.stringify(r71) === JSON.stringify([{ b: "dg", m: false }, { b: "dc", m: true }, { b: "dc", m: true }, { b: "dg", m: false }, { b: "dg", m: false }, { b: "dc", m: false }, { b: "dc", m: false }, { b: "dg", m: true }]),
+      "React 첫 로딩(서버): 강의실 로그인 = 두잉고 · 옮겨 온 쿠키는 그 주소에서만(? 뒤는 빼고) · 강사센터 = 기억한 쪽(없으면 두고클래스) · 깨진 쿠키 무시", r71);
+    const pg71 = fs.readFileSync(path.join(ROOT, "../app/(react)/n/[[...path]]/page.js"), "utf8"), ap71 = fs.readFileSync(path.join(ROOT, "../ui/App.jsx"), "utf8");
+    ok(/return <App boot=\{SCREENS\.bootOf\(p, v\("dc_boot"\), v\("dc_ct"\)\)\} \/>;/.test(pg71) && /\(await headers\(\)\)\.get\("x-dc-path"\)/.test(pg71) &&
+      /export default function App\(\{ boot \}\)/.test(ap71) && /useState\(\(\) => \(\{ b: brandK\(boot && boot\.b\), m: !!\(boot && boot\.m\) \}\)\)/.test(ap71) &&
+      /leave\(b, m\) \{ setBt\(\{ b: brandK\(b\), m: !!m \}\); setSt\(\(s\) => Object\.assign\(\{\}, s, \{ k: null \}\)\); \}/.test(ap71) &&
+      /<BootFail b=\{bt\.b\} \/> : Screen && ready \? <Screen n=\{st\.n\} h=\{st\.h\} moved=\{st\.moved\} keep=\{st\.keep\} \/> : <Boot b=\{bt\.b\} m=\{bt\.m\} \/>/.test(ap71) &&
+      /dg: \["\/assets\/brand\/doinggo-word\.svg", "두잉고", 96, 36\]/.test(ap71) && /\(m \? \(b === "dg" \? "두잉고로" : "두고클래스로"\) \+ " 이동중입니다" : "로딩중입니다"\)/.test(ap71) && !/const LOGO = <img/.test(ap71),
+      "React 화면: 서버가 주소 · 쿠키로 정한 쪽을 첫 화면부터(서버 화면 = 브라우저 첫 화면) · 새로 부르기 전 leave(쪽, 이동) · 연결 실패 화면도 같은 쪽 로고");
+    // main.js — 로딩 화면 만들기 · 영역 이동 · 바로 바뀌는 이동 · 일반 링크 · 뒤로 가기
+    const mj71 = fs.readFileSync(path.join(ROOT, "main.js"), "utf8"), mcut71 = (a, b) => { const i = mj71.indexOf(a), j = mj71.indexOf(b, i); return i >= 0 && j > i ? mj71.slice(i, j) : ""; };
+    const sbm71 = { AR: A71, BOOT0: { b: "dg", m: true } }; require("vm").createContext(sbm71);
+    require("vm").runInContext(mcut71("  const logoHtml = (b)", "  /** 새로 부를 페이지") + "\n;this.out = { bootHtml, logoHtml };", sbm71);
+    const h1 = sbm71.out.bootHtml("dg", true), h2 = sbm71.out.bootHtml("dc", false), h3 = sbm71.out.bootHtml();
+    ok(/^<div class="boot-wait" role="status" aria-live="polite"><img class="boot-logo boot-logo-dg" src="assets\/brand\/doinggo-word\.svg" alt="두잉고" width="96" height="36" fetchpriority="high"><span class="boot-bar" aria-hidden="true"><i><\/i><\/span><p class="boot-txt">두잉고로 이동중입니다<span class="boot-dots"/.test(h1) &&
+      /<img class="boot-logo boot-logo-dc" src="assets\/brand\/doogo-class-word\.svg" alt="DOOGO CLASS" width="156" height="20" fetchpriority="high">.*<p class="boot-txt">로딩중입니다</.test(h2) && h3 === h1,
+      "main.js 로딩 화면: 쪽 로고(두잉고 96×36 · DOOGO CLASS 156×20) + 진행 막대 + 문구 · 처음 화면은 첫 로딩 쪽 그대로", [h1.slice(0, 120), h2.slice(0, 80)]);
+    ok(/const from = curBrand\(\), to = window\.DC_AREA\.brand\(next\) \|\| from, mv = to !== from;\n    bootCookie\(to, mv\);\n    if \(!REACT_PAGE\) root\.innerHTML = bootHtml\(to, mv\); else if \(window\.ReactApp && window\.ReactApp\.leave\) window\.ReactApp\.leave\(to, mv\);/.test(mj71) &&
+      /const changed = next !== mode, fromB = changed && mode \? curBrand\(\) : null;/.test(mj71) && /if \(fromB\) \{ const toB = window\.DC_AREA\.brand\(next\); if \(toB && toB !== fromB\) moveCover\(toB, 650\); \}/.test(mj71) &&
+      mj71.indexOf("if (fromB)") > mj71.indexOf("if (!window.DC_AREA.ready(next)) { moveArea(next); return; }") &&
+      /const AR = window\.DC_AREA, BOOT0 = AR\.bootState\(\);[^\n]*\n  try \{ document\.cookie = "dc_boot=; path=\/; max-age=0; samesite=lax"; \}/.test(mj71) &&
+      /document\.cookie = "dc_boot=" \+ encodeURIComponent\(b \+ "\|" \+ \(m \? "m" : ""\) \+ "\|" \+ \(path \|\| location\.pathname\)\) \+ "; path=\/; max-age=20; samesite=lax";/.test(mj71) &&
+      /root\.innerHTML = '<div class="boot-wait boot-err" role="alert">' \+ logoHtml\(curBrand\(\)\)/.test(mj71) && !/const LOGO = '<img/.test(mj71),
+      "main.js 영역 이동: 새로 부르기 전 옮겨 갈 쪽 로딩 화면(다른 서비스면 ‘이동중입니다’) + 쿠키 dc_boot(20초)로 새 페이지까지 · 강사센터처럼 어느 쪽도 아니면 지금 쪽 · 바로 바뀌는 이동은 0.65초 안내 · 받은 쿠키는 읽고 바로 지워요");
+    ok(/if \(!raw \|\| raw\.charAt\(0\) === "#"\) return;/.test(mj71) && /if \(u\.origin !== location\.origin \|\| u\.pathname === location\.pathname \|\| \/\^\\\/\(api\|assets\|_next\)\\\/\/\.test\(u\.pathname\) \|\| \/\\\.\[a-z0-9\]\{2,5\}\$\/i\.test\(u\.pathname\)\) return;/.test(mj71) &&
+      /if \(!to \|\| to === from \|\| \(window\.__dirty && window\.__dirty\(\)\)\) return;\n    bootCookie\(to, true, u\.pathname\);\n    moveCover\(to, 8000\);/.test(mj71) &&
+      /if \(e\.defaultPrevented \|\| e\.button !== 0 \|\| e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey \|\| e\.altKey\) return;/.test(mcut71("// 같은 사이트의 일반 링크", "// 뒤로 가기로")) &&
+      /window\.addEventListener\("pageshow", \(e\) => \{\n    if \(!e\.persisted\) return;\n    const el = document\.getElementById\("dc-move"\);\n    if \(el\) el\.remove\(\);/.test(mj71) &&
+      /setTimeout\(\(\) => \{ el\.classList\.add\("out"\); setTimeout\(\(\) => el\.remove\(\), 250\); \}, ms\);/.test(mj71),
+      "main.js 일반 링크(#/… 아닌 같은 사이트 주소)로 다른 서비스 페이지를 열 때도 안내 + 쿠키 · 새 창 · 내려받기 · 파일 · API · 같은 페이지 · 저장 안 한 편집은 건드리지 않아요 · 뒤로 가기로 돌아오면 덮개를 치워요 · 덮개는 정해진 시간 뒤 꼭 사라져요");
+    const cs71 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"), adm71 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), sh71 = fs.readFileSync(path.join(ROOT, "../ui/center/Shell.jsx"), "utf8");
+    ok(/\.boot-wait\.boot-move \{ pointer-events: none; transition: opacity \.22s ease; \}/.test(cs71) && /\.boot-wait\.boot-move > \* \{ animation-delay: 0s; \}/.test(cs71) && /\.boot-wait\.boot-move\.out \{ opacity: 0; \}/.test(cs71) &&
+      /const dcL = master \? MT\(\) === "dc" : !!ins && TRK\(\) === "vod"; if \(window\.DC_AREA && window\.DC_AREA\.ctBrand\) window\.DC_AREA\.ctBrand\(dcL \? "dc" : "dg"\);/.test(adm71) &&
+      /if \(typeof window !== "undefined" && window\.DC_AREA && window\.DC_AREA\.ctBrand\) window\.DC_AREA\.ctBrand\(dcL \? "dc" : "dg"\);/.test(sh71),
+      "덮개 CSS(누르기를 막지 않음 · 바로 보임 · 흐려지며 사라짐) · 강사센터 머리 로고 쪽 기억(예전 화면 admin.js = React Shell.jsx)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);
