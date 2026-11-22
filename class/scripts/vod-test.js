@@ -2135,7 +2135,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const hd = PM.doinggoPage(html), dgT = (fs.readFileSync(path.join(ROOT, "home.js"), "utf8").match(/document\.title = "(두잉고 \| [^"]+)"; \/\/ index\.html/) || [])[1];
     // 화면 쪽 비교: 첫 로딩 로고만 두잉고 것으로 바뀌어요 (2026-11-22 · 69번에서 따로 봐요)
     const dgBoot = (h) => h.replace(/<img class="boot-logo boot-logo-dg"[^>]*>/, (html.match(/<img class="boot-logo boot-logo-dc"[^>]*>/) || [""])[0]);
-    ok(dgT && hd.indexOf("<title>" + dgT + "</title>") >= 0 && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/doinggo" \/>/.test(hd) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doinggo\.jpg"/.test(hd) && /og:image:width" content="1200"/.test(hd) && fs.existsSync(path.join(ROOT, "assets/home/og-doinggo.jpg")) && dgBoot(noMain(hd)) === app0 && /<h1>강의는 강사님이, 운영은 두잉고가<\/h1>/.test(hd),
+    ok(dgT && hd.indexOf("<title>" + dgT + "</title>") >= 0 && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/doinggo" \/>/.test(hd) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doinggo\.jpg\?v=\d{8}"/.test(hd) && /og:image:width" content="1200"/.test(hd) && fs.existsSync(path.join(ROOT, "assets/home/og-doinggo.jpg")) && dgBoot(noMain(hd)) === app0 && /<h1>강의는 강사님이, 운영은 두잉고가<\/h1>/.test(hd),
       "두잉고 소개 /doinggo: 화면과 같은 제목 · 대표 주소 /doinggo(예전엔 / 로 겹침) · 두잉고 소개 배너 · 로봇용 소개 글 · 화면 쪽 그대로");
     // 약관: 화면(vod.js LEGAL_TABS)과 같은 이름 · 제목 · 주소 · 시행일 · 목차 — 마스터 설정으로 바뀌는 표 · 분석 도구 목록 자리는 넣지 않아요
     const vj29 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), tabs = (vj29.match(/const LEGAL_TABS = (\[\[[^;]+\]\]);/) || [])[1], L29 = PM.legalText();
@@ -3624,7 +3624,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       man70.icons.every((x) => x.src.indexOf("/assets/brand/dg-") === 0 && x.src.slice(-V70.length) === V70 && fs.existsSync(B70(x.src.split("?")[0].replace("/assets/brand/", "")))) && man70.icons.some((x) => x.purpose === "maskable") && dc70.icons.every((x) => x.src.indexOf("/assets/brand/dg-") < 0),
       "manifest: 두잉고(doinggo.webmanifest · 이름 · 시작 주소 /doinggo · 아이콘 3개 · ?v=) · 두고클래스 manifest 는 그대로");
     const idx70 = require(path.join(ROOT, "scripts/index-abs.js"))(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")), hd70 = PM70.doinggoPage(idx70), head70 = hd70.slice(0, hd70.indexOf("<body>"));
-    const ldOk70 = (head70.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g) || []).some((t) => { try { const j = JSON.parse(t.replace(/^<script[^>]*>|<\/script>$/g, "")); return j["@type"] === "WebPage" && j.url === "https://www.doogoclass.com/doinggo" && j.primaryImageOfPage && /og-doinggo\.jpg$/.test(j.primaryImageOfPage.url); } catch (e) { return false; } });
+    const ldOk70 = (head70.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g) || []).some((t) => { try { const j = JSON.parse(t.replace(/^<script[^>]*>|<\/script>$/g, "")); return j["@type"] === "WebPage" && j.url === "https://www.doogoclass.com/doinggo" && j.primaryImageOfPage && /og-doinggo\.jpg\?v=\d{8}$/.test(j.primaryImageOfPage.url); } catch (e) { return false; } });
     ok(head70.indexOf('<link rel="icon" href="/assets/brand/dg-favicon.svg' + V70 + '" type="image/svg+xml" />') >= 0 && head70.indexOf('<link rel="icon" href="/assets/brand/dg-favicon.png' + V70 + '"') >= 0 &&
       head70.indexOf('<link rel="apple-touch-icon" href="/assets/brand/dg-apple-touch-icon.png' + V70 + '"') >= 0 && head70.indexOf('<link rel="manifest" href="/doinggo.webmanifest' + V70 + '" />') >= 0 &&
       /<meta name="apple-mobile-web-app-title" content="두잉고" \/>/.test(head70) && /<meta name="application-name" content="두잉고" \/>/.test(head70) && !/assets\/brand\/(favicon|apple-touch-icon)\.|"\/manifest\.webmanifest/.test(head70) &&
@@ -3789,6 +3789,23 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /const dcL = master \? MT\(\) === "dc" : !!ins && TRK\(\) === "vod"; if \(window\.DC_AREA && window\.DC_AREA\.ctBrand\) window\.DC_AREA\.ctBrand\(dcL \? "dc" : "dg"\);/.test(adm71) &&
       /if \(typeof window !== "undefined" && window\.DC_AREA && window\.DC_AREA\.ctBrand\) window\.DC_AREA\.ctBrand\(dcL \? "dc" : "dg"\);/.test(sh71),
       "덮개 CSS(누르기를 막지 않음 · 바로 보임 · 흐려지며 사라짐) · 강사센터 머리 로고 쪽 기억(예전 화면 admin.js = React Shell.jsx)");
+  }
+
+  {
+    console.log("72) 두잉고 공유 이미지 — 카카오톡 미리보기에서도 읽히게 글씨 크게 · 새 주소(?v=)로 새로 가져가게 (2026-11-22)");
+    const og72 = fs.readFileSync(path.join(ROOT, "assets/home/og-doinggo.jpg"));
+    const jpg72 = (b) => { for (let i = 2; i < b.length - 9;) { if (b[i] !== 0xff) return null; const m = b[i + 1], len = b.readUInt16BE(i + 2); if (m >= 0xc0 && m <= 0xc3) return { w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5) }; i += 2 + len; } return null; };
+    const sz72 = jpg72(og72), gen72 = fs.readFileSync(path.join(ROOT, "scripts/og-image.js"), "utf8"), pm72 = fs.readFileSync(path.join(ROOT, "api/_lib/pagemeta.js"), "utf8");
+    const dg72 = (gen72.split("const DG_HTML = `")[1] || "").split("`;")[0];
+    ok(!!sz72 && sz72.w === 1200 && sz72.h === 630 && og72.length > 40000 && og72.length < 300000 &&
+      /h1\{margin-top:30px;font-size:100px;/.test(dg72) && /\.sub\{margin-top:24px;font-size:44px;/.test(dg72) && /font-size:33px;font-weight:800;/.test(dg72) &&
+      /<h1><span>강의는 강사님이,<\/span><span>운영은 <em>두잉고<\/em>가<\/span><\/h1>/.test(dg72) && /기수마다 1인 수강료 1명분/.test(dg72) && /\/assets\/brand\/doinggo-word\.svg/.test(dg72) &&
+      /const WHICH = process\.argv\[2\] === "doinggo" \? "doinggo" : "doogoclass";/.test(gen72) && /chk\.right > chk\.ph - 16/.test(gen72),
+      "공유 이미지 og-doinggo.jpg 1200×630 · 만드는 틀(scripts/og-image.js doinggo): 제목 100px · 보조 문구 44px · 알약 33px (예전 약 64 · 26 · 20px) · 글씨가 휴대폰 화면에 닿으면 안 찍어요", sz72);
+    const PM72 = require(path.join(ROOT, "api/_lib/pagemeta.js")), idx72 = require(path.join(ROOT, "scripts/index-abs.js"))(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")), hd72 = PM72.doinggoPage(idx72);
+    const v72 = (/const DG_OG_V = "(\d{8})";/.exec(pm72) || [])[1], u72 = "https://www.doogoclass.com/assets/home/og-doinggo.jpg?v=" + v72;
+    ok(!!v72 && hd72.indexOf('<meta property="og:image" content="' + u72 + '"') >= 0 && hd72.indexOf('<meta name="twitter:image" content="' + u72 + '"') >= 0 && hd72.indexOf('"url":"' + u72 + '"') >= 0,
+      "/doinggo 공유 이미지 주소에 버전(?v=" + v72 + ") — og:image · twitter:image · WebPage 정보 모두 새 주소 (카카오톡 · 페이스북이 새 이미지를 가져가요)", u72);
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
