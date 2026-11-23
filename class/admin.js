@@ -1320,7 +1320,10 @@
     replay: { name: "정규교육 다시보기", prepend: true, list: (c) => c.replays || (c.replays = []), idp: "rp", init: () => ({ date: todayStr(), attachments: [] }),
       fields: [F("title", "영상 제목", "text", { hint: "예: 2주차 라이브 Q&A · 상세페이지 첨삭" }), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "일부 공개(링크가 있는 사람만)로 올린 영상도 돼요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
         F("week", "주차", "select", { options: () => weekOpts("주차 없음"), get: (x) => (x.week ? String(x.week) : ""), set: (x, v) => { x.week = v ? Number(v) : ""; } }),
-        F("date", "라이브 날짜", "date"), F("minutes", "영상 길이 (선택 · 예: 1:12:30)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }),
+        F("date", "라이브 날짜", "date"),
+        // 볼 수 있는 마지막 날 (2026-11-23): 아이비클래스처럼 수강 기한이 있는 강의 — 지나면 수강생 화면에서 자물쇠 · 재생 안 됨 (서버도 영상 주소를 안 보내요)
+        F("until", "볼 수 있는 마지막 날 (선택)", "date", { quick: "date", hint: "아이비클래스처럼 수강 기한이 있으면 이 날까지만 볼 수 있어요. 지나면 수강생 화면에서 자물쇠로 잠기고 재생되지 않아요. 비우면 기한 없이 계속 볼 수 있어요." }),
+        F("minutes", "영상 길이 (선택 · 예: 1:12:30)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }),
         F("summary", "핵심 정리 (영상 아래에 보여요)", "textarea", { rows: 6, rich: true, hint: "라이브에서 나온 핵심 내용, 자주 나온 질문을 짧게 정리해 두면 수강생이 다시 찾기 쉬워요." }),
         F("attachments", "라이브 자료 (선택)", "attachments")] },
     showcase: { name: "모범 과제", list: (c) => c.showcase || (c.showcase = []), idp: "sc", init: (ctx, seed) => Object.assign({ images: [] }, seed || {}),
@@ -1375,6 +1378,8 @@
     else if (f.type === "tags") input = '<input class="a-input" id="' + id + '" name="' + f.key + '" value="' + esc(Array.isArray(v) ? v.join(", ") : v) + '">';
     else if (f.type === "youtube") input = '<input class="a-input" id="' + id + '" name="' + f.key + '" value="' + esc(DB.vidShow(v)) + '" placeholder="https://www.youtube.com/watch?v=… · https://vimeo.com/…">';
     else input = '<input class="a-input" id="' + id + '" name="' + f.key + '" type="' + ({ number: "number", date: "date", time: "time", url: "url" }[f.type] || "text") + '"' + (f.min ? ' min="' + f.min + '"' : "") + ' value="' + esc(v) + '">';
+    // 날짜 빠른 버튼 (볼 수 있는 마지막 날 · 2026-11-23): 기준 날짜 칸(비었으면 오늘) + 3 · 6개월 · 지우기
+    if (f.type === "date" && f.quick) input += '<div class="a-date-quick">' + [[3, "라이브 날짜 + 3개월"], [6, "+ 6개월"], [0, "지우기 (기한 없음)"]].map((q) => '<button type="button" class="a-btn a-btn-ghost a-btn-sm" data-action="date-quick" data-for="' + id + '" data-from="cf-' + f.quick + '" data-m="' + q[0] + '">' + q[1] + "</button>").join("") + "</div>";
     return '<div class="a-field"' + show + '><label for="' + id + '">' + esc(f.label) + "</label>" + input + (f.hint ? '<small class="a-muted">' + esc(f.hint) + "</small>" : "") + "</div>";
   }
   // 본문 서식 버튼: 줄 앞에 표시를 넣거나 고른 글자를 굵게
@@ -1614,6 +1619,8 @@
     return '<ul class="a-items">' + items.map((it, i) => "<li>" + render1(it) + rowTools(coll, it.id || String(it.no), "", i, items.length) + "</li>").join("") + "</ul>";
   }
   const ytBadge = (it) => (DB.vidOk(it.youtubeId) ? pill("영상 연결됨", "ok") : pill("영상 없음", "mute"));
+  // 정규교육 다시보기 볼 수 있는 마지막 날 (2026-11-23): 지났으면 ‘기간 끝남 · 잠김’ · 남았으면 ‘~월.일까지’ (React Content2.jsx 같은 글)
+  const untilPill = (it) => (!it.until ? "" : DB.untilPassed(it.until) ? pill("기간 끝남 · 잠김", "mute") : pill("~" + fmtMD(it.until) + "까지", "info"));
 
   /* ---------------- 콘텐츠 화면들 ---------------- */
   function pageBrand() {
@@ -2064,7 +2071,7 @@
     const list = (C().replays || []).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
     return head("정규교육 다시보기", "지난 라이브 녹화를 올리면 수강생 ‘정규교육 다시보기’에 주차별로 모여요. 영상 아래 ‘핵심 정리’를 적어 두면 다시 찾기 쉬워요.", addBtn("replay", "다시보기 올리기")) +
       menuNote("replays", list.length) +
-      '<section class="a-card">' + (list.length ? '<ul class="a-items">' + list.map((it) => editRow("replay", it, '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.week ? it.week + "주차" : "", it.date ? fmtFull(it.date) : "", it.minutes || ""].filter(Boolean).join(" · ")) + "</small></div>" + ytBadge(it) + ((it.attachments || []).length ? pill("자료 " + it.attachments.length, "info") : ""))).join("") + "</ul>"
+      '<section class="a-card">' + (list.length ? '<ul class="a-items">' + list.map((it) => editRow("replay", it, '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.week ? it.week + "주차" : "", it.date ? fmtFull(it.date) : "", it.minutes || ""].filter(Boolean).join(" · ")) + "</small></div>" + ytBadge(it) + untilPill(it) + ((it.attachments || []).length ? pill("자료 " + it.attachments.length, "info") : ""))).join("") + "</ul>"
         : emptyBox("monitorPlay", "아직 올린 다시보기가 없어요.", addBtn("replay", "첫 다시보기 올리기"))) + "</section>";
   }
   function pageShowcase() {
@@ -3447,7 +3454,7 @@
             "<td>" + (() => { const o = DB.tracksOf(x), rq = x.trackReq || {}; return '<span class="a-ins-trk">' + (o.live ? pill("두잉고 LIVE", "trk-dg") : '<span class="a-pill mute">' + icon("lock", "xs") + "두잉고" + (rq.live ? " · 신청 중" : "") + "</span>") + (o.vod ? pill("DOOGO CLASS", "trk-dc") : '<span class="a-pill mute">' + icon("lock", "xs") + "DOOGO CLASS" + (rq.vod ? " · 신청 중" : "") + "</span>") + "</span>"; })() + "</td>" +
             "<td>" + cos.length + "개" + (cur ? ' <small class="a-memo">' + esc(cur.name) + " " + DB.STATUS_LABEL[DB.cohortStatus(cur)] + "</small>" : "") + '</td><td class="num">' + ss.filter((s) => s.status === "approved").length + "명" + (ss.filter((s) => s.status === "pending").length ? ' <small class="a-memo">대기 ' + ss.filter((s) => s.status === "pending").length + "</small>" : "") + "</td>" +
             '<td class="num">' + (!staffCan("master/billing") ? '<span class="a-muted">-</span>' : paid.length ? won(sumMoney(paid, "supply")) + ' <small class="a-memo">' + paid.length + "개 기수</small>" : '<span class="a-muted">-</span>') + "</td>" +
-            "<td>" + (x.status === "active" ? pill("운영 중", "ok") : x.status === "removed" ? pill("삭제됨", "mute") : pill("중지", "mute")) + '</td><td class="right"><div class="a-row-actions">' +
+            "<td>" + (x.status === "active" ? pill("운영 중", "ok") : x.status === "removed" ? pill("삭제됨", "mute") : pill("중지", "mute")) + (x.homeOff ? " " + pill("소개 목록 OFF", "mute") : "") + '</td><td class="right"><div class="a-row-actions">' +
             btn("강사센터 접속", "ins-enter", "a-btn-primary a-btn-sm", ' data-id="' + x.id + '"') + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/center/master/plan?ins=' + x.id + '">' + icon("layers", "sm") + "기수 · 일정</a>" + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/center/master/menus?ins=' + x.id + '">' + icon("sliders", "sm") + "메뉴·색상</a>" + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/free/' + x.id + '">' + icon("video", "sm") + "무료강의</a>" + '<a class="a-btn a-btn-ghost a-btn-sm" href="#/p/' + x.id + '">' + icon("store", "sm") + "소개</a>" + btn("수정", "ins-edit", "a-btn-ghost a-btn-sm", ' data-id="' + x.id + '"') + "</div></td></tr>";
         }).join("") + "</tbody></table></div>" : emptyBox("store", "강사 플랫폼이 없어요.")) + "</section>";
   }
@@ -3496,6 +3503,8 @@
             '<div class="a-field"><span class="a-label">열린 영역 <small>(체크를 빼면 강사센터에서 그 탭이 자물쇠로 잠겨요)</small></span><div class="a-ins-tracks">' +
               '<label class="a-check"><input type="checkbox" name="trkLive"' + (op.live ? " checked" : "") + "><span><b>두잉고 (LIVE 두잉고)</b><small class=\"a-muted\">기수 · 주차 · 과제 · 수강생 로그인 강사 목록" + (rq.live ? " · 강사님이 입점 신청 중" : "") + "</small></span></label>" +
               '<label class="a-check"><input type="checkbox" name="trkVod"' + (op.vod ? " checked" : "") + "><span><b>DOOGO CLASS (VOD)</b><small class=\"a-muted\">VOD 판매 · 정산 · VOD 수강생 강의실" + (rq.vod ? " · 강사님이 입점 신청 중" : "") + "</small></span></label></div></div>" +
+            // 두잉고 소개 목록 ON/OFF (2026-11-23): 끄면 두잉고 소개 ‘지금 두잉고로 강의하는 강사님’ 카드 · 수강생 로그인 강사 고르기에서만 빠져요 (계정 · 강의실 · 산 VOD 강의실은 그대로)
+            '<label class="a-check"><input type="checkbox" name="homeShow"' + (x.homeOff ? "" : " checked") + "><span><b>두잉고 소개 · 수강생 로그인 강사 목록에 보이기</b><small class=\"a-muted\">끄면 두잉고 소개의 강사 카드 · 수강생 로그인 강사 고르기에서만 빠져요. 계정 · 강의실 · 이미 산 회원의 VOD 강의실은 그대로예요.</small></span></label>" +
             '<p class="a-muted">강의: ' + esc(c ? c.brand.courseTitle : "-") + "</p>") +
         '<p class="a-error" id="if-error"></p></form>',
       (isNew ? "" : btn(icon("trash", "sm") + "플랫폼 삭제", "ins-delete", "a-btn-ghost danger", ' data-id="' + x.id + '"')) + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="ins-form">' + (isNew ? "만들기" : "저장") + "</button>", "md");
@@ -3560,6 +3569,7 @@
       const xi = DB.instructor(id);
       Object.assign(xi, { name, phone4, displayName, status: f.status.value });
       setTrack(xi, "live", live); setTrack(xi, "vod", vod);
+      if (f.homeShow) { if (f.homeShow.checked) delete xi.homeOff; else xi.homeOff = true; }
       commit("강사 정보를 저장했어요."); return;
     }
     const nid = DB.uid("i");
@@ -8940,6 +8950,7 @@
       case "img-remove": imgDraft.splice(Number(d.i), 1); refreshImg(); break;
       case "img-move": { const i = Number(d.i), j = i + Number(d.dir); if (j >= 0 && j < imgDraft.length) { [imgDraft[i], imgDraft[j]] = [imgDraft[j], imgDraft[i]]; refreshImg(); } break; }
       case "rich-ins": richInsert(d.for, d.k); break;
+      case "date-quick": { const to = document.getElementById(d.for), from = document.getElementById(d.from), m = Number(d.m) || 0; if (to) { to.value = m ? DB.addMonths((from && from.value) || todayStr(), m) : ""; to.dispatchEvent(new Event("input", { bubbles: true })); } break; }
       case "att-link-add": {
         const nm = document.getElementById("att-link-name").value.trim(), url = document.getElementById("att-link-url").value.trim();
         if (!/^https?:\/\//i.test(url)) { toast("http(s):// 주소를 넣어 주세요.", "warn"); break; }

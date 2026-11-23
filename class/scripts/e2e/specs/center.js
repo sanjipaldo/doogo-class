@@ -24,6 +24,54 @@ module.exports = {
     await FL.student(page, base, info);
     await L.open(page, base, "/notices");
     await run.check((await L.bodyText(page)).indexOf(title) >= 0, "수강생 화면 ‘클래스 소식’에 그 공지가 보여요", null, page);
+    // 1-2) 정규교육 다시보기 볼 수 있는 마지막 날 (2026-11-23): 편집 창 날짜 칸 · 빠른 버튼(라이브 날짜 + 3개월) → 지난 날짜로 저장하면
+    //      강사센터 목록 ‘기간 끝남 · 잠김’ · 수강생 목록 자물쇠 · 상세는 재생기 없이 잠김 안내 (예전 화면 · React 모두) · 서버는 영상 주소를 안 보내요 → 끝나면 지우기
+    await FL.instructor(page, base, info);
+    await L.open(page, base, "/center/replays");
+    const rpId = await page.getAttribute('button[data-action="item-edit"][data-coll="replay"]', "data-id");
+    let rpq = null;
+    if (rpId) {
+      await page.click('button[data-action="item-edit"][data-coll="replay"][data-id="' + rpId + '"]');
+      await page.waitForSelector("form#coll-form #cf-until");
+      await page.fill("#cf-date", "2026-11-21");
+      await page.click('[data-action="date-quick"][data-m="3"]');
+      rpq = await page.inputValue("#cf-until");
+      await page.fill("#cf-until", "2020-01-01");
+      await page.click('#modal-root button[type="submit"][form="coll-form"]');
+      await page.waitForTimeout(600);
+      await L.flushed(page);
+    }
+    await L.open(page, base, "/center/replays");
+    const rpCenter = await L.bodyText(page);
+    await run.check(!!rpId && rpq === "2027-02-21" && /기간 끝남 · 잠김/.test(rpCenter), "강사센터 다시보기: ‘볼 수 있는 마지막 날’ 칸 · 라이브 날짜 + 3개월 버튼(11/21 → 2027-02-21) · 지난 날짜로 저장하면 목록에 ‘기간 끝남 · 잠김’", { rpId, rpq }, page);
+    await FL.student(page, base, info);
+    const rpSt = {};
+    for (const mode of ["off", "all"]) {
+      await L.reactCookie(page, base, mode);
+      await L.open(page, base, "/replays"); await page.waitForTimeout(400);
+      const card = await page.evaluate((id) => { const a = document.querySelector('a.rp-card[href$="/replays/' + id + '"]'); return a ? { locked: a.classList.contains("rp-locked"), lock: !!a.querySelector(".rp-lock"), play: !!a.querySelector(".rp-play"), off: /시청 기간 끝남/.test(a.textContent) } : null; }, rpId);
+      await L.open(page, base, "/replays/" + rpId); await page.waitForTimeout(400);
+      const det = await page.evaluate(() => ({ box: !!document.querySelector(".rp-locked-box"), frame: !!document.querySelector(".page iframe, .page .video, .page [data-vm], .page [data-yid]"), msg: /시청 기간이 끝났어요/.test(document.body.innerText), seenBtn: !!document.querySelector('[data-action="toggle-replay"]') }));
+      rpSt[mode] = { card, det };
+    }
+    const bootRp = await page.evaluate(async (id) => { const j = await (await fetch("/api/bootstrap", { credentials: "same-origin" })).json(); const c = (j.docs || []).find((d) => /^content:/.test(d[0])); const x = c && (c[1].replays || []).find((r) => r.id === id); return x ? { locked: x.locked, hasVideo: "youtubeId" in x, hasSum: "summary" in x, hasAtt: "attachments" in x } : null; }, rpId);
+    const okSt = (o) => !!o && !!o.card && o.card.locked && o.card.lock && !o.card.play && o.card.off && o.det.box && !o.det.frame && o.det.msg && !o.det.seenBtn;
+    await run.check(okSt(rpSt.off) && okSt(rpSt.all) && !!bootRp && bootRp.locked === true && !bootRp.hasVideo && !bootRp.hasSum && !bootRp.hasAtt,
+      "수강생: 기한 지난 다시보기는 목록 자물쇠 · 상세는 재생기 없이 ‘시청 기간이 끝났어요’ (예전 화면 = React) · 서버는 영상 주소 · 핵심 정리 · 자료를 안 보내요", { rpSt, bootRp }, page);
+    // 되돌리기: 지우기(기한 없음) 버튼으로 비우고 저장
+    await FL.instructor(page, base, info);
+    await L.open(page, base, "/center/replays");
+    if (rpId) {
+      await page.click('button[data-action="item-edit"][data-coll="replay"][data-id="' + rpId + '"]');
+      await page.waitForSelector("form#coll-form #cf-until");
+      await page.click('[data-action="date-quick"][data-m="0"]');
+      const cleared = await page.inputValue("#cf-until");
+      await page.click('#modal-root button[type="submit"][form="coll-form"]');
+      await page.waitForTimeout(600);
+      await L.flushed(page);
+      await L.open(page, base, "/center/replays");
+      await run.check(cleared === "" && !/기간 끝남 · 잠김/.test(await L.bodyText(page)), "‘지우기 (기한 없음)’로 비우면 다시 계속 볼 수 있어요", { cleared }, page);
+    }
     // 2) 마스터 강사 정산: 상품 종류 탭 · 정산 규칙 카드
     await FL.master(page, base, info);
     await L.open(page, base, "/center/master/vod-settle");

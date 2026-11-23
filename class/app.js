@@ -348,6 +348,8 @@
   }
   // 강사 고르기 순서: 첫 화면 강사진과 같게 (문대표 → 초이 → 나머지)
   const PICK_ORDER = ["moon", "choi"];
+  // 강사 고르기에 보이는 목록 (2026-11-23): 마스터가 ‘두잉고 소개 · 수강생 로그인 강사 목록에 보이기’를 끈 강사(homeOff)는 빼요 — 주소(?ins=)로 들어오는 로그인 · 계정은 그대로
+  const pickList = () => { const rank = (id) => { const i = PICK_ORDER.indexOf(id); return i < 0 ? 99 : i; }; return DB.liveInstructors().filter((x) => !x.homeOff).sort((a, b) => rank(a.id) - rank(b.id)); };
   /** 로그인 카드 위 ‘어디로 들어갈까요?’ — 두잉고(기수 · 강사 강의실) / 두고클래스(VOD · 전자책 구매 회원) */
   // 탭은 그 자리에서 바뀌어요: ‘두잉고’ = 기수 수강생 로그인 · ‘두고클래스’ = VOD 구매 회원 이메일 로그인 (주소 ?tab=vod 로 기억)
   const svcIsVod = () => /[?&]tab=vod(&|$)/.test(ROUTE.hash);
@@ -412,8 +414,7 @@
     });
   }
   function renderLogin() {
-    const rank = (id) => { const i = PICK_ORDER.indexOf(id); return i < 0 ? 99 : i; };
-    const list = DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id));
+    const list = pickList();
     const ins = loginInstructor();
     if (!ins && list.length) return renderPicker(list);
     const brandIns = ins || list[0];
@@ -538,8 +539,7 @@
   /* 두고클래스 로그인 카드의 ‘두잉고’ 탭이 쓰는 창구 — 강사 고르기 · 로그인은 이 화면과 똑같이 */
   window.DG_LOGIN = {
     list() {
-      const rank = (id) => { const i = PICK_ORDER.indexOf(id); return i < 0 ? 99 : i; };
-      return DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)).map((x) => {
+      return pickList().map((x) => {
         const b = (DB.content(x.id) || {}).brand || {}, ph = String(b.photo || "");
         return { id: x.id, name: x.displayName, title: b.shortTitle || b.courseTitle || "", field: b.field || b.shortTitle || b.courseTitle || "", photo: ph };
       });
@@ -2360,10 +2360,12 @@
       (all.length ? '<section class="card overall"><div class="overall-top"><span>' + (sub ? "보충 강의 시청" : "다시보기 시청") + "</span>" + pctText(pct) + "</div>" + progressBar(pct) + '<span class="tiny" style="color:var(--body)">' + all.length + "개 중 " + done + "개 시청 · 최근 영상이 맨 앞에 있어요</span></section>" +
         (weeks.length > 1 ? weekChips(weeks, rpWeek, "rp-week", all.length) : "") +
         '<div class="rp-grid">' + list.map((x) => {
-          const yid = DB.youtubeId(x.youtubeId);
-          return '<a class="card rp-card plain-link" href="#/replays/' + esc(x.id) + '"><span class="rp-thumb">' + (yid ? '<img src="' + esc(DB.ytThumb(yid, "mqdefault")) + '" alt="" loading="lazy">' : "") + '<span class="rp-play">' + icon("play") + "</span>" + DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len") + "</span>" +
-            '<span class="rp-body"><span class="rp-meta">' + (x.week ? '<span class="badge badge-neutral">' + Number(x.week) + "주차</span>" : "") + (x.date ? "<span>" + fmtMD(x.date) + (mainLec() ? " 업로드" : " 라이브") + "</span>" : "") + (seen[x.id] ? '<span class="badge badge-positive">' + icon("check", "xs") + "다 봤어요</span>" : "") + "</span>" +
-            "<b>" + esc(x.title) + "</b>" + (x.summary ? '<span class="rp-sum">' + esc(String(x.summary).replace(/\s+/g, " ").slice(0, 90)) + "</span>" : "") + "</span></a>";
+          // 볼 수 있는 마지막 날(until · 2026-11-23): 지났으면 자물쇠 · 재생 표시 없음 (서버는 영상 주소 · 핵심 정리를 안 보내요)
+          const yid = DB.youtubeId(x.youtubeId), lk = DB.replayLocked(x);
+          return '<a class="card rp-card plain-link' + (lk ? " rp-locked" : "") + '" href="#/replays/' + esc(x.id) + '"><span class="rp-thumb">' + (yid ? '<img src="' + esc(DB.ytThumb(yid, "mqdefault")) + '" alt="" loading="lazy">' : "") + (lk ? '<span class="rp-lock" aria-label="시청 기간 끝남">' + icon("lock") + "</span>" : '<span class="rp-play">' + icon("play") + "</span>") + DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len") + "</span>" +
+            '<span class="rp-body"><span class="rp-meta">' + (x.week ? '<span class="badge badge-neutral">' + Number(x.week) + "주차</span>" : "") + (x.date ? "<span>" + fmtMD(x.date) + (mainLec() ? " 업로드" : " 라이브") + "</span>" : "") +
+              (lk ? '<span class="badge badge-neutral rp-until-off">' + icon("lock", "xs") + "시청 기간 끝남</span>" : x.until ? '<span class="rp-until">~' + fmtMD(x.until) + "까지</span>" : "") + (seen[x.id] ? '<span class="badge badge-positive">' + icon("check", "xs") + "다 봤어요</span>" : "") + "</span>" +
+            "<b>" + esc(x.title) + "</b>" + (x.summary && !lk ? '<span class="rp-sum">' + esc(String(x.summary).replace(/\s+/g, " ").slice(0, 90)) + "</span>" : "") + "</span></a>";
         }).join("") + "</div>"
         : '<section class="card">' + empty("monitorPlay", mainLec() ? "아직 올라온 보충 강의가 없어요." : "아직 올라온 다시보기 영상이 없어요.") + "</section>") + "</div>";
   }
@@ -2372,11 +2374,13 @@
   function pageReplay(id) {
     const all = replaysSorted(), i = all.findIndex((x) => x.id === id), x = all[i];
     if (!x) return notFound();
-    const seen = !!(P.replays || {})[id], newer = all[i - 1], older = all[i + 1];
-    return '<div class="page">' + pageHead(x.title, [x.week ? Number(x.week) + "주차" : "", x.date ? fmtFull(x.date) + (mainLec() ? " 업로드" : " 라이브") : "", lenTxt(x)].filter(Boolean).join(" · "), crumb([[ML("replays"), "#/replays"], [x.title]])) +
-      '<section class="card">' + video(x) +
-        (x.summary ? '<div class="rp-notes"><p class="side-label">' + icon("pin", "xs") + " 이번 라이브 핵심 정리</p>" + DB.rich(x.summary) + "</div>" : "") + attachmentList(x.attachments) +
-        '<div class="guide-actions" style="margin-top:20px"><button class="btn ' + (seen ? "btn-secondary" : "btn-primary") + '" data-action="toggle-replay" data-id="' + esc(id) + '">' + icon("check", "sm") + (seen ? "다 봤어요 · 취소" : "다 봤어요") + "</button>" +
+    const seen = !!(P.replays || {})[id], newer = all[i - 1], older = all[i + 1], lk = DB.replayLocked(x);
+    return '<div class="page">' + pageHead(x.title, [x.week ? Number(x.week) + "주차" : "", x.date ? fmtFull(x.date) + (mainLec() ? " 업로드" : " 라이브") : "", lenTxt(x), x.until && !lk ? fmtFull(x.until) + "까지 볼 수 있어요" : ""].filter(Boolean).join(" · "), crumb([[ML("replays"), "#/replays"], [x.title]])) +
+      '<section class="card">' + (lk
+        // 볼 수 있는 마지막 날이 지난 영상 (2026-11-23): 재생기를 그리지 않아요 — 서버도 영상 주소 · 핵심 정리 · 자료를 보내지 않아요
+        ? '<div class="rp-locked-box"><span class="rp-lock-ic">' + icon("lock") + "</span><b>시청 기간이 끝났어요</b><p>" + (x.until ? "이 영상은 " + fmtFull(x.until) + "까지 볼 수 있었어요." : "이 영상은 지금 볼 수 없어요.") + "</p></div>"
+        : video(x) + (x.summary ? '<div class="rp-notes"><p class="side-label">' + icon("pin", "xs") + " 이번 라이브 핵심 정리</p>" + DB.rich(x.summary) + "</div>" : "") + attachmentList(x.attachments)) +
+        '<div class="guide-actions" style="margin-top:20px">' + (lk ? "" : '<button class="btn ' + (seen ? "btn-secondary" : "btn-primary") + '" data-action="toggle-replay" data-id="' + esc(id) + '">' + icon("check", "sm") + (seen ? "다 봤어요 · 취소" : "다 봤어요") + "</button>") +
           (x.week && on("missions") && findWeek(x.week) && isOpen(findWeek(x.week)) ? '<a class="btn btn-tertiary" href="#/missions/' + Number(x.week) + '">' + Number(x.week) + "주차 과제 보기</a>" : "") +
           (on("notes") ? '<a class="btn btn-tertiary" href="#/notes">' + icon("notebookPen", "sm") + esc(ML("notes")) + "에 정리하기</a>" : "") + "</div></section>" +
       pager(older ? { href: "#/replays/" + older.id, label: "이전 라이브", title: older.title } : null, newer ? { href: "#/replays/" + newer.id, label: "다음 라이브", title: newer.title } : null, "#/replays") +
@@ -2993,7 +2997,7 @@
     scWeek: (k) => { if (k !== undefined) scWeek = k; return scWeek; },
     promptsOf, journalSave, exportNotes, glCat: (c) => { if (c !== undefined) glCat = c; return glCat; }, initialOf,
     // 로그인 화면: 강사 목록(첫 화면 순서) · 고른 강사 · 브랜드 · 두잉고/두고클래스 탭 · 로그인 · 수강 신청 · 안내 글
-    login: () => { const rank = (id) => { const i = PICK_ORDER.indexOf(id); return i < 0 ? 99 : i; }, list = DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)), ins = loginInstructor(), bi = ins || list[0];
+    login: () => { const list = pickList(), ins = loginInstructor(), bi = ins || list[0];
       return { list, ins, B: bi ? DB.content(bi.id).brand : { name: "두잉고", loginEyebrow: "DOINGGO", loginHeadline: "온라인 강의\n함께 시작해요", loginSub: "" }, vodClosed }; },
     pickIns: (id) => { loginPick = id; DB.session.setInstructorPick(id); }, unpickIns: () => { loginPick = null; DB.store.remove("moonclass:instructor"); },
     insNorm, insCho, svcIsVod, svcSet, vodPaneReady, doLogin, doVodLogin, vodKakao, signupCos, signupSubmit, signupDoneMsg, FORGOT_TXT, LEGAL, legalHtml,

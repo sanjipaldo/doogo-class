@@ -3730,3 +3730,6 @@ body[data-ath="nz"] .a-vpbar-t small { color: #9cc3ee; }
 .a-acc { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #eef2f7; color: #475569; font-size: 11px; font-weight: 700; vertical-align: middle; white-space: nowrap; }
 .a-acc-soon { background: #fff4e5; color: #b45309; }
 .a-acc-end { background: #fee2e2; color: #b91c1c; }
+
+/* 날짜 빠른 버튼 (정규교육 다시보기 볼 수 있는 마지막 날 · 2026-11-23): 라이브 날짜 + 3 · 6개월 · 지우기 */
+.a-date-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

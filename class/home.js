@@ -169,7 +169,8 @@
   const ORDER = ["moon", "choi"]; // 카드 순서: 문대표 → 초이 → 나머지
   function classes() {
     const rank = (id) => { const i = ORDER.indexOf(id); return i < 0 ? 99 : i; };
-    return DB.liveInstructors().slice().sort((a, b) => rank(a.id) - rank(b.id)).map((x) => {
+    // 마스터 › 강사 플랫폼 관리에서 ‘두잉고 소개 · 수강생 로그인 강사 목록에 보이기’를 끈 강사(homeOff · 2026-11-23)는 카드에서 빼요 — 계정 · 강의실은 그대로
+    return DB.liveInstructors().filter((x) => !x.homeOff).slice().sort((a, b) => rank(a.id) - rank(b.id)).map((x) => {
       const c = DB.content(x.id) || {};
       const b = c.brand || {};
       const t = DB.themeOf(b.theme);
@@ -196,7 +197,7 @@
     if (!X || !X.V) return [];
     const v = X.V(), off = Array.isArray(v.insOff) ? v.insOff : [], seen = {}, out = [];
     const key = (p) => (X.tkey ? X.tkey(p) : p.iid || "ext:" + p.creator);
-    const vodAcc = (iid) => { const ins = DB.instructor ? DB.instructor(iid) : null; return !!ins && ins.status === "active" && !!DB.tracksOf && !DB.tracksOf(ins).live; };
+    const vodAcc = (iid) => { const ins = DB.instructor ? DB.instructor(iid) : null; return !!ins && ins.status === "active" && !ins.homeOff && !!DB.tracksOf && !DB.tracksOf(ins).live; };
     (v.products || []).filter((p) => (p.iid ? vodAcc(p.iid) && (p.creator || DB.instructor(p.iid).displayName) : !!p.creator) && (p.status === "on" || p.status === "soon") && off.indexOf(key(p)) < 0).forEach((p) => {
       const k = key(p), nm = p.creator || DB.instructor(p.iid).displayName;
       if (seen[k]) return;

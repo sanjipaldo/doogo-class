@@ -1339,6 +1339,18 @@ function launchOrdersClean(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 강사 choi: 두잉고 소개 강사 목록에서 빼기 — OFF (대표님 요청 2026-11-23) ----------
+ * 강사 계정에 homeOff: true (마스터 › 강사 플랫폼 관리 › 수정의 ‘두잉고 소개 · 수강생 로그인 강사 목록에 보이기’ 체크를 뺀 것과 같아요).
+ * 두잉고 소개(/doinggo) ‘지금 두잉고로 강의하는 강사님’ 카드 · 수강생 로그인 강사 고르기에서만 빠져요.
+ * 계정 상태(운영 중) · 콘텐츠 · 기수 · 스토어 클래스 · 이미 산 회원의 두잉고 VOD 강의실은 그대로예요 — 운영 중지(paused)로 하면 그 회원들까지 막혀서 쓰지 않아요.
+ * 마스터에서 다시 체크하면 돌아와요. 이미 homeOff 면 그대로 */
+function choiHomeOff(get) {
+  const k = "ins:choi", ins = get(k);
+  if (!isObj(ins)) return { writes: {}, result: { skipped: "강사 계정 없음" } };
+  if (ins.homeOff === true) return { writes: {}, result: { skipped: "이미 숨김 (그대로)" } };
+  return { writes: { [k]: Object.assign({}, ins, { homeOff: true }) }, result: { homeOff: true, status: String(ins.status || "") } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1389,6 +1401,7 @@ const OPS = [
   { id: "2026-11-15-moon-senior-cats", note: "문대표 시니어 기초 가이드 카테고리 1차 셋팅: 배송 · 쿠팡 · 상품등록 · 컴퓨터 · 빽형 건기식 AI 마스터툴 VOD · 기타 · 네이버 (없을 때만) · 카테고리 없는 글은 제목으로 골라 넣기", run: moonSeniorCats },
   { id: "2026-11-16-moon-senior-drop-bb", note: "문대표 시니어 기초 가이드 카테고리에서 ‘빽형 건기식 AI 마스터툴 VOD’ 지우기 (그 카테고리 글은 카테고리 없이 ‘전체’에만 · 이미 지웠으면 건너뜀)", run: moonSeniorDropBb },
   { id: "2026-11-15-launch-orders-clean", note: "정식 운영 전 주문 정리: 운영팀 테스트 주문(알려 준 주문 3건을 낸 회원들의 11/16 전 주문 전부) · 체험 계정 주문 전부 지우기(쓴 쿠폰 · 포인트는 돌려줌 · 회원 계정은 그대로) · 무통장 입금 받기 설정 지우기 (Vercel 배포 때만 — 로컬 화면 테스트 DB 의 체험 계정 강의는 그대로)", run: launchOrdersClean, when: () => !!process.env.VERCEL },
+  { id: "2026-11-23-choi-home-off", note: "강사 choi 두잉고 소개 강사 목록 OFF: homeOff — 두잉고 소개 카드 · 수강생 로그인 강사 고르기에서만 빠져요 (계정 · 콘텐츠 · 스토어 클래스 · 산 회원의 두잉고 VOD 강의실은 그대로 · 마스터 체크로 되돌림 · 이미 숨김이면 그대로)", run: choiHomeOff },
 ];
 
-module.exports = { OPS, moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, choiHomeOff, moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

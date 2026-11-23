@@ -686,6 +686,11 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   ok(r.status === 403, "체험 계정은 탈퇴 못 해요", r.json);
   const ran2 = await require(path.join(TMP, "class/api/_lib/init.js")).runPendingOps();
   ok(!ran2.length, "다음 배포 때는 다시 돌지 않아요", ran2);
+  // 2026-11-23-choi-home-off: 배포 때 강사 choi 를 두잉고 소개 · 수강생 로그인 강사 목록에서만 빼요 (homeOff — 계정은 운영 중 그대로)
+  {
+    const st14 = require(path.join(TMP, "class/api/_lib/store.js")), rc14 = await st14.getDoc("ins:choi");
+    ok(ran.some((x) => x.id === "2026-11-23-choi-home-off" && x.ok) && !!rc14 && rc14.v.homeOff === true && rc14.v.status === "active", "배포 때 강사 choi 두잉고 소개 목록 OFF 작업이 돌아요 (homeOff · 운영 중 그대로)", rc14 && { homeOff: rc14.v.homeOff, status: rc14.v.status });
+  }
   useJar({ dc_a: auth.sign({ r: "master" }) });
   j = await boot();
   const mt3 = docOf(j, "meta"); mt3.vod.settings.demoLogin = false;
@@ -3854,6 +3859,79 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     }
     ok(!!r73 && r73.saved === "정규교육 다시보기" && r73.dropped && r73.custom === "녹화 강의 모음" && r73.auto === "정규교육 다시보기" && r73.moon === "정규교육 다시보기",
       "저장된 메뉴 구성: 예전 이름 ‘라이브 다시보기’ · ‘보충 강의’가 저장돼 있으면 지우고 새 기본 이름 ‘정규교육 다시보기’ · 강사가 직접 바꾼 이름(예: 녹화 강의 모음)은 그대로 · 체험 데이터 문대표도 새 이름", r73);
+  }
+
+  {
+    console.log("74) 강사 choi 두잉고 소개 목록 OFF — homeOff (일회성 2026-11-23-choi-home-off · 마스터 체크로 ON/OFF)");
+    const OO74 = require(path.join(ROOT, "api/_lib/oneoff.js")), op74 = OO74.OPS.find((o) => o.id === "2026-11-23-choi-home-off");
+    const g74 = (d) => (k) => (d[k] === undefined ? null : JSON.parse(JSON.stringify(d[k])));
+    const ins74 = { id: "choi", name: "t", phone4: "0000", displayName: "t", status: "active", tracks: { live: true, vod: true }, coaches: [{ id: "c1", status: "active" }] };
+    const a74 = op74 && op74.run(g74({ "ins:choi": ins74, "ins:moon": { id: "moon", status: "active" }, meta: { vod: { insOff: ["moon"] } } }));
+    const b74 = OO74.choiHomeOff(g74({ "ins:choi": Object.assign({}, ins74, { homeOff: true }) })), c74 = OO74.choiHomeOff(g74({}));
+    const w74 = a74 && a74.writes["ins:choi"];
+    ok(!!op74 && op74.run === OO74.choiHomeOff && OO74.OPS.filter((o) => o.id === op74.id).length === 1 && !OO74.OPS.some((o) => o.id === "2026-11-23-choi-off") &&
+      !!w74 && w74.homeOff === true && w74.status === "active" && Object.keys(a74.writes).join(",") === "ins:choi" && JSON.stringify(Object.assign({}, w74, { homeOff: undefined })) === JSON.stringify(ins74) &&
+      !Object.keys(b74.writes).length && /그대로/.test(b74.result.skipped) && !Object.keys(c74.writes).length,
+      "homeOff 만 더해요 (운영 중 · 콘텐츠 · 코치 · 다른 강사 · 스토어 데이터 그대로) · 이미 숨김 · 없는 계정은 그대로 · 운영 중지 작업은 쓰지 않아요(산 회원 VOD 강의실이 막혀서)", { a: a74 && a74.result, b: b74.result, c: c74.result });
+    // 보이는 목록만 빼요: 두잉고 소개 카드(LIVE · VOD 강사) · 수강생 로그인 강사 고르기(예전 화면 · 두고클래스 로그인 카드의 두잉고 탭) — 로그인 · 계정 확인은 liveInstructors 그대로
+    const rd74 = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
+    const hm74 = rd74("home.js"), ap74 = rd74("app.js"), ad74 = rd74("admin.js"), ms74 = rd74("../ui/center/Master.jsx");
+    ok(/return DB\.liveInstructors\(\)\.filter\(\(x\) => !x\.homeOff\)\.slice\(\)\.sort/.test(hm74) && /ins\.status === "active" && !ins\.homeOff && !!DB\.tracksOf/.test(hm74) &&
+      /const pickList = \(\) => \{[^\n]*DB\.liveInstructors\(\)\.filter\(\(x\) => !x\.homeOff\)/.test(ap74) && (ap74.match(/pickList\(\)/g) || []).length === 3 &&
+      /dgLoginCore\(DB\.liveInstructors\(\)\.find\(\(x\) => x\.id === iid\)/.test(ap74) &&
+      /<input type="checkbox" name="homeShow"' \+ \(x\.homeOff \? "" : " checked"\)/.test(ad74) && /if \(f\.homeShow\) \{ if \(f\.homeShow\.checked\) delete xi\.homeOff; else xi\.homeOff = true; \}/.test(ad74) &&
+      /\(x\.homeOff \? " " \+ pill\("소개 목록 OFF", "mute"\) : ""\)/.test(ad74) && /\{x\.homeOff \? <>\{" "\}<Pill cls="mute">소개 목록 OFF<\/Pill><\/> : null\}/.test(ms74),
+      "두잉고 소개 카드 · 수강생 로그인 강사 고르기에서만 빠지고 로그인 · 계정은 그대로 · 마스터 수정 창 체크(두잉고 소개 · 수강생 로그인 강사 목록에 보이기) · 표에 ‘소개 목록 OFF’ (예전 화면 = React)");
+    // 화면 계산: 시험용 DB 로 두잉고 소개 목록 · 로그인 고르기 목록 (homeOff 강사 빠짐)
+    const vm74 = require("vm"), sb74 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb74.window = sb74; vm74.createContext(sb74); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm74.runInContext(rd74(f), sb74, { filename: f }));
+    const D74 = sb74.DB; if (!D74.data) D74.load();
+    const li74 = D74.liveInstructors().map((x) => x.id), ci74 = D74.instructor("choi");
+    if (ci74) ci74.homeOff = true;
+    const shown74 = D74.liveInstructors().filter((x) => !x.homeOff).map((x) => x.id);
+    ok(li74.indexOf("choi") >= 0 && shown74.indexOf("choi") < 0 && D74.liveInstructors().some((x) => x.id === "choi") && shown74.length === li74.length - 1, "homeOff 강사: 보이는 목록에서만 빠지고 운영 중 강사 목록(로그인 확인용)에는 그대로", { li74, shown74 });
+  }
+
+  {
+    console.log("75) 정규교육 다시보기 볼 수 있는 마지막 날 — 지나면 자물쇠 · 재생 안 됨 · 서버는 영상 주소를 안 보내요 (2026-11-23)");
+    const DS75 = require(path.join(ROOT, "shared/dates.js")), AC75 = require(path.join(ROOT, "api/_lib/access.js"));
+    // 한국 날짜 기준 · 그 날까지 볼 수 있어요(그 날 포함)
+    ok(!DS75.untilPassed("", "2026-11-23") && !DS75.untilPassed("abc", "2026-11-23") && !DS75.untilPassed("2026-11-23", "2026-11-23") && DS75.untilPassed("2026-11-22", "2026-11-23") && !DS75.untilPassed("2027-02-21", "2026-11-23") &&
+      DS75.addMonths("2026-11-21", 3) === "2027-02-21" && DS75.addMonths("2026-11-21", 6) === "2027-05-21",
+      "마지막 날 당일까지 볼 수 있고 다음 날부터 잠겨요 · 비었거나 날짜가 아니면 기한 없음 · 라이브 날짜 + 3개월 = 2027-02-21 · + 6개월 = 2027-05-21");
+    // 서버: 수강생에게는 지난 영상의 영상 주소 · 핵심 정리 · 자료를 빼요 (강사 · 코치 · 마스터 · 다른 강사 수강생 · 방문자 규칙 그대로)
+    const c75 = { brand: { name: "t" }, weeks: [], replays: [
+      { id: "r1", title: "지난", youtubeId: "https://vimeo.com/111", summary: "정리", attachments: [{ name: "a.pdf" }], week: 1, date: "2020-01-01", minutes: "30:00", until: "2020-02-01" },
+      { id: "r2", title: "남음", youtubeId: "yt-abc", summary: "정리2", until: "2999-12-31" }, { id: "r3", title: "기한 없음", youtubeId: "yt-def" }] };
+    const st75 = AC75.view("content:moon", c75, { student: { iid: "moon", sid: "s1" } }), r1 = st75.replays[0];
+    const noLk75 = { brand: {}, replays: [{ id: "x", youtubeId: "y" }] };
+    ok(r1.locked === true && !("youtubeId" in r1) && !("summary" in r1) && !("attachments" in r1) && r1.title === "지난" && r1.week === 1 && r1.until === "2020-02-01" && r1.minutes === "30:00" &&
+      st75.replays[1].youtubeId === "yt-abc" && st75.replays[2].youtubeId === "yt-def" && c75.replays[0].youtubeId === "https://vimeo.com/111" &&
+      AC75.view("content:moon", c75, { admin: { role: "instructor", iid: "moon" } }) === c75 && AC75.view("content:moon", c75, { admin: { role: "coach", iid: "moon", cid: "c" } }) === c75 && AC75.view("content:moon", c75, { admin: { role: "master" } }) === c75 &&
+      AC75.view("content:moon", c75, {}).replays === undefined && AC75.view("content:moon", c75, { student: { iid: "farmer", sid: "s2" } }).replays === undefined &&
+      AC75.view("content:moon", noLk75, { student: { iid: "moon", sid: "s1" } }) === noLk75,
+      "서버: 수강생에게 지난 영상은 제목 · 주차 · 날짜 · 길이 · 마지막 날만(locked) — 남은 · 기한 없는 영상 · 원본 데이터 그대로 · 강사 · 코치 · 마스터는 전부 · 방문자 · 다른 강사 수강생은 원래대로 다시보기 없음", st75.replays);
+    // 화면 계산 (db.js): 서버가 잠근 것(locked) 또는 마지막 날이 지난 것
+    const vm75 = require("vm"), sb75 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb75.window = sb75; vm75.createContext(sb75); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm75.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb75, { filename: f }));
+    const D75 = sb75.DB;
+    ok(D75.replayLocked({ until: "2020-01-01" }) && D75.replayLocked({ locked: true }) && !D75.replayLocked({ until: "2999-01-01" }) && !D75.replayLocked({}) && !D75.replayLocked(null),
+      "화면: 서버가 잠근 영상(locked) · 마지막 날이 지난 영상은 잠김 · 남은 · 기한 없는 영상은 그대로");
+    // 강사센터 (예전 화면 admin.js = React Content2.jsx): 편집 창 칸 · 빠른 버튼 · 목록 표시
+    const rd75 = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
+    const ad75 = rd75("admin.js"), c275 = rd75("../ui/center/Content2.jsx"), ap75 = rd75("app.js"), mo75 = rd75("../ui/dg/More.jsx"), cs75 = rd75("styles.css");
+    ok(/F\("date", "라이브 날짜", "date"\),\n[^\n]*\n\s*F\("until", "볼 수 있는 마지막 날 \(선택\)", "date", \{ quick: "date", hint: "아이비클래스처럼 수강 기한이 있으면/.test(ad75) &&
+      /\[\[3, "라이브 날짜 \+ 3개월"\], \[6, "\+ 6개월"\], \[0, "지우기 \(기한 없음\)"\]\]/.test(ad75) && /case "date-quick": \{ const to = document\.getElementById\(d\.for\), from = document\.getElementById\(d\.from\), m = Number\(d\.m\) \|\| 0; if \(to\) \{ to\.value = m \? DB\.addMonths\(\(from && from\.value\) \|\| todayStr\(\), m\) : "";/.test(ad75) &&
+      /const untilPill = \(it\) => \(!it\.until \? "" : DB\.untilPassed\(it\.until\) \? pill\("기간 끝남 · 잠김", "mute"\) : pill\("~" \+ fmtMD\(it\.until\) \+ "까지", "info"\)\);/.test(ad75) && /\+ ytBadge\(it\) \+ untilPill\(it\) \+/.test(ad75) &&
+      /<Yt it=\{it\} \/>\{\/\*[^*]*\*\/\}\{!it\.until \? null : DBX\(\)\.untilPassed\(it\.until\) \? <Pill cls="mute">기간 끝남 · 잠김<\/Pill> : <Pill cls="info">\{"~" \+ fmtMD\(it\.until\) \+ "까지"\}<\/Pill>\}/.test(c275),
+      "강사센터: 라이브 날짜 다음 ‘볼 수 있는 마지막 날 (선택)’ · 빠른 버튼(라이브 날짜 + 3개월 · + 6개월 · 지우기) · 목록 ‘기간 끝남 · 잠김’ / ‘~월.일까지’ (예전 화면 = React)");
+    // 수강생 (예전 화면 app.js = React More.jsx): 목록 자물쇠 · 상세 잠김 안내 (재생기 · 핵심 정리 · 자료 · 다 봤어요 없음)
+    ok((ap75.match(/lk = DB\.replayLocked\(x\)/g) || []).length === 2 && (mo75.match(/lk = DB\.replayLocked\(x\)/g) || []).length === 2 &&
+      ap75.indexOf('<div class="rp-locked-box"><span class="rp-lock-ic">') >= 0 && mo75.indexOf('<div className="rp-locked-box"><span className="rp-lock-ic"><Icon n="lock" /></span><b>시청 기간이 끝났어요</b>') >= 0 &&
+      /\(lk \? '<span class="rp-lock" aria-label="시청 기간 끝남">' \+ icon\("lock"\)/.test(ap75) && /\{lk \? <span className="rp-lock" aria-label="시청 기간 끝남"><Icon n="lock" \/><\/span> : <span className="rp-play">/.test(mo75) &&
+      /'<div class="guide-actions" style="margin-top:20px">' \+ \(lk \? "" : '<button class="btn '/.test(ap75) && /\{lk \? null : <button className=\{"btn "/.test(mo75) &&
+      /\.rp-card\.rp-locked \.rp-thumb img \{ filter: grayscale\(1\) brightness\(\.5\); \}/.test(cs75) && /\.rp-locked-box \{/.test(cs75),
+      "수강생: 목록 카드 자물쇠(재생 표시 대신) · ‘시청 기간 끝남’ · 상세는 재생기 · 핵심 정리 · 자료 · 다 봤어요 없이 ‘시청 기간이 끝났어요’ (예전 화면 = React · 화면 확인은 e2e center 1-2)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

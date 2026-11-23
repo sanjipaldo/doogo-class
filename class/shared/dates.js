@@ -27,5 +27,7 @@
   /** 수강 기간 (2026-11-18): 수강생 accessUntil(이 날까지 들어올 수 있어요 · 없으면 평생) — 끝났는지 */
   const accessUntil = (s) => (s && ISO_D.test(String(s.accessUntil || "")) ? s.accessUntil : "");
   const accessExpired = (s, today) => { const u = accessUntil(s); return !!u && String(today || kstToday()) > u; };
-  return { pad, toStr, parseDate, addDays, diffDays, ISO_D, addMonths, kstToday, accessUntil, accessExpired };
+  /** 볼 수 있는 마지막 날(이 날까지 · 2026-11-23 정규교육 다시보기 until) — 한국 날짜로 지났는지. 비었거나 날짜가 아니면 false (기한 없음) */
+  const untilPassed = (u, today) => !!u && ISO_D.test(String(u)) && String(today || kstToday()) > String(u);
+  return { pad, toStr, parseDate, addDays, diffDays, ISO_D, addMonths, kstToday, accessUntil, accessExpired, untilPassed };
 });

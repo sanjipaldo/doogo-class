@@ -161,13 +161,14 @@ function WeekChips({ nums, cur, action, all, onPick }) {
 function Replay({ id }) {
   const X = DGA(), S = st(), DB = DBX(), all = X.replaysSorted(), i = all.findIndex((x) => x.id === id), x = all[i];
   if (!x) return <NotFound />;
-  const seen = !!(S.P.replays || {})[id], newer = all[i - 1], older = all[i + 1], ml = !!X.mainLec(), w = x.week ? X.findWeek(x.week) : null;
+  const seen = !!(S.P.replays || {})[id], newer = all[i - 1], older = all[i + 1], ml = !!X.mainLec(), w = x.week ? X.findWeek(x.week) : null, lk = DB.replayLocked(x);
   const flip = () => { if (X.replayFlip(id)) { redraw(); X.toast("다 본 영상으로 표시했어요."); } else redraw(); };
   return (
-    <div className="page"><PageHead title={x.title} sub={[x.week ? Number(x.week) + "주차" : "", x.date ? fmtFull(x.date) + (ml ? " 업로드" : " 라이브") : "", X.lenTxt(x)].filter(Boolean).join(" · ")} crumbs={<Crumb items={[[X.ML("replays"), "#/replays"], [x.title]]} />} />
-      <section className="card"><Video item={x} />
-        {x.summary ? <RawOne html={'<div class="rp-notes"><p class="side-label">' + window.icon("pin", "xs") + " 이번 라이브 핵심 정리</p>" + DB.rich(x.summary) + "</div>"} /> : null}<Attachments list={x.attachments} />
-        <div className="guide-actions" style={{ marginTop: "20px" }}><button className={"btn " + (seen ? "btn-secondary" : "btn-primary")} data-action="toggle-replay" data-id={id} onClick={flip}><Icon n="check" c="sm" />{seen ? "다 봤어요 · 취소" : "다 봤어요"}</button>
+    <div className="page"><PageHead title={x.title} sub={[x.week ? Number(x.week) + "주차" : "", x.date ? fmtFull(x.date) + (ml ? " 업로드" : " 라이브") : "", X.lenTxt(x), x.until && !lk ? fmtFull(x.until) + "까지 볼 수 있어요" : ""].filter(Boolean).join(" · ")} crumbs={<Crumb items={[[X.ML("replays"), "#/replays"], [x.title]]} />} />
+      {/* 볼 수 있는 마지막 날이 지난 영상 (2026-11-23 · 예전 app.js 같은 모양): 재생기 · 핵심 정리 · 자료 · ‘다 봤어요’ 대신 잠김 안내 */}
+      <section className="card">{lk ? <div className="rp-locked-box"><span className="rp-lock-ic"><Icon n="lock" /></span><b>시청 기간이 끝났어요</b><p>{x.until ? "이 영상은 " + fmtFull(x.until) + "까지 볼 수 있었어요." : "이 영상은 지금 볼 수 없어요."}</p></div> : <><Video item={x} />
+        {x.summary ? <RawOne html={'<div class="rp-notes"><p class="side-label">' + window.icon("pin", "xs") + " 이번 라이브 핵심 정리</p>" + DB.rich(x.summary) + "</div>"} /> : null}<Attachments list={x.attachments} /></>}
+        <div className="guide-actions" style={{ marginTop: "20px" }}>{lk ? null : <button className={"btn " + (seen ? "btn-secondary" : "btn-primary")} data-action="toggle-replay" data-id={id} onClick={flip}><Icon n="check" c="sm" />{seen ? "다 봤어요 · 취소" : "다 봤어요"}</button>}
           {x.week && X.on("missions") && w && X.isOpen(w) ? <a className="btn btn-tertiary" href={"#/missions/" + Number(x.week)}>{Number(x.week)}주차 과제 보기</a> : null}
           {X.on("notes") ? <a className="btn btn-tertiary" href="#/notes"><Icon n="notebookPen" c="sm" />{X.ML("notes")}에 정리하기</a> : null}</div></section>
       <Pager p={older ? { href: "#/replays/" + older.id, label: "이전 라이브", title: older.title } : null} n={newer ? { href: "#/replays/" + newer.id, label: "다음 라이브", title: newer.title } : null} back="#/replays" />
@@ -186,10 +187,10 @@ export function ReplaysPage({ r }) {
       {all.length ? <>
         <section className="card overall"><div className="overall-top"><span>{sub ? "보충 강의 시청" : "다시보기 시청"}</span><PctText pct={pct} /></div><Progress pct={pct} /><span className="tiny" style={{ color: "var(--body)" }}>{all.length}개 중 {done}개 시청 · 최근 영상이 맨 앞에 있어요</span></section>
         {weeks.length > 1 ? <WeekChips nums={weeks} cur={wk} action="rp-week" all={all.length} onPick={(k) => { X.rpWeek(k); redraw(); }} /> : null}
-        <div className="rp-grid">{list.map((x) => { const yid = DB.youtubeId(x.youtubeId); return (
-          <a key={x.id} className="card rp-card plain-link" href={"#/replays/" + x.id}><span className="rp-thumb">{yid ? <img src={DBX().ytThumb(yid, "mqdefault")} alt="" loading="lazy" /> : null}<span className="rp-play"><Icon n="play" /></span><RawOne html={DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len")} /></span>
-            <span className="rp-body"><span className="rp-meta">{x.week ? <span className="badge badge-neutral">{Number(x.week)}주차</span> : null}{x.date ? <span>{fmtMD(x.date) + (ml ? " 업로드" : " 라이브")}</span> : null}{seen[x.id] ? <span className="badge badge-positive"><Icon n="check" c="xs" />다 봤어요</span> : null}</span>
-              <b>{x.title}</b>{x.summary ? <span className="rp-sum">{String(x.summary).replace(/\s+/g, " ").slice(0, 90)}</span> : null}</span></a>); })}</div>
+        <div className="rp-grid">{list.map((x) => { const yid = DB.youtubeId(x.youtubeId), lk = DB.replayLocked(x); return (
+          <a key={x.id} className={"card rp-card plain-link" + (lk ? " rp-locked" : "")} href={"#/replays/" + x.id}><span className="rp-thumb">{yid ? <img src={DBX().ytThumb(yid, "mqdefault")} alt="" loading="lazy" /> : null}{lk ? <span className="rp-lock" aria-label="시청 기간 끝남"><Icon n="lock" /></span> : <span className="rp-play"><Icon n="play" /></span>}<RawOne html={DB.vdur.label(x.youtubeId, x.durSec, x.minutes || "", "rp-len")} /></span>
+            <span className="rp-body"><span className="rp-meta">{x.week ? <span className="badge badge-neutral">{Number(x.week)}주차</span> : null}{x.date ? <span>{fmtMD(x.date) + (ml ? " 업로드" : " 라이브")}</span> : null}{lk ? <span className="badge badge-neutral rp-until-off"><Icon n="lock" c="xs" />시청 기간 끝남</span> : x.until ? <span className="rp-until">{"~" + fmtMD(x.until) + "까지"}</span> : null}{seen[x.id] ? <span className="badge badge-positive"><Icon n="check" c="xs" />다 봤어요</span> : null}</span>
+              <b>{x.title}</b>{x.summary && !lk ? <span className="rp-sum">{String(x.summary).replace(/\s+/g, " ").slice(0, 90)}</span> : null}</span></a>); })}</div>
       </> : <section className="card"><Empty ic="monitorPlay">{ml ? "아직 올라온 보충 강의가 없어요." : "아직 올라온 다시보기 영상이 없어요."}</Empty></section>}
     </div>
   );

@@ -17,6 +17,7 @@
 const VA = require("./vodaccess");
 const MD = require("./media");
 const COACH = require("../../coach-perms");
+const DATES = require("../../shared/dates"); // 정규교육 다시보기 볼 수 있는 마지막 날(until) — 한국 날짜
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const mask = (n) => { n = String(n || ""); return n ? n.slice(0, 1) + "OO" : "익명"; };
@@ -72,6 +73,14 @@ function weeksSkeleton(weeks) {
     o.missions = (w.missions || []).map((m) => pick(m, MISSION_KEEP));
     return o;
   });
+}
+/** 수강생이 받는 강의 콘텐츠 (2026-11-23): 정규교육 다시보기 중 볼 수 있는 마지막 날(until)이 지난 영상은
+ *  영상 주소 · 핵심 정리 · 자료를 빼고 제목 · 주차 · 날짜 · 길이만 (locked) — 화면은 자물쇠로 잠그고 재생기를 그리지 않아요. 강사 · 코치 · 마스터는 그대로 */
+function studentContent(c) {
+  if (!c || !Array.isArray(c.replays) || !c.replays.some((x) => x && DATES.untilPassed(x.until))) return c;
+  const o = Object.assign({}, c);
+  o.replays = c.replays.map((x) => (x && DATES.untilPassed(x.until) ? Object.assign(pick(x, ["id", "title", "week", "date", "minutes", "durSec", "until"]), { locked: true }) : x));
+  return o;
 }
 function publicContent(c) {
   const o = pick(c, ["brand", "landing", "freeClass", "freeQuestions", "faqs"]);
@@ -148,7 +157,7 @@ function view(k, v, ids) {
       if (instructorOf(ids, K.iid)) return v;
       if (coachOf(ids, K.iid)) return coachIns(v);
       return publicIns(v);
-    case "content": return memberOf(ids, K.iid) ? v : publicContent(v);
+    case "content": return adminOf(ids, K.iid) ? v : studentOf(ids, K.iid) ? studentContent(v) : publicContent(v);
     case "cohorts": return memberOf(ids, K.iid) ? v : publicCohorts(v);
     case "stu":
       if (adminOf(ids, K.iid) || (ids.student && ids.student.sid === K.sid)) return v;

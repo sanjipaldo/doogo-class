@@ -71,7 +71,7 @@ export function Replays() {
   return <>
     <Head title="정규교육 다시보기" sub="지난 라이브 녹화를 올리면 수강생 ‘정규교육 다시보기’에 주차별로 모여요. 영상 아래 ‘핵심 정리’를 적어 두면 다시 찾기 쉬워요." right={<AddBtn coll="replay" label="다시보기 올리기" />} />
     <Isl html={A.menuNote("replays", list.length)} />
-    <section className="a-card">{list.length ? <ul className="a-items">{list.map((it) => <EditRow key={it.id} coll="replay" it={it}><Main b={it.title} s={[it.week ? it.week + "주차" : "", it.date ? ff(it.date) : "", it.minutes || ""].filter(Boolean).join(" · ")} /><Yt it={it} />{(it.attachments || []).length ? <Pill cls="info">{"자료 " + it.attachments.length}</Pill> : null}</EditRow>)}</ul>
+    <section className="a-card">{list.length ? <ul className="a-items">{list.map((it) => <EditRow key={it.id} coll="replay" it={it}><Main b={it.title} s={[it.week ? it.week + "주차" : "", it.date ? ff(it.date) : "", it.minutes || ""].filter(Boolean).join(" · ")} /><Yt it={it} />{/* 볼 수 있는 마지막 날 (2026-11-23 · 예전 admin.js untilPill 같은 글) */}{!it.until ? null : DBX().untilPassed(it.until) ? <Pill cls="mute">기간 끝남 · 잠김</Pill> : <Pill cls="info">{"~" + fmtMD(it.until) + "까지"}</Pill>}{(it.attachments || []).length ? <Pill cls="info">{"자료 " + it.attachments.length}</Pill> : null}</EditRow>)}</ul>
       : <Empty ic="monitorPlay" extra={<AddBtn coll="replay" label="첫 다시보기 올리기" />}>아직 올린 다시보기가 없어요.</Empty>}</section>
   </>;
 }
