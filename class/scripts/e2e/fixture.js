@@ -11,22 +11,7 @@ const L = require("./lib");
 const OPS_CODE = `(async () => {
   const init = require("./api/_lib/init.js"), store = require("./api/_lib/store.js");
   const ran = await init.runPendingOps();
-  // 2026-11-23-choi-store-off: 운영은 강사 choi 스토어 숨김이지만 시험 DB 에서는 다시 보이게 해요 — React 모양 비교(react.js)의
-  //   VOD 코칭 · TEA TIME · 오픈 예정 · 전자책 · 무료 LIVE 대표 상품(v5 · v9 · v12 · fl-choi · v2)이 choi 것이라서.
-  //   숨김 동작은 문대표(moon · v1 ‘숨긴 클래스’)와 store.js 의 마스터 ‘스토어에서 숨기기 → 다시 보이기’로 확인해요
-  {
-    const rm = await store.getDoc("meta"), mt = rm && rm.v;
-    if (mt && mt.vod && Array.isArray(mt.vod.insOff) && mt.vod.insOff.indexOf("choi") >= 0) {
-      mt.vod.insOff = mt.vod.insOff.filter((k) => k !== "choi");
-      await store.writeDoc("meta", mt, rm.ver);
-      const rc = await store.getDoc("vcat"), cat = rc && rc.v, st = {};
-      (mt.vod.products || []).forEach((p) => { if (p && p.id) st[p.id] = p.status; });
-      if (cat && Array.isArray(cat.products)) {
-        cat.products = cat.products.map((p) => (p && p.iid === "choi" && p.status === "hidden" && st[p.id] ? Object.assign({}, p, { status: st[p.id] }) : p));
-        await store.writeDoc("vcat", cat, rc.ver);
-      }
-    }
-  }
+  // (2026-11-23) 강사 choi 스토어는 숨김(choi-store-off) 뒤 같은 날 다시 보이기(choi-store-on) — 두 작업이 차례로 돌아 시험 DB 도 보이는 상태예요
   const m = await init.migrate();
   const g = async (k) => { const r = await store.getDoc(k); return r && r.v != null ? r.v : null; };
   const moon = await g("ins:moon"), s1 = await g("stu:moon:s1"), vcat = await g("vcat"), meta = await g("meta");

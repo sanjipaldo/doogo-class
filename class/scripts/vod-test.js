@@ -691,20 +691,14 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const st14 = require(path.join(TMP, "class/api/_lib/store.js")), rc14 = await st14.getDoc("ins:choi");
     ok(ran.some((x) => x.id === "2026-11-23-choi-home-off" && x.ok) && !!rc14 && rc14.v.homeOff === true && rc14.v.status === "active", "배포 때 강사 choi 두잉고 소개 목록 OFF 작업이 돌아요 (homeOff · 운영 중 그대로)", rc14 && { homeOff: rc14.v.homeOff, status: rc14.v.status });
   }
-  // 2026-11-23-choi-store-off: 배포 때 강사 choi 를 두고클래스 스토어에서 숨겨요 (숨김 목록 insOff + 결제 가격표 hidden)
-  //   — 아래 결제 시험들이 choi 상품(v5)을 쓰니까, 작업이 돈 것을 확인한 뒤 시험 DB 에서는 다시 보이게 돌려 둬요 (e2e fixture 와 같게)
+  // 2026-11-23-choi-store-off → 2026-11-23-choi-store-on: 강사 choi 스토어를 숨겼다가 같은 날 다시 보이게(유나 ON) — 두 작업이 차례로 돌아
+  //   결과는 보이는 상태 (숨김 목록에 choi 없음 · 결제 가격표의 choi 상품은 원래 판매 상태) — 아래 결제 시험(choi 상품 v5)도 그대로
   {
     const st14b = require(path.join(TMP, "class/api/_lib/store.js")), rm14 = await st14b.getDoc("meta"), rv14 = await st14b.getDoc("vcat");
-    const cp14 = ((rv14 && rv14.v && rv14.v.products) || []).filter((p) => p && p.iid === "choi");
-    ok(ran.some((x) => x.id === "2026-11-23-choi-store-off" && x.ok) && !!rm14 && (rm14.v.vod.insOff || []).indexOf("choi") >= 0 && cp14.length > 0 && cp14.every((p) => p.status === "hidden"),
-      "배포 때 강사 choi 스토어 숨김 작업이 돌아요 (숨김 목록에 choi · 결제 가격표의 choi 상품 hidden)", { insOff: rm14 && rm14.v.vod.insOff, cp: cp14.map((p) => p.id + ":" + p.status) });
-    if (rm14 && rv14) {
-      const mt14 = rm14.v, was14 = {}; mt14.vod.insOff = (mt14.vod.insOff || []).filter((k) => k !== "choi");
-      (mt14.vod.products || []).forEach((p) => { if (p && p.id) was14[p.id] = p.status; });
-      await st14b.writeDoc("meta", mt14, rm14.ver);
-      const ct14 = rv14.v; ct14.products = ct14.products.map((p) => (p && p.iid === "choi" && p.status === "hidden" ? Object.assign({}, p, { status: was14[p.id] || "on" }) : p));
-      await st14b.writeDoc("vcat", ct14, rv14.ver);
-    }
+    const cp14 = ((rv14 && rv14.v && rv14.v.products) || []).filter((p) => p && p.iid === "choi"), ix14 = ran.map((x) => x.id);
+    ok(ran.some((x) => x.id === "2026-11-23-choi-store-off" && x.ok) && ran.some((x) => x.id === "2026-11-23-choi-store-on" && x.ok) && ix14.indexOf("2026-11-23-choi-store-off") < ix14.indexOf("2026-11-23-choi-store-on") &&
+      !!rm14 && (rm14.v.vod.insOff || []).indexOf("choi") < 0 && cp14.length > 0 && cp14.every((p) => p.status !== "hidden"),
+      "배포 때 강사 choi 스토어 숨김 → 다시 보이기 작업이 차례로 돌아요 (결과: 숨김 목록에 choi 없음 · 결제 가격표 원래 판매 상태)", { insOff: rm14 && rm14.v.vod.insOff, cp: cp14.map((p) => p.id + ":" + p.status) });
   }
   useJar({ dc_a: auth.sign({ r: "master" }) });
   j = await boot();
@@ -3981,10 +3975,21 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /if \(!insShown\(p\)\) \{ ROUTE\.redirect\("#\/vod"\); toast\("지금은 판매하지 않는 클래스예요\.", "warn"\); return ""; \}/.test(vd76) &&
       /insShown\(p\) \? \{\} : \{ status: "hidden" \}/.test(vd76),
       "화면: 숨긴 강사의 클래스 · 배너 · 강사진 카드는 스토어에서 빠지고 상세 ‘판매 중인 클래스가 아니에요’ · 결제 화면은 홈으로 · 마스터가 올리는 가격표도 hidden (다시 보이면 그대로 돌아옴 · 화면 확인은 e2e store 7)");
-    // 시험 DB(e2e fixture): 상품 모양 비교에 choi 상품을 써서 일회성 작업 뒤 다시 보이게 — 숨김 확인은 e2e store 7(마스터 숨기기 → 다시 보이기)
-    const fx76 = fs.readFileSync(path.join(ROOT, "scripts/e2e/fixture.js"), "utf8"), es76 = fs.readFileSync(path.join(ROOT, "scripts/e2e/specs/store.js"), "utf8");
-    ok(/mt\.vod\.insOff = mt\.vod\.insOff\.filter\(\(k\) => k !== "choi"\)/.test(fx76) && /p\.iid === "choi" && p\.status === "hidden" && st\[p\.id\]/.test(fx76) && /data-action="vda-insoff"/.test(es76) && /스토어에 다시 보이기/.test(es76),
-      "시험 DB: 일회성 작업 뒤 choi 를 다시 보이게(상품 모양 비교용) · e2e store 7 이 마스터 ‘스토어에서 숨기기 → 다시 보이기’를 확인");
+    // 같은 날 되돌림 (대표님: 유나(스토어)는 ON) — 2026-11-23-choi-store-on: 숨김 목록에서 choi 빼기 · 가격표는 스토어 데이터의 판매 상태로
+    const opOn76 = OO76.OPS.find((o) => o.id === "2026-11-23-choi-store-on");
+    const meta76h = Object.assign({}, meta76, { vod: Object.assign({}, meta76.vod, { insOff: ["moon", "choi"], products: P76.concat([{ id: "v7", iid: "choi", status: "hidden" }]) }) });
+    const cat76h = { products: [{ id: "v2", iid: "choi", status: "hidden" }, { id: "v9", iid: "choi", status: "hidden" }, { id: "bk", iid: "choi", status: "on" }, { id: "v3", iid: "logic", status: "on" }, { id: "v7", iid: "choi", status: "hidden" }], coupons: [{ id: "c" }] };
+    const f76 = opOn76 && opOn76.run(g76({ meta: meta76h, vcat: cat76h })), g76b = OO76.choiStoreOn(g76({ meta: f76 && f76.writes.meta, vcat: f76 && f76.writes.vcat }));
+    const h76 = OO76.choiStoreOn(g76({ meta: meta76, vcat: cat76 })), i76 = OO76.choiStoreOn(g76({}));
+    ok(!!opOn76 && opOn76.run === OO76.choiStoreOn && ids76.indexOf("2026-11-23-choi-store-on") === ids76.indexOf("2026-11-23-choi-store-off") + 1 &&
+      !!f76 && f76.writes.meta.vod.insOff.join() === "moon" && JSON.stringify(f76.writes.meta.vod.products) === JSON.stringify(meta76h.vod.products) &&
+      st76(f76.writes.vcat) === "v2:on,v9:soon,bk:on,v3:on,v7:hidden" && f76.writes.vcat.coupons.length === 1 &&
+      !Object.keys(g76b.writes).length && /그대로/.test(g76b.result.skipped) && !Object.keys(h76.writes).length && !Object.keys(i76.writes).length,
+      "다시 보이기(유나 ON): 숨김 목록에서 choi 만 빼고(문대표 숨김 그대로) · 가격표는 원래 판매 상태(on · 오픈 예정) · 마스터가 숨긴 상품은 hidden 그대로 · 다른 강사 · 쿠폰 그대로 · 두 번째 · 이미 보이면 그대로",
+      { f: f76 && f76.result, vcat: f76 && st76(f76.writes.vcat), g: g76b.result, h: h76.result });
+    // 숨김 확인은 e2e store 7(마스터 ‘스토어에서 숨기기 → 스토어에 다시 보이기’)
+    const es76 = fs.readFileSync(path.join(ROOT, "scripts/e2e/specs/store.js"), "utf8");
+    ok(/data-action="vda-insoff"/.test(es76) && /스토어에 다시 보이기/.test(es76), "e2e store 7 이 마스터 ‘스토어에서 숨기기 → 다시 보이기’를 확인");
   }
 
   {
