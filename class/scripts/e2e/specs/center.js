@@ -107,6 +107,25 @@ module.exports = {
     for (const u of ["/p/choi", "/free/choi"]) { await L.open(page, base, u); await page.waitForTimeout(600); mas[u] = await page.evaluate(() => ({ off: !!document.querySelector(".lp-off, .fc-off"), ready: !!document.querySelector(".lp-empty") })); } // 안내 띠 글에도 ‘준비 중인 페이지예요’가 있어서 빈 화면 칸으로 봐요
     await run.check(Object.keys(vis).every((u) => vis[u]) && Object.keys(mas).every((u) => mas[u].off && !mas[u].ready),
       "두잉고 소개 목록 OFF 강사: 강사 소개 · 무료강의는 방문자에게 ‘준비 중인 페이지예요’ · 마스터는 ‘OFF 상태’ 안내 띠와 함께 그대로 봐요", { vis, mas }, page);
+    // 1-5) 강사 입점 문의 (2026-11-23 운영 버그): 두고 파트너스 지원서 카드(‘다음 차례’ 줄)를 누르면 React 화면이 통째로 오류(‘This page couldn't load’)
+    //      — 제안서 메일 칸 조각(inqDeckTx)을 예전 admin.js 가 내보내지 않았어요. 지원서를 넣고 예전 화면 · React 둘 다 펼쳐 봐요
+    {
+      const ap = await fetch(base + "/api/public", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "partner-apply", source: "partners", name: "시험지원" + String(Date.now() % 1000), email: "e2e-inq@example.com", phone: "010-1212-3434", where: "[두고 파트너스] 블로그", course: "[VOD 강의 / 부업 · 창업] 시험 주제", agree: true, form: { nick: "시험활동명", cat: "부업 · 창업", topic: "시험 주제", kinds: ["VOD 강의"] } }) }).then((r) => r.json()).catch(() => ({}));
+      const errs = [], onErr = (e) => errs.push(String((e && e.message) || e).slice(0, 160));
+      page.on("pageerror", onErr);
+      const card = {};
+      for (const mode of ["all", "off"]) {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/center/master/partners"); await page.waitForTimeout(500);
+        const id = await page.evaluate(() => { const a = Array.from(document.querySelectorAll("article.a-inq")).find((x) => /시험지원/.test(x.textContent) && x.querySelector(".a-inq-row")); return a ? a.dataset.inq : ""; });
+        if (id && !(await page.$('article.a-inq.open[data-inq="' + id + '"]'))) { await page.click('article.a-inq[data-inq="' + id + '"] .a-inq-row'); await page.waitForTimeout(700); }
+        card[mode] = await page.evaluate((id) => { const a = document.querySelector('article.a-inq.open[data-inq="' + id + '"]'), dl = a && Array.from(a.querySelectorAll(".a-inq-info dt")).find((d) => /제안서 메일/.test(d.textContent));
+          return { id: !!id, open: !!a, crash: /This page couldn.t load|Application error/i.test(document.body.innerText), mail: dl ? dl.nextElementSibling.textContent : "", form: !!(a && a.querySelector(".a-inq-pt")) }; }, id);
+      }
+      page.off("pageerror", onErr);
+      await page.context().clearCookies({ name: "dc_next" }); // 아래 시험은 원래대로 (화면 스위치 쿠키 없이)
+      await run.check(!!ap.ok && ["all", "off"].every((m) => card[m].id && card[m].open && !card[m].crash && card[m].form && !!card[m].mail) && card.all.mail === card.off.mail && !errs.length,
+        "강사 입점 문의: 두고 파트너스 지원서 카드를 누르면 오류 없이 펼쳐져요 · 제안서 메일 · 지원서 칸 (예전 화면 = React)", { ap: ap.ok, card, errs }, page);
+    }
     await L.open(page, base, "/center/master/vod-settle");
     await run.check(!!(await page.$('[data-action="vda-ym"][data-dir="1"]')) && /판매분 정산/.test(await L.bodyText(page)), "마스터 강사 정산 화면이 열려요 (달 넘기기)", null, page);
     await L.open(page, base, "/center/master/vod-rates");

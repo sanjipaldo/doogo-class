@@ -1169,6 +1169,14 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
 - **테스트**: `node scripts/vod-test.js` 74) homeOff 만 · 보이는 목록에서만 빠짐 · 마스터 체크 / 14) 배포 작업 실행 확인.
 - **OFF 강사의 강사 소개 · 무료강의 페이지 (같은 날 추가 · 대표님: 지우지 말고 OFF 로)**: `homeOff` 이면 `/p/<강사>` · `/free/<강사>` 가 방문자에게 **‘준비 중인 페이지예요’** (`landing.js renderPage · renderFree`) — 내용은 지우지 않아요. 마스터 · 그 강사는 ‘두잉고 소개 목록 OFF 상태예요 …’ 안내 띠와 함께 그대로 봐요(`.lp-off` · `.fc-off`). 서버 공유 미리보기(`pagemeta.js landingPage · freePage`)를 만들지 않고 사이트맵에서도 빼요. 강의 둘러보기(`#/p`) 목록 · 스토어의 두잉고 무료 LIVE · 기수 강의 카드(`vod.js liveItems · premiumItems`) · 클래스 상세 ‘두잉고 기수 강의’ 링크(예전 화면 = React `ui/store/ProductPage.jsx`) · 수강생 로그인 ‘강사 소개 보기’(예전 화면 = React `ui/dg/Login.jsx`)에서도 빠져요. 체크를 다시 켜면 모두 그대로 돌아와요. 테스트: `vod-test` 78) / e2e `center` 1-4) 방문자 ‘준비 중’ · 마스터 OFF 안내 띠.
 
+## 버그: 마스터 › 강사 입점 문의 카드를 펼치면 화면 전체가 ‘This page couldn't load’ (2026-11-23)
+
+- **증상**: 운영(React 화면)에서 두고 파트너스 지원서 카드(‘다음 차례’ 줄)를 누르면 페이지가 통째로 오류. 예전 화면은 정상.
+- **원인**: React `ui/center/MasterInq.jsx` 가 예전 `admin.js` 의 ‘제안서 메일’ 칸 조각 `inqDeckTx` 를 `window.ADM` 으로 부르는데, admin.js 가 그 이름을 내보내지 않았어요. 운영은 메일 발송이 아직 연결 전이라 두고 파트너스 지원서마다 `deckMail`(못 보냄 · 메일 연결 전)이 남아 그 칸이 그려지면서 `n.inqDeckTx is not a function`.
+- **고침**: `window.ADM` 에 `inqDeckTx` 추가 (화면 · 데이터는 그대로).
+- **배포 전 임시 방법**: 그 브라우저 주소 뒤에 `?dc_next=off` → 그 브라우저만 예전 화면(정상). 배포 뒤 `?dc_next=` (빈 값)으로 원래대로.
+- **다시 안 나게**: `vod-test` 81) React 화면(ui/)이 `A = ADM()` 로 부르는 이름이 모두 `window.ADM` 에 있는지 검사 (ui/App.jsx 가 실행 중에 채우는 `last` 만 예외) / e2e `center` 1-5) 두고 파트너스 지원서를 넣고 카드 펼치기 (예전 화면 = React · 페이지 오류 없음 · 제안서 메일 · 지원서 칸).
+
 ## 두고클래스 첫 화면 배너 · 클래스 순서 — 중국 구매대행은 뒤로 (2026-11-23)
 
 - **왜**: 대표님 요청 — 첫 화면 배너에서 중국 구매대행 클래스(v14)를 빼고 ‘귤 하나로 월매출 10억’(v3)을 올리고, 클래스 목록에서는 부알남 · 갓농부 · 문대표 클래스가 먼저 · 중국 구매대행은 맨 뒤로.

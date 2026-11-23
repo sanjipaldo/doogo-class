@@ -4087,6 +4087,26 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       { b: b80.result, c: c80.result, cr: cv80 && cv80.homeRails, e: e80.result });
   }
 
+  {
+    console.log("81) React 강사센터 · 마스터 화면이 쓰는 예전 admin.js 조각은 모두 window.ADM 에 (2026-11-23 운영 버그: 강사 입점 문의 카드 inqDeckTx)");
+    const ad81 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), m81 = ad81.match(/\n  window\.ADM = \{([\s\S]*?)\n  \};/);
+    const body81 = m81 ? m81[1].replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "") : "", keys81 = new Set();
+    let dep81 = 0, cur81 = "";
+    for (const ch of body81) { if ("([{".indexOf(ch) >= 0) dep81++; if (")]}".indexOf(ch) >= 0) dep81--; if (ch === "," && dep81 === 0) { keys81.add(cur81.trim().split(":")[0].trim()); cur81 = ""; } else cur81 += ch; }
+    if (cur81.trim()) keys81.add(cur81.trim().split(":")[0].trim());
+    (ad81.match(/window\.ADM\.([A-Za-z_$][\w$]*)\s*=/g) || []).forEach((s) => keys81.add(s.replace(/^window\.ADM\./, "").replace(/\s*=$/, "")));
+    const RT81 = ["last"]; // ui/App.jsx 가 실행 중에 채우는 값 (없으면 A.prep())
+    const uiDir81 = path.join(ROOT, "../ui"), miss81 = {};
+    const walk81 = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => { const f = path.join(d, e.name); if (e.isDirectory()) walk81(f); else if (/\.jsx?$/.test(e.name)) {
+      const t = fs.readFileSync(f, "utf8"), vars = Array.from(new Set((t.match(/\b([A-Za-z_$][\w$]*)\s*=\s*ADM\(\)(?!\.)/g) || []).map((s) => s.split("=")[0].trim()))), used = new Set();
+      vars.forEach((v) => (t.match(new RegExp("\\b" + v.replace(/\$/g, "\\$") + "\\.([A-Za-z_$][\\w$]*)", "g")) || []).forEach((s) => used.add(s.split(".")[1])));
+      (t.match(/ADM\(\)\.([A-Za-z_$][\w$]*)/g) || []).forEach((s) => used.add(s.split(".")[1]));
+      const bad = Array.from(used).filter((k) => !keys81.has(k) && RT81.indexOf(k) < 0); if (bad.length) miss81[path.relative(uiDir81, f)] = bad; } });
+    walk81(uiDir81);
+    ok(keys81.size > 300 && keys81.has("inqDeckTx") && keys81.has("inqFormRows") && !Object.keys(miss81).length,
+      "React 화면(ui/)이 A = ADM() 로 부르는 이름이 모두 window.ADM 에 있어요 — 없으면 그 화면이 통째로 ‘This page couldn't load’ (예: 강사 입점 문의 카드 펼치기)", { n: keys81.size, miss81 });
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);
