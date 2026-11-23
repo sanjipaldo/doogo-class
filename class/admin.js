@@ -431,7 +431,7 @@
       ["curriculum", "주차별 강의 (커리큘럼)", "book", "curriculum"],
       ["missions", "과제 · 미션", "clipboard", "missions"],
       ["docs", "실무 체크리스트", "file", "docs"],
-      ["replays", "라이브 다시보기", "monitorPlay", "replays"],
+      ["replays", "정규교육 다시보기", "monitorPlay", "replays"], // 2026-11-23 이름: 라이브 다시보기 → 정규교육 다시보기 (수강생 메뉴 · 코치 권한 목록도)
       ["showcase", "모범 과제", "trophy", "showcase"],
       ["notes", "학습 노트 질문", "notebookPen", "notes"],
       ["schedule", "수업 캘린더", "calendar", "schedule"],
@@ -1317,7 +1317,7 @@
         F("icon", "아이콘", "select", { options: () => DB.QL_ICONS.map((k) => [k, ({ layers: "층층 (제조 · OEM)",  megaphone: "확성기 (공지)", help: "물음표 (FAQ)", clipboard: "클립보드 (서류)", bug: "벌레 (오류 신고)", sparkles: "반짝이 (AI)", play: "재생 (유튜브)", message: "말풍선 (카톡)", book: "책", calendar: "달력", library: "자료실", flame: "불꽃 (동기부여)", award: "메달 (수료증)", link: "링크", store: "가게", users: "사람들 (카페)", video: "비디오 (라이브)" })[k] || k]) })] },
     ann: { name: "강사 공지", list: () => DB.data.announcements, idp: "an", init: () => ({ date: todayStr(), pinned: false }),
       fields: [F("title", "제목"), F("to", "받는 강사", "select", { options: () => [["", "모든 강사 (전체 공지)"]].concat(DB.data.instructors.map((i) => [i.id, i.displayName + " · " + i.name + " 강사님에게만"])) }), F("body", "내용", "textarea", { rows: 6, rich: true }), F("date", "날짜", "date"), F("pinned", "맨 위에 고정", "checkbox")] },
-    replay: { name: "라이브 다시보기", prepend: true, list: (c) => c.replays || (c.replays = []), idp: "rp", init: () => ({ date: todayStr(), attachments: [] }),
+    replay: { name: "정규교육 다시보기", prepend: true, list: (c) => c.replays || (c.replays = []), idp: "rp", init: () => ({ date: todayStr(), attachments: [] }),
       fields: [F("title", "영상 제목", "text", { hint: "예: 2주차 라이브 Q&A · 상세페이지 첨삭" }), F("youtubeId", "영상 주소 (유튜브 · 비메오)", "youtube", { hint: "일부 공개(링크가 있는 사람만)로 올린 영상도 돼요. 비메오는 영상 설정에서 퍼가기(임베드)를 허용해 주세요." }),
         F("week", "주차", "select", { options: () => weekOpts("주차 없음"), get: (x) => (x.week ? String(x.week) : ""), set: (x, v) => { x.week = v ? Number(v) : ""; } }),
         F("date", "라이브 날짜", "date"), F("minutes", "영상 길이 (선택 · 예: 1:12:30)", "text", { hint: "영상 주소를 넣으면 실제 영상 길이로 자동으로 채워져요." }),
@@ -1858,7 +1858,7 @@
     const qls = DB.quickLinksOf(C());
     return head("시작 가이드 · 빠른 이동" + (TRK() === "vod" ? " · VOD 버전" : ""), "수강생 홈 맨 위에 체크리스트로 보여요. 수강생이 모두 체크하면 자동으로 사라져요. 1주차 항목은 처음 한 번, ‘보이는 주차’를 정한 항목은 그 주차가 열릴 때 다시 떠요.", addBtn("guide", "단계 추가")) +
       '<section class="a-card">' + simpleList("guide", C().guide, (g) => '<div class="a-item-main"><b>' + esc(g.title) + "</b><small>" + esc([g.desc, g.url].filter(Boolean).join(" · ")) + "</small></div>" + pill((Number(g.week) || 1) <= 1 ? "처음 한 번" : g.week + "주차", (Number(g.week) || 1) <= 1 ? "mute" : "info"), "단계가 없어요. 단계가 없으면 홈에 시작 가이드가 보이지 않아요.") + "</section>" +
-      '<p class="a-hint">' + icon("alert", "xs") + " 예: 오픈채팅방 입장 → 공지 읽기 → 1주차 첫 강의 보기 → AI 조교에게 질문해 보기 · 2주차: 2주차 라이브 다시보기 → 마진 계산기 써 보기</p>" +
+      '<p class="a-hint">' + icon("alert", "xs") + " 예: 오픈채팅방 입장 → 공지 읽기 → 1주차 첫 강의 보기 → AI 조교에게 질문해 보기 · 2주차: 2주차 정규교육 다시보기 → 마진 계산기 써 보기</p>" +
       '<div class="a-card-head" style="margin-top:28px"><h2 class="a-grow">빠른 이동 (홈 바로 가기)</h2>' + btn("기본 목록으로", "ql-reset", "a-btn-ghost a-btn-sm") + addBtn("ql", "페이지 추가") + "</div>" +
       '<p class="a-muted" style="margin:0 0 12px">수강생 홈 공지사항 밑에 카드로 보여요. 플랫폼 안 메뉴는 윗줄(기본 색), https:// 외부 링크는 아랫줄(아이콘 색)로 나뉘어요. 꺼진 메뉴나 주소가 빈 카드는 보이지 않아요.</p>' +
       '<section class="a-card">' + simpleList("ql", qls, (l) => '<div class="a-item-main"><b>' + icon(l.icon || "link", "xs") + " " + esc(l.title) + "</b><small>" + esc([l.desc, l.url || "주소 없음 (숨김)"].filter(Boolean).join(" · ")) + "</small></div>" + (l.color ? '<span class="a-ql-swatch" style="background:' + esc(l.color) + '"></span>' : "") + (/^https?:/i.test(l.url || "") ? pill("외부 링크 · 아랫줄", "info") : !l.url ? pill("숨김", "mute") : pill("플랫폼 · 윗줄", "mute")), "자주 찾는 페이지가 없어요.") + "</section>";
@@ -2062,7 +2062,7 @@
   const editRow = (coll, it, main) => "<li>" + main + '<div class="a-row-actions">' + btn(icon("pen", "sm") + "수정", "item-edit", "a-btn-ghost a-btn-sm", ' data-coll="' + coll + '" data-id="' + esc(it.id) + '"') + "</div></li>";
   function pageReplays() {
     const list = (C().replays || []).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-    return head("라이브 다시보기", "지난 라이브 녹화를 올리면 수강생 ‘라이브 다시보기’에 주차별로 모여요. 영상 아래 ‘핵심 정리’를 적어 두면 다시 찾기 쉬워요.", addBtn("replay", "다시보기 올리기")) +
+    return head("정규교육 다시보기", "지난 라이브 녹화를 올리면 수강생 ‘정규교육 다시보기’에 주차별로 모여요. 영상 아래 ‘핵심 정리’를 적어 두면 다시 찾기 쉬워요.", addBtn("replay", "다시보기 올리기")) +
       menuNote("replays", list.length) +
       '<section class="a-card">' + (list.length ? '<ul class="a-items">' + list.map((it) => editRow("replay", it, '<div class="a-item-main"><b>' + esc(it.title) + "</b><small>" + esc([it.week ? it.week + "주차" : "", it.date ? fmtFull(it.date) : "", it.minutes || ""].filter(Boolean).join(" · ")) + "</small></div>" + ytBadge(it) + ((it.attachments || []).length ? pill("자료 " + it.attachments.length, "info") : ""))).join("") + "</ul>"
         : emptyBox("monitorPlay", "아직 올린 다시보기가 없어요.", addBtn("replay", "첫 다시보기 올리기"))) + "</section>";
@@ -2404,7 +2404,7 @@
         (x.key === "home" ? '<span class="a-pm locked" title="홈은 뺄 수 없어요">' + icon("lock", "sm") + "</span>" : '<button class="a-pm minus" data-action="menu-off" data-key="' + x.key + '" aria-label="' + esc(nameOf(x)) + ' 빼기">' + icon("minus", "sm") + "</button>") + "</li>";
     };
     return (own
-      ? head(isV ? "VOD 버전 메뉴 구성" : "메뉴 구성", isV ? "DOOGO CLASS에서 VOD를 산 수강생이 보는 왼쪽 메뉴예요. 꼭 필요한 메뉴만 켜 두세요. 주차별 강의 · 라이브 다시보기 · 과제 · 모범 과제 · 수업 캘린더 · 수료증은 VOD 버전에 없어요." : "수강생 화면 왼쪽 메뉴를 더하고(＋) 빼고(−), 이름과 순서를 바꿔요. 필요한 페이지나 링크 메뉴도 새로 만들 수 있어요. 바꾼 뒤 <b>저장</b>을 눌러야 수강생 화면에 반영돼요.", menuSaveBtns(mid) + btn(icon("eye", "sm") + (isV ? "VOD 수강생 화면" : "수강생 화면"), "preview", "a-btn-outline"))
+      ? head(isV ? "VOD 버전 메뉴 구성" : "메뉴 구성", isV ? "DOOGO CLASS에서 VOD를 산 수강생이 보는 왼쪽 메뉴예요. 꼭 필요한 메뉴만 켜 두세요. 주차별 강의 · 정규교육 다시보기 · 과제 · 모범 과제 · 수업 캘린더 · 수료증은 VOD 버전에 없어요." : "수강생 화면 왼쪽 메뉴를 더하고(＋) 빼고(−), 이름과 순서를 바꿔요. 필요한 페이지나 링크 메뉴도 새로 만들 수 있어요. 바꾼 뒤 <b>저장</b>을 눌러야 수강생 화면에 반영돼요.", menuSaveBtns(mid) + btn(icon("eye", "sm") + (isV ? "VOD 수강생 화면" : "수강생 화면"), "preview", "a-btn-outline"))
       : head("메뉴 · 색상 설정", "강사와 협의한 대로 수강생 화면의 메뉴를 더하고(＋) 빼고(−), 이름과 순서, 화면 색상을 정해요. 메뉴는 바꾼 뒤 <b>저장</b>을 눌러야 반영돼요(색상은 고르면 바로). 오른쪽 미리보기로 바뀐 강의실을 바로 확인해요.", menuSaveBtns(mid) + dgSplitBtn("room:" + ins.id, "강의실 미리보기")) +
       '<section class="a-card a-menu-top"><label class="a-label" for="m-menu-ins">강사 플랫폼</label><select class="a-input" id="m-menu-ins">' + list.map((x) => '<option value="' + x.id + '"' + (x.id === ins.id ? " selected" : "") + ">" + esc(x.displayName) + " · " + esc(x.name) + "</option>").join("") + "</select>" +
         btn(icon("eye", "sm") + "수강생 화면", "m-preview", "a-btn-outline a-btn-sm", ' data-id="' + ins.id + '"') + "</section>") +

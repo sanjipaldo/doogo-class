@@ -110,7 +110,7 @@
       { key: "curriculum", label: "주차별 강의", icon: "book" },
       { key: "missions", label: "과제 · 미션", icon: "checks" },
       { key: "docs", label: "실무 체크리스트", icon: "clipboard" },
-      { key: "replays", label: "라이브 다시보기", icon: "monitorPlay", needs: "replays", desc: "지난 라이브를 주차별로 다시 봐요" },
+      { key: "replays", label: "정규교육 다시보기", icon: "monitorPlay", needs: "replays", desc: "지난 라이브를 주차별로 다시 봐요" }, // 2026-11-23 이름: 라이브 다시보기 → 정규교육 다시보기
       { key: "showcase", label: "모범 과제", icon: "trophy", needs: "showcase", desc: "강사가 고른 잘한 과제 예시" },
       { key: "notes", label: "학습 노트", icon: "notebookPen", desc: "주차별 회고 질문 + 강의 메모 모음" },
       { key: "schedule", label: "수업 캘린더", icon: "calendar" },
@@ -125,7 +125,7 @@
       { key: "certificate", label: "수료증 발급", icon: "award" }
     ];
     // 예전 기본 이름 — 강사가 직접 바꾼 이름이 아니라 예전 기본 이름이 그대로 저장돼 있으면 새 기본 이름을 쓴다
-    const OLD_MENU_LABELS = { home: "홈", curriculum: "커리큘럼", missions: "과제 제출하기", schedule: "강의 일정", notices: "공지사항", qna: "Q&A", docs: "서류 준비 가이드", bot: "AI봇", library: "유료강의 자료실", motivation: "동기부여", channels: "1:1 소통채널", partners: "제휴채널", certificate: "수료증" };
+    const OLD_MENU_LABELS = { home: "홈", curriculum: "커리큘럼", missions: "과제 제출하기", schedule: "강의 일정", notices: "공지사항", qna: "Q&A", docs: "서류 준비 가이드", bot: "AI봇", library: "유료강의 자료실", motivation: "동기부여", channels: "1:1 소통채널", partners: "제휴채널", certificate: "수료증", replays: ["라이브 다시보기", "보충 강의"] }; // replays: 2026-11-23 → ‘정규교육 다시보기’ (보충 강의 = 예전 문대표 자동 이름)
     const botNameOf = (inst) => (inst || "강사") + " AI 조교";
     const OLD_BOT_NAME = (inst) => "24시 " + (inst || "강사") + " AI봇";
     // 학습 노트: 강사가 주차별 질문을 정하지 않은 주차에 쓰는 기본 회고 질문
@@ -210,7 +210,7 @@
         for (let j = i - 1; j >= 0; j--) { const k = m.items.findIndex((x) => x.key === STUDENT_MENUS[j].key); if (k !== -1) { at = k + 1; break; } }
         m.items.splice(at, 0, { key: d.key, on: true });
       });
-      m.items.forEach((x) => { if (x.key === "home") x.on = true; if (x.label && OLD_MENU_LABELS[x.key] === x.label) delete x.label; });
+      m.items.forEach((x) => { if (x.key === "home") x.on = true; if (x.label && [].concat(OLD_MENU_LABELS[x.key] || []).indexOf(x.label) >= 0) delete x.label; });
       m.library = Object.assign({ ebook: true, file: true, vod: true, senior: true }, m.library || {});
       return m;
     }
@@ -271,7 +271,7 @@
         faqs: [
           { id: "q1", category: "수강 · 로그인", q: "로그인이 안 돼요.", a: "수강 신청 때 적은 이름과 휴대폰 번호 뒷자리 4자리로 로그인합니다. 승인 전이라면 강사님 승인을 기다려 주세요.", tags: ["로그인", "비밀번호", "승인"] },
           { id: "q2", category: "과제 · 수료", q: "과제는 언제까지 내야 하나요?", a: "주차가 열리고 6일 뒤가 과제 마감일입니다. 마감이 지나도 제출은 가능하지만 수료 전까지 필수 과제를 모두 통과해야 합니다.", tags: ["과제", "마감", "기한"] },
-          { id: "q3", category: "라이브 · 강의", q: "라이브를 놓쳤어요.", a: "다시보기가 ‘라이브 다시보기’ 메뉴에 올라갑니다.", tags: ["라이브", "다시보기"] }
+          { id: "q3", category: "라이브 · 강의", q: "라이브를 놓쳤어요.", a: "다시보기가 ‘정규교육 다시보기’ 메뉴에 올라갑니다.", tags: ["라이브", "다시보기"] }
         ],
         guide: [
           { id: "g-1", title: "수업 캘린더 확인하기", desc: "라이브와 과제 마감일을 먼저 확인해 두세요.", url: "#/schedule" },
@@ -576,7 +576,7 @@
           (mc.replays || []).forEach((x) => { const s0 = (sc.replays || []).find((y) => y.id === x.id); if (s0 && RP[x.id] === x.title) { x.title = s0.title; x.minutes = s0.minutes; } });
           const g1 = (mc.guide || []).find((x) => x.id === "g-1" && x.desc === "라이브 Q&A와 과제 마감일을 먼저 확인해 두세요.");
           if (g1) g1.desc = "오프라인 강의일과 과제 마감일을 먼저 확인해 두세요.";
-          if (db.instructors.some((x) => x.id === "moon")) { const it = menuConfig("moon").items.find((x) => x.key === "replays"); if (it && !it.label) it.label = "보충 강의"; }
+          // (2026-11-23) 예전엔 여기서 다시보기 메뉴 이름을 ‘보충 강의’로 붙였어요 — 이제 모든 강사 기본 이름 ‘정규교육 다시보기’ 그대로 (대표님 요청)
         }
         db.flags.mainLecV1 = true; save();
       }

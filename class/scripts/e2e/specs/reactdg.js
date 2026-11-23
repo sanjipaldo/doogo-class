@@ -561,18 +561,28 @@ module.exports = {
       const seq = (labels, want) => { const i = labels.indexOf(want[0]); return i >= 0 && want.every((w, j) => labels[i + j] === w); };
       const sp = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
       run.watch(sp, "메뉴 순서 · 수강생");
-      await FL.student(sp, base, info); const stu = {};
-      for (const mode of ["off", "all"]) { await L.reactCookie(sp, base, mode); await L.open(sp, base, "/home"); await sp.waitForTimeout(500); stu[mode] = await sp.$$eval("a.nav-item > span", (xs) => xs.map((x) => x.textContent.trim())); }
+      await FL.student(sp, base, info); const stu = {}, h1 = {};
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(sp, base, mode); await L.open(sp, base, "/home"); await sp.waitForTimeout(500); stu[mode] = await sp.$$eval("a.nav-item > span", (xs) => xs.map((x) => x.textContent.trim()));
+        await L.open(sp, base, "/replays"); await sp.waitForTimeout(400); h1["s-" + mode] = await sp.evaluate(() => { const h = document.querySelector(".page-head h1"); return h ? h.textContent.trim() : ""; });
+      }
       await sp.context().close();
       const ap = await L.newPage(browser, { viewport: { width: 1280, height: 900 } });
       run.watch(ap, "메뉴 순서 · 강사센터");
       await FL.instructor(ap, base, info); const ctr = {};
-      for (const mode of ["off", "all"]) { await L.reactCookie(ap, base, mode); await L.open(ap, base, "/center/curriculum"); await ap.waitForTimeout(500); ctr[mode] = await ap.$$eval("a.a-nav > span", (xs) => xs.map((x) => x.textContent.trim())); }
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(ap, base, mode); await L.open(ap, base, "/center/curriculum"); await ap.waitForTimeout(500); ctr[mode] = await ap.$$eval("a.a-nav > span", (xs) => xs.map((x) => x.textContent.trim()));
+        await L.open(ap, base, "/center/replays"); await ap.waitForTimeout(400); h1["c-" + mode] = await ap.evaluate(() => { const h = document.querySelector(".a-head h1"); return h ? h.textContent.trim() : ""; });
+      }
       await ap.context().close();
+      // 1-13b) 메뉴 이름 (2026-11-23): ‘라이브 다시보기’ → ‘정규교육 다시보기’ — 수강생 · 강사센터 왼쪽 메뉴와 화면 제목 모두 (예전 화면 = React)
+      const nm = (l) => !!l && l.indexOf("정규교육 다시보기") >= 0 && !l.some((x) => /라이브 다시보기/.test(x));
+      await run.check(nm(stu.off) && nm(stu.all) && nm(ctr.off) && nm(ctr.all) && Object.keys(h1).length === 4 && Object.keys(h1).every((k) => h1[k] === "정규교육 다시보기"),
+        "메뉴 이름: 수강생 · 강사센터 왼쪽 메뉴 · 화면 제목 모두 ‘정규교육 다시보기’ (‘라이브 다시보기’ 없음 · 예전 화면 = React)", { stu, ctr, h1 });
       const SW = ["주차별 강의", "과제 · 미션", "실무 체크리스트"], CW = ["주차별 강의 (커리큘럼)", "과제 · 미션", "실무 체크리스트"];
-      const cOk = (l) => seq(l, CW) && (l.indexOf("라이브 다시보기") < 0 || l.indexOf("라이브 다시보기") === l.indexOf("실무 체크리스트") + 1);
+      const cOk = (l) => seq(l, CW) && (l.indexOf("정규교육 다시보기") < 0 || l.indexOf("정규교육 다시보기") === l.indexOf("실무 체크리스트") + 1);
       await run.check(seq(stu.off, SW) && seq(stu.all, SW) && JSON.stringify(stu.off) === JSON.stringify(stu.all) && cOk(ctr.off) && cOk(ctr.all) && JSON.stringify(ctr.off) === JSON.stringify(ctr.all),
-        "메뉴 순서: 수강생 주차별 강의 → 과제 · 미션 → 실무 체크리스트 · 강사센터 주차별 강의 (커리큘럼) → 과제 · 미션 → 실무 체크리스트 → 라이브 다시보기 (예전 화면 = React)", { stu, ctr });
+        "메뉴 순서: 수강생 주차별 강의 → 과제 · 미션 → 실무 체크리스트 · 강사센터 주차별 강의 (커리큘럼) → 과제 · 미션 → 실무 체크리스트 → 정규교육 다시보기 (예전 화면 = React)", { stu, ctr });
     }
     // 1-14) 수강생 메뉴 = 강사센터 메뉴 구성 그대로 (2026-11-09): 라이브 다시보기 · 모범 과제 · 용어 사전도 내용이 아직 없어도 메뉴에 보이고, 들어가면 ‘아직 … 없어요’ (예전 화면 = React)
     //       서버에서 받은 강의실 내용에서 셋을 비운 채로 열어 봐요 (api/bootstrap 응답만 바꿔요 · DB 는 그대로)

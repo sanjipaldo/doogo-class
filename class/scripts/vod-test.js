@@ -3820,6 +3820,42 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "이미지 설명은 따로 준 곳(두잉고)만 바뀌고 다른 페이지는 예전처럼 제목");
   }
 
+  {
+    console.log("73) 메뉴 이름 ‘라이브 다시보기’ → ‘정규교육 다시보기’ — 강사센터 메뉴 · 수강생 메뉴 함께 (2026-11-23)");
+    const rd73 = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
+    const ad73 = rd73("admin.js"), dr73 = rd73("shared/data-rules.js"), cp73 = rd73("coach-perms.js"), c273 = rd73("../ui/center/Content2.jsx"), c173 = rd73("../ui/center/Content.jsx"), mn73 = rd73("../ui/center/Menus.jsx"), dj73 = rd73("data.js");
+    // 강사센터: 왼쪽 메뉴 · 편집 창 이름(‘… 추가’ · ‘… 수정’) · 화면 제목과 안내 (예전 화면 admin.js = React Content2.jsx) · 코치 권한 목록 · 안내 예시
+    const sub73 = "지난 라이브 녹화를 올리면 수강생 ‘정규교육 다시보기’에 주차별로 모여요.";
+    ok(ad73.indexOf('["replays", "정규교육 다시보기", "monitorPlay", "replays"]') >= 0 && ad73.indexOf('replay: { name: "정규교육 다시보기", prepend: true,') >= 0 &&
+      ad73.indexOf('return head("정규교육 다시보기", "' + sub73) >= 0 && c273.indexOf('<Head title="정규교육 다시보기" sub="' + sub73) >= 0 &&
+      cp73.indexOf('["replays", "정규교육 다시보기"]') >= 0 && ad73.indexOf("2주차: 2주차 정규교육 다시보기 →") >= 0 && c173.indexOf("2주차: 2주차 정규교육 다시보기 →") >= 0 &&
+      ad73.indexOf("주차별 강의 · 정규교육 다시보기 · 과제 · 모범 과제") >= 0 && mn73.indexOf("주차별 강의 · 정규교육 다시보기 · 과제 · 모범 과제") >= 0,
+      "강사센터: 왼쪽 메뉴 · 편집 창(정규교육 다시보기 추가 · 수정) · 화면 제목 · 안내 · 코치 권한 목록 · VOD 메뉴 구성 안내 모두 ‘정규교육 다시보기’ (예전 화면 = React)");
+    // 화면에 보이는 글(따옴표 안)에 예전 이름이 남지 않게 — 강사센터 · 수강생 화면 파일 (주석 · 예전 문구를 새 이름으로 바꾸는 목록은 빼고)
+    const vis73 = (src) => src.split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).map((l) => l.replace(/\/\/.*$/, "")).join("\n").match(/(["'`])(?:(?!\1).)*라이브 다시보기(?:(?!\1).)*\1/g) || [];
+    const left73 = [["admin.js", ad73], ["coach-perms.js", cp73], ["app.js", rd73("app.js")], ["Content.jsx", c173], ["Content2.jsx", c273], ["Menus.jsx", mn73], ["More.jsx", rd73("../ui/dg/More.jsx")], ["Login.jsx", rd73("../ui/center/Login.jsx")]].map((x) => [x[0], vis73(x[1])]).filter((x) => x[1].length);
+    ok(!left73.length, "강사센터 · 수강생 화면 파일의 보이는 글에 ‘라이브 다시보기’가 남지 않아요", left73);
+    // 수강생: 기본 메뉴 이름 · 새 강사 기본 FAQ · 체험 데이터 글
+    ok(/\{ key: "replays", label: "정규교육 다시보기", icon: "monitorPlay", needs: "replays"/.test(dr73) && /replays: \["라이브 다시보기", "보충 강의"\] \}; \/\/ replays: 2026-11-23/.test(dr73) && !/it\.label = "보충 강의"/.test(dr73) &&
+      dr73.indexOf('a: "다시보기가 ‘정규교육 다시보기’ 메뉴에 올라갑니다."') >= 0 && dj73.indexOf("다시보기는 ‘정규교육 다시보기’ 메뉴에 올라갑니다.") >= 0 && dj73.indexOf("라이브 다음 날까지 ‘정규교육 다시보기’ 메뉴에 영상이 올라갑니다.") >= 0 && dj73.indexOf("‘라이브 다시보기’") < 0,
+      "수강생 기본 메뉴 이름 = ‘정규교육 다시보기’ · 예전 이름 목록에 ‘라이브 다시보기’ · ‘보충 강의’(예전 문대표 자동 이름 — 이제 붙이지 않아요) · 새 강사 기본 FAQ · 체험 데이터 글도 새 이름");
+    // 저장된 메뉴 구성: 예전 기본 이름(라이브 다시보기)이 그대로 저장돼 있으면 새 이름으로 · 강사가 직접 바꾼 이름은 그대로
+    const vm73 = require("vm"), sb73 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb73.window = sb73; vm73.createContext(sb73); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm73.runInContext(rd73(f), sb73, { filename: f }));
+    const D73 = sb73.DB; if (!D73.data) D73.load();
+    const all73 = (D73.data.instructors || []).filter((x) => x && x.id), a73 = all73[0], b73 = all73[1], c73 = all73[2];
+    const lab73 = (iid) => { const it = D73.menuConfig(iid).items.find((x) => x.key === "replays"); return it && it.label ? it.label : (D73.STUDENT_MENUS.find((d) => d.key === "replays") || {}).label; };
+    let r73 = null;
+    if (a73 && b73 && c73) {
+      a73.menu = { items: [{ key: "home", on: true }, { key: "replays", on: true, label: "라이브 다시보기" }] };
+      b73.menu = { items: [{ key: "home", on: true }, { key: "replays", on: true, label: "녹화 강의 모음" }] };
+      c73.menu = { items: [{ key: "home", on: true }, { key: "replays", on: true, label: "보충 강의" }] };
+      r73 = { saved: lab73(a73.id), custom: lab73(b73.id), auto: lab73(c73.id), dropped: !("label" in a73.menu.items.find((x) => x.key === "replays")), moon: lab73("moon") };
+    }
+    ok(!!r73 && r73.saved === "정규교육 다시보기" && r73.dropped && r73.custom === "녹화 강의 모음" && r73.auto === "정규교육 다시보기" && r73.moon === "정규교육 다시보기",
+      "저장된 메뉴 구성: 예전 이름 ‘라이브 다시보기’ · ‘보충 강의’가 저장돼 있으면 지우고 새 기본 이름 ‘정규교육 다시보기’ · 강사가 직접 바꾼 이름(예: 녹화 강의 모음)은 그대로 · 체험 데이터 문대표도 새 이름", r73);
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

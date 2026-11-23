@@ -100,7 +100,7 @@ export function Guide() {
   return <>
     <Head title={"시작 가이드 · 빠른 이동" + vodTag()} sub="수강생 홈 맨 위에 체크리스트로 보여요. 수강생이 모두 체크하면 자동으로 사라져요. 1주차 항목은 처음 한 번, ‘보이는 주차’를 정한 항목은 그 주차가 열릴 때 다시 떠요." right={<AddBtn coll="guide" label="단계 추가" />} />
     <section className="a-card"><SimpleList coll="guide" items={c.guide} one={(g) => <><Main b={g.title} s={[g.desc, g.url].filter(Boolean).join(" · ")} />{(Number(g.week) || 1) <= 1 ? <Pill cls="mute">처음 한 번</Pill> : <Pill cls="info">{g.week + "주차"}</Pill>}</>} empty="단계가 없어요. 단계가 없으면 홈에 시작 가이드가 보이지 않아요." /></section>
-    <Hint ic="alert">예: 오픈채팅방 입장 → 공지 읽기 → 1주차 첫 강의 보기 → AI 조교에게 질문해 보기 · 2주차: 2주차 라이브 다시보기 → 마진 계산기 써 보기</Hint>
+    <Hint ic="alert">예: 오픈채팅방 입장 → 공지 읽기 → 1주차 첫 강의 보기 → AI 조교에게 질문해 보기 · 2주차: 2주차 정규교육 다시보기 → 마진 계산기 써 보기</Hint>
     <div className="a-card-head" style={{ marginTop: "28px" }}><h2 className="a-grow">빠른 이동 (홈 바로 가기)</h2><Btn action="ql-reset" cls="a-btn-ghost a-btn-sm">기본 목록으로</Btn><AddBtn coll="ql" label="페이지 추가" /></div>
     <p className="a-muted" style={{ margin: "0 0 12px" }}>수강생 홈 공지사항 밑에 카드로 보여요. 플랫폼 안 메뉴는 윗줄(기본 색), https:// 외부 링크는 아랫줄(아이콘 색)로 나뉘어요. 꺼진 메뉴나 주소가 빈 카드는 보이지 않아요.</p>
     <section className="a-card"><SimpleList coll="ql" items={qls} one={(l) => <><div className="a-item-main"><b><Icon n={l.icon || "link"} c="xs" /> {l.title}</b><small>{[l.desc, l.url || "주소 없음 (숨김)"].filter(Boolean).join(" · ")}</small></div>{l.color ? <span className="a-ql-swatch" style={{ background: l.color }} /> : null}{/^https?:/i.test(l.url || "") ? <Pill cls="info">외부 링크 · 아랫줄</Pill> : !l.url ? <Pill cls="mute">숨김</Pill> : <Pill cls="mute">플랫폼 · 윗줄</Pill>}</>} empty="자주 찾는 페이지가 없어요." /></section>
