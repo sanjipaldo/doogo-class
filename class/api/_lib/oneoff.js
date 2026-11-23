@@ -1400,6 +1400,55 @@ function choiStoreOn(get) {
   return { writes, result };
 }
 
+/* ---------- 두고클래스 첫 화면 배너 · 클래스 순서 (대표님 요청 2026-11-23) ----------
+ * 1) 첫 화면 배너: 중국 구매대행 클래스(v14) 배너 vb-seller 는 끄고(지우지 않음 · 마스터 › 전시 › 배너에서 다시 켤 수 있어요)
+ *    그 자리에 ‘귤 하나로 월매출 10억’ 클래스(v3) 배너 vb-v3 를 넣어요 (이름표는 그 클래스의 강사 이름으로 ‘BEST · 이름’).
+ * 2) 홈 섹션 강의 순서 — 마스터 › 홈 꾸미기와 같은 저장 모양(meta.vod.homeRails · ‘고정한 강의 먼저 + 나머지 자동’):
+ *    - 새로 올라온 클래스: v4(logic) → v8 · v11 · v3(farmer) → b1(moon) → v2 · v5(choi) 고정 · 나머지는 자동(최근 올라온 순)
+ *      → v14 는 고정하지 않아 맨 뒤로 가요 (나중에 새 클래스가 올라오면 그 클래스는 v14 앞에 붙어요)
+ *    - 지금 가장 많이 듣는 클래스: v3 · v4 · v8 고정 — 지금 보이는 순서 그대로 (판매 기록이 아직 거의 없어 등록 순서로 줄을 서서,
+ *      다시 보이는 choi 클래스가 맨 앞에 끼지 않게) · 나머지 자동 (v14 는 맨 뒤)
+ *    저장된 섹션 설정이 없으면 기본 섹션 순서(vod.js RAIL_DEF) 그대로 모두 저장해요 — 저장된 섹션이 먼저 보이는 규칙이라 두 섹션만 저장하면 자리가 바뀌어요.
+ *    마스터가 이미 고친 섹션(자동이 아님)은 그대로 둬요. 없는 클래스 id 는 넣지 않아요. 이미 이렇게 돼 있으면 그대로 */
+const STORE_RAIL_KEYS = ["best", "why", "ebook", "cat", "new", "flive", "eb", "prem", "free", "soon", "topics", "teach"];
+const STORE_PINS = { new: ["v4", "v8", "v11", "v3", "b1", "v2", "v5"], best: ["v3", "v4", "v8"] };
+const STORE_V3_BANNER = { id: "vb-v3", sub: "산지직송 브랜드 · 스마트스토어 · 자사몰 판매", pid: "v3", color: ["#2b1a06", "#ff9f1a"], on: true };
+function storeHomeOrder(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  const v = clone(meta.vod), result = {}, prods = Array.isArray(v.products) ? v.products.filter(isObj) : [];
+  const has = (id) => prods.some((p) => p.id === id);
+  let changed = false;
+  // 1) 배너
+  if (!Array.isArray(v.banners)) v.banners = [];
+  const bs = v.banners, si = bs.findIndex((b) => isObj(b) && b.id === "vb-seller"), p3 = prods.find((p) => p.id === "v3");
+  if (si >= 0 && bs[si].on !== false) { bs[si].on = false; changed = true; result.seller = "끔 (지우지 않음)"; } else result.seller = si >= 0 ? "이미 꺼짐" : "없음";
+  if (!p3) result.v3 = "클래스 없음 (배너 안 넣음)";
+  else if (bs.some((b) => isObj(b) && b.id === STORE_V3_BANNER.id)) result.v3 = "이미 있음";
+  else {
+    const at = si >= 0 ? si : Math.min(2, bs.length);
+    bs.splice(at, 0, Object.assign(clone(STORE_V3_BANNER), { eyebrow: "BEST" + (p3.creator ? " · " + p3.creator : ""), title: String(p3.title || "").replace(/,\s*/, ",\n") }));
+    changed = true; result.v3 = "넣음 (배너 목록 " + (at + 1) + "번째)";
+  }
+  // 2) 홈 섹션 강의 순서
+  const saved = Array.isArray(v.homeRails) ? v.homeRails.filter((r) => isObj(r) && r.k) : [];
+  const rails = saved.length ? saved : STORE_RAIL_KEYS.map((k) => ({ k, on: true }));
+  Object.keys(STORE_PINS).forEach((k) => {
+    let r = rails.find((x) => x.k === k);
+    if (!r) { r = { k, on: true }; rails.push(r); }
+    const hid = Array.isArray(r.hide) ? r.hide : [], want = STORE_PINS[k].filter((id) => has(id) && hid.indexOf(id) < 0); // 마스터가 뺀 강의는 고정하지 않아요
+    const same = r.mode === "pin" && JSON.stringify(r.picks || []) === JSON.stringify(want);
+    if (!want.length) { result[k] = "고정할 클래스 없음 (그대로)"; return; }
+    if (same) { result[k] = "이미 이렇게 (그대로)"; return; }
+    if (r.mode && r.mode !== "auto") { result[k] = "마스터가 고친 섹션 (그대로)"; return; }
+    r.mode = "pin"; r.picks = want; if (!Array.isArray(r.hide)) r.hide = [];
+    changed = true; result[k] = "고정 " + want.join(" → ");
+  });
+  if (!changed) return { writes: {}, result: Object.assign({ skipped: "이미 이렇게 돼 있어요" }, result) };
+  v.homeRails = rails;
+  return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1453,6 +1502,7 @@ const OPS = [
   { id: "2026-11-23-choi-home-off", note: "강사 choi 두잉고 소개 강사 목록 OFF: homeOff — 두잉고 소개 카드 · 수강생 로그인 강사 고르기에서만 빠져요 (계정 · 콘텐츠 · 스토어 클래스 · 산 회원의 두잉고 VOD 강의실은 그대로 · 마스터 체크로 되돌림 · 이미 숨김이면 그대로)", run: choiHomeOff },
   { id: "2026-11-23-choi-store-off", note: "강사 choi 두고클래스 스토어 숨김: insOff — 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 상세 · 결제 막힘 · 결제 가격표도 hidden (클래스는 지우지 않음 · 산 회원은 계속 수강 · 마스터 › DOOGO CLASS › 강사 관리에서 다시 켜요 · 이미 숨김이면 그대로)", run: choiStoreOff },
   { id: "2026-11-23-choi-store-on", note: "강사 choi 두고클래스 스토어 다시 보이기(유나 ON · 같은 날 숨김 되돌림): insOff 에서 choi 빼기 · 결제 가격표의 그 강사 상품을 원래 판매 상태로 (두잉고 소개 목록 OFF 는 그대로 · 이미 보이면 그대로)", run: choiStoreOn },
+  { id: "2026-11-23-store-home-order", note: "두고클래스 첫 화면: 중국 구매대행(v14) 배너 끄기(지우지 않음) → 그 자리에 ‘귤 하나로 월매출 10억’(v3) 배너 · 홈 섹션 순서 고정(새로 올라온: v4 → v8 · v11 · v3 → b1 → v2 · v5 → 나머지 자동, v14 맨 뒤 / 가장 많이 듣는: v3 · v4 · v8 → 나머지 자동) — 마스터 › 홈 꾸미기와 같은 저장 · 마스터가 고친 섹션은 그대로", run: storeHomeOrder },
 ];
 
-module.exports = { OPS, choiHomeOff, choiStoreOff, choiStoreOn, moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

@@ -700,6 +700,17 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       !!rm14 && (rm14.v.vod.insOff || []).indexOf("choi") < 0 && cp14.length > 0 && cp14.every((p) => p.status !== "hidden"),
       "배포 때 강사 choi 스토어 숨김 → 다시 보이기 작업이 차례로 돌아요 (결과: 숨김 목록에 choi 없음 · 결제 가격표 원래 판매 상태)", { insOff: rm14 && rm14.v.vod.insOff, cp: cp14.map((p) => p.id + ":" + p.status) });
   }
+  // 2026-11-23-store-home-order: 첫 화면 배너(v14 배너 끔 · 그 자리에 v3 배너) · 홈 섹션 순서 고정(새로 올라온 · 가장 많이 듣는)
+  {
+    const st14c = require(path.join(TMP, "class/api/_lib/store.js")), rm14c = await st14c.getDoc("meta"), v14c = (rm14c && rm14c.v && rm14c.v.vod) || {};
+    const bs14c = v14c.banners || [], sl14c = bs14c.find((b) => b && b.id === "vb-seller"), b3 = bs14c.find((b) => b && b.id === "vb-v3"), rl14c = (k) => (v14c.homeRails || []).find((r) => r && r.k === k) || {};
+    const has14c = (id) => (v14c.products || []).some((p) => p && p.id === id); // 이 시험의 스토어 데이터는 v5 · v6 만 — 있는 클래스만 고정 · v3 가 없으면 배너도 안 넣어요
+    ok(ran.some((x) => x.id === "2026-11-23-store-home-order" && x.ok) && (!sl14c || sl14c.on === false) && (has14c("v3") ? !!b3 && b3.pid === "v3" && b3.on === true && /^BEST/.test(b3.eyebrow) : !b3) &&
+      (!sl14c || !b3 || bs14c.indexOf(b3) === bs14c.indexOf(sl14c) - 1) && rl14c("new").mode === "pin" && rl14c("new").picks.length > 0 && rl14c("new").picks.every(has14c) && rl14c("new").picks.indexOf("v14") < 0 &&
+      (v14c.homeRails || []).map((r) => r.k).slice(0, 5).join() === "best,why,ebook,cat,new",
+      "배포 때 첫 화면 배너 · 홈 섹션 순서 작업이 돌아요 (v14 배너 끔 · 바로 앞 자리에 v3 배너 · 새로 올라온 섹션은 있는 클래스만 고정 · v14 고정 안 함 · 섹션 순서 그대로)",
+      { banners: bs14c.map((b) => b.id + ":" + (b.on !== false)), rails: (v14c.homeRails || []).map((r) => r.k + (r.mode ? ":" + r.mode + ":" + (r.picks || []).join("/") : "")) });
+  }
   useJar({ dc_a: auth.sign({ r: "master" }) });
   j = await boot();
   const mt3 = docOf(j, "meta"); mt3.vod.settings.demoLogin = false;
@@ -4041,6 +4052,39 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       qs79.indexOf('return k ? <> · <span className={"a-mode a-mode-" + k}>{DB.STUDY_MODE_LABEL[k]}</span></> : null;') >= 0 && qs79.indexOf("{A.cohortName(x.s.cohortId)}{studyTag(x.s)} · {fmtStamp(x.q.at)}") >= 0 &&
       /\.a-mode-offline \{/.test(cs79) && /\.a-mode-online \{/.test(cs79),
       "강사센터 1:1 요청 카드 ‘이름 · 기수 · [오프라인/온라인] · 시각’ (예전 화면 = React) · 수강생 메모 칸 안내 · 화면 확인은 e2e center 1-3");
+  }
+
+  {
+    console.log("80) 두고클래스 첫 화면 배너 · 클래스 순서 (일회성 2026-11-23-store-home-order · 마스터 › 홈 꾸미기와 같은 저장)");
+    const OO80 = require(path.join(ROOT, "api/_lib/oneoff.js")), ids80 = OO80.OPS.map((o) => o.id), op80 = OO80.OPS.find((o) => o.id === "2026-11-23-store-home-order");
+    const g80 = (d) => (k) => (d[k] === undefined ? null : JSON.parse(JSON.stringify(d[k])));
+    const P80 = ["v2", "v3", "v4", "v5", "v8", "v11", "v14", "b1"].map((id) => ({ id, status: "on", title: id === "v3" ? "귤 하나로 월매출 10억, 농산물 온라인 판매 실전" : id, creator: id === "v3" ? "농부" : "x" }));
+    const B80 = [{ id: "vb1", on: true }, { id: "vb-img1", kind: "img", on: true }, { id: "vb-seller", pid: "v14", on: true }, { id: "vb3", on: true }];
+    const meta80 = { flags: { x: 1 }, vod: { products: P80, banners: B80, insOff: ["moon"], coupons: [{ id: "c" }] } };
+    const a80 = op80 && op80.run(g80({ meta: meta80 })), w80 = a80 && a80.writes.meta, v80 = w80 && w80.vod, rl80 = (v, k) => ((v && v.homeRails) || []).find((r) => r.k === k) || {};
+    // vod.js 의 섹션 기본 순서(RAIL_DEF)와 같아야 섹션 자리가 그대로예요
+    const rk80 = (fs.readFileSync(path.join(ROOT, "vod.js"), "utf8").match(/const RAIL_DEF = \[([\s\S]*?)\n  \];/) || ["", ""])[1].match(/\{ k: "([a-z]+)"/g).map((s) => s.slice(7, -1));
+    ok(!!op80 && op80.run === OO80.storeHomeOrder && ids80.filter((x) => x === op80.id).length === 1 && ids80.indexOf(op80.id) === ids80.indexOf("2026-11-23-choi-store-on") + 1 &&
+      !!v80 && v80.banners.map((b) => b.id + ":" + (b.on !== false)).join() === "vb1:true,vb-img1:true,vb-v3:true,vb-seller:false,vb3:true" &&
+      v80.banners[2].pid === "v3" && v80.banners[2].eyebrow === "BEST · 농부" && v80.banners[2].title === "귤 하나로 월매출 10억,\n농산물 온라인 판매 실전" && !!v80.banners[2].sub && v80.banners[2].color.length === 2 &&
+      JSON.stringify(v80.products) === JSON.stringify(P80) && v80.insOff.join() === "moon" && w80.flags.x === 1 && v80.coupons.length === 1 &&
+      v80.homeRails.map((r) => r.k).join() === rk80.join() && rk80.length === 12 &&
+      rl80(v80, "new").mode === "pin" && rl80(v80, "new").picks.join() === "v4,v8,v11,v3,b1,v2,v5" && rl80(v80, "best").mode === "pin" && rl80(v80, "best").picks.join() === "v3,v4,v8" &&
+      v80.homeRails.filter((r) => r.mode).length === 2 && v80.homeRails.every((r) => r.on === true) && /끔/.test(a80.result.seller) && /넣음/.test(a80.result.v3),
+      "v14 배너는 끄고(지우지 않음) 그 자리에 v3 배너(‘BEST · 강사 이름’ · 제목 두 줄) · 섹션 기본 순서 그대로 저장 + 새로 올라온 v4 → v8 · v11 · v3 → b1 → v2 · v5 고정(v14 는 자동 = 맨 뒤) · 가장 많이 듣는 v3 · v4 · v8 고정 · 나머지 데이터 그대로",
+      a80 && { r: a80.result, b: v80 && v80.banners.map((b) => b.id), k: v80 && v80.homeRails.map((r) => r.k), rk80 });
+    const b80 = OO80.storeHomeOrder(g80({ meta: w80 }));
+    // 마스터가 이미 고친 섹션(자동이 아님)은 그대로 · 아직 자동인 섹션만 고정 · 저장된 섹션 순서 그대로 · 없는 클래스(v11 · b1 · v2 · v5)는 빼고 고정
+    const cust80 = { vod: { products: P80.filter((p) => ["v3", "v4", "v8", "v14"].indexOf(p.id) >= 0), banners: [{ id: "vb1" }], homeRails: [{ k: "new", on: true, mode: "auto", picks: [], hide: ["v8"] }, { k: "best", on: false, mode: "only", picks: ["v14"], hide: [] }, { k: "teach", on: true }] } };
+    const c80 = OO80.storeHomeOrder(g80({ meta: cust80 })), cv80 = c80.writes.meta && c80.writes.meta.vod;
+    const d80 = OO80.storeHomeOrder(g80({})), e80 = OO80.storeHomeOrder(g80({ meta: { vod: { products: [], banners: [] } } }));
+    ok(!Object.keys(b80.writes).length && /이미/.test(b80.result.skipped) && /이미 꺼짐/.test(b80.result.seller) && /이미 있음/.test(b80.result.v3) &&
+      !!cv80 && cv80.homeRails.map((r) => r.k).join() === "new,best,teach" && rl80(cv80, "new").picks.join() === "v4,v3" && rl80(cv80, "new").hide.join() === "v8" &&
+      rl80(cv80, "best").mode === "only" && rl80(cv80, "best").picks.join() === "v14" && rl80(cv80, "best").on === false && /마스터가 고친/.test(c80.result.best) &&
+      cv80.banners.map((b) => b.id).join() === "vb1,vb-v3" && /없음/.test(c80.result.seller) &&
+      !Object.keys(d80.writes).length && /데이터 없음/.test(d80.result.skipped) && !Object.keys(e80.writes).length && /클래스 없음/.test(e80.result.v3) && /고정할 클래스 없음/.test(e80.result.new) && /고정할 클래스 없음/.test(e80.result.best),
+      "두 번째 실행은 그대로 · 마스터가 고친 섹션은 그대로(자동인 섹션만 고정 · 마스터가 뺀 강의는 고정 안 하고 뺀 채로) · 없는 클래스는 빼고 고정 · v14 배너가 없으면 v3 배너를 3번째(목록이 짧으면 끝)에 · 두고클래스 데이터가 없으면 건너뜀",
+      { b: b80.result, c: c80.result, cr: cv80 && cv80.homeRails, e: e80.result });
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

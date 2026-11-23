@@ -135,6 +135,27 @@ module.exports = {
         "‘스토어에 다시 보이기’: 클래스 · 강사진 카드 · 상세가 그대로 돌아와요 (클래스는 지우지 않아요)", { f2, back }, pub);
       await pub.context().close();
     }
+    // 8) 첫 화면 배너 · 클래스 순서 (2026-11-23 · 일회성 작업 2026-11-23-store-home-order — 시험 DB 도 배포처럼 같은 작업이 돌아요):
+    //    중국 구매대행(v14) 배너는 안 보이고 ‘귤 하나로 월매출 10억’(v3) 배너 · 새로 올라온 클래스는 v4 먼저 · v14 맨 뒤 ·
+    //    가장 많이 듣는 클래스는 v3 · v4 · v8 먼저 (예전 화면 = React)
+    {
+      const pub = await L.newPage(browser), out = {};
+      run.watch(pub, "첫 화면 순서");
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(pub, base, mode);
+        await L.open(pub, base, "/vod"); await pub.waitForTimeout(900);
+        out[mode] = await pub.evaluate(() => {
+          const pid = (a) => { const h = (a && a.getAttribute("href")) || "", m = h.match(/\/vod\/p\/([^?#/]+)/); return m ? decodeURIComponent(m[1]) : h; };
+          const uniq = (a) => a.filter((x, i) => a.indexOf(x) === i);
+          const row = (id) => uniq(Array.from(document.querySelectorAll("#" + id + " a[href*='/vod/p/']")).map(pid));
+          return { slides: Array.from(document.querySelectorAll(".vd-slide[data-i]")).filter((a) => a.getAttribute("data-i") !== "").map(pid), nw: row("vd-r-new"), best: row("vd-r-now") };
+        });
+      }
+      const o = out.off, ok8 = (x) => !!x && x.slides.indexOf("v3") >= 0 && x.slides.indexOf("v14") < 0 && x.nw[0] === "v4" && x.nw[x.nw.length - 1] === "v14" && x.best.slice(0, 3).join() === "v3,v4,v8";
+      await run.check(ok8(o) && ok8(out.all) && JSON.stringify(o) === JSON.stringify(out.all),
+        "첫 화면: 중국 구매대행 배너 대신 ‘귤 하나로 월매출 10억’ 배너 · 새로 올라온 클래스는 v4 먼저 · 중국 구매대행 맨 뒤 · 가장 많이 듣는 클래스 v3 · v4 · v8 먼저 (예전 화면 = React)", out, pub);
+      await pub.context().close();
+    }
     await mem.context().close(); await adm.context().close();
   }
 };
