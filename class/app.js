@@ -465,7 +465,7 @@
               "</form>" +
             "</div>" + vodPane() + "</div>" +
             (ins ? '<button type="button" class="login-alt" data-action="signup">' + icon("userPlus", "sm") + "아직 수강 신청 전이신가요? 수강 신청하기</button>" +
-              ((DB.landingOf(ins.id) || {}).published ? '<a class="login-intro" href="#/p/' + esc(ins.id) + '">' + icon("book", "sm") + "강사 소개 보기 " + icon("arrowRight", "xs") + "</a>" : "") +
+              ((DB.landingOf(ins.id) || {}).published && !ins.homeOff ? '<a class="login-intro" href="#/p/' + esc(ins.id) + '">' + icon("book", "sm") + "강사 소개 보기 " + icon("arrowRight", "xs") + "</a>" : "") +
               "" : "") +
             '<nav class="login-legal" aria-label="약관">' +
               '<button type="button" data-action="legal" data-doc="terms">이용약관</button>' +

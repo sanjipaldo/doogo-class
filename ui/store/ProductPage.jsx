@@ -193,7 +193,7 @@ function Intro({ p, v }) {
         {p.intro ? <div className="vd-pd-body" data-rv="">{String(p.intro).split(/\n\n+/).map((x, i) => <p key={i}>{lines(x)}</p>)}</div> : null}
       </>}{dm === "text-img" ? dimg : null}
       {(p.gifts || []).length ? <div className="vd-gift" data-rv=""><Icon n="download" c="sm" /><div><b>수강 선물</b><span>{p.gifts.map((g) => g.title + (g.pages ? " (" + g.pages + "쪽)" : "")).join(" · ")}</span></div></div> : null}
-      {ins && p.iid && !X.storeAs(p.iid) ? <a className="vd-cross" href={"#/p/" + p.iid} data-rv=""><span><small>프리미엄강의 · 한정인원 모집 중</small><b>{p.creator}님과 함께하는 두잉고 기수 강의</b><em>매주 과제 · 피드백 · 라이브 Q&A로 끝까지 함께해요</em></span><Icon n="arrowRight" c="sm" /></a> : null}
+      {ins && p.iid && !X.storeAs(p.iid) && !ins.homeOff ? <a className="vd-cross" href={"#/p/" + p.iid} data-rv=""><span><small>프리미엄강의 · 한정인원 모집 중</small><b>{p.creator}님과 함께하는 두잉고 기수 강의</b><em>매주 과제 · 피드백 · 라이브 Q&A로 끝까지 함께해요</em></span><Icon n="arrowRight" c="sm" /></a> : null}
     </section>
   );
 }

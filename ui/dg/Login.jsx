@@ -145,7 +145,7 @@ export default function LoginPage() {
             </form>
           </div><VodPane vod={vod} /></div>
         {ins ? <><button type="button" className="login-alt" data-action="signup" onClick={signup}><Icon n="userPlus" c="sm" />아직 수강 신청 전이신가요? 수강 신청하기</button>
-          {(DB.landingOf(ins.id) || {}).published ? <a className="login-intro" href={"#/p/" + ins.id}><Icon n="book" c="sm" />강사 소개 보기 <Icon n="arrowRight" c="xs" /></a> : null}</> : null}
+          {(DB.landingOf(ins.id) || {}).published && !ins.homeOff ? <a className="login-intro" href={"#/p/" + ins.id}><Icon n="book" c="sm" />강사 소개 보기 <Icon n="arrowRight" c="xs" /></a> : null}</> : null}
         <Legal open={setModal} />
         </div>
       </section>

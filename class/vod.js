@@ -1311,7 +1311,7 @@
   function liveItems() {
     const out = [];
     (DB.liveInstructors ? DB.liveInstructors() : []).forEach((x, i) => {
-      if (storeAs(x.id) || V().products.some((p) => p.fromFree === x.id && p.status !== "hidden")) return; // STORE_AS 강사의 두잉고 무료 LIVE 페이지는 스토어에 걸지 않아요
+      if (storeAs(x.id) || x.homeOff || V().products.some((p) => p.fromFree === x.id && p.status !== "hidden")) return; // STORE_AS 강사 · 두잉고 소개 목록 OFF(homeOff) 강사의 두잉고 무료 LIVE 페이지는 스토어에 걸지 않아요
       const f = DB.freeOf && DB.freeOf(x.id), c = DB.content(x.id); if (!f || !f.published || !c) return;
       const t = new Date(f.liveAt).getTime(); if (!(t > now() - 3 * 36e5)) return;
       const b = c.brand || {};
@@ -1322,7 +1322,7 @@
   }
   function premiumItems() {
     return (DB.liveInstructors ? DB.liveInstructors() : []).map((x, i) => {
-      if (storeAs(x.id)) return null; // STORE_AS 강사의 두잉고 기수 페이지는 스토어에 걸지 않아요
+      if (storeAs(x.id) || x.homeOff) return null; // STORE_AS 강사 · 두잉고 소개 목록 OFF(homeOff) 강사의 두잉고 기수 페이지는 스토어에 걸지 않아요
       const c = DB.content(x.id), lp = DB.landingOf && DB.landingOf(x.id), b = (c && c.brand) || {}; if (!lp || lp.published === false) return null;
       const nx = DB.nextCohortName ? DB.nextCohortName(x.id) : "";
       return { ext: true, href: "#/p/" + x.id, p: { id: "pre-" + x.id, iid: x.id, creator: b.instructor || x.displayName, title: (b.courseTitle || "") + (nx ? " " + nx : ""), thumbText: twoLines(lp.hero.title || b.courseTitle), label: "프리미엄강의", labelSub: "한정인원 모집 중", color: ["#1c1c1e", ACC[(i + 5) % ACC.length]], hook: nx ? nx + " 모집" : "기수 모집", tagline: b.field || "", catLabel: "두잉고 기수 강의", priceTxt: "모집 중",
@@ -2162,7 +2162,7 @@
           (ev ? '<div class="vd-evbox" data-rv><h3>' + icon("calendar", "sm") + (t === "live" ? "LIVE 강의 안내" : "오프라인 강의 안내") + "</h3><dl>" + infoRows(p).map((r) => "<div><dt>" + r[0] + "</dt><dd>" + esc(r[1]) + "</dd></div>").join("") + "<div><dt>" + (t === "live" ? "입장" : "준비물") + "</dt><dd>" + (t === "live" ? (p.via === "zoom" ? "신청하면 마이페이지에 Zoom 입장 링크가 열려요. 시작 10분 전부터 들어올 수 있어요." : "신청하면 마이페이지 › LIVE · 오프라인에 카카오톡 오픈채팅방 입장 버튼이 열려요. 강의 날 오픈채팅방에 유튜브 라이브 링크를 올려 드려요.") : "노트북 · 충전기 · 신분증 (자세한 주소는 신청 후 문자로 보내 드려요)") + "</dd></div></dl></div>" : "") +
           (p.intro ? '<div class="vd-pd-body" data-rv>' + esc(p.intro).split(/\n\n+/).map((x) => "<p>" + x.replace(/\n/g, "<br>") + "</p>").join("") + "</div>" : ""))) + (dm === "text-img" ? dimg : "") +
           ((p.gifts || []).length ? '<div class="vd-gift" data-rv>' + icon("download", "sm") + "<div><b>수강 선물</b><span>" + p.gifts.map((g) => esc(g.title) + (g.pages ? " (" + g.pages + "쪽)" : "")).join(" · ") + "</span></div></div>" : "") +
-          (ins && p.iid && !storeAs(p.iid) ? '<a class="vd-cross" href="#/p/' + esc(p.iid) + '" data-rv><span><small>프리미엄강의 · 한정인원 모집 중</small><b>' + esc(p.creator) + "님과 함께하는 두잉고 기수 강의</b><em>매주 과제 · 피드백 · 라이브 Q&A로 끝까지 함께해요</em></span>" + icon("arrowRight", "sm") + "</a>" : "") + "</section>" +
+          (ins && p.iid && !storeAs(p.iid) && !ins.homeOff ? '<a class="vd-cross" href="#/p/' + esc(p.iid) + '" data-rv><span><small>프리미엄강의 · 한정인원 모집 중</small><b>' + esc(p.creator) + "님과 함께하는 두잉고 기수 강의</b><em>매주 과제 · 피드백 · 라이브 Q&A로 끝까지 함께해요</em></span>" + icon("arrowRight", "sm") + "</a>" : "") + "</section>" +
         (noCur ? "" : sec("curri", curName, (pvs.length ? '<div class="vd-pvs-h"><b>' + icon("play", "xs") + "무료 미리보기 " + pvs.length + "개</b><small>강의 " + lz.length + "개 중 " + pvs.length + "개를 결제 전에 먼저 볼 수 있어요</small></div>" +
           '<div class="vd-pvs" data-rv-kids>' + pvs.map((l) => '<button type="button" class="vd-pv-card" data-v="pv-open" data-p="' + esc(p.id) + '" data-l="' + esc(l.id) + '">' + pvThumb(p, l) + "<b>" + esc(l.title) + "</b><span>" + esc(l.desc || (chapOf(p, l).ch || {}).title || "") + "</span></button>").join("") + "</div>" : "") + '<p class="vd-curri-sum">' + (t === "ebook" || bk ? (p.curriculum || []).length + "장 · 총 " + (Number(p.pages) || 0) + "쪽" : ev ? "총 " + durTxt(Number(p.eventMin) || totalMin(p)) + " 진행" : "파트 " + (p.curriculum || []).length + "개 · 클립 " + lz.length + "개 · 총 " + durTxt(totalMin(p))) + "</p>" +
           (p.curriculum || []).map((ch, ci) => { const fc = freshCnt(ch.lessons || []); return '<details class="vd-ch' + (fc.n || fc.u ? " has-fresh" : "") + '"' + (ci === 0 || fc.n || fc.u ? " open" : "") + '><summary><b class="vd-ch-no">' + (t === "ebook" ? "" : "Part " + (ci + 1) + ".") + "</b><span>" + esc(ch.title) + (fc.n || fc.u ? '<i class="vd-ch-fresh">' + (fc.n ? "NEW " + fc.n : "") + (fc.n && fc.u ? " · " : "") + (fc.u ? "UPDATE " + fc.u : "") + "</i>" : "") + "</span><small>" + (t === "ebook" || bk ? (ch.lessons || []).reduce((a, l) => a + (Number(l.min) || 0), 0) + "쪽" : (ch.lessons || []).length + "개 · " + durTxt(Math.round((ch.lessons || []).reduce((a, l) => a + lSec(l), 0) / 60))) + "</small>" + icon("chevDown", "sm") + "</summary><ul>" +

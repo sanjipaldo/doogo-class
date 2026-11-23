@@ -132,7 +132,9 @@
     const L = ins && ins.status === "active" ? DB.landingOf(id) : null;
     const adm = DB.session.admin();
     const canSee = adm && (adm.role === "master" || adm.instructorId === id);
-    if (!L || (!L.published && !canSee)) {
+    // 두잉고 소개 목록 OFF(homeOff · 2026-11-23): 지우지 않고 방문자에게만 ‘준비 중’ — 마스터 · 그 강사는 OFF 안내 띠와 함께 그대로 봐요
+    const off = !!(ins && ins.homeOff);
+    if (!L || ((!L.published || off) && !canSee)) {
       document.title = "두잉고";
       root.innerHTML = '<main class="lp lp-empty"><div>' + window.logoMark() + "<h1>준비 중인 페이지예요</h1><p>곧 강사 소개가 올라와요.</p><a class=\"lp-btn lp-btn-ghost\" href=\"#/p\">다른 강사 보기</a></div></main>";
       return;
@@ -147,6 +149,7 @@
     const navs = [["lp-video", "강사 영상", !L.off.video && videoOf(id, L)], ["lp-about", "강사 소개", !L.off.about && (L.about.body || L.about.photo)], ["lp-reviews", "후기", !L.off.reviews && (L.reviews.items || []).some((x) => x.text)], ["lp-faq", "FAQ", !L.off.faq]].filter((x) => x[2]);
     root.innerHTML = '<div class="lp' + (nz ? " lp-nz" : "") + '" style="' + vars + '">' +
       (!L.published ? '<div class="lp-draft">' + icon("eyeOff", "sm") + "비공개 상태예요. 강사센터 ‘홍보 랜딩페이지’에서 공개로 바꾸면 누구나 볼 수 있어요.</div>" : "") +
+      (off ? '<div class="lp-draft lp-off">' + icon("eyeOff", "sm") + "두잉고 소개 목록 OFF 상태예요. 방문자에게는 ‘준비 중인 페이지예요’로 보여요. 마스터 › 강사 플랫폼 관리 › 수정에서 ‘두잉고 소개 · 수강생 로그인 강사 목록에 보이기’를 켜면 다시 공개돼요.</div>" : "") +
       '<header class="lp-nav"><div class="lp-wrap lp-nav-in"><a class="lp-back" href="#/doinggo" aria-label="두잉고 홈으로">' + icon("arrowLeft", "sm") + window.doinggoB("black", "lp-back-dg") + '<span>홈</span></a><span class="lp-back-div" aria-hidden="true"></span><a class="lp-brand" href="#/p/' + esc(id) + '" data-lp-scroll="top">' + window.logoMark() + "<b>" + esc(c.brand.name) + "</b></a>" +
         '<nav class="lp-links">' + navs.map((n) => '<a href="#' + n[0] + '" data-lp-scroll="' + n[0] + '">' + n[1] + "</a>").join("") + "</nav>" +
         '<div class="lp-nav-r"><a class="lp-btn lp-btn-text" href="#/login?ins=' + esc(id) + '">수강생 로그인</a>' + applyBtn(L, "신청하기", "lp-btn-primary") + "</div></div></header>" +
@@ -158,7 +161,7 @@
 
   // #/p — 공개된 강사 랜딩페이지 모음
   function renderIndex() {
-    const list = DB.liveInstructors().filter((x) => { const L = DB.landingOf(x.id); return L && L.published; });
+    const list = DB.liveInstructors().filter((x) => { const L = !x.homeOff && DB.landingOf(x.id); return L && L.published; });
     document.title = "강의 둘러보기 · 두잉고";
     root.innerHTML = '<div class="lp"><header class="lp-nav"><div class="lp-wrap lp-nav-in"><span class="lp-brand">' + window.doogoClassWord("lp-word") + '</span><div class="lp-nav-r"><a class="lp-btn lp-btn-text" href="#/login">수강생 로그인</a></div></div></header>' +
       '<main class="lp-sec"><div class="lp-wrap"><p class="lp-kicker">CLASSES</p><h2>강의 둘러보기</h2><div class="lp-index">' +
@@ -316,7 +319,8 @@
     const F = ins && ins.status === "active" ? DB.freeOf(id) : null;
     const adm = DB.session.admin();
     const canSee = adm && (adm.role === "master" || adm.instructorId === id || adm.actingAs === id);
-    if (!F || (!F.published && !canSee)) {
+    const off = !!(ins && ins.homeOff); // 두잉고 소개 목록 OFF(homeOff): 방문자에게만 ‘준비 중’ (강사 소개 페이지와 같게)
+    if (!F || ((!F.published || off) && !canSee)) {
       document.title = "두잉고";
       root.innerHTML = '<main class="lp lp-empty"><div>' + window.doogoClassWord("lp-empty-word") + "<h1>준비 중인 페이지예요</h1><p>곧 무료강의 안내가 올라와요.</p></div></main>";
       return;
@@ -340,6 +344,7 @@
         '<span class="bk-tile t1">' + SV(IC.play, 26) + '</span><span class="bk-tile t2">' + SV(IC.msg, 24) + '</span><span class="bk-tile t3">' + SV(IC.cal, 22) + "</span></div>";
     root.innerHTML = '<div class="dg bk' + (nz ? " nz" : "") + '" style="' + vars + '"><div class="landing-page">' +
       (!F.published ? '<div class="fc-draft">' + icon("eyeOff", "sm") + "비공개 상태예요. 강사센터 ‘무료강의 페이지’에서 ‘공개 중’으로 바꾸면 누구나 볼 수 있어요.</div>" : "") +
+      (off ? '<div class="fc-draft fc-off">' + icon("eyeOff", "sm") + "두잉고 소개 목록 OFF 상태예요. 방문자에게는 ‘준비 중인 페이지예요’로 보여요. 마스터 › 강사 플랫폼 관리 › 수정에서 ‘두잉고 소개 · 수강생 로그인 강사 목록에 보이기’를 켜면 다시 공개돼요.</div>" : "") +
       '<section class="bk-hero"><span class="bk-glow" aria-hidden="true"></span><span class="bk-floor" aria-hidden="true"></span>' +
       (nz ? '<span class="nz-photo" aria-hidden="true"></span>' : "") +
       '<nav class="bk-nav" aria-label="사이트 이동"><a class="bk-nav-a bk-nav-dc" href="' + esc(dcBack()) + '">' + SV(IC.left, 16) + '<img src="assets/brand/doogo-class-word.svg" alt="DOOGO CLASS"><span>바로가기</span></a>' +

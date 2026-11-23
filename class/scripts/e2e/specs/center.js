@@ -72,8 +72,35 @@ module.exports = {
       await L.open(page, base, "/center/replays");
       await run.check(cleared === "" && !/기간 끝남 · 잠김/.test(await L.bodyText(page)), "‘지우기 (기한 없음)’로 비우면 다시 계속 볼 수 있어요", { cleared }, page);
     }
+    // 1-3) 1:1 요청 답변 (2026-11-23): 수강생 메모의 ‘오프라인’ · ‘온라인’ → 카드 ‘이름 · 기수’ 줄에 표시 · 메모를 비우면 표시 없음 (예전 화면 = React)
+    await FL.instructor(page, base, info);
+    await L.open(page, base, "/center/questions");
+    await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(300);
+    const qSid = await page.evaluate(() => { const f = document.querySelector(".a-q-form[data-sid]"); return f ? f.getAttribute("data-sid") : null; });
+    const memo0 = qSid ? await page.evaluate((sid) => (DB.student(sid) || {}).memo || "", qSid) : "";
+    const setMemo = async (m) => { await page.evaluate(([sid, v]) => { const s = DB.student(sid); s.memo = v; DB.save(); }, [qSid, m]); await page.waitForTimeout(400); await L.flushed(page); };
+    const tagOf = async () => {
+      const out = {};
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(page, base, mode); await L.open(page, base, "/center/questions");
+        await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(300);
+        out[mode] = await page.evaluate((sid) => { const f = document.querySelector('.a-q-form[data-sid="' + sid + '"]'), t = f && f.closest(".a-q").querySelector(".a-q-head small .a-mode"); return t ? t.className + "|" + t.textContent : ""; }, qSid);
+      }
+      return out;
+    };
+    let qm = null;
+    if (qSid) { await setMemo("결제 확인 · 오프라인"); const a = await tagOf(); await setMemo("온라인 수강"); const b = await tagOf(); await setMemo(""); const c = await tagOf(); await setMemo(memo0); qm = { a, b, c }; }
+    await run.check(!!qm && qm.a.off === "a-mode a-mode-offline|오프라인" && qm.a.all === qm.a.off && qm.b.off === "a-mode a-mode-online|온라인" && qm.b.all === qm.b.off && qm.c.off === "" && qm.c.all === "",
+      "1:1 요청 답변: 수강생 메모 ‘오프라인’ · ‘온라인’ → 카드 이름 · 기수 줄에 표시 · 메모를 비우면 표시 없음 (예전 화면 = React)", qm, page);
+    // 1-4) 두잉고 소개 목록 OFF 강사 (시험 DB 의 choi — 일회성 작업 homeOff): 강사 소개 · 무료강의는 방문자에게 ‘준비 중인 페이지예요’ · 마스터는 OFF 안내 띠와 함께 그대로 (지우지 않음)
+    const pv = await L.newPage(browser), vis = {}, mas = {};
+    for (const u of ["/p/choi", "/free/choi"]) { await L.open(pv, base, u); await pv.waitForTimeout(500); vis[u] = /준비 중인 페이지예요/.test(await L.bodyText(pv)); }
+    await pv.context().close();
     // 2) 마스터 강사 정산: 상품 종류 탭 · 정산 규칙 카드
     await FL.master(page, base, info);
+    for (const u of ["/p/choi", "/free/choi"]) { await L.open(page, base, u); await page.waitForTimeout(600); mas[u] = await page.evaluate(() => ({ off: !!document.querySelector(".lp-off, .fc-off"), ready: /준비 중인 페이지예요/.test(document.body.innerText) })); }
+    await run.check(Object.keys(vis).every((u) => vis[u]) && Object.keys(mas).every((u) => mas[u].off && !mas[u].ready),
+      "두잉고 소개 목록 OFF 강사: 강사 소개 · 무료강의는 방문자에게 ‘준비 중인 페이지예요’ · 마스터는 ‘OFF 상태’ 안내 띠와 함께 그대로 봐요", { vis, mas }, page);
     await L.open(page, base, "/center/master/vod-settle");
     await run.check(!!(await page.$('[data-action="vda-ym"][data-dir="1"]')) && /판매분 정산/.test(await L.bodyText(page)), "마스터 강사 정산 화면이 열려요 (달 넘기기)", null, page);
     await L.open(page, base, "/center/master/vod-rates");

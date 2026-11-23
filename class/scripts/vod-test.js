@@ -4005,6 +4005,44 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "수강생 다시보기 화면: 메인 강의(외부 강의실)가 있는 강사는 ‘(아이비클래스)에서 진행한 정규교육 라이브를 다시 볼 수 있어요 · 마지막 날’ · 진행 칸 ‘다시보기 시청’ · 빈 화면도 같은 말 · 강사센터 메인 강의 안내의 화면 이름도 (예전 화면 = React)");
   }
 
+  {
+    console.log("78) 두잉고 소개 목록 OFF(homeOff) 강사 — 강사 소개 /p · 무료강의 /free 도 방문자에게 ‘준비 중’ (지우지 않음 · 2026-11-23)");
+    const PM78 = require(path.join(ROOT, "api/_lib/pagemeta.js")), SD78 = require(path.join(ROOT, "api/_lib/seed.js")).seedDocs();
+    const ins78 = SD78["ins:moon"], c78 = JSON.parse(JSON.stringify(SD78["content:moon"]));
+    c78.landing = Object.assign({}, c78.landing, { published: true }); c78.freeClass = Object.assign({}, c78.freeClass, { published: true, liveAt: "2026-12-01T19:30" });
+    const off78 = Object.assign({}, ins78, { homeOff: true }), html78 = "<!doctype html><html><head><title>x</title></head><body><div id=\"root\"></div></body></html>";
+    const on78 = PM78.landingPage(html78, ins78, c78, {}), onF78 = PM78.freePage(html78, ins78, c78, {});
+    const sm78 = PM78.sitemapXml("<urlset></urlset>", {}, [ins78, Object.assign({}, off78, { id: "offy" })], { moon: c78, offy: c78 });
+    ok(!!on78 && !!onF78 && PM78.landingPage(html78, off78, c78, {}) === null && PM78.freePage(html78, off78, c78, {}) === null &&
+      sm78.indexOf("/p/moon") >= 0 && sm78.indexOf("/free/moon") >= 0 && sm78.indexOf("/p/offy") < 0 && sm78.indexOf("/free/offy") < 0,
+      "서버: OFF 강사는 공유 미리보기(제목 · 사진)를 만들지 않고 사이트맵에서도 소개 · 무료강의 주소를 빼요 (켜진 강사는 그대로)", { sm: sm78.length });
+    const rd78 = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
+    const lp78 = rd78("landing.js"), vd78 = rd78("vod.js"), ap78 = rd78("app.js"), lg78 = rd78("../ui/dg/Login.jsx"), pp78 = rd78("../ui/store/ProductPage.jsx");
+    ok((lp78.match(/const off = !!\(ins && ins\.homeOff\)/g) || []).length === 2 && /if \(!L \|\| \(\(!L\.published \|\| off\) && !canSee\)\) \{/.test(lp78) && /if \(!F \|\| \(\(!F\.published \|\| off\) && !canSee\)\) \{/.test(lp78) &&
+      /\(off \? '<div class="lp-draft lp-off">'/.test(lp78) && /\(off \? '<div class="fc-draft fc-off">'/.test(lp78) && /const L = !x\.homeOff && DB\.landingOf\(x\.id\)/.test(lp78) &&
+      /if \(storeAs\(x\.id\) \|\| x\.homeOff \|\| V\(\)\.products\.some/.test(vd78) && /if \(storeAs\(x\.id\) \|\| x\.homeOff\) return null;/.test(vd78) &&
+      /\(ins && p\.iid && !storeAs\(p\.iid\) && !ins\.homeOff \? '<a class="vd-cross"/.test(vd78) && /\{ins && p\.iid && !X\.storeAs\(p\.iid\) && !ins\.homeOff \? <a className="vd-cross"/.test(pp78) &&
+      /\(DB\.landingOf\(ins\.id\) \|\| \{\}\)\.published && !ins\.homeOff \? '<a class="login-intro"/.test(ap78) && /\(DB\.landingOf\(ins\.id\) \|\| \{\}\)\.published && !ins\.homeOff \? <a className="login-intro"/.test(lg78),
+      "화면: OFF 강사의 소개 · 무료강의는 방문자에게 ‘준비 중인 페이지예요’(마스터 · 그 강사는 OFF 안내 띠와 함께 그대로) · 강의 둘러보기 목록 · 스토어의 두잉고 무료 LIVE · 기수 강의 카드 · 상세 ‘두잉고 기수 강의’ 링크 · 로그인 ‘강사 소개 보기’에서 빠져요 (예전 화면 = React)");
+  }
+
+  {
+    console.log("79) 1:1 요청 답변 — 수강생 메모의 ‘오프라인’ · ‘온라인’ 표시 (2026-11-23)");
+    const vm79 = require("vm"), sb79 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb79.window = sb79; vm79.createContext(sb79); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm79.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb79, { filename: f }));
+    const M79 = (memo) => sb79.DB.studyMode({ memo });
+    ok(M79("오프라인") === "offline" && M79("온라인 수강") === "online" && M79("결제 확인 · 오프 라인") === "offline" && M79("원래 오프라인, 온라인으로 바꿈") === "online" && M79("온라인 → 오프라인") === "offline" &&
+      M79("결제 확인 완료") === "" && M79("") === "" && sb79.DB.studyMode({}) === "" && sb79.DB.studyMode(null) === "" && sb79.DB.STUDY_MODE_LABEL.offline === "오프라인" && sb79.DB.STUDY_MODE_LABEL.online === "온라인",
+      "메모 판정: ‘오프라인’ · ‘온라인’(띄어쓰기 무시) · 둘 다 있으면 나중에 적은 쪽 · 없으면 표시 안 함");
+    const rd79 = (f) => fs.readFileSync(path.join(ROOT, f), "utf8"), ad79 = rd79("admin.js"), qs79 = rd79("../ui/center/Questions.jsx"), cs79 = rd79("admin.css");
+    ok(/const studyTag = \(s\) => \{ const k = DB\.studyMode\(s\); return k \? ' · <span class="a-mode a-mode-' \+ k \+ '">' \+ DB\.STUDY_MODE_LABEL\[k\] \+ "<\/span>" : ""; \};/.test(ad79) &&
+      ad79.indexOf('esc(x.s.name) + " · " + esc(cohortName(x.s.cohortId)) + studyTag(x.s) + " · " + fmtStamp(x.q.at)') >= 0 &&
+      /‘오프라인’ · ‘온라인’을 적어 두면 1:1 요청 답변에도 함께 보여요\./.test(ad79) &&
+      qs79.indexOf('return k ? <> · <span className={"a-mode a-mode-" + k}>{DB.STUDY_MODE_LABEL[k]}</span></> : null;') >= 0 && qs79.indexOf("{A.cohortName(x.s.cohortId)}{studyTag(x.s)} · {fmtStamp(x.q.at)}") >= 0 &&
+      /\.a-mode-offline \{/.test(cs79) && /\.a-mode-online \{/.test(cs79),
+      "강사센터 1:1 요청 카드 ‘이름 · 기수 · [오프라인/온라인] · 시각’ (예전 화면 = React) · 수강생 메모 칸 안내 · 화면 확인은 e2e center 1-3");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

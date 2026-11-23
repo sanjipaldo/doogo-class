@@ -747,7 +747,7 @@
         stuCurField(iid, s) +
         // 체험(테스트) 계정 (2026-11-10): 강의 시연 · 남에게 보여 주기용 — 모든 주차 열림 · 로그인 · 로그아웃마다 진도 기록 처음으로 (서버 api/_lib/demoreset.js)
         '<label class="a-check a-demo-check"><input type="checkbox" name="demo"' + (s.demo === true ? " checked" : "") + '><span><b>체험(테스트) 계정</b> · 강의 시연용이에요. 일정과 상관없이 모든 주차가 열리고, 로그인 · 로그아웃할 때마다 진도 기록(과제 제출 · 체크 완료 · 강의 시청 · 노트)이 처음으로 돌아가요. <em>실제 수강생에게는 켜지 마세요.</em></span></label>' +
-        '<div class="a-field"><label for="sf-memo">메모 <small>(강사만 보여요)</small></label><input class="a-input" id="sf-memo" name="memo" value="' + esc(s.memo || "") + '" placeholder="예: 결제 확인 완료"></div>' +
+        '<div class="a-field"><label for="sf-memo">메모 <small>(강사만 보여요)</small></label><input class="a-input" id="sf-memo" name="memo" value="' + esc(s.memo || "") + '" placeholder="예: 결제 확인 완료 · 오프라인"><small class="a-muted">‘오프라인’ · ‘온라인’을 적어 두면 1:1 요청 답변에도 함께 보여요.</small></div>' +
         '<p class="a-error" id="sf-error"></p>' +
       "</form>",
       (isNew ? "" : btn("탈퇴 처리", "stu-withdraw", "a-btn-ghost danger", ' data-id="' + s.id + '"')) + '<span class="a-spacer"></span>' + btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="student-form">저장</button>', "md");
@@ -1214,6 +1214,8 @@
   }
 
   /* ---------------- 강사: 문의 답변 ---------------- */
+  // 수강 방식 표시 (2026-11-23 · 대표님 요청): 수강생 메모에 적은 ‘오프라인’ · ‘온라인’ (DB.studyMode) — React Questions.jsx 와 같은 모양
+  const studyTag = (s) => { const k = DB.studyMode(s); return k ? ' · <span class="a-mode a-mode-' + k + '">' + DB.STUDY_MODE_LABEL[k] + "</span>" : ""; };
   function pageQuestions() {
     const iid = IID();
     const list = DB.requests(iid).filter((x) => !DB.isVodStudent(x.s));
@@ -1223,7 +1225,7 @@
     return head("1:1 요청 답변", "수강생이 ‘질문 · 요청 → 1:1 요청’에 남긴 화면 오류·불편 신고예요. 모두 비공개로, 작성자와 강사님만 봐요. 답변하면 수강생 화면에 바로 보여요.") +
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" +
         (shown.length ? '<div class="a-stack">' + shown.map((x) =>
-          '<article class="a-q"><div class="a-q-head"><span class="a-avatar">' + esc(x.s.name.slice(0, 1)) + "</span><div><b>#" + x.no + " " + esc(x.q.title) + "</b><small>" + esc(x.s.name) + " · " + esc(cohortName(x.s.cohortId)) + " · " + fmtStamp(x.q.at) + "</small></div>" + pill(x.q.category || "기타", "mute") + (x.q.answer ? pill("답변 완료", "ok") : pill("답변 대기", "warn")) + "</div>" +
+          '<article class="a-q"><div class="a-q-head"><span class="a-avatar">' + esc(x.s.name.slice(0, 1)) + "</span><div><b>#" + x.no + " " + esc(x.q.title) + "</b><small>" + esc(x.s.name) + " · " + esc(cohortName(x.s.cohortId)) + studyTag(x.s) + " · " + fmtStamp(x.q.at) + "</small></div>" + pill(x.q.category || "기타", "mute") + (x.q.answer ? pill("답변 완료", "ok") : pill("답변 대기", "warn")) + "</div>" +
           (x.q.answer && (x.q.answeredBy || x.q.answeredAt) ? '<p class="a-q-by"><span class="a-by">' + icon("user", "xs") + esc(x.q.answeredBy || "강사") + "</span>" + (x.q.answeredAt ? " · " + fmtStamp(x.q.answeredAt) + " 답변" : " 답변") + "</p>" : "") +
           '<p class="a-q-body">' + esc(x.q.body) + "</p>" +
           ((x.q.images || []).length ? '<div class="a-shots a-q-shots">' + x.q.images.map((im) => '<a class="a-shot" href="' + im.data + '" target="_blank" rel="noopener"><img src="' + im.data + '" alt="' + esc(im.name) + '"></a>').join("") + "</div>" : "") +

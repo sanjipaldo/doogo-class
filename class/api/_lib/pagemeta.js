@@ -144,7 +144,7 @@ function whenTxt(s) {
 }
 /** 강사 소개 페이지: 공개한 페이지 · 이용 중인 강사만 (화면 landing.js renderPage 와 같은 기준) */
 function landingPage(html, ins, c, map) {
-  if (!ins || ins.status !== "active" || !c || !c.brand) return null;
+  if (!ins || ins.status !== "active" || ins.homeOff || !c || !c.brand) return null; // homeOff(두잉고 소개 목록 OFF): 화면도 방문자에게 ‘준비 중’
   const L = rulesFor(ins, c).landingOf(ins.id);
   if (!L || !L.published) return null;
   const b = c.brand, url = ORIGIN + "/p/" + encodeURIComponent(ins.id), h = L.hero || {}, ab = L.about || {};
@@ -161,7 +161,7 @@ function landingPage(html, ins, c, map) {
 }
 /** 무료강의 페이지: 공개한 페이지 · 이용 중인 강사만 (화면 landing.js renderFree 와 같은 기준) */
 function freePage(html, ins, c, map) {
-  if (!ins || ins.status !== "active" || !c || !c.brand) return null;
+  if (!ins || ins.status !== "active" || ins.homeOff || !c || !c.brand) return null;
   const F = rulesFor(ins, c).freeOf(ins.id);
   if (!F || !F.published) return null;
   const h = F.hero || {}, lv = F.live || {}, url = ORIGIN + "/free/" + encodeURIComponent(ins.id);
@@ -274,7 +274,7 @@ function sitemapXml(base, vod, insDocs, contents) {
   const add = (u, freq, pri) => { const loc = "<loc>" + esc(u) + "</loc>"; if (seen.has(loc)) return; seen.add(loc); urls.push("  <url>\n    " + loc + "\n    <changefreq>" + freq + "</changefreq>\n    <priority>" + pri + "</priority>\n  </url>"); };
   vod = vod || {};
   (vod.products || []).filter((p) => shown(vod, p)).forEach((p) => add(ORIGIN + "/vod/p/" + encodeURIComponent(p.id), "weekly", "0.8"));
-  const act = (insDocs || []).filter((x) => x && x.id && x.status === "active" && /^[a-z0-9_-]{1,40}$/i.test(x.id) && contents && contents[x.id] && contents[x.id].brand);
+  const act = (insDocs || []).filter((x) => x && x.id && x.status === "active" && !x.homeOff && /^[a-z0-9_-]{1,40}$/i.test(x.id) && contents && contents[x.id] && contents[x.id].brand); // homeOff 강사의 소개 · 무료강의 주소는 빼요
   if (act.length) {
     const X = rulesForAll(act, contents);
     act.forEach((x) => { const L = X.landingOf(x.id); if (L && L.published) add(ORIGIN + "/p/" + encodeURIComponent(x.id), "weekly", "0.7"); });
