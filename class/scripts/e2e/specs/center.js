@@ -73,10 +73,16 @@ module.exports = {
       await run.check(cleared === "" && !/기간 끝남 · 잠김/.test(await L.bodyText(page)), "‘지우기 (기한 없음)’로 비우면 다시 계속 볼 수 있어요", { cleared }, page);
     }
     // 1-3) 1:1 요청 답변 (2026-11-23): 수강생 메모의 ‘오프라인’ · ‘온라인’ → 카드 ‘이름 · 기수’ 줄에 표시 · 메모를 비우면 표시 없음 (예전 화면 = React)
+    //  시험 DB 에는 1:1 요청이 없어요 → 시험 수강생으로 화면에서 하나 남겨요 (시험 DB 는 묶음마다 새로 복사해요)
+    await FL.student(page, base, info);
+    await L.open(page, base, "/home");
+    await page.evaluate(() => { window.ROUTE.hash = "#/qna/requests/new"; }); await page.waitForTimeout(600);
+    await page.fill("#q-title", "E2E 1:1 요청 (메모 표시)"); await page.fill("#q-body", "수강생 메모 표시 확인용이에요.");
+    await page.click("#request-form button[type='submit']"); await page.waitForTimeout(700); await L.flushed(page);
     await FL.instructor(page, base, info);
     await L.open(page, base, "/center/questions");
     await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(300);
-    const qSid = await page.evaluate(() => { const f = document.querySelector(".a-q-form[data-sid]"); return f ? f.getAttribute("data-sid") : null; });
+    const qSid = await page.evaluate((sid) => { const f = document.querySelector('.a-q-form[data-sid="' + sid + '"]') || document.querySelector(".a-q-form[data-sid]"); return f ? f.getAttribute("data-sid") : null; }, info.student.sid);
     const memo0 = qSid ? await page.evaluate((sid) => (DB.student(sid) || {}).memo || "", qSid) : "";
     const setMemo = async (m) => { await page.evaluate(([sid, v]) => { const s = DB.student(sid); s.memo = v; DB.save(); }, [qSid, m]); await page.waitForTimeout(400); await L.flushed(page); };
     const tagOf = async () => {
@@ -98,7 +104,7 @@ module.exports = {
     await pv.context().close();
     // 2) 마스터 강사 정산: 상품 종류 탭 · 정산 규칙 카드
     await FL.master(page, base, info);
-    for (const u of ["/p/choi", "/free/choi"]) { await L.open(page, base, u); await page.waitForTimeout(600); mas[u] = await page.evaluate(() => ({ off: !!document.querySelector(".lp-off, .fc-off"), ready: /준비 중인 페이지예요/.test(document.body.innerText) })); }
+    for (const u of ["/p/choi", "/free/choi"]) { await L.open(page, base, u); await page.waitForTimeout(600); mas[u] = await page.evaluate(() => ({ off: !!document.querySelector(".lp-off, .fc-off"), ready: !!document.querySelector(".lp-empty") })); } // 안내 띠 글에도 ‘준비 중인 페이지예요’가 있어서 빈 화면 칸으로 봐요
     await run.check(Object.keys(vis).every((u) => vis[u]) && Object.keys(mas).every((u) => mas[u].off && !mas[u].ready),
       "두잉고 소개 목록 OFF 강사: 강사 소개 · 무료강의는 방문자에게 ‘준비 중인 페이지예요’ · 마스터는 ‘OFF 상태’ 안내 띠와 함께 그대로 봐요", { vis, mas }, page);
     await L.open(page, base, "/center/master/vod-settle");
