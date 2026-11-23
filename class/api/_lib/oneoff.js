@@ -1412,7 +1412,7 @@ function choiStoreOn(get) {
  *    마스터가 이미 고친 섹션(자동이 아님)은 그대로 둬요. 없는 클래스 id 는 넣지 않아요. 이미 이렇게 돼 있으면 그대로 */
 const STORE_RAIL_KEYS = ["best", "why", "ebook", "cat", "new", "flive", "eb", "prem", "free", "soon", "topics", "teach"];
 const STORE_PINS = { new: ["v4", "v8", "v11", "v3", "b1", "v2", "v5"], best: ["v3", "v4", "v8"] };
-const STORE_V3_BANNER = { id: "vb-v3", sub: "산지직송 브랜드 · 스마트스토어 · 자사몰 판매", pid: "v3", color: ["#2b1a06", "#ff9f1a"], on: true };
+const STORE_V3_BANNER = { id: "vb-v3", sub: "산지직송 브랜드 · 스마트스토어 판매", pid: "v3", color: ["#2b1a06", "#ff9f1a"], on: true }; // 설명은 휴대폰에서도 한 줄로
 function storeHomeOrder(get) {
   const meta = get("meta");
   if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
