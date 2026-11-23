@@ -602,7 +602,7 @@ module.exports = {
           const cfg = D.menuConfig(iid).items.filter((x) => x.on && !/^cp_/.test(x.key)).map((x) => x.key);
           return { cfg, nav: Array.from(document.querySelectorAll("a.nav-item")).map((a) => (a.getAttribute("href") || "").replace(/^\/?#?\//, "").split(/[/?]/)[0]).filter(Boolean), empty: { rp: 0, sc: 0, gl: 0 } };
         });
-        for (const [k, path, re] of [["rp", "/replays", /아직 올라온 (보충 강의|다시보기 영상)가 없어요/], ["sc", "/showcase", /아직 등록된 모범 과제가 없어요/], ["gl", "/glossary", /아직 등록된 용어가 없어요/]]) {
+        for (const [k, path, re] of [["rp", "/replays", /아직 올라온 다시보기 영상이 없어요/], ["sc", "/showcase", /아직 등록된 모범 과제가 없어요/], ["gl", "/glossary", /아직 등록된 용어가 없어요/]]) {
           await L.open(sp, base, path); await sp.waitForTimeout(500);
           o.empty[k] = { path: new URL(sp.url()).pathname, ok: re.test(await sp.evaluate(() => document.body.innerText)) };
         }

@@ -1351,6 +1351,32 @@ function choiHomeOff(get) {
   return { writes: { [k]: Object.assign({}, ins, { homeOff: true }) }, result: { homeOff: true, status: String(ins.status || "") } };
 }
 
+/* ---------- 강사 choi: 두고클래스 스토어에서 숨기기 (대표님 요청 2026-11-23) ----------
+ * 아직 두잉고를 쓸지 정하는 중이라 미리 만들어 둔 클래스를 지우지 않고 스토어에서만 숨겨요 (다음 달에 쓰면 다시 켜요).
+ * meta.vod.insOff 에 "choi" — 마스터 › DOOGO CLASS › 강사 관리의 ‘스토어에서 숨기기’와 같은 스위치예요.
+ * 그 강사의 클래스 · 배너 · 강사진 카드가 스토어(홈 · 목록 · 검색 · 강사진 · 소개 · 파트너스)에서 빠지고 상세 · 결제는 막혀요.
+ * 클래스 · 판매 상태는 그대로 두고, 이미 산 회원은 내 강의실에서 계속 들어요. showOff(이 상품만 보이기)를 켠 상품은 그대로 보여요.
+ * 결제 가격표(vcat)에서도 그 상품을 status "hidden" 으로 바꿔 서버가 결제를 받지 않게 해요 (마스터 화면이 저장할 때 올리는 가격표와 같은 모양).
+ * 되돌리기: 마스터 › DOOGO CLASS › 강사 관리 › 그 강사 카드의 ‘스토어에 다시 보이기’ (저장하면 가격표도 다시 올라가요). 이미 숨김이면 그대로 */
+function choiStoreOff(get) {
+  const K = "choi", meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  const writes = {}, off = Array.isArray(meta.vod.insOff) ? meta.vod.insOff : [];
+  const mine = (Array.isArray(meta.vod.products) ? meta.vod.products : []).filter((p) => isObj(p) && p.iid === K);
+  const keep = mine.filter((p) => p.showOff).map((p) => p.id);
+  const result = { insOff: off.indexOf(K) < 0 ? "추가" : "이미 숨김 (그대로)", products: mine.filter((p) => !p.showOff).map((p) => p.id) };
+  if (off.indexOf(K) < 0) writes.meta = Object.assign({}, meta, { vod: Object.assign({}, meta.vod, { insOff: off.concat([K]) }) });
+  const cat = get("vcat");
+  if (isObj(cat) && Array.isArray(cat.products)) {
+    let n = 0;
+    const list = cat.products.map((p) => (isObj(p) && p.iid === K && keep.indexOf(p.id) < 0 && p.status !== "hidden" ? (n++, Object.assign({}, p, { status: "hidden" })) : p));
+    if (n) writes.vcat = Object.assign({}, cat, { products: list });
+    result.vcat = n ? n + "개 결제 막음" : "그대로";
+  }
+  if (!Object.keys(writes).length) return { writes: {}, result: Object.assign({ skipped: "이미 숨김 (그대로)" }, result) };
+  return { writes, result };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1402,6 +1428,7 @@ const OPS = [
   { id: "2026-11-16-moon-senior-drop-bb", note: "문대표 시니어 기초 가이드 카테고리에서 ‘빽형 건기식 AI 마스터툴 VOD’ 지우기 (그 카테고리 글은 카테고리 없이 ‘전체’에만 · 이미 지웠으면 건너뜀)", run: moonSeniorDropBb },
   { id: "2026-11-15-launch-orders-clean", note: "정식 운영 전 주문 정리: 운영팀 테스트 주문(알려 준 주문 3건을 낸 회원들의 11/16 전 주문 전부) · 체험 계정 주문 전부 지우기(쓴 쿠폰 · 포인트는 돌려줌 · 회원 계정은 그대로) · 무통장 입금 받기 설정 지우기 (Vercel 배포 때만 — 로컬 화면 테스트 DB 의 체험 계정 강의는 그대로)", run: launchOrdersClean, when: () => !!process.env.VERCEL },
   { id: "2026-11-23-choi-home-off", note: "강사 choi 두잉고 소개 강사 목록 OFF: homeOff — 두잉고 소개 카드 · 수강생 로그인 강사 고르기에서만 빠져요 (계정 · 콘텐츠 · 스토어 클래스 · 산 회원의 두잉고 VOD 강의실은 그대로 · 마스터 체크로 되돌림 · 이미 숨김이면 그대로)", run: choiHomeOff },
+  { id: "2026-11-23-choi-store-off", note: "강사 choi 두고클래스 스토어 숨김: insOff — 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 상세 · 결제 막힘 · 결제 가격표도 hidden (클래스는 지우지 않음 · 산 회원은 계속 수강 · 마스터 › DOOGO CLASS › 강사 관리에서 다시 켜요 · 이미 숨김이면 그대로)", run: choiStoreOff },
 ];
 
-module.exports = { OPS, choiHomeOff, moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, choiHomeOff, choiStoreOff,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

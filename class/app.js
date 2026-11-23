@@ -2355,9 +2355,9 @@
     const list = all.filter((x) => rpWeek === "all" || Number(x.week) === Number(rpWeek));
     const done = all.filter((x) => seen[x.id]).length, pct = all.length ? Math.round(done / all.length * 100) : 0;
     const sub = !!mainLec();
-    return '<div class="page">' + pageHead(ML("replays"), sub ? "메인 강의 외에, 수강생이 가장 헷갈려 하는 부분만 짧게 찍어 올린 보충 강의예요. 메인 강의 녹화본은 " + (mainLec().platform || "외부 강의실") + "에서 봐요." : "라이브를 놓쳤거나 한 번 더 듣고 싶을 때, 주차별로 골라 보세요.") +
+    return '<div class="page">' + pageHead(ML("replays"), sub ? (mainLec().platform || "외부 강의실") + "에서 진행한 정규교육 라이브를 다시 볼 수 있어요. 영상마다 볼 수 있는 마지막 날이 있으면 그날까지만 볼 수 있어요." : "라이브를 놓쳤거나 한 번 더 듣고 싶을 때, 주차별로 골라 보세요.") +
       (sub ? mainLecCard(true) : "") +
-      (all.length ? '<section class="card overall"><div class="overall-top"><span>' + (sub ? "보충 강의 시청" : "다시보기 시청") + "</span>" + pctText(pct) + "</div>" + progressBar(pct) + '<span class="tiny" style="color:var(--body)">' + all.length + "개 중 " + done + "개 시청 · 최근 영상이 맨 앞에 있어요</span></section>" +
+      (all.length ? '<section class="card overall"><div class="overall-top"><span>다시보기 시청</span>' + pctText(pct) + "</div>" + progressBar(pct) + '<span class="tiny" style="color:var(--body)">' + all.length + "개 중 " + done + "개 시청 · 최근 영상이 맨 앞에 있어요</span></section>" +
         (weeks.length > 1 ? weekChips(weeks, rpWeek, "rp-week", all.length) : "") +
         '<div class="rp-grid">' + list.map((x) => {
           // 볼 수 있는 마지막 날(until · 2026-11-23): 지났으면 자물쇠 · 재생 표시 없음 (서버는 영상 주소 · 핵심 정리를 안 보내요)
@@ -2367,7 +2367,7 @@
               (lk ? '<span class="badge badge-neutral rp-until-off">' + icon("lock", "xs") + "시청 기간 끝남</span>" : x.until ? '<span class="rp-until">~' + fmtMD(x.until) + "까지</span>" : "") + (seen[x.id] ? '<span class="badge badge-positive">' + icon("check", "xs") + "다 봤어요</span>" : "") + "</span>" +
             "<b>" + esc(x.title) + "</b>" + (x.summary && !lk ? '<span class="rp-sum">' + esc(String(x.summary).replace(/\s+/g, " ").slice(0, 90)) + "</span>" : "") + "</span></a>";
         }).join("") + "</div>"
-        : '<section class="card">' + empty("monitorPlay", mainLec() ? "아직 올라온 보충 강의가 없어요." : "아직 올라온 다시보기 영상이 없어요.") + "</section>") + "</div>";
+        : '<section class="card">' + empty("monitorPlay", "아직 올라온 다시보기 영상이 없어요.") + "</section>") + "</div>";
   }
   /** 다 봤어요 표시 · 취소 — 표시했으면 true */
   function replayFlip(id) { P.replays = P.replays || {}; if (P.replays[id]) delete P.replays[id]; else P.replays[id] = Date.now(); saveProgress(); return !!P.replays[id]; }

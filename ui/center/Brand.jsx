@@ -34,7 +34,7 @@ export default function Brand({ n }) {
       <F k="loginHeadline" label="헤드라인 (두 줄까지, 줄바꿈 가능)" v={b.loginHeadline} hint="마지막 줄은 고른 색으로 강조돼요" type="textarea" />
       <F k="loginSub" label="헤드라인 아래 설명" v={b.loginSub} hint="" type="textarea" />
       <Row><F k="youtubeChannel" label="유튜브 채널 주소" v={b.youtubeChannel} hint="" type="url" /><F k="freeCourseUrl" label="무료 강의 · 소개 페이지 주소" v={b.freeCourseUrl} hint="" type="url" /></Row>
-      <Sub id="bf-main">메인 강의 (외부 강의 플랫폼)</Sub><Lead>메인 강의 · 라이브 녹화본을 아이비클래스 같은 다른 플랫폼에서 운영한다면, 수강생 홈 · 주차별 강의 · 보충 강의 화면에 이 버튼이 떠요. 주차마다 다른 링크는 커리큘럼 › 주차 수정에서 넣을 수 있어요.</Lead>
+      <Sub id="bf-main">메인 강의 (외부 강의 플랫폼)</Sub><Lead>메인 강의 · 라이브 녹화본을 아이비클래스 같은 다른 플랫폼에서 운영한다면, 수강생 홈 · 주차별 강의 · 정규교육 다시보기 화면에 이 버튼이 떠요. 주차마다 다른 링크는 커리큘럼 › 주차 수정에서 넣을 수 있어요.</Lead>
       <label className="a-check"><input type="checkbox" name="mlOn" defaultChecked={!!ml.on} /><span>수강생 화면에 <b>메인 강의 들으러 가기</b> 버튼 보이기</span></label>
       <Row><F k="mlPlatform" label="플랫폼 이름" v={ml.platform || ""} hint="예: 아이비클래스" /><F k="mlLabel" label="버튼 글씨" v={ml.label || "메인 강의 들으러 가기"} /></Row>
       <F k="mlUrl" label="메인 강의 링크 (URL)" v={ml.url || ""} hint="수강생이 누르면 새 창으로 열려요" type="url" />

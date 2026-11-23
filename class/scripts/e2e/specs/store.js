@@ -91,6 +91,50 @@ module.exports = {
     const tabs = await adm.$$eval(".vs-ktabs .a-tab", (xs) => xs.map((x) => x.textContent.replace(/\s+/g, " ").trim()));
     const st = await L.bodyText(adm);
     await run.check(tabs.some((t) => /VOD 강의/.test(t)) && st.indexOf(price.toLocaleString("ko-KR") + "원") >= 0, "마스터 강사 정산: 이번 달에 VOD 강의 탭 · 판매가 " + price.toLocaleString("ko-KR") + "원", tabs, adm);
+    // 7) 강사 스토어 숨김 (2026-11-23 · 강사 choi — 운영은 일회성 작업 2026-11-23-choi-store-off 로 숨겨요 · 시험 DB 는 fixture 가 다시 보이게 해 둠):
+    //    마스터 › DOOGO CLASS › 강사 관리 ‘스토어에서 숨기기’ → 스토어 홈(배너 · 클래스 카드 · 강사진 카드)에서 빠지고 상세는 막히고 결제 서버도 안 받아요
+    //    → ‘스토어에 다시 보이기’로 그대로 돌아와요 (클래스는 지우지 않아요 · 예전 화면 · React 둘 다)
+    {
+      const HID = "choi", mine = (vod.products || []).filter((p) => p && p.iid === HID && !p.showOff), onP = mine.find((p) => p.status === "on");
+      const pub = await L.newPage(browser);
+      run.watch(pub, "스토어 숨김");
+      const look = async () => {
+        const out = {};
+        for (const mode of ["off", "all"]) {
+          await L.reactCookie(pub, base, mode);
+          await L.open(pub, base, "/vod"); await pub.waitForTimeout(900);
+          out[mode] = await pub.evaluate((ids) => {
+            const hrefs = Array.from(document.querySelectorAll("a[href]")).map((a) => a.getAttribute("href"));
+            return { cards: ids.filter((id) => hrefs.some((h) => new RegExp("/vod/p/" + id + "(?:[?#/]|$)").test(h))).length, teach: hrefs.some((h) => /\/vod\/teachers\/(yuna|choi)(?:[?#/]|$)/.test(h)) };
+          }, mine.map((p) => p.id));
+          await L.open(pub, base, "/vod/p/" + onP.id); await pub.waitForTimeout(600);
+          out[mode].pd = /판매 중인 클래스가 아니에요/.test(await L.bodyText(pub));
+        }
+        return out;
+      };
+      const flip = async () => {
+        await L.open(adm, base, "/center/master/vod-ins"); await adm.waitForTimeout(500);
+        // 강사 카드는 한 쪽에 2개씩 (판매 많은 순) — 그 강사 카드가 있는 쪽으로 넘겨요
+        const sel = '.vi-card[data-vi="' + HID + '"] [data-action="vda-insoff"]';
+        for (let i = 1; i <= 10 && !(await adm.$(sel)); i++) { const pb = await adm.$('[data-action="pg"][data-k="vdIns"][data-p="' + i + '"]'); if (!pb) break; await pb.click(); await adm.waitForTimeout(300); }
+        const b = await adm.$(sel), label = b ? (await b.textContent()).trim() : "";
+        if (b) { await b.click(); await adm.waitForTimeout(300); const ok = await adm.$('#modal-root [data-action="confirm-ok"]'); if (ok) await ok.click(); }
+        await adm.waitForTimeout(600); await L.flushed(adm); await L.sleep(4000); // 결제 가격표(vcat) 올리기: 저장 1.5초 뒤 + 설정 확인
+        const pill = await adm.$eval('.vi-card[data-vi="' + HID + '"] .vi-st', (x) => x.textContent).catch(() => "");
+        return { label, pill, off: (((((await (await fetch(base + "/api/bootstrap")).json()).docs || []).find((d) => d[0] === "meta") || [])[1] || {}).vod || {}).insOff || [] };
+      };
+      const buy = () => mem.evaluate(async (pid) => { const r = await fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid, kind: "course", plan: 180, method: "card" }) }); return { st: r.status, msg: ((await r.json().catch(() => ({}))) || {}).message || "" }; }, onP.id);
+      const before = onP ? await look() : null;
+      const f1 = onP ? await flip() : null, hid = onP ? await look() : null, b1 = onP ? await buy() : null;
+      const f2 = onP ? await flip() : null, back = onP ? await look() : null;
+      const shownAll = (o) => !!o && ["off", "all"].every((m) => o[m].cards >= 1 && o[m].teach && !o[m].pd);
+      const hiddenAll = (o) => !!o && ["off", "all"].every((m) => o[m].cards === 0 && !o[m].teach && o[m].pd);
+      await run.check(!!onP && shownAll(before) && f1.label === "스토어에서 숨기기" && f1.off.indexOf(HID) >= 0 && /스토어 숨김/.test(f1.pill) && hiddenAll(hid) && b1.st === 409 && /살 수 없는/.test(b1.msg),
+        "마스터 ‘스토어에서 숨기기’: 그 강사의 클래스 카드 · 배너 · 강사진 카드가 스토어 홈에서 빠지고 상세는 ‘판매 중인 클래스가 아니에요’ · 결제 서버도 안 받아요 (예전 화면 = React)", { pid: onP && onP.id, before, f1, hid, b1 }, pub);
+      await run.check(!!onP && f2.label === "스토어에 다시 보이기" && f2.off.indexOf(HID) < 0 && /스토어 노출/.test(f2.pill) && shownAll(back),
+        "‘스토어에 다시 보이기’: 클래스 · 강사진 카드 · 상세가 그대로 돌아와요 (클래스는 지우지 않아요)", { f2, back }, pub);
+      await pub.context().close();
+    }
     await mem.context().close(); await adm.context().close();
   }
 };

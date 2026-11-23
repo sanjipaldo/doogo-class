@@ -691,6 +691,21 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const st14 = require(path.join(TMP, "class/api/_lib/store.js")), rc14 = await st14.getDoc("ins:choi");
     ok(ran.some((x) => x.id === "2026-11-23-choi-home-off" && x.ok) && !!rc14 && rc14.v.homeOff === true && rc14.v.status === "active", "배포 때 강사 choi 두잉고 소개 목록 OFF 작업이 돌아요 (homeOff · 운영 중 그대로)", rc14 && { homeOff: rc14.v.homeOff, status: rc14.v.status });
   }
+  // 2026-11-23-choi-store-off: 배포 때 강사 choi 를 두고클래스 스토어에서 숨겨요 (숨김 목록 insOff + 결제 가격표 hidden)
+  //   — 아래 결제 시험들이 choi 상품(v5)을 쓰니까, 작업이 돈 것을 확인한 뒤 시험 DB 에서는 다시 보이게 돌려 둬요 (e2e fixture 와 같게)
+  {
+    const st14b = require(path.join(TMP, "class/api/_lib/store.js")), rm14 = await st14b.getDoc("meta"), rv14 = await st14b.getDoc("vcat");
+    const cp14 = ((rv14 && rv14.v && rv14.v.products) || []).filter((p) => p && p.iid === "choi");
+    ok(ran.some((x) => x.id === "2026-11-23-choi-store-off" && x.ok) && !!rm14 && (rm14.v.vod.insOff || []).indexOf("choi") >= 0 && cp14.length > 0 && cp14.every((p) => p.status === "hidden"),
+      "배포 때 강사 choi 스토어 숨김 작업이 돌아요 (숨김 목록에 choi · 결제 가격표의 choi 상품 hidden)", { insOff: rm14 && rm14.v.vod.insOff, cp: cp14.map((p) => p.id + ":" + p.status) });
+    if (rm14 && rv14) {
+      const mt14 = rm14.v, was14 = {}; mt14.vod.insOff = (mt14.vod.insOff || []).filter((k) => k !== "choi");
+      (mt14.vod.products || []).forEach((p) => { if (p && p.id) was14[p.id] = p.status; });
+      await st14b.writeDoc("meta", mt14, rm14.ver);
+      const ct14 = rv14.v; ct14.products = ct14.products.map((p) => (p && p.iid === "choi" && p.status === "hidden" ? Object.assign({}, p, { status: was14[p.id] || "on" }) : p));
+      await st14b.writeDoc("vcat", ct14, rv14.ver);
+    }
+  }
   useJar({ dc_a: auth.sign({ r: "master" }) });
   j = await boot();
   const mt3 = docOf(j, "meta"); mt3.vod.settings.demoLogin = false;
@@ -3932,6 +3947,57 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /'<div class="guide-actions" style="margin-top:20px">' \+ \(lk \? "" : '<button class="btn '/.test(ap75) && /\{lk \? null : <button className=\{"btn "/.test(mo75) &&
       /\.rp-card\.rp-locked \.rp-thumb img \{ filter: grayscale\(1\) brightness\(\.5\); \}/.test(cs75) && /\.rp-locked-box \{/.test(cs75),
       "수강생: 목록 카드 자물쇠(재생 표시 대신) · ‘시청 기간 끝남’ · 상세는 재생기 · 핵심 정리 · 자료 · 다 봤어요 없이 ‘시청 기간이 끝났어요’ (예전 화면 = React · 화면 확인은 e2e center 1-2)");
+  }
+
+  {
+    console.log("76) 강사 choi 두고클래스 스토어 숨김 — insOff (일회성 2026-11-23-choi-store-off · 클래스는 그대로 · 마스터 ‘스토어에 다시 보이기’로 되돌림)");
+    const OO76 = require(path.join(ROOT, "api/_lib/oneoff.js")), ids76 = OO76.OPS.map((o) => o.id), op76 = OO76.OPS.find((o) => o.id === "2026-11-23-choi-store-off");
+    const g76 = (d) => (k) => (d[k] === undefined ? null : JSON.parse(JSON.stringify(d[k])));
+    const P76 = [{ id: "v2", iid: "choi", status: "on", title: "a" }, { id: "v9", iid: "choi", status: "soon" }, { id: "bk", iid: "choi", status: "on", showOff: true }, { id: "v3", iid: "logic", status: "on" }];
+    const meta76 = { flags: { x: 1 }, vod: { insOff: ["moon"], products: P76, banners: [{ id: "vb4", pid: "v2" }], coupons: [{ id: "c" }] } };
+    const cat76 = { products: P76.map((p) => ({ id: p.id, iid: p.iid, status: p.status })), coupons: [{ id: "c" }], settings: { coach: 1 } };
+    const a76 = op76 && op76.run(g76({ meta: meta76, vcat: cat76 })), wm76 = a76 && a76.writes.meta, wc76 = a76 && a76.writes.vcat;
+    const st76 = (c) => (c ? c.products.map((p) => p.id + ":" + p.status).join(",") : "");
+    const b76 = OO76.choiStoreOff(g76({ meta: wm76, vcat: wc76 }));
+    const c76 = OO76.choiStoreOff(g76({ meta: Object.assign({}, meta76, { vod: Object.assign({}, meta76.vod, { insOff: ["moon", "choi"] }) }), vcat: cat76 }));
+    const d76 = OO76.choiStoreOff(g76({})), e76 = OO76.choiStoreOff(g76({ meta: meta76 }));
+    ok(!!op76 && op76.run === OO76.choiStoreOff && ids76.filter((x) => x === op76.id).length === 1 && ids76.indexOf(op76.id) === ids76.indexOf("2026-11-23-choi-home-off") + 1 &&
+      !!wm76 && wm76.vod.insOff.join() === "moon,choi" && JSON.stringify(wm76.vod.products) === JSON.stringify(P76) && JSON.stringify(wm76.vod.banners) === JSON.stringify(meta76.vod.banners) && wm76.flags.x === 1 &&
+      st76(wc76) === "v2:hidden,v9:hidden,bk:on,v3:on" && wc76.coupons.length === 1 && wc76.settings.coach === 1 && a76.result.products.join() === "v2,v9" && /2개/.test(a76.result.vcat) &&
+      !Object.keys(b76.writes).length && /그대로/.test(b76.result.skipped) &&
+      Object.keys(c76.writes).join() === "vcat" && st76(c76.writes.vcat) === "v2:hidden,v9:hidden,bk:on,v3:on" &&
+      !Object.keys(d76.writes).length && Object.keys(e76.writes).join() === "meta",
+      "숨김 목록(insOff)에 choi 더하기 · 결제 가격표(vcat)는 그 강사 상품만 hidden (showOff 상품 · 다른 강사 · 쿠폰 · 설정 그대로) · 클래스 · 배너 데이터는 안 지움 · 두 번째는 그대로 · 반쯤 된 상태도 마저 · 데이터 없으면 건너뜀",
+      { a: a76 && a76.result, vcat: st76(wc76), b: b76.result, c: Object.keys(c76.writes), d: d76.result });
+    // 서버: 숨긴 상품(가격표 hidden)은 결제 금액 계산부터 막혀요 (vod.js quote — status 가 on 일 때만)
+    const V76 = fs.readFileSync(path.join(ROOT, "api/_lib/vod.js"), "utf8");
+    ok(/if \(!p \|\| p\.status !== "on"\) return \{ ok: false, message: "지금 살 수 없는 클래스예요\." \};/.test(V76), "서버: 가격표에서 숨긴(hidden) 상품은 ‘지금 살 수 없는 클래스예요’ (결제 준비 409)");
+    // 화면: 숨긴 강사는 스토어 홈 줄 · 배너 · 강사진(홈 · 페이지 · 소개 · 파트너스) · 상세 · 결제 · 가격표 올리기에서 모두 빠져요 (스위치 하나 insShown)
+    const vd76 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8");
+    ok(/const insShown = \(p\) => !p \|\| !!p\.showOff \|\| insOff\(\)\.indexOf\(tkey\(p\)\) < 0;/.test(vd76) && /const bizShow = \(p\) => !!p && [^\n]*insShown\(p\);/.test(vd76) &&
+      /V\(\)\.products\.filter\(\(p\) => tkey\(p\) && \(p\.status === "soon" \|\| \(p\.status === "on" && !eventPast\(p\)\)\) && bizShow\(p\)\)/.test(vd76) &&
+      /const liveBanners = \(\) => V\(\)\.banners\.filter\(\(b\) => banLive\(b\) && \(!b\.pid \|\| bizShow\(product\(b\.pid\)\)\)/.test(vd76) &&
+      /if \(!p \|\| p\.status === "hidden" \|\| !insShown\(p\)\) return shell\("", '<div class="vd-wrap">' \+ emptyBox\("alert", "판매 중인 클래스가 아니에요"/.test(vd76) &&
+      /if \(!insShown\(p\)\) \{ ROUTE\.redirect\("#\/vod"\); toast\("지금은 판매하지 않는 클래스예요\.", "warn"\); return ""; \}/.test(vd76) &&
+      /insShown\(p\) \? \{\} : \{ status: "hidden" \}/.test(vd76),
+      "화면: 숨긴 강사의 클래스 · 배너 · 강사진 카드는 스토어에서 빠지고 상세 ‘판매 중인 클래스가 아니에요’ · 결제 화면은 홈으로 · 마스터가 올리는 가격표도 hidden (다시 보이면 그대로 돌아옴 · 화면 확인은 e2e store 7)");
+    // 시험 DB(e2e fixture): 상품 모양 비교에 choi 상품을 써서 일회성 작업 뒤 다시 보이게 — 숨김 확인은 e2e store 7(마스터 숨기기 → 다시 보이기)
+    const fx76 = fs.readFileSync(path.join(ROOT, "scripts/e2e/fixture.js"), "utf8"), es76 = fs.readFileSync(path.join(ROOT, "scripts/e2e/specs/store.js"), "utf8");
+    ok(/mt\.vod\.insOff = mt\.vod\.insOff\.filter\(\(k\) => k !== "choi"\)/.test(fx76) && /p\.iid === "choi" && p\.status === "hidden" && st\[p\.id\]/.test(fx76) && /data-action="vda-insoff"/.test(es76) && /스토어에 다시 보이기/.test(es76),
+      "시험 DB: 일회성 작업 뒤 choi 를 다시 보이게(상품 모양 비교용) · e2e store 7 이 마스터 ‘스토어에서 숨기기 → 다시 보이기’를 확인");
+  }
+
+  {
+    console.log("77) 정규교육 다시보기 화면 문구 — ‘보충 강의’ 설명 · ‘보충 강의 시청’ 대신 정규교육에 맞게 (2026-11-23)");
+    const rd77 = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
+    const ap77 = rd77("app.js"), mo77 = rd77("../ui/dg/More.jsx"), ad77 = rd77("admin.js"), br77 = rd77("../ui/center/Brand.jsx");
+    const T77 = "에서 진행한 정규교육 라이브를 다시 볼 수 있어요. 영상마다 볼 수 있는 마지막 날이 있으면 그날까지만 볼 수 있어요.";
+    ok(ap77.indexOf('sub ? (mainLec().platform || "외부 강의실") + "' + T77 + '"') >= 0 && mo77.indexOf('sub={sub ? (ml.platform || "외부 강의실") + "' + T77 + '"') >= 0 &&
+      ap77.indexOf('<div class="overall-top"><span>다시보기 시청</span>') >= 0 && mo77.indexOf('<div className="overall-top"><span>다시보기 시청</span>') >= 0 &&
+      ap77.indexOf('empty("monitorPlay", "아직 올라온 다시보기 영상이 없어요.")') >= 0 && mo77.indexOf('<Empty ic="monitorPlay">아직 올라온 다시보기 영상이 없어요.</Empty>') >= 0 &&
+      !/보충 강의/.test(ap77) && !/보충 강의/.test(mo77) &&
+      ad77.indexOf("수강생 홈 · 주차별 강의 · 정규교육 다시보기 화면에 이 버튼이 떠요.") >= 0 && br77.indexOf("수강생 홈 · 주차별 강의 · 정규교육 다시보기 화면에 이 버튼이 떠요.") >= 0,
+      "수강생 다시보기 화면: 메인 강의(외부 강의실)가 있는 강사는 ‘(아이비클래스)에서 진행한 정규교육 라이브를 다시 볼 수 있어요 · 마지막 날’ · 진행 칸 ‘다시보기 시청’ · 빈 화면도 같은 말 · 강사센터 메인 강의 안내의 화면 이름도 (예전 화면 = React)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
