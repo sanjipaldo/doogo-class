@@ -4063,7 +4063,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const meta80 = { flags: { x: 1 }, vod: { products: P80, banners: B80, insOff: ["moon"], coupons: [{ id: "c" }] } };
     const a80 = op80 && op80.run(g80({ meta: meta80 })), w80 = a80 && a80.writes.meta, v80 = w80 && w80.vod, rl80 = (v, k) => ((v && v.homeRails) || []).find((r) => r.k === k) || {};
     // vod.js 의 섹션 기본 순서(RAIL_DEF)와 같아야 섹션 자리가 그대로예요
-    const rk80 = (fs.readFileSync(path.join(ROOT, "vod.js"), "utf8").match(/const RAIL_DEF = \[([\s\S]*?)\n  \];/) || ["", ""])[1].match(/\{ k: "([a-z]+)"/g).map((s) => s.slice(7, -1));
+    const rk80 = (fs.readFileSync(path.join(ROOT, "vod.js"), "utf8").match(/const RAIL_DEF = \[([\s\S]*?)\n  \];/) || ["", ""])[1].match(/\{ k: "([a-z]+)"/g).map((s) => s.slice(6, -1));
     ok(!!op80 && op80.run === OO80.storeHomeOrder && ids80.filter((x) => x === op80.id).length === 1 && ids80.indexOf(op80.id) === ids80.indexOf("2026-11-23-choi-store-on") + 1 &&
       !!v80 && v80.banners.map((b) => b.id + ":" + (b.on !== false)).join() === "vb1:true,vb-img1:true,vb-v3:true,vb-seller:false,vb3:true" &&
       v80.banners[2].pid === "v3" && v80.banners[2].eyebrow === "BEST · 농부" && v80.banners[2].title === "귤 하나로 월매출 10억,\n농산물 온라인 판매 실전" && !!v80.banners[2].sub && v80.banners[2].color.length === 2 &&
