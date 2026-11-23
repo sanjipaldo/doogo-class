@@ -2132,7 +2132,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(noMain(hh) === app0 && PM.storeHome(html, { products: [vod.products[4]] }) === null && PM.storeHome(html, null) === null,
       "화면 쪽은 예전과 똑같아요 · 보일 클래스가 없으면 예전 index.html 그대로");
     // 두잉고 소개: 화면(home.js)과 같은 제목 · 두잉고 소개 배너(1200×630 jpg — 크기 칸 유지) · 대표 주소
-    const hd = PM.doinggoPage(html), dgT = (fs.readFileSync(path.join(ROOT, "home.js"), "utf8").match(/document\.title = "(두잉고 \| [^"]+)"; \/\/ index\.html/) || [])[1];
+    const hd = PM.doinggoPage(html), dgT = (fs.readFileSync(path.join(ROOT, "home.js"), "utf8").match(/document\.title = "([^"]+)"; \/\/ index\.html/) || [])[1];
     // 화면 쪽 비교: 첫 로딩 로고만 두잉고 것으로 바뀌어요 (2026-11-22 · 69번에서 따로 봐요)
     const dgBoot = (h) => h.replace(/<img class="boot-logo boot-logo-dg"[^>]*>/, (html.match(/<img class="boot-logo boot-logo-dc"[^>]*>/) || [""])[0]);
     ok(dgT && hd.indexOf("<title>" + dgT + "</title>") >= 0 && /<link rel="canonical" href="https:\/\/www\.doogoclass\.com\/doinggo" \/>/.test(hd) && /og:image" content="https:\/\/www\.doogoclass\.com\/assets\/home\/og-doinggo\.jpg\?v=\d{8}"/.test(hd) && /og:image:width" content="1200"/.test(hd) && fs.existsSync(path.join(ROOT, "assets/home/og-doinggo.jpg")) && dgBoot(noMain(hd)) === app0 && /<h1>강의는 강사님이, 운영은 두잉고가<\/h1>/.test(hd),
@@ -3806,6 +3806,18 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const v72 = (/const DG_OG_V = "(\d{8})";/.exec(pm72) || [])[1], u72 = "https://www.doogoclass.com/assets/home/og-doinggo.jpg?v=" + v72;
     ok(!!v72 && hd72.indexOf('<meta property="og:image" content="' + u72 + '"') >= 0 && hd72.indexOf('<meta name="twitter:image" content="' + u72 + '"') >= 0 && hd72.indexOf('"url":"' + u72 + '"') >= 0,
       "/doinggo 공유 이미지 주소에 버전(?v=" + v72 + ") — og:image · twitter:image · WebPage 정보 모두 새 주소 (카카오톡 · 페이스북이 새 이미지를 가져가요)", u72);
+    // 제목 · 설명 (2026-11-23 · 추천 ①): 강사님 불편을 짚는 제목 · 카카오톡에 보이는 앞 40자 안에 할 수 있는 일 · 이미지 설명은 이미지 안 글씨
+    const T72 = "단톡방·엑셀로 하던 강의 운영, 두잉고 하나로", D72 = "과제 검수·공지·일정·질문 응대까지 강사님 이름으로 된 강의 플랫폼에서 한 번에. 수강생은 무료, 수강생이 늘어도 이용료는 그대로예요.";
+    const hj72 = fs.readFileSync(path.join(ROOT, "home.js"), "utf8");
+    ok(hd72.indexOf("<title>" + T72 + "</title>") >= 0 && hd72.indexOf('<meta property="og:title" content="' + T72 + '"') >= 0 && hd72.indexOf('<meta name="twitter:title" content="' + T72 + '"') >= 0 &&
+      hd72.indexOf('<meta name="description" content="' + D72 + '"') >= 0 && hd72.indexOf('<meta property="og:description" content="' + D72 + '"') >= 0 && hd72.indexOf('<meta name="twitter:description" content="' + D72 + '"') >= 0 &&
+      hd72.indexOf('<meta property="og:image:alt" content="두잉고 — 강의는 강사님이, 운영은 두잉고가"') >= 0 && hd72.indexOf('"name":"' + T72 + '"') >= 0 && hd72.indexOf('"description":"' + D72 + '"') >= 0 &&
+      hd72.indexOf("<h1>강의는 강사님이, 운영은 두잉고가</h1>") >= 0 && hd72.indexOf("<p>" + D72 + "</p>") >= 0 &&
+      hj72.indexOf('document.title = "' + T72 + '";') >= 0 && T72.length <= 30 && D72.slice(0, 40).indexOf("강의 플랫폼") >= 0,
+      "/doinggo 제목 · 설명: ‘" + T72 + "’ (30자 안 · 화면 탭 제목도 같게) · 설명 앞 40자에 할 일 + 강의 플랫폼 · og/twitter/WebPage 같게 · 이미지 설명은 이미지 안 글씨 · 로봇용 큰 제목은 슬로건 그대로", { T72: T72.length, D72: D72.length });
+    // 다른 페이지 이미지 설명은 예전처럼 제목 (imgAlt 는 두잉고만)
+    ok(/set\(\/\(<meta property="og:image:alt" content="\)\[\^"\]\*\("\)\/, o\.imgAlt \|\| o\.title\);/.test(pm72) && (pm72.match(/imgAlt:/g) || []).length === 2,
+      "이미지 설명은 따로 준 곳(두잉고)만 바뀌고 다른 페이지는 예전처럼 제목");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

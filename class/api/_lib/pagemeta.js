@@ -70,7 +70,7 @@ function inject(html, o) {
   set(/(<meta property="og:description" content=")[^"]*(")/, o.desc);
   set(/(<meta name="twitter:title" content=")[^"]*(")/, o.title);
   set(/(<meta name="twitter:description" content=")[^"]*(")/, o.desc);
-  set(/(<meta property="og:image:alt" content=")[^"]*(")/, o.title);
+  set(/(<meta property="og:image:alt" content=")[^"]*(")/, o.imgAlt || o.title); // 이미지 설명 — 따로 주면 그것(두잉고: 이미지 안 글씨) · 아니면 제목
   if (o.img) {
     set(/(<meta property="og:image" content=")[^"]*(")/, o.img);
     set(/(<meta property="og:image:secure_url" content=")[^"]*(")/, o.img);
@@ -197,9 +197,12 @@ function storeHome(html, vod) {
 // 공유 이미지를 다시 만들면(node scripts/og-image.js doinggo) 올려요 — 주소가 바뀌어야 카카오톡 · 페이스북이 예전 이미지 대신 새 이미지를 가져가요
 //  · 2026-11-22: 카카오톡 미리보기에서 글씨가 작아 안 보이던 것 → 제목 100 · 보조 문구 44 · 알약 33px 로 크게
 const DG_OG_V = "20261122";
+// 제목 · 설명 (2026-11-23 · 추천 3가지 중 ① 적용): 공유 이미지에 슬로건 · 요금 알약이 이미 있어서 제목은 강사님 불편(단톡방 · 엑셀 운영)을 바로 짚고,
+//  설명은 카카오톡 미리보기에 보이는 앞 40자 안에 할 수 있는 일을 담았어요 (뒷부분은 수강생 무료 · 같은 이용료 — 두잉고 화면 문구 그대로)
 const DG = {
-  title: "두잉고 | 강의는 강사님이, 운영은 두잉고가",
-  desc: "강의 소개 페이지 · 무료강의 전자책 · 수강생 케어 튜토리얼까지, 강사님 이름으로 된 강의 플랫폼 하나로 운영하세요. 수강생은 무료 · 수강생 수 무제한 · 기수 무제한 운영.",
+  title: "단톡방·엑셀로 하던 강의 운영, 두잉고 하나로",
+  desc: "과제 검수·공지·일정·질문 응대까지 강사님 이름으로 된 강의 플랫폼에서 한 번에. 수강생은 무료, 수강생이 늘어도 이용료는 그대로예요.",
+  imgAlt: "두잉고 — 강의는 강사님이, 운영은 두잉고가", // 공유 이미지 설명 (이미지 안 글씨 그대로)
   img: ORIGIN + "/assets/home/og-doinggo.jpg?v=" + DG_OG_V, // 1200×630 jpg (기본 공유 사진과 같은 크기 · 형식)
   points: ["강의 운영 — 강의 소개부터 주차별 강의 · 자료 · 공지까지 한곳에서 체계적으로 운영해요.", "수강생 관리 — 수강 승인, 진도, 과제 검수와 피드백까지 수강생을 더 가까이에서 챙겨요.", "AI 학습 지원 — 24시간 AI 조교가 과제 · 서류 · 일정 질문에 바로 답해요."]
 };
@@ -226,7 +229,7 @@ function doinggoPage(html) {
     '        <p><a href="' + url + '">두잉고 소개</a> · <a href="' + ORIGIN + '/login">두잉고 수강생 로그인</a> · <a href="' + ORIGIN + '/center">강사센터</a> · <a href="' + ORIGIN + '/">두고클래스</a></p>\n';
   const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": url + "#webpage", url, name: DG.title, description: DG.desc, inLanguage: "ko-KR",
     isPartOf: { "@id": ORIGIN + "/#website" }, publisher: { "@id": ORIGIN + "/#org" }, primaryImageOfPage: { "@type": "ImageObject", url: DG.img, width: 1200, height: 630 } };
-  return dgHead(inject(html, { docTitle: DG.title, title: DG.title, desc: DG.desc, url, img: DG.img, sameSize: true, ld, body }));
+  return dgHead(inject(html, { docTitle: DG.title, title: DG.title, desc: DG.desc, url, img: DG.img, imgAlt: DG.imgAlt, sameSize: true, ld, body }));
 }
 
 /* ---------- 약관 /terms · /privacy · /refund ---------- */

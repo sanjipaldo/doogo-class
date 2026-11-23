@@ -752,7 +752,7 @@
       return;
     }
     if (window.GuideApp) window.GuideApp.stop();
-    document.title = "두잉고 | 강의는 강사님이, 운영은 두잉고가"; // index.html <title> 과 같게 (SEO)
+    document.title = "단톡방·엑셀로 하던 강의 운영, 두잉고 하나로"; // index.html <title> 과 같게 (SEO · 서버 api/_lib/pagemeta.js DG.title — 2026-11-23 추천 ①)
     dark = null;
     const list = classes();
     root.innerHTML = fragFix('<div class="hm">' + DSYM_DEFS + header() + "<main>" + hero() + bwPaths() + bwMarquee() + problem() + flow() + features() + compare() + students() + teachers() + pricing() + lifelong() + classList(list) + journey() + faq() + finalCta() + "</main>" + footer() + bwDock() + "</div>");
