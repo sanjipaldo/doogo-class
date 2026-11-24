@@ -35,7 +35,7 @@ function legacy() {
 const HEAD_JS = "window.__dcClean=true;window.DC_REACT_PAGE=1;window.DC_REACT_WAIT=new Promise(function(r){window.__dcReactReady=r});" +
   "try{var q=location.search;if(/[?&]pc=1(&|$)/.test(q))document.cookie='dc_pc=1; path=/; samesite=lax';else if(/[?&]pc=0(&|$)/.test(q))document.cookie='dc_pc=; path=/; max-age=0; samesite=lax'}catch(e){}" +
   // 앱(2026-11-24): 사용자 에이전트 DoogoClassApp/ 또는 ?app=1(쿠키 dc_app) → html.dc-app · window.DC_APP — 예전 class/index.html 머리 스크립트와 같아요
-  "(function(){try{var q=location.search,ua=navigator.userAgent||'';if(/[?&]app=1(&|$)/.test(q))document.cookie='dc_app=1; path=/; samesite=lax';else if(/[?&]app=0(&|$)/.test(q))document.cookie='dc_app=; path=/; max-age=0; samesite=lax';if(/DoogoClassApp\\//.test(ua)||(!/[?&]app=0(&|$)/.test(q)&&/(^|;\\s*)dc_app=1(;|$)/.test(document.cookie))){window.DC_APP=1;document.documentElement.className+=' dc-app'}}catch(e){}})()";
+  "(function(){try{var q=location.search,ua=navigator.userAgent||'';if(/[?&]app=1(&|$)/.test(q))document.cookie='dc_app=1; path=/; samesite=lax';else if(/[?&]app=0(&|$)/.test(q))document.cookie='dc_app=; path=/; max-age=0; samesite=lax';if(/DoogoClassApp\\//.test(ua)||(!/[?&]app=0(&|$)/.test(q)&&/(^|;\\s*)dc_app=1(;|$)/.test(document.cookie))){window.DC_APP=1;document.documentElement.className+=' dc-app'}if(/DoogoClassApp\\//.test(ua)){var v=document.querySelector('meta[name=\"viewport\"]');if(v)v.setAttribute('content',(v.getAttribute('content')||'').replace('viewport-fit=cover','viewport-fit=auto'))}}catch(e){}})()";
 
 /** 공개 화면: 예전 index.html 에 서버가 넣던 미리보기 정보 → { title, metas, canonical, ld, style, seo } (못 만들면 null) */
 const META_SKIP = { viewport: 1, "theme-color": 1 };
@@ -65,7 +65,9 @@ export async function generateViewport() {
   const p = (await headers()).get("x-dc-path") || "", i = p.indexOf("?"), q = i >= 0 ? p.slice(i) : "", c = (await cookies()).get("dc_pc");
   const on = /[?&]pc=1(&|$)/.test(q) || (!/[?&]pc=0(&|$)/.test(q) && !!c && c.value === "1");
   // initialScale: null — Next 기본값(initial-scale=1)을 지워야 휴대폰이 PC 화면 전체가 보이게 줄여서 시작해요
-  return on ? { width: PC_W, initialScale: null, viewportFit: "cover", themeColor: "#ffffff" } : { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#ffffff" };
+  // 앱(2026-11-24): 진짜 앱(사용자 에이전트 DoogoClassApp/)은 viewport-fit=auto — 앱이 상태바 · 아래 버튼 줄만큼 화면을 비워 줘요(cover 면 머리띠가 상태바 밑으로 들어가 붙어 보여요)
+  const fit = /DoogoClassApp\//.test((await headers()).get("user-agent") || "") ? "auto" : "cover";
+  return on ? { width: PC_W, initialScale: null, viewportFit: fit, themeColor: "#ffffff" } : { width: "device-width", initialScale: 1, viewportFit: fit, themeColor: "#ffffff" };
 }
 
 export default async function ReactLayout({ children }) {

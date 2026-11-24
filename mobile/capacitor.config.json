@@ -21,7 +21,7 @@
     "webContentsDebuggingEnabled": false
   },
   "ios": {
-    "contentInset": "never",
+    "contentInset": "automatic",
     "limitsNavigationsToAppBoundDomains": false
   },
   "plugins": {
@@ -30,10 +30,10 @@
       "backgroundColor": "#ffffff",
       "showSpinner": false
     },
-    "StatusBar": {
-      "style": "LIGHT",
-      "backgroundColor": "#ffffff",
-      "overlaysWebView": false
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "auto",
+      "style": "LIGHT"
     }
   }
 }
