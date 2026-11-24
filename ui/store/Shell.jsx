@@ -211,7 +211,8 @@ function Footer({ open }) {
 
 /* ---------- 휴대폰 아래 메뉴 ---------- */
 function Tabbar({ on, open }) {
-  const T = [["menu", "", "menu", "메뉴"], ["likes", "#/vod/my/likes", "heart", "찜"], ["home", "#/vod", "home", "홈"], ["cls", "#/vod/my/classes", "monitorPlay", "내 강의실"], ["my", "#/vod/my", "user", "마이"]];
+  // 목록은 예전 vod.js VD_TABS 하나로 (앱에서는 ‘찜’ 자리에 ‘두잉고’ · 2026-11-24)
+  const T = VOD().VD_TABS();
   return (
     <nav className="vd-tabbar" aria-label="아래 메뉴">{T.map((t) => t[0] === "menu"
       ? <button key="menu" type="button" data-v="drawer" aria-label="전체 메뉴 · 검색" onClick={() => open("drawer")}><Icon n={t[2]} c="sm" /><span>{t[3]}</span></button>

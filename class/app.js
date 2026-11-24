@@ -661,7 +661,7 @@
           '<a class="brand" href="#/home">' + window.doinggoB("black", "brand-dg") + '<span class="brand-div" aria-hidden="true"></span><span class="sr-only">홈</span><span class="brand-text"><small>' + esc(D.brand.name) + "</small><strong>" + esc(D.brand.courseTitle) + "</strong></span></a>" +
           (D.brand.worldClock ? '<div class="wclock top" aria-label="한국 · 뉴질랜드 현재 시간">' + worldClockHtml() + "</div>" : "") +
           '<div class="topbar-right">' +
-            (TRACK === "vod" ? '<a class="dc-back" href="#/vod" title="DOOGO CLASS 스토어로 이동"><span class="dc-back-t"><b>DOOGO CLASS</b> 바로가기</span>' + icon("arrowUpRight", "xs") + "</a>" : "") +
+            (TRACK === "vod" || window.DC_APP ? '<a class="dc-back" href="#/vod" title="DOOGO CLASS 스토어로 이동"><span class="dc-back-t"><b>DOOGO CLASS</b> 바로가기</span>' + (window.DC_APP ? '<span class="dc-back-s">두고클래스</span>' : "") + icon("arrowUpRight", "xs") + "</a>" : "") +
             (TRACK === "vod" ? '<button type="button" class="vmode" data-action="vod-mode" aria-label="블랙 / 화이트 화면 바꾸기" title="블랙 / 화이트 화면 바꾸기">' + modeInner() + "</button>" : "") +
             '<span class="hello"><span class="sprout lv-' + LV().cur.key + '" title="성장 레벨 · ' + esc(LV().cur.name) + '">' + icon(LV().cur.icon, "sm") + "</span><b>" + esc(me.name) + '</b><span class="txt">' + (preview ? "님 (미리보기)" : "님 환영합니다") + "</span></span>" +
             '<span class="cohort-chip">' + esc(CO.name) + "</span>" +

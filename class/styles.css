@@ -1984,6 +1984,9 @@ body.lib-gated #main > .page { filter: blur(6px); pointer-events: none; user-sel
 .dc-side .icon { grid-area: arrow; }
 .dc-side b { font-size: 13px; }
 @media (max-width: 720px) { .dc-back { display: none; } }
+/* 앱(2026-11-24 · html.dc-app): 휴대폰에서도 강의실 머리띠에 짧게 ‘두고클래스 ↗’ 바로가기 — 앱 안에서 스토어로 돌아갈 길 (두잉고 탭 ↔ 두고클래스) */
+.dc-back-s { display: none; }
+@media (max-width: 720px) { .dc-app .dc-back { display: inline-flex; height: 28px; padding: 0 8px 0 10px; margin-right: 0; font-size: 11.5px; font-weight: 800; gap: 2px; } .dc-app .dc-back .dc-back-t { display: none; } .dc-app .dc-back .dc-back-s { display: inline; } .dc-app .dc-back .icon { width: 11px; height: 11px; } }
 
 /* ===== VOD 버전: 1:1 코칭권 · TEA TIME 카드 · 연장 안내 ===== */
 .vh-adds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }

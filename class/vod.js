@@ -1474,7 +1474,9 @@
         '<nav class="vd-gf-links" aria-label="약관"><a href="#/terms">이용약관</a><a href="#/privacy"><strong>개인정보처리방침</strong></a>' + '<a href="#/refund">환불정책</a>' + lg("oss", "오픈소스 라이선스") + (bizDigits.length === 10 ? ext("https://www.ftc.go.kr/bizCommPop.do?wrkr_no=" + bizDigits, "사업자정보확인") : "") + '<a href="#/vod/partners">두고 파트너스 · 입점 문의</a></nav></div></div></footer>';
   }
   // 휴대폰 아래 메뉴: 왼쪽 ‘메뉴’(전체 메뉴 · 검색) · 찜 · 가운데 ‘홈’ · 내 강의실 · 마이
-  const tabbar = (on) => '<nav class="vd-tabbar" aria-label="아래 메뉴">' + [["menu", "", "menu", "메뉴"], ["likes", "#/vod/my/likes", "heart", "찜"], ["home", "#/vod", "home", "홈"], ["cls", "#/vod/my/classes", "monitorPlay", "내 강의실"], ["my", "#/vod/my", "user", "마이"]].map((t) => t[0] === "menu"
+  //  · 앱(2026-11-24 · 결정 2 ‘앱 1개 + 두잉고 탭’): ‘찜’ 자리에 ‘두잉고’(두잉고 수강생 강의실 · 로그인 전이면 로그인) — 찜은 마이페이지에 그대로 있어요 (React Shell.jsx 도 이 목록)
+  const VD_TABS = () => [["menu", "", "menu", "메뉴"], window.DC_APP ? ["dg", "#/login", "users", "두잉고"] : ["likes", "#/vod/my/likes", "heart", "찜"], ["home", "#/vod", "home", "홈"], ["cls", "#/vod/my/classes", "monitorPlay", "내 강의실"], ["my", "#/vod/my", "user", "마이"]];
+  const tabbar = (on) => '<nav class="vd-tabbar" aria-label="아래 메뉴">' + VD_TABS().map((t) => t[0] === "menu"
     ? '<button type="button" data-v="drawer" aria-label="전체 메뉴 · 검색">' + icon(t[2], "sm") + "<span>" + t[3] + "</span></button>"
     : '<a href="' + t[1] + '" class="' + (t[0] === "home" ? "vd-tab-home " : "") + (on === t[0] ? "on" : "") + '"' + (on === t[0] ? ' aria-current="page"' : "") + ">" + (t[0] === "home" ? '<i class="vd-tab-hc">' + icon(t[2], "sm") + "</i>" : icon(t[2], "sm")) + "<span>" + t[3] + "</span></a>").join("") + "</nav>";
   const shell = (nav, body, tab, cls) => '<div class="vd' + (cls ? " " + cls : "") + '">' + header(nav) + '<main class="vd-main">' + body + "</main>" + footer() + tabbar(tab || "") + "</div>";
@@ -4722,7 +4724,7 @@
     // 로그인 · 가입 · 두잉고 강의실 고르기 (4-4)
     authReady, doAuth, doDgLogin, kakaoStart, dgList, dgCard,
     // 주문 · 결제 (4-4)
-    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, payFirst, paySub, payNote, PAY_BD, bankOpen, bankBox, shipBox, planRow, doPay,
+    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, payFirst, paySub, payNote, PAY_BD, VD_TABS, bankOpen, bankBox, shipBox, planRow, doPay,
     // VOD 강의실 · 전자책 · 입장 안내 (4-4)
     logStudy, eventTime, cdTxt, vimeoSrc,
     // 스토어 공개 화면

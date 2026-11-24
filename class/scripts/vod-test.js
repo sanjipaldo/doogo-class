@@ -4356,6 +4356,35 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "과제 검수 표: 과제 → 검수자 → 제출 순서 (예전 화면 = React · 같은 revWho)");
   }
 
+  {
+    console.log("86) 앱 모드 — 앱(DoogoClassApp/) · ?app=1 이면 html.dc-app · 스토어 아래 메뉴 ‘두잉고’ 탭 · 강의실 머리띠 두고클래스 바로가기 · mobile/ Capacitor 설정 (2026-11-24)");
+    const idx86 = fs.readFileSync(path.join(ROOT, "index.html"), "utf8"), lay86 = fs.readFileSync(path.join(ROOT, "../app/(react)/layout.js"), "utf8");
+    const js86 = (idx86.match(/<script>(\(function\(\)\{try\{var q=location\.search,ua=navigator\.userAgent[\s\S]*?)<\/script>/) || [])[1] || "";
+    const hj86 = (() => { const m = lay86.match(/const HEAD_JS = ([\s\S]*?);\n/); try { return m ? eval(m[1]) : ""; } catch (e) { return ""; } })();
+    const run86 = (code, ua, search, cookie) => { const doc = { cookie: cookie || "", documentElement: { className: "js" } }, win = {}; new Function("window", "document", "navigator", "location", code)(win, doc, { userAgent: ua }, { search }); return [!!win.DC_APP, doc.documentElement.className, doc.cookie]; };
+    const c86 = (code) => [run86(code, "Mozilla/5.0 iPhone Safari", "", ""), run86(code, "Mozilla/5.0 (Linux; Android 14) Chrome DoogoClassApp/1.0", "", ""), run86(code, "Mozilla/5.0", "?app=1", ""), run86(code, "Mozilla/5.0", "", "dc_app=1"), run86(code, "Mozilla/5.0", "?app=0", "dc_app=1")];
+    const ok86 = (r) => !r[0][0] && r[0][1] === "js" && r[1][0] && r[1][1] === "js dc-app" && r[2][0] && /dc_app=1/.test(r[2][2]) && r[3][0] && !r[4][0] && /max-age=0/.test(r[4][2]);
+    ok(js86 && ok86(c86(js86)) && hj86.indexOf(js86) >= 0 && /window\.DC_REACT_PAGE=1/.test(hj86),
+      "앱 알아보기: 보통 브라우저는 그대로 · 앱(사용자 에이전트 DoogoClassApp/) · ?app=1(쿠키 dc_app — 브라우저 미리 보기) 이면 window.DC_APP + html.dc-app · ?app=0 으로 끄기 · 예전 index.html = React layout HEAD_JS 같은 코드",
+      js86 ? c86(js86).map((r) => r.join("/")) : "스크립트 없음");
+    const vj86 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), sh86 = fs.readFileSync(path.join(ROOT, "../ui/store/Shell.jsx"), "utf8");
+    const tabsSrc86 = (vj86.match(/const VD_TABS = \(\) => (\[[\s\S]*?\]\]);/) || [])[1] || "";
+    const tabs86 = (app) => { try { return new Function("window", "return " + tabsSrc86)({ DC_APP: app }).map((t) => t[0] + ":" + t[1] + ":" + t[3]).join(" "); } catch (e) { return ""; } };
+    ok(tabs86(0) === "menu::메뉴 likes:#/vod/my/likes:찜 home:#/vod:홈 cls:#/vod/my/classes:내 강의실 my:#/vod/my:마이" && tabs86(1) === "menu::메뉴 dg:#/login:두잉고 home:#/vod:홈 cls:#/vod/my/classes:내 강의실 my:#/vod/my:마이" &&
+      /const tabbar = \(on\) => '<nav class="vd-tabbar" aria-label="아래 메뉴">' \+ VD_TABS\(\)\.map/.test(vj86) && /PAY_BD, VD_TABS, bankOpen,/.test(vj86) && /const T = VOD\(\)\.VD_TABS\(\);/.test(sh86),
+      "스토어 휴대폰 아래 메뉴: 웹은 예전 그대로(메뉴 · 찜 · 홈 · 내 강의실 · 마이) · 앱은 ‘찜’ 자리에 ‘두잉고’(#/login — 로그인 전이면 두잉고 로그인, 로그인했으면 강의실) · 예전 화면 = React 같은 목록(VD_TABS)", [tabs86(0), tabs86(1)]);
+    const aj86 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), dg86 = fs.readFileSync(path.join(ROOT, "../ui/dg/Shell.jsx"), "utf8"), st86 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    ok(/\(TRACK === "vod" \|\| window\.DC_APP \? '<a class="dc-back" href="#\/vod"/.test(aj86) && /\{S\.TRACK === "vod" \|\| window\.DC_APP \? <a className="dc-back" href="#\/vod"/.test(dg86) &&
+      /@media \(max-width: 720px\) \{ \.dc-app \.dc-back \{ display: inline-flex;/.test(st86) && /window\.DC_APP \? '<span class="dc-back-s">두고클래스<\/span>' : ""/.test(aj86) && /\{window\.DC_APP \? <span className="dc-back-s">두고클래스<\/span> : null\}/.test(dg86) && /\.dc-app \.dc-back \.dc-back-t \{ display: none; \} \.dc-app \.dc-back \.dc-back-s \{ display: inline; \}/.test(st86) && st86.indexOf("@media (max-width: 720px) { .dc-back { display: none; } }") < st86.indexOf(".dc-app .dc-back { display: inline-flex;"),
+      "두잉고 강의실 머리띠: 앱이면 LIVE 수강생도 ‘DOOGO CLASS 바로가기’(휴대폰에서는 짧게 ‘두고클래스 ↗’ — 앱 안에서 스토어로 돌아갈 길) · 웹 휴대폰은 예전처럼 숨김");
+    const MB86 = path.join(ROOT, "../mobile"), cfg86 = JSON.parse(fs.readFileSync(path.join(MB86, "capacitor.config.json"), "utf8")), pk86 = JSON.parse(fs.readFileSync(path.join(MB86, "package.json"), "utf8"));
+    const vi86 = fs.readFileSync(path.join(ROOT, "../.vercelignore"), "utf8"), man86 = fs.readFileSync(path.join(MB86, "android/app/src/main/AndroidManifest.xml"), "utf8");
+    ok(cfg86.appId === "com.doogoclass.app" && cfg86.appName === "두고클래스" && /^DoogoClassApp\//.test(cfg86.appendUserAgent) && /DoogoClassApp\\\//.test(js86) &&
+      cfg86.server.url === "https://www.doogoclass.com/#/vod" && cfg86.server.allowNavigation.indexOf("www.doogoclass.com") >= 0 && cfg86.server.errorPath === "offline.html" && fs.existsSync(path.join(MB86, "www/offline.html")) &&
+      Object.keys(pk86.dependencies).every((k) => /^\d+\.\d+\.\d+$/.test(pk86.dependencies[k])) && /\n\/mobile\n/.test(vi86) && /android:name="\.MainActivity"/.test(man86) && /com\.doogoclass\.app/.test(fs.readFileSync(path.join(MB86, "android/app/build.gradle"), "utf8")),
+      "mobile/ (Capacitor 8): 앱 ID com.doogoclass.app · 이름 두고클래스 · 사용자 에이전트에 DoogoClassApp/ (사이트가 앱을 알아봄) · 운영 사이트를 열고 못 열면 offline.html · 버전 고정 · 안드로이드 프로젝트 · Vercel 배포에서 빼기(.vercelignore)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

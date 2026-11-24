@@ -33,7 +33,9 @@ function legacy() {
 // 예전 index.html 머리 맨 위 스크립트와 같은 일 + React 화면 표시 (main.js 가 React 화면이 준비되길 기다려요)
 // + 휴대폰에서도 PC 화면으로 보기: 주소에 ?pc=1 이면 쿠키 dc_pc=1 (이 브라우저에서 계속) · ?pc=0 이면 지워요 — 화면 폭은 아래 generateViewport 가 정해요
 const HEAD_JS = "window.__dcClean=true;window.DC_REACT_PAGE=1;window.DC_REACT_WAIT=new Promise(function(r){window.__dcReactReady=r});" +
-  "try{var q=location.search;if(/[?&]pc=1(&|$)/.test(q))document.cookie='dc_pc=1; path=/; samesite=lax';else if(/[?&]pc=0(&|$)/.test(q))document.cookie='dc_pc=; path=/; max-age=0; samesite=lax'}catch(e){}";
+  "try{var q=location.search;if(/[?&]pc=1(&|$)/.test(q))document.cookie='dc_pc=1; path=/; samesite=lax';else if(/[?&]pc=0(&|$)/.test(q))document.cookie='dc_pc=; path=/; max-age=0; samesite=lax'}catch(e){}" +
+  // 앱(2026-11-24): 사용자 에이전트 DoogoClassApp/ 또는 ?app=1(쿠키 dc_app) → html.dc-app · window.DC_APP — 예전 class/index.html 머리 스크립트와 같아요
+  "(function(){try{var q=location.search,ua=navigator.userAgent||'';if(/[?&]app=1(&|$)/.test(q))document.cookie='dc_app=1; path=/; samesite=lax';else if(/[?&]app=0(&|$)/.test(q))document.cookie='dc_app=; path=/; max-age=0; samesite=lax';if(/DoogoClassApp\\//.test(ua)||(!/[?&]app=0(&|$)/.test(q)&&/(^|;\\s*)dc_app=1(;|$)/.test(document.cookie))){window.DC_APP=1;document.documentElement.className+=' dc-app'}}catch(e){}})()";
 
 /** 공개 화면: 예전 index.html 에 서버가 넣던 미리보기 정보 → { title, metas, canonical, ld, style, seo } (못 만들면 null) */
 const META_SKIP = { viewport: 1, "theme-color": 1 };

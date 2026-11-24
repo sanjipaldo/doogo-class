@@ -95,7 +95,7 @@ export default function Shell({ r, hkey, n, children }) {
         <a className="brand" href="#/home"><RawOne html={window.doinggoB("black", "brand-dg")} /><span className="brand-div" aria-hidden="true" /><span className="sr-only">홈</span><span className="brand-text"><small>{D.brand.name}</small><strong>{D.brand.courseTitle}</strong></span></a>
         {D.brand.worldClock ? <Clock cls="top" /> : null}
         <div className="topbar-right">
-          {S.TRACK === "vod" ? <a className="dc-back" href="#/vod" title="DOOGO CLASS 스토어로 이동"><span className="dc-back-t"><b>DOOGO CLASS</b> 바로가기</span><Icon n="arrowUpRight" c="xs" /></a> : null}
+          {S.TRACK === "vod" || window.DC_APP ? <a className="dc-back" href="#/vod" title="DOOGO CLASS 스토어로 이동"><span className="dc-back-t"><b>DOOGO CLASS</b> 바로가기</span>{window.DC_APP ? <span className="dc-back-s">두고클래스</span> : null}<Icon n="arrowUpRight" c="xs" /></a> : null}
           {S.TRACK === "vod" ? <button type="button" className="vmode" data-action="vod-mode" aria-label="블랙 / 화이트 화면 바꾸기" title="블랙 / 화이트 화면 바꾸기" onClick={mode}><svg className="icon sm" viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: X.vodMode() === "dark" ? SUN : MOON }} /><span className="vmode-t">{X.vodMode() === "dark" ? "화이트" : "블랙"}</span></button> : null}
           <span className="hello"><span className={"sprout lv-" + lv.cur.key} title={"성장 레벨 · " + lv.cur.name}><Icon n={lv.cur.icon} c="sm" /></span><b>{S.me.name}</b><span className="txt">{S.preview ? "님 (미리보기)" : "님 환영합니다"}</span></span>
           <span className="cohort-chip">{S.CO.name}</span>

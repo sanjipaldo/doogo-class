@@ -1,0 +1,39 @@
+{
+  "appId": "com.doogoclass.app",
+  "appName": "두고클래스",
+  "webDir": "www",
+  "appendUserAgent": "DoogoClassApp/1.0",
+  "backgroundColor": "#ffffff",
+  "server": {
+    "url": "https://www.doogoclass.com/#/vod",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "www.doogoclass.com",
+      "doogoclass.com",
+      "doinggo.doogoclass.com",
+      "*.tosspayments.com",
+      "*.toss.im"
+    ],
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#ffffff",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#ffffff",
+      "overlaysWebView": false
+    }
+  }
+}

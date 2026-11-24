@@ -1,0 +1,20 @@
+{
+  "name": "doogoclass-app",
+  "private": true,
+  "description": "두고클래스 앱 (iOS · 안드로이드) — Capacitor 껍데기. 화면은 운영 사이트(www.doogoclass.com)를 그대로 보여 주고, 앱에서만 되는 기능(아래 메뉴 두잉고 탭 · 푸시 · 링크로 앱 열기)을 붙여요. Vercel 배포에는 들어가지 않아요(.vercelignore).",
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap sync android && cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/ios": "8.6.2",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2"
+  }
+}
