@@ -3302,13 +3302,12 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
 .vd-pay-opt input:focus-visible + span { outline-offset: 0; }
 .vd-pay-opt.off span { color: var(--on3); }
 .vd-pay-bd { display: inline-flex; align-items: center; flex: none; height: 20px; font-style: normal; font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
-.vd-pay-tsp { height: 22px; }
-.vd-pay-tsp img { display: block; width: auto; height: 19px; }
-.vd-pay-np { gap: 3px; color: #1e1e1e; }
-.vd-pay-np b { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; background: #03c75a; color: #fff; font-size: 11px; font-weight: 900; }
-.vd-pay-kp { gap: 3px; padding: 0 8px 0 7px; border-radius: 999px; background: #ffeb00; color: #191919; }
-.vd-pay-kp b { position: relative; width: 11px; height: 9px; border-radius: 50%; background: #191919; }
-.vd-pay-kp b::after { content: ""; position: absolute; left: 1px; bottom: -2px; width: 4px; height: 4px; background: #191919; clip-path: polygon(0 100%, 30% 0, 100% 0); }
+/* 간편결제 배지 — 공식 그림을 글자 옆에 작게 (탈잉처럼 · 크기는 vod.js PAY_BD 와 같게) · ‘준비 중’ 칸은 흐리게 */
+.vd-pay-bd img { display: block; width: auto; }
+.vd-pay-tsp img { height: 15px; }
+.vd-pay-np img { height: 17px; }
+.vd-pay-kp img { height: 20px; }
+.vd-pay-opt.off .vd-pay-bd { opacity: 0.45; }
 .vd-pay-sub { display: none; margin: 0 0 10px 30px; padding: 12px 14px; border-radius: 6px; background: var(--s1); font-size: 13px; line-height: 1.6; color: var(--on2); }
 .vd-pay-sub.on { display: block; }
 .vd-pay-sub b { display: flex; align-items: flex-start; gap: 6px; font-weight: 600; color: var(--on1); }

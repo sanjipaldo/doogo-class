@@ -1109,6 +1109,8 @@
    *  p(상품)를 주면: 종이책처럼 배송하는 상품은 퀵계좌이체를 빼요 — 현금 결제엔 구매안전서비스(에스크로)가 필요해서 (서버 vod-pay prepare 도 같게) */
   const PAY_OPT = { transfer: ["transfer", "", "퀵계좌이체"], toss: ["toss", "tsp", "토스페이"], naver: ["naver", "np", "네이버페이"], kakao: ["kakao", "kp", "카카오페이"], card: ["card", "", "신용 · 체크카드"], vbank: ["vbank", "", "가상계좌 입금"], tp: ["tp", "", "카드 · 간편결제 · 가상계좌"] };
   const PAY_ORD = ["transfer", "toss", "naver", "kakao", "card", "vbank", "tp"], PAY_ALL = ["transfer", "toss", "naver", "kakao", "card", "vbank"];
+  // 토스에 추가 신청해 둔 간편결제 (2026-11-24 대표님 신청) — 서버 TOSS_METHODS 에 아직 없으면 목록 맨 아래에 ‘준비 중’으로 보여 줘요 (누를 수 없어요) · 승인돼 열리면 제자리(토스페이 다음)로
+  const PAY_SOON = ["naver", "kakao"];
   function payOpts(p) {
     // 종이책(배송 상품)을 퀵계좌이체로 받으려면 구매안전서비스(에스크로)가 있어야 해요 — 서버 TOSS_ESCROW 가 켜져 있을 때만(toss.escrow) 열어요 (서버 prepare 도 같게)
     const T = SRV() ? CFG && CFG.toss : null, ship = !!(p && isBook(p)) && !(T && T.escrow);
@@ -1116,15 +1118,18 @@
     const lab = (k, easy) => (k === "card" && easy ? ["card", "", "카드/간편결제"] : PAY_OPT[k]);
     const easy = ks.indexOf("toss") >= 0 || ks.indexOf("naver") >= 0 || ks.indexOf("kakao") >= 0, o = ks.map((k) => lab(k, easy));
     const bankO = bankOpen() ? [SRV() && !bankInfo().real ? ["bank", "", "무통장 입금", "준비 중"] : ["bank", "", "무통장 입금"]] : [];
-    return (o.length ? o : PAY_ALL.filter((k) => !(ship && k === "transfer")).map((k) => lab(k, true).concat("결제 준비 중"))).concat(bankO);
+    const soon = SRV() && o.length ? PAY_SOON.filter((k) => ks.indexOf(k) < 0).map((k) => PAY_OPT[k].concat("준비 중")) : [];
+    return (o.length ? o.concat(soon) : PAY_ALL.filter((k) => !(ship && k === "transfer")).map((k) => lab(k, true).concat("결제 준비 중"))).concat(bankO);
   }
   /** 무통장 입금은 받지 않아요 (2026-11-15 대표님 요청 — 마스터 설정 ‘무통장 입금 받기’도 없앴어요 · 예전 ‘자동’도 이제 닫힘)
    *  settings.bankMode === "on" 일 때만 열려요(화면에 켜는 곳은 없어요 · 서버 api/_lib/bank.js openOf 와 같은 규칙) · 이미 들어온 무통장 주문(입금 대기 · 환불 송금)은 그대로 처리돼요 */
   function bankOpen() { return (V().settings || {}).bankMode === "on"; }
   /** 처음 골라 둘 결제 수단 — 카드(탈잉처럼) · 카드가 없으면 열린 첫 수단 */
   const payFirst = (opts) => { const ok = (opts || payOpts()).filter((y) => !y[3]); return ((ok.find((y) => y[0] === "card") || ok[0]) || [])[0] || ""; };
-  /** 간편결제 배지 — 토스페이는 공식 로고 그림(assets/vod/pay-tosspay.png · 2026-11-24 대표님이 준 로고) · 네이버페이 N Pay · 카카오페이 pay 는 글자로 그린 표시 */
-  const payBadge = (b) => (b === "tsp" ? '<i class="vd-pay-bd vd-pay-tsp" aria-hidden="true"><img src="assets/vod/pay-tosspay.png" alt="" width="99" height="19" decoding="async"></i>' : b === "np" ? '<i class="vd-pay-bd vd-pay-np" aria-hidden="true"><b>N</b>Pay</i>' : b === "kp" ? '<i class="vd-pay-bd vd-pay-kp" aria-hidden="true"><b></b>pay</i>' : "");
+  /** 간편결제 배지 — 토스페이 · 네이버페이 · 카카오페이 모두 공식 그림 (assets/vod/pay-*.png · 2026-11-24 대표님이 준 그림) */
+  //  탈잉처럼 글자 옆 작은 배지 — 그림 파일 · 화면 크기(가로 · 세로 px) · 2026-11-24 대표님이 준 네이버페이 · 카카오페이 그림 (React 결제 화면도 이 표)
+  const PAY_BD = { tsp: ["pay-tosspay.png", 78, 15], np: ["pay-npay.png", 44, 17], kp: ["pay-kakaopay.png", 49, 20] };
+  const payBadge = (b) => { const x = PAY_BD[b]; return x ? '<i class="vd-pay-bd vd-pay-' + b + '" aria-hidden="true"><img src="assets/vod/' + x[0] + '" alt="" width="' + x[1] + '" height="' + x[2] + '" decoding="async"></i>' : ""; };
   /** 고른 결제 수단 바로 아래 안내 (카드 할부 · 가상계좌 입금 기한) — 그 수단을 고르면 펼쳐져요 (formChange) */
   function paySub(k, on) {
     const h = Number(SRV() && CFG && CFG.toss && CFG.toss.vbankHours) || 72, due = h % 24 ? h + "시간" : h / 24 + "일";
@@ -4717,7 +4722,7 @@
     // 로그인 · 가입 · 두잉고 강의실 고르기 (4-4)
     authReady, doAuth, doDgLogin, kakaoStart, dgList, dgCard,
     // 주문 · 결제 (4-4)
-    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, payFirst, paySub, payNote, bankOpen, bankBox, shipBox, planRow, doPay,
+    psel: (id) => PSEL[id] || {}, coCalc, coPaint, couponsFor, payOpts, payFirst, paySub, payNote, PAY_BD, bankOpen, bankBox, shipBox, planRow, doPay,
     // VOD 강의실 · 전자책 · 입장 안내 (4-4)
     logStudy, eventTime, cdTxt, vimeoSrc,
     // 스토어 공개 화면
