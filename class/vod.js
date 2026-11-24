@@ -1210,7 +1210,7 @@
   }
   function popHtml(c) {
     const lines = (s) => esc(s || "").replace(/\n/g, "<br>");
-    return '<div class="vd-pop-bg" data-pop="bg"><div class="vd-pop-wrap" role="dialog" aria-modal="true" aria-labelledby="vd-pop-t"><div class="vd-pop">' +
+    return '<div class="vd-pop-bg" data-pop="bg"><div class="vd-pop-wrap" role="dialog" aria-modal="true" aria-labelledby="vd-pop-t" tabindex="-1"><div class="vd-pop">' +
       '<button type="button" class="vd-pop-x" data-pop="x" aria-label="닫기">' + icon("x", "sm") + "</button>" +
       (c.eyebrow ? '<p class="vd-pop-ey">' + lines(c.eyebrow) + "</p>" : "") + '<h2 class="vd-pop-t" id="vd-pop-t">' + lines(c.title) + "</h2>" + (c.body ? '<p class="vd-pop-b">' + lines(c.body) + "</p>" : "") +
       '<button type="button" class="vd-pop-cta" data-pop="x">' + esc(c.btn || "확인") + "</button>" +
@@ -1228,7 +1228,7 @@
     root.innerHTML = popHtml(c);
     document.documentElement.classList.add("vd-pop-open");
     root.querySelectorAll("[data-pop]").forEach((b) => b.addEventListener("click", (e) => { const k = b.dataset.pop; if (k === "bg" && e.target !== b) return; e.preventDefault(); popClose(k === "today"); }));
-    const cta = root.querySelector(".vd-pop-cta"); if (cta) try { cta.focus({ preventScroll: true }); } catch (e) { /* 초점은 없어도 돼요 */ }
+    const wrap = root.querySelector(".vd-pop-wrap"); if (wrap) try { wrap.focus({ preventScroll: true }); } catch (e) { /* 초점은 없어도 돼요 */ } // 대화창 자체에 초점 (버튼에 주면 처음부터 파란 테두리가 보여요)
   }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.querySelector("#vd-pop-root .vd-pop-bg")) popClose(false); });
   // 다짐 쿠폰(2026-11-08)은 마스터 쿠폰 목록에 없어요 — 받은 쿠폰(x)으로 공용 규칙(shared/price.js pledgeDef)에서 정의를 만들어요 (그 강의 전용)
