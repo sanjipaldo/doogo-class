@@ -2939,8 +2939,8 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /class="auto-link" href="https:\/\/x\.com\/p" target="_blank"/.test(sb45.DB.rich("**굵게** https://x.com/p")),
       "주소 → 파란 링크(새 창): 끝의 마침표 · 괄호는 빼고 · 따옴표 · 태그는 이스케이프 그대로 · 서식 글(rich)도 같은 규칙");
     const ap45 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), le45 = fs.readFileSync(path.join(ROOT, "../ui/dg/Learn.jsx"), "utf8"), bo45 = fs.readFileSync(path.join(ROOT, "../ui/dg/Board.jsx"), "utf8"), st45 = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
-    ok(/DB\.linkify\(m\.desc\)/.test(ap45) && /"<li>" \+ DB\.linkify\(s\) \+ "<\/li>"/.test(ap45) && /DB\.linkify\(w\.goal\)/.test(ap45) && /DB\.linkify\(s\.review\.comment\)/.test(ap45) && /DB\.linkify\(f\.a\)/.test(ap45) && /DB\.linkify\(q\.body\)/.test(ap45) && /DB\.linkify\(q\.answer\)/.test(ap45) &&
-      /window\.DB\.linkify\(m\.desc\)/.test(le45) && /window\.DB\.linkify\(x\)/.test(le45) && /window\.DB\.linkify\(f\.a\)/.test(bo45) && /window\.DB\.linkify\(q\.answer\)/.test(bo45) && /\.rich a, a\.auto-link \{ color: #1a6fe0;/.test(st45), 
+    ok(/DB\.linkify\(m\.desc\)/.test(ap45) && /"<li>" \+ DB\.linkify\(s\) \+ "<\/li>"/.test(ap45) && /DB\.linkify\(w\.goal\)/.test(ap45) && /DB\.linkify\(s\.review\.comment\)/.test(ap45) && /DB\.linkify\(f\.a\)/.test(ap45) && /DB\.linkify\(q\.body\)/.test(ap45) && /DB\.linkify\(e\.body\)/.test(ap45) &&
+      /window\.DB\.linkify\(m\.desc\)/.test(le45) && /window\.DB\.linkify\(x\)/.test(le45) && /window\.DB\.linkify\(f\.a\)/.test(bo45) && /window\.DB\.linkify\(e\.body\)/.test(bo45) && /\.rich a, a\.auto-link \{ color: #1a6fe0;/.test(st45), 
       "과제 설명 · 이렇게 하세요 · 핵심 목표 · 강사 검수 의견 · FAQ 답 · 1:1 요청 · 강의 노트 · 메인 강의 안내에 주소 링크 (예전 화면 · React) · 파란색");
     ok(/'<div class="a-text">' \+ DB\.linkify\(sub\.text\)/.test(fs.readFileSync(path.join(ROOT, "admin.js"), "utf8")), "강사센터 검수 화면: 수강생이 적어 낸 글 속 주소도 링크");
   }
@@ -4136,6 +4136,37 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const hs82 = [seg82(ap82), seg82(dg82)];
     ok(hs82.every((s) => /상담은 강사님 카카오 오픈채팅에서/.test(s) && /여기서는 1:1 문의만 받아요/.test(s) && !/href|data-action|onClick|운영팀 상담/.test(s)) && !/운영팀 상담/.test(ap82.slice(ap82.indexOf("function helpCard"), ap82.indexOf("function helpCard") + 3000)),
       "두잉고 수강생 도움 카드: ‘운영팀 상담(카카오톡)’ 대신 링크 없는 안내 ‘상담은 강사님 카카오 오픈채팅에서 · 여기서는 1:1 문의만 받아요’ (모든 강사 · 예전 화면 = React)", { app: hs82[0].slice(0, 160), react: hs82[1].slice(0, 160) });
+  }
+
+  {
+    console.log("83) 1:1 요청 답변 스레드 — 긴 답 전체 보이기 · 누가 답했는지 · 답글 여러 개 (2026-11-24)");
+    const vm83 = require("vm"), sb83 = { console, Date, Math, JSON, Intl, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null, length: 0 } };
+    sb83.window = sb83; vm83.createContext(sb83); ["shared/dates.js", "shared/data-rules.js", "shared/schedule.js", "data.js", "coach-perms.js", "db.js"].forEach((f) => vm83.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), sb83, { filename: f }));
+    const T83 = sb83.DB.qThread, L83 = sb83.DB.qLastAt;
+    const q83 = { id: "q1", answer: "첫 답", answeredAt: 100, answeredBy: "가 코치", answeredById: "c1", replies: [{ id: "r1", body: "덧붙여요", at: 200, by: "나 강사", byId: "moon" }, { id: "r2", body: "", at: 300 }, null] };
+    const th83 = T83(q83);
+    ok(th83.length === 2 && th83[0].id === "a" && th83[0].by === "가 코치" && th83[0].body === "첫 답" && th83[1].by === "나 강사" && T83({ id: "q2" }).length === 0 && T83(null).length === 0 &&
+      T83({ id: "q3", answer: "", replies: [{ id: "r", body: "x" }] }).length === 1 && L83(q83) === 200 && L83(Object.assign({}, q83, { answerEditedAt: 500 })) === 500 && L83({ id: "q4" }) === 0,
+      "DB.qThread: 첫 답변(누가 · 언제) + 답글 순서대로 · 빈 답글은 빼요 · qLastAt = 마지막 답글 · 고친 시각 (수강생 ‘새 답변’ 표시)", { th83 });
+    const AC83 = require(path.join(TMP, "class/api/_lib/access.js")), clone83 = (o) => JSON.parse(JSON.stringify(o));
+    const old83 = { questions: [clone83(q83), { id: "q9", title: "아직", at: 1 }] };
+    const forged = { questions: [Object.assign(clone83(q83), { answer: "위조", answeredBy: "강사", replies: [{ id: "rx", body: "가짜 강사 답글", by: "나 강사" }], seenAt: 999 }), { id: "q9", title: "아직", at: 1, answer: "셀프", replies: [{ id: "ry", body: "셀프 답글" }], answerEditedAt: 5 }, { id: "q10", title: "새 요청", replies: [{ id: "rz", body: "x" }] }] };
+    const wS = AC83.writer("prog:moon:s1", { student: { sid: "s1", iid: "moon" } }, false), fx = wS && wS.fix(clone83(old83), clone83(forged));
+    const wI = AC83.writer("prog:moon:s1", { admin: { role: "instructor", iid: "moon" } }, false), fxI = wI && wI.fix(clone83(old83), clone83(forged));
+    ok(!!fx && fx.questions[0].answer === "첫 답" && fx.questions[0].replies.length === 3 && fx.questions[0].replies[0].body === "덧붙여요" && fx.questions[0].seenAt === 999 &&
+      !("replies" in fx.questions[1]) && !("answer" in fx.questions[1]) && !("answerEditedAt" in fx.questions[1]) && !("replies" in fx.questions[2]) &&
+      !!fxI && fxI.questions[0].replies[0].id === "rx",
+      "서버: 수강생은 답변 · 답글 · 고친 기록을 못 바꿔요 (보낸 값은 버리고 서버 값 그대로 · 읽음 표시는 수강생 것) · 강사는 저장돼요", { s: fx && fx.questions.map((q) => [q.id, q.answer, (q.replies || []).length]), i: fxI && fxI.questions[0].replies.length });
+    const ad83 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ap83 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), bd83 = fs.readFileSync(path.join(ROOT, "../ui/dg/Board.jsx"), "utf8");
+    const ui83 = ["Questions.jsx", "Master2.jsx", "VodPages2.jsx"].map((f) => fs.readFileSync(path.join(ROOT, "../ui/center", f), "utf8"));
+    ok((ad83.match(/qThreadHtml\(x, [34], Q_PH(_CO)?\)/g) || []).length === 3 && !/name="answer" rows="[34]"[^>]*>' \+ esc\(x\.q\.answer/.test(ad83) && !/a-q-by/.test(ad83) &&
+      /else \(q\.replies \|\| \(q\.replies = \[\]\)\)\.push\(\{ id: DB\.uid\("r"\), body: ans, at: now, by: ac\.by, byId: ac\.byId, role: ac\.role \}\)/.test(ad83) &&
+      /"q-edit-form": saveQEdit/.test(ad83) && /case "q-edit":/.test(ad83) && /case "q-del":/.test(ad83) && /return ac\.role === "coach" \? !!e\.byId && e\.byId === ac\.byId : true;/.test(ad83) &&
+      ui83.every((t) => /<Isl key=\{x\.q\.id \+ ":" \+ n\} html=\{A\.qThreadHtml\(x, [34], A\.Q_PH(_CO)?\)\} \/>/.test(t) && !/a-q-by|defaultValue=\{x\.q\.answer/.test(t)),
+      "강사센터: 1:1 요청 · 오류 신고 모아보기 · 1:1 코칭 답변 세 곳이 같은 스레드(글 전체 · 누가 · 언제 · 수정/지우기) — 첫 답변이 있으면 ‘답글 달기’ · 코치는 자기 글만 고쳐요 (예전 화면 = React)");
+    ok(/th = DB\.qThread\(q\)/.test(ap83) && /th = DB\.qThread\(q\)/.test(bd83) && /req-answer' \+ \(k \? " re" : ""\)/.test(ap83) && /"card req-answer" \+ \(k \? " re" : ""\)/.test(bd83) &&
+      /esc\(e\.by \|\| D\.brand\.instructor \+ " · 운영자"\)/.test(ap83) && /\{e\.by \|\| D\.brand\.instructor \+ " · 운영자"\}/.test(bd83) && (ap83.match(/DB\.qLastAt\(/g) || []).length === 3 && !/<h2>강사 답변<\/h2>/.test(ap83 + bd83),
+      "수강생 화면: 답변 · 답글을 쓴 사람 이름(강사 · 코치 · 운영팀)과 시각까지 차례로 · 답글은 들여서 · 새 답글도 ‘새 답변’ 표시 (예전 화면 = React)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

@@ -108,7 +108,7 @@ function Requests() {
           <tr key={x.q.id} className={mine ? "mine" : ""} data-action="req-open" data-id={x.q.id} data-mine={mine ? 1 : 0} tabIndex={0} onClick={() => open(x, mine)} onKeyDown={(e) => { if (e.key === "Enter") open(x, mine); }}>
             <td className="c-no num">{x.no}</td><td className="c-st">{x.q.answer ? <span className="badge badge-positive">답변완료</span> : <span className="badge badge-neutral">답변대기</span>}</td>
             <td className="c-title">{mine ? <><b>{x.q.title}</b>{(x.q.images || []).length ? <Icon n="paperclip" c="xs" /> : null}<span className="badge badge-ink mine-tag">내 글</span></> : <span className="locked"><Icon n="lock" c="xs" />(비공개)</span>}{x.q.answer ? <span className="re">RE</span> : null}</td>
-            <td className="c-au">{mine ? S.me.name : DB.maskName(x.s.name)}</td><td className="c-dt num">{DB.date.toStr(new Date(x.q.at))}</td><td className="c-an num">{x.q.answer ? "1" : "—"}</td></tr>); })}</tbody></table>
+            <td className="c-au">{mine ? S.me.name : DB.maskName(x.s.name)}</td><td className="c-dt num">{DB.date.toStr(new Date(x.q.at))}</td><td className="c-an num">{DB.qThread(x.q).length || "—"}</td></tr>); })}</tbody></table>
         : <Empty ic="message">{vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요."}</Empty>}</section></div>
   );
 }
@@ -143,15 +143,16 @@ function RequestDetail({ id }) {
   if (!x || x.s.id !== S.me.id) return (
     <div className="page"><PageHead title={X.ML("qna")} /><QnaTabs on="req" /><section className="card empty"><Icon n="lock" /><p style={{ fontSize: "18px", fontWeight: "800", color: "var(--ink)", margin: "0 0 6px" }}>비공개 글이에요</p><p style={{ margin: "0 0 18px" }}>1:1 요청은 작성자와 강사님만 볼 수 있어요.</p><a className="btn btn-primary" href="#/qna/requests">목록으로</a></section></div>
   );
-  const q = x.q, d = new Date(q.at), cancel = () => { if (!arm) { setArm(true); return; } X.reqCancel(q.id); };
+  const q = x.q, d = new Date(q.at), th = DB.qThread(q), cancel = () => { if (!arm) { setArm(true); return; } X.reqCancel(q.id); };
   return (
     <div className="page"><PageHead title={X.ML("qna")} sub={vq ? "남긴 코칭 질문과 강사님 답변을 확인해요." : "남긴 요청과 강사님 답변을 확인해요."} /><QnaTabs on="req" />
       <a className="back-link" href="#/qna/requests"><Icon n="arrowLeft" c="sm" />{vq ? "1:1 코칭 목록" : "1:1 요청 목록"}</a>
       <article className="card req-detail"><div className="req-detail-top">{q.answer ? <span className="badge badge-positive">답변완료</span> : <span className="badge badge-neutral">답변대기</span>}<span className="badge badge-neutral">{q.category || "기타"}</span><span className="badge badge-neutral"><Icon n="lock" c="xs" />비공개</span><span className="req-no">#{x.no}</span></div>
         <h2>{q.title}</h2><div className="meta">{S.me.name} · {DB.date.toStr(d)} {hm(d)}</div><div className="body" dangerouslySetInnerHTML={{ __html: window.DB.linkify(q.body) }} />
         {(q.images || []).length ? <div className="req-shots">{q.images.map((im, i) => <a key={i} href={im.data} target="_blank" rel="noopener"><img src={im.data} alt={im.name} /></a>)}</div> : null}</article>
-      <div className="section-head"><h2>강사 답변</h2></div>
-      {q.answer ? <section className="card req-answer"><div className="req-answer-top"><b>{D.brand.instructor} · 운영자</b><span>{q.answeredAt ? DB.date.toStr(new Date(q.answeredAt)) + " " + hm(new Date(q.answeredAt)) : ""}</span></div><div className="body" dangerouslySetInnerHTML={{ __html: window.DB.linkify(q.answer) }} /></section>
+      {/* 답변 스레드 (2026-11-24): 첫 답변 + 이어진 답글 — 누가 · 언제 (예전 app.js 와 같게) */}
+      <div className="section-head"><h2>{th.length > 1 ? "답변 " + th.length + "개" : "답변"}</h2></div>
+      {th.length ? <div className="req-thread">{th.map((e, k) => <section key={e.id} className={"card req-answer" + (k ? " re" : "")}><div className="req-answer-top"><b>{k ? <span className="req-re">답글</span> : null}{e.by || D.brand.instructor + " · 운영자"}</b><span>{(e.at ? DB.date.toStr(new Date(e.at)) + " " + hm(new Date(e.at)) : "") + (e.editedAt ? " · 수정됨" : "")}</span></div><div className="body" dangerouslySetInnerHTML={{ __html: window.DB.linkify(e.body) }} /></section>)}</div>
         : <section className="card empty"><Icon n="clock" /><div>강사님이 확인하고 있어요. 답변이 달리면 여기에 바로 보여요.</div>{S.preview ? null : <button type="button" className="btn btn-secondary btn-sm" data-action="req-cancel" data-id={q.id} data-arm={arm ? "1" : undefined} onClick={cancel}>{arm ? "한 번 더 누르면 취소돼요" : vq && q.coach ? "질문 취소하고 코칭권 돌려받기" : "요청 취소하기"}</button>}</section>}
     </div>
   );

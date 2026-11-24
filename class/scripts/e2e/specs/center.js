@@ -98,6 +98,51 @@ module.exports = {
     if (qSid) { await setMemo("결제 확인 · 오프라인"); const a = await tagOf(); await setMemo("온라인 수강"); const b = await tagOf(); await setMemo(""); const c = await tagOf(); await setMemo(memo0); qm = { a, b, c }; }
     await run.check(!!qm && qm.a.off === "a-mode a-mode-offline|오프라인" && qm.a.all === qm.a.off && qm.b.off === "a-mode a-mode-online|온라인" && qm.b.all === qm.b.off && qm.c.off === "" && qm.c.all === "",
       "1:1 요청 답변: 수강생 메모 ‘오프라인’ · ‘온라인’ → 카드 이름 · 기수 줄에 표시 · 메모를 비우면 표시 없음 (예전 화면 = React)", qm, page);
+    // 1-3b) 1:1 요청 답변 스레드 (2026-11-24 · 대표님 요청): 긴 답도 잘리지 않고 글 그대로 · 누가 답했는지 · 다른 사람이 답글을 이어 달기 · 고치기
+    //       강사가 긴 답변 → 마스터(운영팀)가 오류 신고 모아보기에서 답글 → 답글 고치기 → 강사센터 · 수강생 화면에 2개가 차례로 (예전 화면 = React)
+    {
+      const LONG = "첫 줄 답변이에요.\n" + "긴 설명이 이어져요. ".repeat(40).trim() + "\n마지막 줄까지 다 보여요 END";
+      //  시험 수강생은 체험 계정이라 다시 로그인하면 기록이 처음으로 돌아가요(demoreset) → 수강생 창을 따로 열어 한 번만 로그인한 채로 요청 · 확인해요
+      const stu = await L.newPage(browser); run.watch(stu, "수강생 · 답변 스레드");
+      await FL.student(stu, base, info); await L.open(stu, base, "/home");
+      await stu.evaluate(() => { window.ROUTE.hash = "#/qna/requests/new"; }); await stu.waitForTimeout(600);
+      await stu.fill("#q-title", "E2E 답변 스레드 요청"); await stu.fill("#q-body", "긴 답변 · 답글 확인용이에요.");
+      await stu.click("#request-form button[type='submit']"); await stu.waitForTimeout(700); await L.flushed(stu);
+      await L.reactCookie(page, base, "all"); await FL.instructor(page, base, info); await L.open(page, base, "/center/questions");
+      await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(300);
+      const qid = await page.evaluate(() => { const a = Array.from(document.querySelectorAll("article.a-q")).find((x) => /E2E 답변 스레드 요청/.test(x.textContent)), f = a && a.querySelector(".a-q-form"); return f ? f.dataset.qid : ""; });
+      const F = (id) => '.a-q-form[data-qid="' + id + '"]';
+      const send = async (txt) => { await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(300); const b0 = await page.$eval(F(qid) + " button[type=submit]", (b) => b.textContent).catch(() => ""); await page.fill(F(qid) + ' textarea[name="answer"]', txt); await page.click(F(qid) + " button[type=submit]"); await page.waitForTimeout(500); await L.flushed(page); return b0; };
+      const centerView = () => page.evaluate((id) => { const f = document.querySelector('.a-q-form[data-qid="' + id + '"]'), a = f && f.closest(".a-q");
+        return a ? { items: Array.from(a.querySelectorAll(".a-qt-it")).map((li) => ({ re: li.classList.contains("re"), by: (li.querySelector(".a-by") || {}).textContent || "", meta: (li.querySelector(".a-qt-top small") || {}).textContent || "", body: (li.querySelector(".a-qt-body") || {}).innerText || "", edit: !!li.querySelector('[data-action="q-edit"]') })), btn: (f.querySelector("button[type=submit]") || {}).textContent || "", ta: (f.querySelector("textarea") || {}).value } : null; }, qid);
+      let r = null;
+      if (qid) {
+        const b1 = await send(LONG);
+        await FL.master(page, base, info); await L.open(page, base, "/center/master/reports");
+        const b2 = await send("운영팀 답글이에요. 확인 부탁드려요.");
+        await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(300);
+        const ed = await page.$('.a-qt-act [data-action="q-edit"][data-qid="' + qid + '"]:not([data-rid="a"])');
+        if (ed) { await ed.click(); await page.waitForSelector("#q-edit-form textarea"); await page.fill("#q-edit-form textarea", "운영팀 답글이에요. (고침)"); await page.click('#modal-root button[type="submit"][form="q-edit-form"]'); await page.waitForTimeout(500); await L.flushed(page); }
+        const cv = {};
+        for (const mode of ["off", "all"]) { await L.reactCookie(page, base, mode); await L.open(page, base, "/center/master/reports"); await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(400); cv[mode] = await centerView(); }
+        await L.reactCookie(page, base, "all"); await FL.instructor(page, base, info); await L.open(page, base, "/center/questions"); await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(400);
+        const ins = await centerView();
+        const sv = {};
+        for (const mode of ["off", "all"]) {
+          await L.reactCookie(stu, base, mode); await L.open(stu, base, "/home"); // 다시 로그인하지 않고 (세션 그대로) 새로 불러오기
+          await stu.evaluate((id) => { window.ROUTE.hash = "#/qna/requests/" + id; }, qid); await stu.waitForTimeout(800);
+          sv[mode] = await stu.evaluate(() => ({ head: Array.from(document.querySelectorAll(".section-head h2")).map((h) => h.textContent).find((t) => /^답변/.test(t)) || "", cards: Array.from(document.querySelectorAll(".req-thread .req-answer")).map((c) => ({ re: c.classList.contains("re"), who: (c.querySelector(".req-answer-top b") || {}).textContent || "", when: (c.querySelector(".req-answer-top > span") || {}).textContent || "", body: (c.querySelector(".body") || {}).innerText || "" })) }));
+        }
+        await page.context().clearCookies({ name: "dc_next" });
+        r = { b1, b2, edited: !!ed, cv, ins, sv };
+      }
+      await stu.context().close();
+      const okC = (v) => !!v && v.items.length === 2 && !v.items[0].re && v.items[1].re && /강사$/.test(v.items[0].by) && /운영팀/.test(v.items[1].by) && v.items[0].body.trim() === LONG && /답글/.test(v.items[1].meta) && /수정됨/.test(v.items[1].meta) && v.items[1].body.trim() === "운영팀 답글이에요. (고침)" && v.btn === "답글 달기" && v.ta === "";
+      const okS = (v) => !!v && v.head === "답변 2개" && v.cards.length === 2 && !v.cards[0].re && v.cards[1].re && /강사/.test(v.cards[0].who) && /운영팀/.test(v.cards[1].who) && /답글/.test(v.cards[1].who) && /수정됨/.test(v.cards[1].when) && v.cards[0].body.trim() === LONG && /END$/.test(v.cards[0].body.trim());
+      await run.check(!!r && r.b1 === "답변 등록" && r.b2 === "답글 달기" && r.edited && okC(r.cv.off) && JSON.stringify(r.cv.off) === JSON.stringify(r.cv.all) && !!r.ins && r.ins.items.length === 2 && r.ins.items.every((x) => x.edit) && okS(r.sv.off) && JSON.stringify(r.sv.off) === JSON.stringify(r.sv.all),
+        "1:1 요청 답변 스레드: 긴 답도 칸에 잘리지 않고 글 그대로 · 강사 답변 아래 운영팀 답글 · 답글 고치면 ‘수정됨’ · 첫 답변 뒤엔 ‘답글 달기’ · 수강생 화면에도 ‘답변 2개’ · 쓴 사람 · 시각 (예전 화면 = React)", r && (() => { const sm = (v) => v && v.items ? { n: v.items.length, it: v.items.map((x) => [x.re, x.by.slice(-3), x.meta, x.body.length, x.edit]), btn: v.btn, ta: v.ta.length } : v && v.cards ? { head: v.head, c: v.cards.map((x) => [x.re, x.who.slice(-6), x.when, x.body.length]) } : v;
+          return { b1: r.b1, b2: r.b2, edited: r.edited, long: LONG.length, cv: { off: sm(r.cv.off), all: sm(r.cv.all), same: JSON.stringify(r.cv.off) === JSON.stringify(r.cv.all) }, ins: sm(r.ins), sv: { off: sm(r.sv.off), all: sm(r.sv.all), same: JSON.stringify(r.sv.off) === JSON.stringify(r.sv.all) } }; })(), page);
+    }
     // 1-4) 두잉고 소개 목록 OFF 강사 (시험 DB 의 choi — 일회성 작업 homeOff): 강사 소개 · 무료강의는 방문자에게 ‘준비 중인 페이지예요’ · 마스터는 OFF 안내 띠와 함께 그대로 (지우지 않음)
     const pv = await L.newPage(browser), vis = {}, mas = {};
     for (const u of ["/p/choi", "/free/choi"]) { await L.open(pv, base, u); await pv.waitForTimeout(500); vis[u] = /준비 중인 페이지예요/.test(await L.bodyText(pv)); }

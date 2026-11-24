@@ -1,8 +1,7 @@
 "use client";
 /* 강사센터 1:1 요청 답변 #/center/questions — 답변 대기 · 완료 탭 · 요청 글 · 사진 · 답변 쓰기
  * 예전 admin.js pageQuestions 를 React 로 (Next.js 전환 6단계) · 탭 · 답변 등록(폼 .a-q-form)은 예전 admin.js 이벤트가 받아요 */
-import Icon from "../lib/Icon.jsx";
-import { ADM, DBX, Head, Empty, Pill, fmtStamp } from "./bits.jsx";
+import { ADM, DBX, Head, Empty, Pill, Isl, fmtStamp } from "./bits.jsx";
 
 // 수강 방식 표시 (2026-11-23): 수강생 메모의 ‘오프라인’ · ‘온라인’ (DB.studyMode) — 예전 admin.js studyTag 와 같은 모양
 function studyTag(s) {
@@ -19,11 +18,9 @@ export default function Questions({ n }) {
     <section className="a-card"><div className="a-toolbar"><div className="a-tabs">{tabs.map((t) => <button key={t[0]} type="button" className={"a-tab" + (ui.qFilter === t[0] ? " on" : "")} data-action="q-tab" data-k={t[0]}>{t[1]} <span className="num">{t[2]}</span></button>)}</div></div>
       {shown.length ? <div className="a-stack">{shown.map((x) => (
         <article key={x.q.id} className="a-q"><div className="a-q-head"><span className="a-avatar">{x.s.name.slice(0, 1)}</span><div><b>#{x.no} {x.q.title}</b><small>{x.s.name} · {A.cohortName(x.s.cohortId)}{studyTag(x.s)} · {fmtStamp(x.q.at)}</small></div><Pill cls="mute">{x.q.category || "기타"}</Pill>{x.q.answer ? <Pill cls="ok">답변 완료</Pill> : <Pill cls="warn">답변 대기</Pill>}</div>
-          {x.q.answer && (x.q.answeredBy || x.q.answeredAt) ? <p className="a-q-by"><span className="a-by"><Icon n="user" c="xs" />{x.q.answeredBy || "강사"}</span>{x.q.answeredAt ? " · " + fmtStamp(x.q.answeredAt) + " 답변" : " 답변"}</p> : null}
           <p className="a-q-body">{x.q.body}</p>
           {(x.q.images || []).length ? <div className="a-shots a-q-shots">{x.q.images.map((im, i) => <a key={i} className="a-shot" href={im.data} target="_blank" rel="noopener"><img src={im.data} alt={im.name} /></a>)}</div> : null}
-          {/* 답변 칸은 다시 그릴 때(n)마다 저장된 답으로 — 예전처럼 */}
-          <form key={x.q.id + ":" + n} className="a-q-form" data-sid={x.s.id} data-qid={x.q.id}><textarea className="a-input" name="answer" rows="3" placeholder="예: 확인해 보니 ○○ 문제였어요. 지금 고쳤으니 새로고침 후 다시 해 주세요." aria-label="답변" defaultValue={x.q.answer || ""} /><button className="a-btn a-btn-primary a-btn-sm" type="submit">{x.q.answer ? "답변 수정" : "답변 등록"}</button></form>
+          {/* 답변 스레드 · 답글 칸 (2026-11-24) — 예전 admin.js qThreadHtml 그대로 · 다시 그릴 때(n)마다 빈 답글 칸으로 */}<Isl key={x.q.id + ":" + n} html={A.qThreadHtml(x, 3, A.Q_PH)} />
         </article>
       ))}</div> : <Empty ic="bug">{ui.qFilter === "open" ? "답변을 기다리는 1:1 요청이 없어요." : "1:1 요청이 없어요."}</Empty>}
     </section>

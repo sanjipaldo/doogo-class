@@ -869,6 +869,12 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .req-answer-top { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--mute); }
 .req-answer-top b { color: var(--ink); }
 .req-answer .body { padding-top: 10px; }
+/* 답변 스레드 (2026-11-24): 첫 답변 아래로 강사 · 코치 · 운영팀 답글이 이어져요 */
+.req-thread { display: grid; gap: 12px; }
+.req-answer.re { position: relative; margin-left: 28px; border: 1px solid var(--line); border-left: 3px solid var(--primary); }
+.req-answer.re::before { content: ""; position: absolute; left: -22px; top: -12px; width: 14px; height: 34px; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); border-bottom-left-radius: 10px; }
+.req-re { display: inline-flex; align-items: center; margin-right: 6px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--primary-pale); color: var(--primary); font-size: 11px; font-weight: 800; vertical-align: 1px; }
+@media (max-width: 720px) { .req-answer.re { margin-left: 16px; } .req-answer.re::before { left: -14px; width: 9px; } }
 @media (max-width: 720px) {
   .req-table .c-no, .req-table .c-au, .req-table .c-an { display: none; }
   .req-table .c-dt { width: auto; font-size: 12px; }

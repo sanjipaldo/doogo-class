@@ -184,7 +184,8 @@ function prefixesFor(ids) {
 }
 
 /* ---------------- 쓰기 권한 ---------------- */
-const ANSWER_KEYS = ["answer", "answeredAt", "answeredBy", "answeredById"];
+// 수강생은 못 고치는 답변 칸 — 답글(replies)과 첫 답변 고친 기록도 (2026-11-24 · 1:1 요청 답글)
+const ANSWER_KEYS = ["answer", "answeredAt", "answeredBy", "answeredById", "answerEditedAt", "answerEditedBy", "replies"];
 /** 쓸 수 있으면 { fix(old, next) → 저장할 값 } 를, 아니면 null */
 function writer(k, ids, creating) {
   const K = parseKey(k);

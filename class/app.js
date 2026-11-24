@@ -78,7 +78,7 @@
   const isUnread = (n) => !(P.readNotices || {})[n.id];
   const unreadNotices = () => D.notices.filter(isUnread).length;
   // 새 답변 · 새 검수 결과 (보면 사라져요)
-  const newAnswers = () => (P.questions || []).filter((q) => q.answer && (q.answeredAt || 1) > (q.seenAt || 0)).length;
+  const newAnswers = () => (P.questions || []).filter((q) => q.answer && DB.qLastAt(q) > (q.seenAt || 0)).length; // 답글 · 고친 답도 ‘새 답변’ (2026-11-24)
   const newFixes = () => Object.keys(P.submissions || {}).filter((k) => { const a = P.submissions[k] || [], s = a[a.length - 1]; return s && s.review && s.review.status !== "approved" && (s.review.at || 1) > (s.revSeenAt || 0); }).length;
   const newBadge = (n) => (isUnread(n) ? '<span class="badge badge-new">NEW</span>' : "");
   // 입장 링크: 외부 주소(줌·유튜브 라이브)는 새 창으로
@@ -1640,7 +1640,7 @@
             return '<tr class="' + (mine ? "mine" : "") + '" data-action="req-open" data-id="' + esc(x.q.id) + '" data-mine="' + (mine ? 1 : 0) + '" tabindex="0">' +
               '<td class="c-no num">' + x.no + '</td><td class="c-st">' + (x.q.answer ? '<span class="badge badge-positive">답변완료</span>' : '<span class="badge badge-neutral">답변대기</span>') + "</td>" +
               '<td class="c-title">' + (mine ? '<b>' + esc(x.q.title) + "</b>" + ((x.q.images || []).length ? icon("paperclip", "xs") : "") + '<span class="badge badge-ink mine-tag">내 글</span>' : '<span class="locked">' + icon("lock", "xs") + "(비공개)</span>") + (x.q.answer ? '<span class="re">RE</span>' : "") + "</td>" +
-              '<td class="c-au">' + esc(mine ? me.name : DB.maskName(x.s.name)) + '</td><td class="c-dt num">' + DB.date.toStr(new Date(x.q.at)) + '</td><td class="c-an num">' + (x.q.answer ? "1" : "—") + "</td></tr>";
+              '<td class="c-au">' + esc(mine ? me.name : DB.maskName(x.s.name)) + '</td><td class="c-dt num">' + DB.date.toStr(new Date(x.q.at)) + '</td><td class="c-an num">' + (DB.qThread(x.q).length || "—") + "</td></tr>";
           }).join("") + "</tbody></table>"
         : empty("message", vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요.")) + "</section></div>";
   }
@@ -1689,8 +1689,8 @@
     }
     const q = x.q;
     const myQ = x.s.id === me.id && (P.questions || []).find((y) => y.id === q.id);
-    if (myQ && myQ.answer && (myQ.answeredAt || 1) > (myQ.seenAt || 0)) { myQ.seenAt = Date.now(); saveProgress(); setTimeout(() => renderSidebar(route()), 0); }
-    const d = new Date(q.at);
+    if (myQ && myQ.answer && DB.qLastAt(myQ) > (myQ.seenAt || 0)) { myQ.seenAt = Date.now(); saveProgress(); setTimeout(() => renderSidebar(route()), 0); }
+    const d = new Date(q.at), th = DB.qThread(q);
     const vq = TRACK === "vod";
     return '<div class="page">' + pageHead(ML("qna"), vq ? "남긴 코칭 질문과 강사님 답변을 확인해요." : "남긴 요청과 강사님 답변을 확인해요.") + qnaTabs("req") +
       '<a class="back-link" href="#/qna/requests">' + icon("arrowLeft", "sm") + (vq ? "1:1 코칭 목록" : "1:1 요청 목록") + "</a>" +
@@ -1699,9 +1699,10 @@
         '<div class="body">' + DB.linkify(q.body) + "</div>" +
         ((q.images || []).length ? '<div class="req-shots">' + q.images.map((im) => '<a href="' + im.data + '" target="_blank" rel="noopener"><img src="' + im.data + '" alt="' + esc(im.name) + '"></a>').join("") + "</div>" : "") +
       "</article>" +
-      '<div class="section-head"><h2>강사 답변</h2></div>' +
-      (q.answer
-        ? '<section class="card req-answer"><div class="req-answer-top"><b>' + esc(D.brand.instructor) + " · 운영자</b><span>" + (q.answeredAt ? DB.date.toStr(new Date(q.answeredAt)) + " " + String(new Date(q.answeredAt).getHours()).padStart(2, "0") + ":" + String(new Date(q.answeredAt).getMinutes()).padStart(2, "0") : "") + '</span></div><div class="body">' + DB.linkify(q.answer) + "</div></section>"
+      // 답변 스레드 (2026-11-24): 첫 답변 + 이어진 답글 — 누가(강사 · 코치 · 운영팀) · 언제 썼는지 함께 (React ui/dg/Board.jsx 와 같게)
+      '<div class="section-head"><h2>' + (th.length > 1 ? "답변 " + th.length + "개" : "답변") + "</h2></div>" +
+      (th.length
+        ? '<div class="req-thread">' + th.map((e, k) => { const t = new Date(e.at || q.at); return '<section class="card req-answer' + (k ? " re" : "") + '"><div class="req-answer-top"><b>' + (k ? '<span class="req-re">답글</span>' : "") + esc(e.by || D.brand.instructor + " · 운영자") + "</b><span>" + (e.at ? DB.date.toStr(t) + " " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0") : "") + (e.editedAt ? " · 수정됨" : "") + '</span></div><div class="body">' + DB.linkify(e.body) + "</div></section>"; }).join("") + "</div>"
         : '<section class="card empty">' + icon("clock") + "<div>강사님이 확인하고 있어요. 답변이 달리면 여기에 바로 보여요.</div>" + (preview ? "" : '<button type="button" class="btn btn-secondary btn-sm" data-action="req-cancel" data-id="' + esc(q.id) + '">' + (vq && q.coach ? "질문 취소하고 코칭권 돌려받기" : "요청 취소하기") + "</button>") + "</section>") +
       "</div>";
   }
@@ -2987,7 +2988,7 @@
     // Q&A: FAQ 분류(예전처럼 남아요) · 1:1 요청 · 코칭 질문 (목록 · 쓰던 사진 · 등록 · 취소 · 답 본 표시)
     faqCat: (c) => { if (c !== undefined) faqCat = c; return faqCat; }, myRequests, COACH_CATS, vtAskGet,
     reqDraft: () => reqDraft, addReqFiles, reqRemove: (i) => { reqDraft.splice(Number(i), 1); }, submitRequest, reqCancel,
-    qSeen: (id) => { const q = (P.questions || []).find((y) => y.id === id); if (q && q.answer && (q.answeredAt || 1) > (q.seenAt || 0)) { q.seenAt = Date.now(); saveProgress(); return true; } return false; },
+    qSeen: (id) => { const q = (P.questions || []).find((y) => y.id === id); if (q && q.answer && DB.qLastAt(q) > (q.seenAt || 0)) { q.seenAt = Date.now(); saveProgress(); return true; } return false; },
     noteSave: (id, v) => { P.notes = P.notes || {}; if (String(v).trim()) P.notes[id] = v; else delete P.notes[id]; saveProgress(); },
     // 서류 준비 체크 · 자료실(분류 · 자료 · 수업 자료 모음 · 열람자 표시 · 이용 안내) · 수업 자료 미리보기/내려받기
     docToggle, resOf, libCatSel, libCatBar, lessonFiles, vtFiles, matClick, libNotice: () => DB.libNoticeOf(D),

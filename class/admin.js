@@ -51,6 +51,8 @@
   const can = (key) => { if (!isCoach()) return true; if (!key || key === "ops-notices") return true; if (key === "coaches" || key === "contract") return false; return CP.permsOf(ME_COACH()).indexOf(CP.keyFor(key, TRK() === "vod")) !== -1; };
   /** 검수 · 답변 기록에 남길 처리자 */
   const actor = () => { if (isCoach()) { const c = ME_COACH(); return { by: (c ? c.name : "코치") + " 코치", byId: S.coachId, role: "coach" }; } if (S && S.role === "master" && !S.actingAs) { const st = staffMe(); return { by: st ? st.name + " (운영팀)" : "두잉고 운영팀", byId: st ? st.id : "master", role: "master" }; } const i = INS(); return { by: (i ? i.name : "") + " 강사", byId: IID(), role: S.role === "master" ? "master" : "instructor" }; };
+  /** 글 길이에 맞는 칸 줄 수 (긴 글이 칸 안에서 잘려 보이지 않게 · 2026-11-24) */
+  const taRows = (t, min, max) => Math.min(max || 14, Math.max(min || 3, String(t || "").split("\n").reduce((a, l) => a + 1 + Math.floor(l.length / 60), 0) + 1));
   const INS = () => DB.instructor(IID());
   /* 두잉고 버전: 강사센터에서 LIVE · 오프라인(기수 · 주차 · 과제) / VOD(DOOGO CLASS에서 VOD를 산 수강생)를 따로 세팅한다
    * VOD 버전이면 C()는 content.vod 를 고치고(기본 정보 · 색상은 함께), 메뉴는 "강사ID@vod" 메뉴를 고친다 */
@@ -1200,7 +1202,7 @@
         (sub.result.pass ? (sub.result.ok.length ? "<span>" + esc(sub.result.ok.join(" · ")) + "</span>" : "") : "<span>" + esc(sub.result.reasons.join(" / ")) + "</span>") + "</div>" +
       (sub.review ? '<p class="a-muted">현재 검수: <b>' + (sub.review.status === "approved" ? "승인" : "보완 요청") + "</b> · " + (sub.review.by ? '<span class="a-by">' + icon("user", "xs") + esc(sub.review.by) + "</span> · " : "") + fmtStamp(sub.review.at) + "</p>" : "") +
       revLogHtml(sub) +
-      '<div class="a-field"><label for="rv-comment">수강생에게 남길 말 <small>(보완 요청 시 꼭 적어 주세요)</small></label><textarea class="a-input" id="rv-comment" rows="3" placeholder="예: 사업자등록증 전체가 보이게 다시 찍어 주세요.">' + esc(sub.review ? sub.review.comment || "" : "") + "</textarea></div>",
+      '<div class="a-field"><label for="rv-comment">수강생에게 남길 말 <small>(보완 요청 시 꼭 적어 주세요)</small></label><textarea class="a-input" id="rv-comment" rows="' + taRows(sub.review ? sub.review.comment : "", 3) + '" placeholder="예: 사업자등록증 전체가 보이게 다시 찍어 주세요.">' + esc(sub.review ? sub.review.comment || "" : "") + "</textarea></div>",
       (DB.menuOn(IID(), "showcase") && can("showcase") ? btn(icon("trophy", "sm") + "모범 과제로 올리기", "showcase-from", "a-btn-ghost", ' data-sid="' + sid + '" data-mid="' + mid + '"') : "") +
       // 지금 상태에 맞는 버튼만 (2026-11-22): 승인된 과제엔 ‘승인’ 대신 ‘승인 취소’(검수 대기로) · 보완 요청한 과제엔 ‘보완 요청 취소’ · 보완 요청은 내용 고치기
       reviewBtns(sid, mid, revState(sub)), "lg");
@@ -1211,6 +1213,40 @@
       (st !== "pending" ? btn(icon("refresh", "sm") + (st === "approved" ? "승인 취소" : "보완 요청 취소"), "review-undo", "a-btn-ghost", dd) : "") +
       btn(icon("alert", "sm") + (st === "fix" ? "보완 요청 고치기" : "보완 요청"), "review-save", "a-btn-outline danger", dd + ' data-status="fix"') +
       (st === "approved" ? "" : btn(icon("check", "sm") + "승인", "review-save", "a-btn-primary", dd + ' data-status="approved"'));
+  }
+
+  /* ---------------- 1:1 요청 답변 스레드 (2026-11-24 · 대표님 요청) ----------------
+   *  답변 칸(textarea)에 넣어 두던 답을 글 그대로 다 보여 주고(잘리지 않게), 글마다 누가(강사 · 코치 · 운영팀) · 언제 썼는지 표시.
+   *  첫 답변 뒤에는 다른 사람(예: 코치가 답한 뒤 강사)이 답글을 이어 달 수 있어요 — 수강생 화면에도 같은 순서로 보여요 (DB.qThread).
+   *  강사센터 1:1 요청 · 마스터 오류 신고 모아보기 · 1:1 코칭 답변이 같이 쓰고, React 화면도 이 HTML 을 그대로 써요 (ui/center Questions · Master2 · VodPages2) */
+  const Q_PH = "예: 확인해 보니 ○○ 문제였어요. 지금 고쳤으니 새로고침 후 다시 해 주세요.", Q_PH_CO = "예: 샘플 요청 메일에 단가를 같이 물어봐도 괜찮아요. ‘검토용’이라고 밝혀 두면 답장이 더 빨라요.";
+  const qCanEdit = (e) => { const ac = actor(); return ac.role === "coach" ? !!e.byId && e.byId === ac.byId : true; }; // 코치는 자기 글만 · 강사 · 운영팀은 모두
+  function qThreadHtml(x, rows, ph) {
+    const q = x.q, list = DB.qThread(q), dd = ' data-sid="' + esc(x.s.id) + '" data-qid="' + esc(q.id) + '"';
+    const items = list.map((e, i) => '<li class="a-qt-it' + (i ? " re" : "") + '"><div class="a-qt-top"><span class="a-by">' + icon(i ? "message" : "user", "xs") + esc(e.by || "강사") + "</span><small>" + (i ? "답글" : "답변") + (e.at ? " · " + fmtStamp(e.at) : "") + (e.editedAt ? " · 수정됨" : "") + "</small>" +
+      (qCanEdit(e) ? '<span class="a-qt-act"><button type="button" class="a-link" data-action="q-edit"' + dd + ' data-rid="' + esc(e.id) + '">수정</button>' + (i ? '<button type="button" class="a-link danger" data-action="q-del"' + dd + ' data-rid="' + esc(e.id) + '">지우기</button>' : "") + "</span>" : "") +
+      '</div><div class="a-qt-body">' + DB.linkify(e.body) + "</div></li>").join("");
+    return (items ? '<ol class="a-qt" aria-label="답변 ' + list.length + '개">' + items + "</ol>" : "") +
+      '<form class="a-q-form"' + dd + '><textarea class="a-input" name="answer" rows="' + (q.answer ? 2 : rows || 3) + '" placeholder="' + esc(q.answer ? "답글을 달면 위 답변 아래에 이어서 보여요 (수강생 화면에도 함께 · 이름과 시각이 같이 보여요)" : ph || "") + '" aria-label="' + (q.answer ? "답글" : "답변") + '"></textarea>' +
+      '<button class="a-btn a-btn-primary a-btn-sm" type="submit">' + (q.answer ? "답글 달기" : "답변 등록") + "</button></form>";
+  }
+  const growTa = (t) => { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, Math.round(window.innerHeight * 0.6)) + "px"; };
+  const qFind = (sid, qid) => { const p = DB.progress(sid), q = p && (p.questions || []).find((y) => y.id === qid); return q ? { p, q } : null; };
+  const qEntry = (q, rid) => (rid === "a" ? (q.answer ? { id: "a", body: q.answer, byId: q.answeredById || "" } : null) : (q.replies || []).find((r) => r.id === rid) || null);
+  function qEditModal(sid, qid, rid) {
+    const f = qFind(sid, qid), e = f && qEntry(f.q, rid);
+    if (!e || !qCanEdit(e)) { toast("이 글은 고칠 수 없어요.", "warn"); return; }
+    openModal(rid === "a" ? "답변 고치기" : "답글 고치기", '<form id="q-edit-form" class="a-form" novalidate data-sid="' + esc(sid) + '" data-qid="' + esc(qid) + '" data-rid="' + esc(rid) + '"><textarea class="a-input" name="body" rows="' + taRows(e.body, 5, 18) + '" aria-label="내용">' + esc(e.body) + '</textarea><p class="a-hint">고치면 수강생 화면에도 바로 바뀌고 ‘수정됨’이 붙어요.</p></form>',
+      btn("취소", "modal-close") + '<button class="a-btn a-btn-primary" type="submit" form="q-edit-form">저장</button>', "md");
+  }
+  function saveQEdit(fm) {
+    const f = qFind(fm.dataset.sid, fm.dataset.qid), rid = fm.dataset.rid, body = fm.body.value.replace(/\r/g, "").trim();
+    if (!f) { closeModal(); return; }
+    if (!body) { toast("내용을 적어 주세요.", "warn"); return; }
+    const ac = actor(), now = Date.now();
+    if (rid === "a") { if (!f.q.answer || !qCanEdit({ byId: f.q.answeredById || "" })) return; f.q.answer = body; f.q.answerEditedAt = now; f.q.answerEditedBy = ac.by; }
+    else { const r = (f.q.replies || []).find((y) => y.id === rid); if (!r || !qCanEdit(r)) return; r.body = body; r.editedAt = now; r.editedBy = ac.by; }
+    DB.saveProgress(fm.dataset.sid, f.p); closeModal(); render(); toast(rid === "a" ? "답변을 고쳤어요." : "답글을 고쳤어요.");
   }
 
   /* ---------------- 강사: 문의 답변 ---------------- */
@@ -1226,10 +1262,9 @@
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" +
         (shown.length ? '<div class="a-stack">' + shown.map((x) =>
           '<article class="a-q"><div class="a-q-head"><span class="a-avatar">' + esc(x.s.name.slice(0, 1)) + "</span><div><b>#" + x.no + " " + esc(x.q.title) + "</b><small>" + esc(x.s.name) + " · " + esc(cohortName(x.s.cohortId)) + studyTag(x.s) + " · " + fmtStamp(x.q.at) + "</small></div>" + pill(x.q.category || "기타", "mute") + (x.q.answer ? pill("답변 완료", "ok") : pill("답변 대기", "warn")) + "</div>" +
-          (x.q.answer && (x.q.answeredBy || x.q.answeredAt) ? '<p class="a-q-by"><span class="a-by">' + icon("user", "xs") + esc(x.q.answeredBy || "강사") + "</span>" + (x.q.answeredAt ? " · " + fmtStamp(x.q.answeredAt) + " 답변" : " 답변") + "</p>" : "") +
-          '<p class="a-q-body">' + esc(x.q.body) + "</p>" +
+                    '<p class="a-q-body">' + esc(x.q.body) + "</p>" +
           ((x.q.images || []).length ? '<div class="a-shots a-q-shots">' + x.q.images.map((im) => '<a class="a-shot" href="' + im.data + '" target="_blank" rel="noopener"><img src="' + im.data + '" alt="' + esc(im.name) + '"></a>').join("") + "</div>" : "") +
-          '<form class="a-q-form" data-sid="' + x.s.id + '" data-qid="' + x.q.id + '"><textarea class="a-input" name="answer" rows="3" placeholder="예: 확인해 보니 ○○ 문제였어요. 지금 고쳤으니 새로고침 후 다시 해 주세요." aria-label="답변">' + esc(x.q.answer || "") + '</textarea><button class="a-btn a-btn-primary a-btn-sm" type="submit">' + (x.q.answer ? "답변 수정" : "답변 등록") + "</button></form></article>").join("") + "</div>"
+          qThreadHtml(x, 3, Q_PH) + "</article>").join("") + "</div>"
           : emptyBox("bug", ui.qFilter === "open" ? "답변을 기다리는 1:1 요청이 없어요." : "1:1 요청이 없어요.")) +
       "</section>";
   }
@@ -2520,10 +2555,9 @@
     if (!shown.length) return emptyBox("bug", ui.qFilter === "open" ? "답변을 기다리는 신고가 없어요." : "신고가 없어요.");
     return '<div class="a-stack">' + shown.map((x) =>
       '<article class="a-q"><div class="a-q-head"><span class="a-avatar">' + esc(x.s.name.slice(0, 1)) + "</span><div><b>#" + x.no + " " + esc(x.q.title) + "</b><small>" + (showIns ? esc(x.ins.displayName) + " · " : "") + esc(x.s.name) + " · " + esc(cohortName(x.s.cohortId)) + " · " + fmtStamp(x.q.at) + "</small></div>" + pill(x.q.category || "기타", "mute") + (x.q.answer ? pill("답변 완료", "ok") : pill("답변 대기", "warn")) + "</div>" +
-          (x.q.answer && (x.q.answeredBy || x.q.answeredAt) ? '<p class="a-q-by"><span class="a-by">' + icon("user", "xs") + esc(x.q.answeredBy || "강사") + "</span>" + (x.q.answeredAt ? " · " + fmtStamp(x.q.answeredAt) + " 답변" : " 답변") + "</p>" : "") +
-      '<p class="a-q-body">' + esc(x.q.body) + "</p>" +
+                '<p class="a-q-body">' + esc(x.q.body) + "</p>" +
       ((x.q.images || []).length ? '<div class="a-shots a-q-shots">' + x.q.images.map((im) => '<a class="a-shot" href="' + im.data + '" target="_blank" rel="noopener"><img src="' + im.data + '" alt="' + esc(im.name) + '"></a>').join("") + "</div>" : "") +
-      '<form class="a-q-form" data-sid="' + x.s.id + '" data-qid="' + x.q.id + '"><textarea class="a-input" name="answer" rows="3" placeholder="예: 확인해 보니 ○○ 문제였어요. 지금 고쳤으니 새로고침 후 다시 해 주세요." aria-label="답변">' + esc(x.q.answer || "") + '</textarea><button class="a-btn a-btn-primary a-btn-sm" type="submit">' + (x.q.answer ? "답변 수정" : "답변 등록") + "</button></form></article>").join("") + "</div>";
+      qThreadHtml(x, 3, Q_PH) + "</article>").join("") + "</div>";
   }
 
   /* ---------------- 마스터: 강사 입점 문의 (첫 화면 ‘강사 입점 문의’ 팝업으로 들어온 신청) ---------------- */
@@ -5967,10 +6001,9 @@
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div></div>" +
         (list.length ? '<div class="a-stack">' + list.map((x) => { const o = passes.find((y) => (y.coach.qs || []).indexOf(x.q.id) >= 0), no = o ? (o.coach.qs || []).indexOf(x.q.id) + 1 : 0;
           return '<article class="a-q"><div class="a-q-head"><span class="a-avatar">' + esc(String(x.s.name).slice(0, 1)) + "</span><div><b>" + esc(x.q.title) + "</b><small>" + esc(x.s.name) + " · VOD 수강생" + (o ? " · 코칭권 " + o.coach.n + "회 중 " + no + "번째" : "") + " · " + fmtStamp(x.q.at) + "</small></div>" + pill(x.q.category || "기타", "mute") + (x.q.answer ? pill("답변 완료", "ok") : pill("답변 대기", "warn")) + "</div>" +
-            (x.q.answer && (x.q.answeredBy || x.q.answeredAt) ? '<p class="a-q-by"><span class="a-by">' + icon("user", "xs") + esc(x.q.answeredBy || "강사") + "</span>" + (x.q.answeredAt ? " · " + fmtStamp(x.q.answeredAt) + " 답변" : " 답변") + "</p>" : "") +
-            '<p class="a-q-body">' + esc(x.q.body) + "</p>" +
+                        '<p class="a-q-body">' + esc(x.q.body) + "</p>" +
             ((x.q.images || []).length ? '<div class="a-shots a-q-shots">' + x.q.images.map((im) => '<a class="a-shot" href="' + im.data + '" target="_blank" rel="noopener"><img src="' + im.data + '" alt="' + esc(im.name) + '"></a>').join("") + "</div>" : "") +
-            '<form class="a-q-form" data-sid="' + x.s.id + '" data-qid="' + x.q.id + '"><textarea class="a-input" name="answer" rows="4" placeholder="예: 샘플 요청 메일에 단가를 같이 물어봐도 괜찮아요. ‘검토용’이라고 밝혀 두면 답장이 더 빨라요." aria-label="답변">' + esc(x.q.answer || "") + '</textarea><button class="a-btn a-btn-primary a-btn-sm" type="submit">' + (x.q.answer ? "답변 수정" : "답변 등록") + "</button></form></article>"; }).join("") + "</div>"
+            qThreadHtml(x, 4, Q_PH_CO) + "</article>"; }).join("") + "</div>"
           : emptyBox("message", f === "open" ? "답변을 기다리는 코칭 질문이 없어요." : "코칭 질문이 없어요.")) + "</section>" +
       '<p class="a-hint">' + icon("coins", "xs") + (can("vod") ? " 코칭권 매출은 " + (isCoach() ? "강사님" : "내") + " 코칭권 정산 비율(" + X.addonShare(IID()) + "%)로 정산돼요." : "") + " 사용 기간이 끝난 코칭권의 남은 횟수는 사라져요.</p>";
   }
@@ -9011,6 +9044,8 @@
         break;
       }
       case "q-tab": ui.qFilter = d.k; render(); break;
+      case "q-edit": qEditModal(d.sid, d.qid, d.rid); break;
+      case "q-del": { const fq = qFind(d.sid, d.qid), r = fq && (fq.q.replies || []).find((y) => y.id === d.rid); if (!r || !qCanEdit(r)) break; confirmModal("답글 지우기", "이 답글을 지울까요? 수강생 화면에서도 사라져요.", "지우기", true, () => { fq.q.replies = fq.q.replies.filter((y) => y.id !== d.rid); DB.saveProgress(d.sid, fq.p); closeModal(); render(); toast("답글을 지웠어요."); }); break; }
       // 콘텐츠
       case "lib-tab": ui.libTab = d.k; render(); break;
       case "libcat-edit": libCatEdit(d.k, d.id); break;
@@ -9260,18 +9295,20 @@
       render(); toast("입금 계좌 · 부가세 설정을 저장했어요.");
       return;
     }
-    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-pop-form": saveVodPop, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "vins-edit-form": saveVinsEdit, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "libcat-form": saveLibCat, "coach-form": saveCoach };
+    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-pop-form": saveVodPop, "q-edit-form": saveQEdit, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "vins-edit-form": saveVinsEdit, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "libcat-form": saveLibCat, "coach-form": saveCoach };
     if (forms[f.id]) { e.preventDefault(); forms[f.id](f); return; }
     if (f.classList.contains("vda-price")) { e.preventDefault(); saveVodPrice(f); return; }
     if (f.classList.contains("a-q-form")) {
       e.preventDefault();
       const ans = f.answer.value.trim();
       if (!ans) { toast("답변을 적어 주세요.", "warn"); return; }
-      const p = DB.progress(f.dataset.sid);
-      const q = p.questions.find((x) => x.id === f.dataset.qid);
-      q.answer = ans; q.answeredAt = Date.now(); const ac = actor(); q.answeredBy = ac.by; q.answeredById = ac.byId;
-      DB.saveProgress(f.dataset.sid, p);
-      render(); toast("답변을 등록했어요.");
+      const fq = qFind(f.dataset.sid, f.dataset.qid); if (!fq) return;
+      const q = fq.q, ac = actor(), now = Date.now();
+      // 첫 답변이 없으면 답변으로, 이미 있으면 그 아래 답글로 (다른 사람이 먼저 답했어도 덮어쓰지 않아요)
+      if (!q.answer) { q.answer = ans; q.answeredAt = now; q.answeredBy = ac.by; q.answeredById = ac.byId; }
+      else (q.replies || (q.replies = [])).push({ id: DB.uid("r"), body: ans, at: now, by: ac.by, byId: ac.byId, role: ac.role });
+      DB.saveProgress(f.dataset.sid, fq.p);
+      render(); toast(q.replies && q.replies.length && q.replies[q.replies.length - 1].at === now ? "답글을 달았어요." : "답변을 등록했어요.");
     }
   });
   document.addEventListener("change", (e) => {
@@ -9357,6 +9394,7 @@
     if (t.dataset && t.dataset.lp) { lpSet(lpDraft(), t.dataset.lp, t.value); lpChanged(); return; }
     if (t.dataset && t.dataset.lpLines) { lpSet(lpDraft(), t.dataset.lpLines, LINES(t.value)); lpChanged(); return; }
     if (t.id === "gb-text") { const n = parseGlossaryText(t.value).length; const el = document.getElementById("gb-count"); if (el) el.textContent = n + "개 인식됨"; }
+    if (t.tagName === "TEXTAREA" && (t.id === "rv-comment" || t.closest(".a-q-form, #q-edit-form"))) growTa(t); // 쓰는 만큼 칸이 늘어나요 (2026-11-24 · 긴 답이 잘려 보이지 않게)
     if (t.id === "fb-text") { const n = parseFaqText(t.value).length; const el = document.getElementById("fb-count"); if (el) el.textContent = n + "개 인식됨"; }
     if (t.closest && t.closest("#plan-form")) refreshPlanPv();
     if (t.id === "bf-fee" || t.id === "bf-amount") refreshBillCalc();
@@ -9391,7 +9429,7 @@
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
     counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, accessChip, lvBadge, levelOfStudent, reviewPill, revBulkBtns, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
-    vdShareStrip, vodAddonTodo, vdStoreBtn, vdPopCard, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
+    vdShareStrip, vodAddonTodo, vdStoreBtn, vdPopCard, qThreadHtml, Q_PH, Q_PH_CO, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,
     // 수강생 화면 콘텐츠 편집 (커리큘럼 · 과제 · 캘린더 · 공지 · FAQ · 가이드 · 체크리스트 · 상담 채널 …)

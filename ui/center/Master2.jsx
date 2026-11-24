@@ -143,10 +143,9 @@ export function MasterReports({ n }) {
       <div className="a-filters"><select key={"r" + ui.mRepIns} className="a-input a-sm" id="m-rep-ins" aria-label="강사" defaultValue={ui.mRepIns}><option value="all">전체 강사</option>{DB.data.instructors.map((x) => <option key={x.id} value={x.id}>{x.displayName}</option>)}</select></div></div>
       {shown.length ? <div className="a-stack">{shown.map((x) => (
         <article key={x.ins.id + x.q.id} className="a-q"><div className="a-q-head"><span className="a-avatar">{x.s.name.slice(0, 1)}</span><div><b>#{x.no} {x.q.title}</b><small>{x.ins.displayName + " · " + x.s.name + " · " + A.cohortName(x.s.cohortId) + " · " + fs(x.q.at)}</small></div><Pill cls="mute">{x.q.category || "기타"}</Pill>{x.q.answer ? <Pill cls="ok">답변 완료</Pill> : <Pill cls="warn">답변 대기</Pill>}</div>
-          {x.q.answer && (x.q.answeredBy || x.q.answeredAt) ? <p className="a-q-by"><span className="a-by"><Icon n="user" c="xs" />{x.q.answeredBy || "강사"}</span>{x.q.answeredAt ? " · " + fs(x.q.answeredAt) + " 답변" : " 답변"}</p> : null}
           <p className="a-q-body">{x.q.body}</p>
           {(x.q.images || []).length ? <div className="a-shots a-q-shots">{x.q.images.map((im, i) => <a key={i} className="a-shot" href={im.data} target="_blank" rel="noopener"><img src={im.data} alt={im.name} /></a>)}</div> : null}
-          <form key={x.q.id + ":" + n} className="a-q-form" data-sid={x.s.id} data-qid={x.q.id}><textarea className="a-input" name="answer" rows="3" placeholder="예: 확인해 보니 ○○ 문제였어요. 지금 고쳤으니 새로고침 후 다시 해 주세요." aria-label="답변" defaultValue={x.q.answer || ""} /><button className="a-btn a-btn-primary a-btn-sm" type="submit">{x.q.answer ? "답변 수정" : "답변 등록"}</button></form></article>
+          {/* 답변 스레드 · 답글 칸 (2026-11-24) — 예전 admin.js qThreadHtml 그대로 · 다시 그릴 때(n)마다 빈 답글 칸으로 */}<Isl key={x.q.id + ":" + n} html={A.qThreadHtml(x, 3, A.Q_PH)} /></article>
       ))}</div> : <Empty ic="bug">{ui.qFilter === "open" ? "답변을 기다리는 신고가 없어요." : "신고가 없어요."}</Empty>}</section>
   </>;
 }

@@ -34,6 +34,16 @@
   const replayLocked = (x) => !!x && (x.locked === true || untilPassed(x.until));
   /** 수강 방식 (2026-11-23): 강사가 수강생 메모(강사만 보는 칸)에 적은 ‘오프라인’ · ‘온라인’ → "offline" · "online" (없으면 "")
    *  띄어쓰기는 무시하고(‘오프 라인’도 같아요) 둘 다 있으면 나중에 적은 쪽 — 1:1 요청 답변 카드에 표시 */
+  /* 1:1 요청 답변 스레드 (2026-11-24 · 대표님 요청): 첫 답변(answer · answeredBy · answeredAt) + 이어지는 답글(replies: { id, body, at, by, byId, role })
+   *  — 강사가 답한 뒤 코치 · 다른 운영자가 한 번 더 답글을 달 수 있어요. 강사센터 · 코치센터 · 수강생 화면이 같이 써요 (누가 · 언제 썼는지 함께) */
+  const qThread = (q) => {
+    if (!q) return [];
+    const out = q.answer ? [{ id: "a", body: q.answer, at: q.answeredAt || 0, by: q.answeredBy || "", byId: q.answeredById || "", editedAt: q.answerEditedAt || 0, editedBy: q.answerEditedBy || "" }] : [];
+    (Array.isArray(q.replies) ? q.replies : []).forEach((r) => { if (r && r.id && r.body) out.push(r); });
+    return out;
+  };
+  /** 마지막으로 답이 달리거나 고쳐진 시각 — 수강생 ‘새 답변’ 표시에 써요 */
+  const qLastAt = (q) => qThread(q).reduce((m, e) => Math.max(m, e.at || 1, e.editedAt || 0), 0);
   const studyMode = (s) => { const m = String((s && s.memo) || "").replace(/\s+/g, ""), a = m.lastIndexOf("오프라인"), b = m.lastIndexOf("온라인"); return a < 0 && b < 0 ? "" : a > b ? "offline" : "online"; };
   const STUDY_MODE_LABEL = { offline: "오프라인", online: "온라인" };
   // 수강 기간 (2026-11-18): 강사센터 수강생 창 ‘수강 기간’ — 평생 또는 1~24개월 (시작일 + n개월 = 마지막 날 accessUntil · 이 날까지 들어올 수 있어요)
@@ -1166,7 +1176,7 @@
   };
 
   window.DB = {
-    load, save, reset, store, clone, uid, esc, linkify, brief, youtubeId, ytThumb, libCatsOf, addMonths, accessUntil, accessExpired, ACCESS_MAX, untilPassed, replayLocked, studyMode, STUDY_MODE_LABEL, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
+    load, save, reset, store, clone, uid, esc, linkify, brief, youtubeId, ytThumb, libCatsOf, addMonths, accessUntil, accessExpired, ACCESS_MAX, untilPassed, replayLocked, studyMode, STUDY_MODE_LABEL, qThread, qLastAt, vimeoUrl, vimeoSrc, vidVal, vidOk, vidShow, vdur, rich, libNoticeOf, CHANNEL_TYPES, CHANNEL_ICONS, CHANNEL_COLORS, channelType, channelLook, defaultChannels, channelsOf, PARTNER_GROUPS, PARTNER_ICONS, defaultPartners, partnersOf, inkOn, coachesOf, coach, findCoachLogin, findCoachLogins, QL_ICONS, defaultQuickLinks, quickLinksOf, csvData, MISSION_KINDS, missionKind, classDate, template, templateFromMoon, moonMenu, normalizeContent, LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeOf,
     get data() { return db; },
     instructor, activeInstructors, liveInstructors, tracksOf, content, cohort, cohortsOf, studentsOf, student, certNo,
     VOD_MENUS, VOD_LIVE_ONLY, VOD_KEYS, vodContent, vodView, vodOwn, vodEnsure, vodCopy, vodCohortId, vodStudentsOf, isVodStudent, splitMid,
