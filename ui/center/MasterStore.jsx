@@ -175,7 +175,7 @@ export function MasterVodDisplay({ n }) {
   const co = s.coach || {}, te = s.tea || {}, rb = X.rebuySet();
   return <>
     <Head title="VOD 전시 · 쿠폰 · 설정" sub="스토어 첫 화면 배너 · 쿠폰 · ‘다루는 부업’ 칩 · 카테고리, 기본 정산 비율 · 무통장 입금 계좌 · 후기 포인트를 정해요." right={<Store />} />
-    <BizCard v={v} /><FunnelCard v={v} /><Banners v={v} />
+    <BizCard v={v} /><FunnelCard v={v} /><Isl key={"pop" + n} html={A.vdPopCard(v)} /><Banners v={v} />
     <section className="a-card"><div className="a-card-head"><h2>홈 화면 섹션</h2><span className="a-muted">섹션 순서 · 섹션마다 강의 순서 · 추가 · 빼기 · 분야별 탭 · 강사진 순서는 ‘홈 꾸미기’ 메뉴에서 해요.</span><a className="a-btn a-btn-primary a-btn-sm vda-ml" href="#/center/master/vod-home"><Icon n="home" c="sm" />홈 꾸미기 열기</a></div></section>
     <TileCard v={v} n={n} /><CouponCard v={v} />
     <div className="a-grid-2">

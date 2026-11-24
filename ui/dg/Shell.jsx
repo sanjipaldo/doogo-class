@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import Icon from "../lib/Icon.jsx";
 import Raw, { RawOne } from "../lib/Raw.jsx";
-import { DGA, DBX, st } from "./bits.jsx";
+import { DGA, st } from "./bits.jsx";
 import { BotFab } from "./Bot.jsx";
 
 /** 한국 · 뉴질랜드 시계 (15초마다) */
@@ -63,7 +63,8 @@ function HelpCard() {
     <div className="help-card hc2"><div className="hc-top"><span className="hc-tag"><Icon n="sparkles" c="xs" />막힐 땐</span><strong>혼자 고민하지 마세요</strong><p>위에서부터 차례로 해 보면 대부분 금방 풀려요.</p></div>
       {steps.length ? <div className="hc-steps">{steps}</div> : null}
       {b.kakaoChannel ? <a className="btn btn-primary btn-sm btn-block hc-kakao" href={b.kakaoChannel} target="_blank" rel="noopener"><Icon n="message" c="sm" />카카오톡으로 문의</a> : null}
-      <a className="hc-ops" href={DBX().opsKakao().chat} target="_blank" rel="noopener" data-kk-ops=""><Icon n="headset" c="sm" /><span><b>운영팀 상담 (카카오톡)</b><small>강의 재생 · 로그인 · 결제 오류는 여기로</small></span></a>
+      {/* 2026-11-24: 여기서는 1:1 문의만 · 상담은 강사님 카카오 오픈채팅에서 — 링크 없는 안내 (예전 app.js helpCard 와 같게) */}
+      <div className="hc-ops hc-ops-info" role="note"><Icon n="message" c="sm" /><span><b>상담은 강사님 카카오 오픈채팅에서</b><small>여기서는 1:1 문의만 받아요 · 상담은 강사님께 받은 카카오톡 오픈채팅에서 진행해 주세요</small></span></div>
       <Raw as="div" className="side-powered" html={window.poweredBy("color")} /></div>
   );
 }

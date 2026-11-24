@@ -156,6 +156,54 @@ module.exports = {
         "첫 화면: 중국 구매대행 배너 대신 ‘귤 하나로 월매출 10억’ 배너 · 새로 올라온 클래스는 v4 먼저 · 중국 구매대행 맨 뒤 · 가장 많이 듣는 클래스 v3 · v4 · v8 먼저 (예전 화면 = React)", out, pub);
       await pub.context().close();
     }
+    // 9) 스토어 팝업 (2026-11-24 · 와디즈 메인 팝업처럼 · 일회성 작업 2026-11-24-store-pop-on 이 켜요):
+    //    첫 화면에 ‘정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중’ 팝업 → 닫기(X)는 이번 방문 동안 · ‘오늘 그만 보기’는 오늘 하루 · Esc 로도 닫혀요 ·
+    //    로그인 화면엔 안 떠요 · 마스터 › VOD 전시 › ‘스토어 팝업’ 스위치를 끄면 안 떠요 (예전 화면 = React)
+    {
+      const has = (pg) => pg.evaluate(() => { const p = document.querySelector("#vd-pop-root .vd-pop"); return p ? { t: (p.querySelector(".vd-pop-t") || {}).textContent || "", b: (p.querySelector(".vd-pop-b") || {}).textContent || "", img: !!p.querySelector("img.vd-pop-img"), lock: document.documentElement.classList.contains("vd-pop-open"), today: !!document.querySelector(".vd-pop-today") } : null; });
+      const out = {};
+      for (const mode of ["off", "all"]) {
+        const pub = await L.newPage(browser, { pop: true }), o = out[mode] = {};
+        run.watch(pub, "스토어 팝업 " + mode);
+        await L.reactCookie(pub, base, mode);
+        await L.open(pub, base, "/vod/login"); await pub.waitForTimeout(700);
+        o.login = !!(await has(pub));
+        await L.open(pub, base, "/vod"); await pub.waitForTimeout(900);
+        o.first = await has(pub);
+        if (o.first) { await pub.click("#vd-pop-root .vd-pop-x"); await pub.waitForTimeout(250); }
+        o.closed = !(await has(pub)) && !(await pub.evaluate(() => document.documentElement.classList.contains("vd-pop-open")));
+        await L.open(pub, base, "/vod/c"); await pub.waitForTimeout(700);
+        o.sameVisit = !!(await has(pub));
+        await pub.evaluate(() => sessionStorage.removeItem("dc_pop_x")); await pub.reload(); await L.ready(pub); await pub.waitForTimeout(900);
+        o.again = !!(await has(pub));
+        if (o.again) { await pub.keyboard.press("Escape"); await pub.waitForTimeout(250); }
+        o.esc = o.again && !(await has(pub));
+        await pub.evaluate(() => sessionStorage.removeItem("dc_pop_x")); await pub.reload(); await L.ready(pub); await pub.waitForTimeout(900);
+        if (await has(pub)) { await pub.click("#vd-pop-root .vd-pop-today"); await pub.waitForTimeout(250); }
+        o.until = await pub.evaluate(() => localStorage.getItem("dc_pop_until") || "");
+        await pub.evaluate(() => sessionStorage.removeItem("dc_pop_x")); await pub.reload(); await L.ready(pub); await pub.waitForTimeout(900);
+        o.todayOff = !(await has(pub));
+        await pub.context().close();
+      }
+      const ok9 = (o) => !!o && !o.login && !!o.first && /12월 중순/.test(o.first.t) && /토스페이먼츠/.test(o.first.b) && o.first.img && o.first.lock && o.first.today && o.closed && !o.sameVisit && o.again && o.esc && /^\d{4}-\d{2}-\d{2}$/.test(o.until) && o.until < "9999" && o.todayOff;
+      await run.check(ok9(out.off) && ok9(out.all),
+        "스토어 팝업: 첫 화면에 ‘정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중’ (이미지 · 오늘 그만 보기) · X = 이번 방문 동안 안 뜸 · Esc 로 닫힘 · ‘오늘 그만 보기’ = 오늘 하루 안 뜸 · 로그인 화면엔 안 뜸 (예전 화면 = React)", out);
+      // 마스터 스위치: 끄면 스토어에 안 뜨고 → 다시 켜면 떠요
+      const sw = async () => {
+        await L.open(adm, base, "/center/master/vod-display"); await adm.waitForTimeout(500);
+        const b = await adm.$('.vda-pop [data-action="vda-pop-on"]'), before = b ? await b.getAttribute("aria-checked") : "";
+        if (b) await b.click();
+        await adm.waitForTimeout(400); await L.flushed(adm); await L.sleep(1800);
+        const after = await adm.$eval('.vda-pop [data-action="vda-pop-on"]', (x) => x.getAttribute("aria-checked")).catch(() => "");
+        const pub = await L.newPage(browser, { pop: true }); run.watch(pub, "스토어 팝업 스위치");
+        await L.open(pub, base, "/vod"); await pub.waitForTimeout(900);
+        const shown = !!(await has(pub)); await pub.context().close();
+        return { before, after, shown };
+      };
+      const s1 = await sw(), s2 = await sw();
+      await run.check(s1.before === "true" && s1.after === "false" && !s1.shown && s2.after === "true" && s2.shown,
+        "마스터 › VOD 전시 · 쿠폰 · 설정 › ‘스토어 팝업’ 스위치: 끄면 스토어에 안 뜨고 다시 켜면 떠요", { s1, s2 }, adm);
+    }
     await mem.context().close(); await adm.context().close();
   }
 };

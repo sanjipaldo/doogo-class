@@ -12,7 +12,7 @@ module.exports = {
   async run({ base, info, browser, run, L }) {
     const fresh = async () => {
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-      await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); } catch (e) { /* #주소로 */ } });
+      await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); localStorage.setItem("dc_pop_until", "9999-12-31"); } catch (e) { /* #주소로 */ } });
       await ctx.clock.install({ time: new Date() });
       const page = await ctx.newPage();
       run.watch(page, "자동 로그아웃");

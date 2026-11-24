@@ -722,7 +722,8 @@
     return '<div class="help-card hc2"><div class="hc-top"><span class="hc-tag">' + icon("sparkles", "xs") + "막힐 땐</span><strong>혼자 고민하지 마세요</strong><p>위에서부터 차례로 해 보면 대부분 금방 풀려요.</p></div>" +
       (steps.length ? '<div class="hc-steps">' + steps.join("") + "</div>" : "") +
       (D.brand.kakaoChannel ? '<a class="btn btn-primary btn-sm btn-block hc-kakao" href="' + esc(D.brand.kakaoChannel) + '" target="_blank" rel="noopener">' + icon("message", "sm") + "카카오톡으로 문의</a>" : "") +
-      '<a class="hc-ops" href="' + esc(DB.opsKakao().chat) + '" target="_blank" rel="noopener" data-kk-ops>' + icon("headset", "sm") + "<span><b>운영팀 상담 (카카오톡)</b><small>강의 재생 · 로그인 · 결제 오류는 여기로</small></span></a>" +
+      // 2026-11-24 대표님 요청: 수강생 두잉고는 여기서 1:1 문의만 · 상담은 강사님 카카오 오픈채팅에서 — 운영팀 카카오톡 링크 없이 안내만 (모든 강사 · React ui/dg/Shell.jsx 와 같게)
+      '<div class="hc-ops hc-ops-info" role="note">' + icon("message", "sm") + "<span><b>상담은 강사님 카카오 오픈채팅에서</b><small>여기서는 1:1 문의만 받아요 · 상담은 강사님께 받은 카카오톡 오픈채팅에서 진행해 주세요</small></span></div>" +
       '<div class="side-powered">' + window.poweredBy("color") + "</div></div>";
   }
 

@@ -225,6 +225,8 @@ export default function Shell({ nav, tab, cls, n, children }) {
   const close = useCallback(() => setPop(null), []);
   // 주소를 옮기거나 다시 그릴 때 팝업은 닫아요 (예전 main.js 가 modal-root 를 비우던 것)
   useEffect(() => { setPop(null); }, [n]);
+  // 스토어 팝업 (2026-11-24 · 와디즈처럼): 그릴 때마다 예전 vod.js popCheck 가 떠야 하는지 보고 본문 바깥(#vd-pop-root)에 한 번 띄워요
+  useEffect(() => { const X = VOD(); if (X && X.popCheck) X.popCheck(); }, [n]);
   // 내려가면 머리띠 그림자 · 마이페이지 메뉴 줄이 머리띠 아래에 붙으면 아래쪽 그림자 (예전 vod.js scroll)
   useEffect(() => {
     const onSc = () => {

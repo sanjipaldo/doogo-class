@@ -1192,6 +1192,45 @@
   // 첫 화면 배너: 꺼진 판매 영역(LIVE · 오프라인 / 무료 강의)으로 이어지는 배너는 쉬어요
   const hrefPid = (h) => { const m = String(h || "").match(/^#\/vod\/(?:p|checkout)\/([^/?#]+)/); return m ? decodeURIComponent(m[1]) : ""; };
   const liveBanners = () => V().banners.filter((b) => banLive(b) && (!b.pid || bizShow(product(b.pid))) && (!hrefPid(b.href) || bizShow(product(hrefPid(b.href)))) && tileBiz({ href: b.href }));
+  /* ---------- 스토어 팝업 (2026-11-24 · 와디즈처럼 들어오면 한 번) ----------
+   * 마스터 › DOOGO CLASS › VOD 전시 · 쿠폰 · 설정 › ‘스토어 팝업’에서 켜고 끄고 · 문구 · 끝나는 날을 정해요 (저장: meta.vod.popup — 비운 칸은 아래 기본 문구).
+   * 둘러보는 화면(첫 화면 · 목록 · 검색 · 클래스 상세 · 강사진 · 소개)에만 떠요 — 결제 · 주문 · 마이페이지 · 로그인 · 강의실 · 파트너스에는 안 떠요.
+   * X · 바깥 · 아래 버튼 = 이번 방문 동안 안 뜸(sessionStorage) · ‘오늘 그만 보기’ = 오늘(한국 날짜)까지 안 뜸(localStorage) · 주소 ?pop=1 = 미리보기(늘 떠요)
+   * 예전 화면 · React 화면이 같이 써요 — 본문(#root) 바깥 #vd-pop-root 에 그리고 버튼은 여기서 바로 받아요 */
+  const POP_DEF = { on: false, eyebrow: "두고클래스 정식 런칭 안내", title: "정식 런칭은\n12월 중순에 시작됩니다", body: "현재 토스페이먼츠와 PG 심사를 진행하고 있어요.\n더 좋은 모습으로 만나뵙겠습니다!", btn: "클래스 둘러보기", img: "assets/vod/pop-tosspayments.png", imgAlt: "토스페이먼츠", to: "" };
+  const POP_PAGES = ["", "c", "search", "p", "teachers", "about", "dg"];
+  const POP_TODAY = "dc_pop_until", POP_SESSION = "dc_pop_x";
+  function popCfg() { const s = V().popup && typeof V().popup === "object" ? V().popup : {}, o = Object.assign({}, POP_DEF); Object.keys(s).forEach((k) => { if (s[k] !== "" && s[k] != null) o[k] = s[k]; }); o.on = !!s.on; o.to = s.to || ""; if (s.noImg) o.img = ""; return o; }
+  const popLive = (c) => !!c.on && (!c.to || today() <= c.to);
+  function popHidden() { try { if (sessionStorage.getItem(POP_SESSION) === "1") return true; const u = localStorage.getItem(POP_TODAY) || ""; return !!u && today() <= u; } catch (e) { return false; } }
+  function popClose(today1) {
+    try { sessionStorage.setItem(POP_SESSION, "1"); if (today1) localStorage.setItem(POP_TODAY, today()); } catch (e) { /* 저장 못 해도 닫기는 해요 */ }
+    const r = document.getElementById("vd-pop-root"); if (r) r.innerHTML = "";
+    document.documentElement.classList.remove("vd-pop-open");
+  }
+  function popHtml(c) {
+    const lines = (s) => esc(s || "").replace(/\n/g, "<br>");
+    return '<div class="vd-pop-bg" data-pop="bg"><div class="vd-pop-wrap" role="dialog" aria-modal="true" aria-labelledby="vd-pop-t"><div class="vd-pop">' +
+      '<button type="button" class="vd-pop-x" data-pop="x" aria-label="닫기">' + icon("x", "sm") + "</button>" +
+      (c.eyebrow ? '<p class="vd-pop-ey">' + lines(c.eyebrow) + "</p>" : "") + '<h2 class="vd-pop-t" id="vd-pop-t">' + lines(c.title) + "</h2>" + (c.body ? '<p class="vd-pop-b">' + lines(c.body) + "</p>" : "") +
+      '<button type="button" class="vd-pop-cta" data-pop="x">' + esc(c.btn || "확인") + "</button>" +
+      (c.img ? '<img class="vd-pop-img" src="' + esc(c.img) + '" alt="' + esc(c.imgAlt || "") + '" draggable="false">' : "") + "</div>" +
+      '<button type="button" class="vd-pop-today" data-pop="today">오늘 그만 보기</button></div></div>';
+  }
+  /** 화면을 그린 뒤마다 불러요 (예전 render · React 스토어 틀) — 떠야 하면 한 번 띄워요 */
+  function popCheck() {
+    if (document.body.dataset.mode !== "vod") return; // 스토어 쪽만 (예전 화면 · React 화면 둘 다 body[data-mode="vod"])
+    const r = route(), a = r.path[0] || "", force = r.qs.get("pop") === "1", c = popCfg();
+    let root = document.getElementById("vd-pop-root");
+    if (root && root.firstChild) return; // 이미 떠 있어요
+    if (!force && (!popLive(c) || POP_PAGES.indexOf(a) < 0 || popHidden())) return;
+    if (!root) { root = document.createElement("div"); root.id = "vd-pop-root"; document.body.appendChild(root); }
+    root.innerHTML = popHtml(c);
+    document.documentElement.classList.add("vd-pop-open");
+    root.querySelectorAll("[data-pop]").forEach((b) => b.addEventListener("click", (e) => { const k = b.dataset.pop; if (k === "bg" && e.target !== b) return; e.preventDefault(); popClose(k === "today"); }));
+    const cta = root.querySelector(".vd-pop-cta"); if (cta) try { cta.focus({ preventScroll: true }); } catch (e) { /* 초점은 없어도 돼요 */ }
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.querySelector("#vd-pop-root .vd-pop-bg")) popClose(false); });
   // 다짐 쿠폰(2026-11-08)은 마스터 쿠폰 목록에 없어요 — 받은 쿠폰(x)으로 공용 규칙(shared/price.js pledgeDef)에서 정의를 만들어요 (그 강의 전용)
   const PLG = () => window.DCS.price;
   const couponOf = (cid, x) => (cid === PLG().PLEDGE.id ? PLG().pledgeDef(x) : (V().coupons || []).find((c) => c.id === cid) || null);
@@ -1304,7 +1343,7 @@
       '<i class="vd-art-go" aria-hidden="true">' + icon("arrowUpRight", "xs") + "</i></span>";
   }
 
-  window.VOD = { storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, PG_FEE_DEF, payKeyOf, pgRate, pgFeeOf, settleFeePct, settleFeeOf, insBase, RS_DEF, rsRules, rsRateOf, rsCode, rsProduct, rsOf, rsUrl, rsFor, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
+  window.VOD = { popCheck, popCfg, POP_DEF, storeAs, STORE_AS, BANKS, bankName, acctFields, acctRead, extPh, phOf, RATE_KEYS, rateAt, rateDef, rateKeyOf, rateKeyOfP, keyOfOrder, shareVal, TAX_MODES, taxMode, PG_FEE_DEF, payKeyOf, pgRate, pgFeeOf, settleFeePct, settleFeeOf, insBase, RS_DEF, rsRules, rsRateOf, rsCode, rsProduct, rsOf, rsUrl, rsFor, buyersOf, vodOrdersOf, vodAccess, findBuyer, enterDg, dgOpen, dgCard, pctDone, prog, last4, V, save, CATS, TYPE, cats, catOf, typeOf, isEvent, products, product, priceOf, pctOf, monthOf, lessons, totalMin, durTxt, reviewsOf, ratingOf, paidOrders, soldOf, seatsLeft, shareOf, accessTxt, metaOf, fmtEvent, thumbArt, insPhoto, owns, bankInfo, seed, nickOf, likeCount, pledgesOf, couponOf, couponTxt, couponCond, ACC, TOPICS };
 
   /* ================= 두잉고 강의 묶음 (전체 클래스) ================= */
   // 무료강의 = 무료 VOD + 두잉고 강사 무료 LIVE(#/free) · 프리미엄강의 = LIVE · 오프라인 상품 + 두잉고 기수 강의(#/p) · VOD강의 = 유료 VOD · 전자책
@@ -3914,6 +3953,7 @@
     document.querySelectorAll("[data-vd-auth]").forEach(authReady);
     syncTabs(); wireRails(); motion(); wireCounts(); wireFbar(); heroWire(root); wirePt(); hydrate(root); wireSwipe();
     if (ui.mega) { if (ui.mega === ROUTE.hash && window.innerWidth >= 1024) megaSet(true); else ui.mega = ""; }
+    popCheck(); // 스토어 팝업 (React 화면은 ui/store/Shell.jsx 가 불러요)
   }
   function wireSwipe() {
     const t = document.getElementById("vd-hero"); if (!t) return;

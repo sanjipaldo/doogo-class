@@ -5119,12 +5119,35 @@
       '<p class="a-muted p-small">무료 LIVE와 유료 강의는 따로 만들고 하나로 이어요. LIVE가 끝나면 무료 LIVE 카드는 자동으로 빠지고, 이어지는 유료 강의가 얼리버드 가격 · 마감 시계와 함께 홈 ‘얼리버드 할인중’에 떠요. 꺼 둔 동안에는 스토어가 지금 그대로예요.</p>' + flow +
       (rows ? '<div class="a-table-wrap"><table class="a-table vda-fun-t"><thead><tr><th>무료 LIVE</th><th>신청</th><th>이어지는 유료 강의</th><th>상태</th><th>얼리버드 결제</th><th class="right">관리</th></tr></thead><tbody>' + rows + "</tbody></table></div>" : '<p class="a-muted">아직 무료 LIVE가 없어요. ‘무료 LIVE 만들기’를 눌러 시작해 보세요.</p>') + "</section>";
   }
+  /* 스토어 팝업 (2026-11-24 · 와디즈 메인 팝업처럼) — 켜면 스토어에 처음 들어온 사람에게 한 번 떠요 (닫기 = 이번 방문 · ‘오늘 그만 보기’ = 오늘 하루)
+   *  · 예전 화면 · React 화면(ui/center/MasterStore.jsx 가 이 HTML 을 그대로 써요)이 같아요 */
+  function vdPopCard(v) {
+    const X = VX(), c = X.popCfg(), s = v.popup || {}, on = !!s.on, over = !!(on && c.to && todayStr() > c.to);
+    const st = !on ? pill("꺼짐 · 스토어에 안 떠요", "mute") : over ? pill("노출 기간이 끝났어요 · 안 떠요", "warn") : pill("켜짐 · 스토어에 떠요", "ok");
+    const fld = (id, label, inner) => '<div class="a-field"><label for="' + id + '">' + label + "</label>" + inner + "</div>";
+    return '<section class="a-card vda-pop"><div class="a-card-head"><h2>스토어 팝업</h2>' + st +
+      '<button type="button" class="a-switch vda-ml' + (on ? " on" : "") + '" data-action="vda-pop-on" role="switch" aria-checked="' + on + '" aria-label="스토어 팝업 켜기"><i></i></button>' + vdStoreBtn("#/vod?pop=1", "팝업 미리보기") + "</div>" +
+      '<p class="a-muted p-small">스토어(홈 · 클래스 목록 · 상세 · 검색 · 강사진 · 소개)에 처음 들어오면 가운데에 떠요. 닫기를 누르면 이번 방문 동안, ‘오늘 그만 보기’를 누르면 오늘 하루 안 떠요. 결제 · 로그인 · 마이페이지에는 안 떠요.</p>' +
+      '<form id="vda-pop-form" class="a-form" novalidate><div class="a-grid-2">' +
+        fld("vp-eyebrow", "작은 머리말", '<input class="a-input" id="vp-eyebrow" name="eyebrow" maxlength="30" value="' + esc(s.eyebrow || "") + '" placeholder="' + esc(X.POP_DEF.eyebrow) + '">') +
+        fld("vp-btn", "버튼 글자 <small>(누르면 팝업이 닫혀요)</small>", '<input class="a-input" id="vp-btn" name="btn" maxlength="16" value="' + esc(s.btn || "") + '" placeholder="' + esc(X.POP_DEF.btn) + '">') +
+        fld("vp-title", "큰 제목 <small>(줄바꿈 그대로)</small>", '<textarea class="a-input" id="vp-title" name="title" rows="2" maxlength="60" placeholder="' + esc(X.POP_DEF.title) + '">' + esc(s.title || "") + "</textarea>") +
+        fld("vp-body", "설명 <small>(줄바꿈 그대로)</small>", '<textarea class="a-input" id="vp-body" name="body" rows="3" maxlength="120" placeholder="' + esc(X.POP_DEF.body) + '">' + esc(s.body || "") + "</textarea>") +
+        fld("vp-to", "노출 마지막 날 <small>(비우면 끌 때까지)</small>", '<input class="a-input" type="date" id="vp-to" name="to" value="' + esc(s.to || "") + '">') +
+        '<div class="a-field"><span class="a-label">오른쪽 아래 이미지</span><label class="a-check"><input type="checkbox" name="img"' + (s.noImg ? "" : " checked") + "><span>토스페이먼츠 이미지 보이기</span></label></div>" +
+      '</div><p class="a-muted p-small">칸을 비우면 흐린 글자(기본 문구)로 떠요.</p><div class="a-form-actions"><button class="a-btn a-btn-primary" type="submit">팝업 문구 저장</button></div></form></section>';
+  }
+  function saveVodPop(f) {
+    const v = VD(), val = (k) => (f[k] ? f[k].value.replace(/\r/g, "").trim() : "");
+    v.popup = Object.assign({}, v.popup || {}, { eyebrow: val("eyebrow"), title: val("title"), body: val("body"), btn: val("btn"), to: val("to"), noImg: !f.img.checked });
+    commit("팝업 문구를 저장했어요." + (v.popup.on ? "" : " (지금은 꺼져 있어요)"));
+  }
   function pageMasterVodDisplay() {
     const v = VD(), s = v.settings, b = DB.billingInfo ? DB.billingInfo() : {};
     const tv0 = v.topicVotes || {}, ts = (v.stat && v.stat.topics) || {}, tv = {}; (v.topics || []).forEach((t) => { tv[t] = (Number(tv0[t]) || 0) + (Number(ts[t]) || 0); });
     const rank = (v.topics || []).map((t) => [t, tv[t] || 0]).sort((a, c) => c[1] - a[1]).slice(0, 10), mx = Math.max(1, ...rank.map((r) => r[1]));
     return head("VOD 전시 · 쿠폰 · 설정", "스토어 첫 화면 배너 · 쿠폰 · ‘다루는 부업’ 칩 · 카테고리, 기본 정산 비율 · 무통장 입금 계좌 · 후기 포인트를 정해요.", vdStoreBtn()) +
-      vdBizCard(v) + vdFunnelCard(v) +
+      vdBizCard(v) + vdFunnelCard(v) + vdPopCard(v) +
       '<section class="a-card"><div class="a-card-head"><h2>첫 화면 배너</h2><span class="a-muted">켜진 배너가 위에서부터 5초마다 넘어가요. 이미지 배너는 PC ' + BAN_PC.join(" × ") + " · 모바일 " + BAN_M.join(" × ") + 'px 이미지를 따로 올려요.</span>' + btn(icon("plus", "sm") + "배너 추가", "vda-ban-add", "a-btn-primary a-btn-sm vda-ml") + "</div>" +
         (v.banners.length ? '<div class="vda-bans">' + v.banners.map((x, i) => { const p = vdP(x.pid); return '<div class="vda-ban' + (x.on === false ? " off" : "") + '"><span class="vda-ban-sw' + (x.kind === "img" ? " img" : x.dark ? " dk" : "") + '" style="--a:' + esc(x.kind === "img" ? x.bg || "#111" : (x.color || [])[0] || "#111") + ";--b:" + esc(x.kind === "img" ? x.bg || "#111" : (x.color || [])[1] || "#333") + '">' + (x.kind === "img" ? (x.pc || x.m ? "<img " + VX().imgAttr(x.pc || x.m, "src") + ' alt="">' : "") + "<em>" + (x.pc ? "PC" : "") + (x.pc && x.m ? " · " : "") + (x.m ? "M" : "") + "</em>" : (x.img ? '<img src="' + esc(x.img) + '" alt="">' : "") + "<b>" + esc(x.title || "").replace(/\n/g, "<br>") + "</b>") + '</span><div class="vda-ban-t"><small>' + (x.kind === "img" ? '<i class="vda-ban-k">이미지 배너</i>' : '<i class="vda-ban-k art">디자인 배너</i>') + vdBanState(x) + esc(x.kind === "img" ? "" : x.eyebrow || "") + "</small><b>" + esc(x.kind === "img" ? x.alt || x.title || "이름 없는 이미지 배너" : (x.title || "").replace(/\n/g, " ")) + "</b><span>" + (p ? "→ " + esc(p.title) : x.href ? "→ " + esc(x.href) : '<span class="a-muted">연결 없음 (전체 클래스로)</span>') + '</span></div><div class="vda-ban-a">' +
           '<button type="button" class="a-switch' + (x.on !== false ? " on" : "") + '" data-action="vda-ban-on" data-i="' + i + '" role="switch" aria-checked="' + (x.on !== false) + '" aria-label="배너 켜기"><i></i></button>' +
@@ -6361,6 +6384,7 @@
       case "vda-rv-hide": { const r = v.reviews.find((x) => x.id === d.id); if (!r) break; r.hidden = !r.hidden; commit(r.hidden ? "후기를 숨겼어요. 스토어에 안 보여요." : "후기를 다시 보이게 했어요."); break; }
       case "vda-ban-add": vdBanForm(null); break;
       case "vda-tile-add": vtSync(); v.tiles.push({ id: DB.uid("vt"), key: "", label: "새 아이콘", href: "#/vod/c/all", img: "", badge: "", on: true }); commit("아이콘을 추가했어요. 이름 · 링크를 채워 주세요."); break;
+      case "vda-pop-on": { const v = VD(); v.popup = Object.assign({}, v.popup || {}); v.popup.on = !v.popup.on; commit(v.popup.on ? "스토어 팝업을 켰어요." : "스토어 팝업을 껐어요."); break; }
       case "vda-biz": { const v = VD(); v.biz = Object.assign({}, VX().BIZ_DEF, v.biz || {}); v.biz[d.k] = !v.biz[d.k]; commit(BIZ_NAME[d.k] + (v.biz[d.k] ? " 판매 영역을 켰어요." : " 판매 영역을 껐어요.")); break; }
       case "vda-rail-on": { const rs = railSync(), r = rs.find((x) => x.k === d.k); if (!r) break; r.on = !r.on; commit(r.on ? "‘" + hmName(r) + "’ 섹션을 보이게 했어요." : "‘" + hmName(r) + "’ 섹션을 숨겼어요."); break; }
       case "vda-rail-move": { const rs = railSync(), i = rs.findIndex((x) => x.k === d.k), j = i + Number(d.dir); if (i < 0 || j < 0 || j >= rs.length) break; const t = rs[i]; rs[i] = rs[j]; rs[j] = t; commit("섹션 순서를 바꿨어요."); break; }
@@ -9236,7 +9260,7 @@
       render(); toast("입금 계좌 · 부가세 설정을 저장했어요.");
       return;
     }
-    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "vins-edit-form": saveVinsEdit, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "libcat-form": saveLibCat, "coach-form": saveCoach };
+    const forms = { "vda-shipbulk-form": saveShipBulk, "bo-no-form": saveBoNo, "fin-fee-form": saveFinFee, "vda-form": saveVodClass, "vu-form": saveVodUpd, "vda-ban-form": saveVodBanner, "vda-pop-form": saveVodPop, "vda-tile-form": saveVodTiles, "vda-rails-form": saveVodRails, "vda-cat-form": saveVodCats, "vda-topic-form": saveVodTopics, "vda-set-form": saveVodSettings, "vp-copy-form": saveVpCopy, "vda-rate-form": saveVodRate, "vda-tax-form": saveVodTax, "vda-ad-form": saveVodAd, "vs-prof-form": saveVsProfile, "vda-ref-form": saveVodRefund, "vs-inv-form": saveVsInvoice, "vda-cp-form": saveVodCoupon, "vda-iq-form": saveVodAnswer, "aff-lead-form": saveAffLead, "an-form": saveAffNotice, "sla-form": saveSla, "ct-form": saveContract, "st-form": saveStaff, "aff-form": saveAff, "aff-set-form": saveAffSet, "aff-pw-form": saveAffPw, "aff-bank-form": saveAffBank, "bill-form": saveBillForm, "pay-form": saveBillStep, "inv-form": saveBillStep, "open-form": saveBillStep, "cur-form": saveCur, "a-login-form": doLogin, "student-form": saveStudent, "plan-form": savePlan, "coll-form": saveItem, "brand-form": saveBrand, "ins-form": saveIns, "ext-link-form": saveLinkExt, "vins-form": saveVodIns, "vins-edit-form": saveVinsEdit, "trk-apply-form": saveTrackApply, "menu-item-form": saveMenuItem, "page-form": savePage, "libnote-form": saveLibNote, "libcat-form": saveLibCat, "coach-form": saveCoach };
     if (forms[f.id]) { e.preventDefault(); forms[f.id](f); return; }
     if (f.classList.contains("vda-price")) { e.preventDefault(); saveVodPrice(f); return; }
     if (f.classList.contains("a-q-form")) {
@@ -9367,7 +9391,7 @@
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
     counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, accessChip, lvBadge, levelOfStudent, reviewPill, revBulkBtns, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
-    vdShareStrip, vodAddonTodo, vdStoreBtn, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
+    vdShareStrip, vodAddonTodo, vdStoreBtn, vdPopCard, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,
     // 수강생 화면 콘텐츠 편집 (커리큘럼 · 과제 · 캘린더 · 공지 · FAQ · 가이드 · 체크리스트 · 상담 채널 …)

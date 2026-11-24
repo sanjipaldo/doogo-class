@@ -711,6 +711,12 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "배포 때 첫 화면 배너 · 홈 섹션 순서 작업이 돌아요 (v14 배너 끔 · 바로 앞 자리에 v3 배너 · 새로 올라온 섹션은 있는 클래스만 고정 · v14 고정 안 함 · 섹션 순서 그대로)",
       { banners: bs14c.map((b) => b.id + ":" + (b.on !== false)), rails: (v14c.homeRails || []).map((r) => r.k + (r.mode ? ":" + r.mode + ":" + (r.picks || []).join("/") : "")) });
   }
+  // 2026-11-24-store-pop-on: 스토어 팝업(정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중) 켜기 — 문구는 화면 기본값
+  {
+    const st14p = require(path.join(TMP, "class/api/_lib/store.js")), rm14p = await st14p.getDoc("meta"), pp14 = rm14p && rm14p.v && rm14p.v.vod && rm14p.v.vod.popup;
+    ok(ran.some((x) => x.id === "2026-11-24-store-pop-on" && x.ok) && !!pp14 && pp14.on === true && Object.keys(pp14).join() === "on",
+      "배포 때 스토어 팝업 켜기 작업이 돌아요 (popup = { on: true } · 문구는 화면 기본값)", { popup: pp14 });
+  }
   useJar({ dc_a: auth.sign({ r: "master" }) });
   j = await boot();
   const mt3 = docOf(j, "meta"); mt3.vod.settings.demoLogin = false;
@@ -4105,6 +4111,31 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     walk81(uiDir81);
     ok(keys81.size > 300 && keys81.has("inqDeckTx") && keys81.has("inqFormRows") && !Object.keys(miss81).length,
       "React 화면(ui/)이 A = ADM() 로 부르는 이름이 모두 window.ADM 에 있어요 — 없으면 그 화면이 통째로 ‘This page couldn't load’ (예: 강사 입점 문의 카드 펼치기)", { n: keys81.size, miss81 });
+  }
+
+  {
+    console.log("82) 스토어 팝업 (와디즈처럼 · 정식 런칭 안내) · 두잉고 도움 카드 ‘상담은 강사님 카카오 오픈채팅에서’ (2026-11-24)");
+    const OO82 = require(path.join(TMP, "class/api/_lib/oneoff.js")), m82 = { vod: { products: [], banners: [] } };
+    const a82 = OO82.storePopOn(() => m82), b82 = OO82.storePopOn(() => a82.writes.meta), c82 = OO82.storePopOn(() => ({ vod: { popup: { on: false, title: "x" } } })), d82 = OO82.storePopOn(() => null);
+    ok(a82.writes.meta && a82.writes.meta.vod.popup.on === true && Array.isArray(a82.writes.meta.vod.banners) && !m82.vod.popup &&
+      !Object.keys(b82.writes).length && /그대로/.test(b82.result.skipped) && !Object.keys(c82.writes).length && c82.result.on === false && !Object.keys(d82.writes).length && /데이터 없음/.test(d82.result.skipped),
+      "팝업 켜기 작업: 처음엔 popup = { on: true } (다른 스토어 값 그대로 · 원본은 안 바꿈) · 두 번째는 그대로 · 마스터가 꺼 둔 팝업은 그대로 · 데이터 없으면 건너뛰기", { a: a82.result, b: b82.result, c: c82.result });
+    const vj82 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), pd82 = (vj82.match(/const POP_DEF = (\{[^\n]*\});/) || [])[1] || "{}";
+    const P82 = Function("return " + pd82)(), pg82 = (vj82.match(/const POP_PAGES = (\[[^\]]*\]);/) || [])[1] || "[]", PG82 = JSON.parse(pg82);
+    ok(/12월 중순/.test(P82.title) && /토스페이먼츠/.test(P82.body) && /PG 심사/.test(P82.body) && /만나뵙겠습니다/.test(P82.body) && P82.on === false && P82.img === "assets/vod/pop-tosspayments.png" && fs.existsSync(path.join(ROOT, P82.img)) &&
+      PG82.indexOf("") >= 0 && ["checkout", "login", "my", "order", "learn"].every((k) => PG82.indexOf(k) < 0) && /popCheck\(\);\s*\/\/ 스토어 팝업/.test(vj82) && /window\.VOD = \{ popCheck, popCfg, POP_DEF,/.test(vj82),
+      "팝업 기본 문구: ‘정식 런칭은 12월 중순’ · ‘토스페이먼츠와 PG 심사’ · ‘더 좋은 모습으로 만나뵙겠습니다’ · 토스페이먼츠 이미지 파일 있음 · 결제 · 로그인 · 마이페이지 · 강의실엔 안 떠요 · 예전 화면 render() 와 React(window.VOD.popCheck)가 같이 불러요", { def: P82, pages: PG82 });
+    const sj82 = fs.readFileSync(path.join(ROOT, "../ui/store/Shell.jsx"), "utf8"), cs82 = fs.readFileSync(path.join(ROOT, "vod.css"), "utf8");
+    ok(/X\.popCheck\(\)/.test(sj82) && /\.vd-pop-bg \{[^}]*position: fixed/.test(cs82) && /\.vd-pop-today \{/.test(cs82) && /\.vd-pop-img \{/.test(cs82) && /html\.vd-pop-open/.test(cs82),
+      "React 스토어(ui/store/Shell.jsx)도 주소가 바뀔 때마다 팝업을 확인 · 팝업 모양(vod.css: 화면 가운데 덮개 · 오른쪽 아래 이미지 · 오늘 그만 보기 · 뒤 화면 스크롤 막기)");
+    const ad82 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), ms82 = fs.readFileSync(path.join(ROOT, "../ui/center/MasterStore.jsx"), "utf8");
+    ok(/vdBizCard\(v\) \+ vdFunnelCard\(v\) \+ vdPopCard\(v\)/.test(ad82) && /"vda-pop-form": saveVodPop/.test(ad82) && /case "vda-pop-on":/.test(ad82) && /A\.vdPopCard\(v\)/.test(ms82),
+      "마스터 › VOD 전시 · 쿠폰 · 설정 › ‘스토어 팝업’ 카드 (켜기 스위치 · 문구 저장 · 미리보기) — 예전 화면 · React 가 같은 카드");
+    const ap82 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), dg82 = fs.readFileSync(path.join(ROOT, "../ui/dg/Shell.jsx"), "utf8");
+    const seg82 = (t) => { const i = t.indexOf("hc-ops-info"), j = i < 0 ? -1 : t.indexOf("</div>", i); return i < 0 || j < 0 ? "" : t.slice(t.lastIndexOf("<div", i), j); };
+    const hs82 = [seg82(ap82), seg82(dg82)];
+    ok(hs82.every((s) => /상담은 강사님 카카오 오픈채팅에서/.test(s) && /여기서는 1:1 문의만 받아요/.test(s) && !/href|data-action|onClick|운영팀 상담/.test(s)) && !/운영팀 상담/.test(ap82.slice(ap82.indexOf("function helpCard"), ap82.indexOf("function helpCard") + 3000)),
+      "두잉고 수강생 도움 카드: ‘운영팀 상담(카카오톡)’ 대신 링크 없는 안내 ‘상담은 강사님 카카오 오픈채팅에서 · 여기서는 1:1 문의만 받아요’ (모든 강사 · 예전 화면 = React)", { app: hs82[0].slice(0, 160), react: hs82[1].slice(0, 160) });
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

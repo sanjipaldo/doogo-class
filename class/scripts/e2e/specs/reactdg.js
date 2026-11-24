@@ -376,7 +376,7 @@ module.exports = {
     {
       const at = async (iso) => {
         const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: "Asia/Seoul" });
-        await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); } catch (e) { /* #주소로 */ } }); // L.newPage 와 같게 (깨끗한 주소)
+        await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); localStorage.setItem("dc_pop_until", "9999-12-31"); } catch (e) { /* #주소로 */ } }); // L.newPage 와 같게 (깨끗한 주소)
         await ctx.clock.install({ time: new Date(iso) });
         const pg = await ctx.newPage(); run.watch(pg, "주차 열림 " + iso.slice(0, 10));
         await FL.instructor(pg, base, info);

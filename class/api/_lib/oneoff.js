@@ -1449,6 +1449,16 @@ function storeHomeOrder(get) {
   return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result };
 }
 
+/** 2026-11-24 두고클래스 스토어 팝업 켜기 (정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중) — 문구는 화면 기본값(vod.js POP_DEF)
+ *  · 마스터가 이미 팝업을 만졌으면(켜짐 · 꺼짐 어느 쪽이든) 그대로 둬요 */
+function storePopOn(get) {
+  const meta = get("meta");
+  if (!isObj(meta) || !isObj(meta.vod)) return { writes: {}, result: { skipped: "두고클래스 데이터 없음" } };
+  if (isObj(meta.vod.popup)) return { writes: {}, result: { skipped: "마스터가 정한 팝업 그대로", on: !!meta.vod.popup.on } };
+  const v = Object.assign({}, meta.vod, { popup: { on: true } });
+  return { writes: { meta: Object.assign({}, meta, { vod: v }) }, result: { popup: "켬 (기본 문구)" } };
+}
+
 const OPS = [
   { id: "2026-10-08-docs-guide-6", note: "문대표 서류 준비 가이드를 6단계로", run: docsGuideSix },
   { id: "2026-10-08-motivation-videos", note: "문대표 동기부여 채널에 유튜브 영상 6개", run: motivationVideos },
@@ -1503,6 +1513,7 @@ const OPS = [
   { id: "2026-11-23-choi-store-off", note: "강사 choi 두고클래스 스토어 숨김: insOff — 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 상세 · 결제 막힘 · 결제 가격표도 hidden (클래스는 지우지 않음 · 산 회원은 계속 수강 · 마스터 › DOOGO CLASS › 강사 관리에서 다시 켜요 · 이미 숨김이면 그대로)", run: choiStoreOff },
   { id: "2026-11-23-choi-store-on", note: "강사 choi 두고클래스 스토어 다시 보이기(유나 ON · 같은 날 숨김 되돌림): insOff 에서 choi 빼기 · 결제 가격표의 그 강사 상품을 원래 판매 상태로 (두잉고 소개 목록 OFF 는 그대로 · 이미 보이면 그대로)", run: choiStoreOn },
   { id: "2026-11-23-store-home-order", note: "두고클래스 첫 화면: 중국 구매대행(v14) 배너 끄기(지우지 않음) → 그 자리에 ‘귤 하나로 월매출 10억’(v3) 배너 · 홈 섹션 순서 고정(새로 올라온: v4 → v8 · v11 · v3 → b1 → v2 · v5 → 나머지 자동, v14 맨 뒤 / 가장 많이 듣는: v3 · v4 · v8 → 나머지 자동) — 마스터 › 홈 꾸미기와 같은 저장 · 마스터가 고친 섹션은 그대로", run: storeHomeOrder },
+  { id: "2026-11-24-store-pop-on", note: "두고클래스 스토어 팝업 켜기: 정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중 (닫기 · 오늘 그만 보기) — 마스터 › VOD 전시 · 쿠폰 · 설정 › 스토어 팝업에서 끄기 · 문구 수정 · 마스터가 이미 정했으면 그대로", run: storePopOn },
 ];
 
-module.exports = { OPS, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

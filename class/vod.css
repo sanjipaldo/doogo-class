@@ -4758,3 +4758,36 @@ a.vd-fln:not(.is-after):hover { border-color: #e2c050; }
   .vd-cpr em, .vd-cpr strong { font-size: 18px; }
   .vd-cprice small { font-size: 12px; }
 }
+
+/* ── 스토어 첫 화면 팝업 (2026-11-24 · 와디즈 메인 팝업처럼: 정사각 카드 + 오른쪽 아래 이미지 + 아래 '오늘 그만 보기') ── */
+html.vd-pop-open, html.vd-pop-open body { overflow: hidden; }
+.vd-pop-bg { position: fixed; inset: 0; z-index: 130; background: rgba(8, 12, 24, .62); display: grid; place-items: center; padding: 20px; animation: vd-fade .22s ease; font-family: var(--vd-font); letter-spacing: -0.02em; word-break: keep-all; -webkit-font-smoothing: antialiased; }
+.vd-pop-wrap { width: min(440px, 100%); display: flex; flex-direction: column; align-items: flex-end; gap: 12px; animation: vd-popin .32s cubic-bezier(.2, .9, .3, 1.15); }
+.vd-pop { position: relative; width: 100%; aspect-ratio: 1 / 1; border-radius: 24px; overflow: hidden; padding: 38px 34px; color: #fff; text-align: left;
+  background: radial-gradient(120% 90% at 100% 100%, #2a6dff 0%, rgba(42, 109, 255, 0) 55%), linear-gradient(160deg, #0a1633 0%, #10275f 58%, #1843b8 100%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .06); }
+.vd-pop-x { position: absolute; top: 16px; right: 16px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: 0; display: grid; place-items: center; background: rgba(255, 255, 255, .14); color: #fff; cursor: pointer; transition: background .15s; }
+.vd-pop-x:hover { background: rgba(255, 255, 255, .26); }
+.vd-pop-x svg { width: 18px; height: 18px; }
+.vd-pop-ey { position: relative; z-index: 1; display: inline-flex; margin: 0 0 14px; padding: 6px 12px; border-radius: 99px; background: rgba(255, 255, 255, .12); font-size: 13px; font-weight: 700; color: #cfe0ff; }
+.vd-pop-t { position: relative; z-index: 1; margin: 0; font-size: 30px; line-height: 1.32; font-weight: 800; letter-spacing: -0.04em; color: #fff; }
+.vd-pop-b { position: relative; z-index: 1; max-width: 62%; margin: 14px 0 0; font-size: 15px; line-height: 1.6; font-weight: 500; color: rgba(255, 255, 255, .78); }
+.vd-pop-cta { position: absolute; left: 34px; bottom: 34px; z-index: 2; height: 46px; padding: 0 22px; border: 0; border-radius: 99px; background: #fff; color: #0f2a6b; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 22px rgba(0, 0, 0, .25); transition: transform .15s, box-shadow .15s; }
+.vd-pop-cta:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0, 0, 0, .3); }
+.vd-pop-cta:focus-visible, .vd-pop-x:focus-visible, .vd-pop-today:focus-visible { outline: 3px solid #8fb6ff; outline-offset: 2px; }
+.vd-pop-img { position: absolute; right: -6px; bottom: -8px; z-index: 1; width: 47%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 28px; transform: rotate(-9deg); box-shadow: 0 18px 40px rgba(0, 0, 0, .4), 0 0 0 4px rgba(255, 255, 255, .08); pointer-events: none; user-select: none; animation: vd-popimg .55s .12s cubic-bezier(.2, .9, .3, 1.2) both; }
+.vd-pop-today { height: 38px; padding: 0 18px; border: 0; border-radius: 99px; background: rgba(255, 255, 255, .92); color: #222; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, .2); }
+.vd-pop-today:hover { background: #fff; }
+@keyframes vd-popin { from { opacity: 0; transform: translateY(24px) scale(.96); } }
+@keyframes vd-popimg { from { opacity: 0; transform: translate(30px, 30px) rotate(6deg) scale(.8); } }
+@media (max-width: 480px) {
+  .vd-pop-bg { padding: 16px; }
+  .vd-pop { padding: 30px 24px; border-radius: 22px; }
+  .vd-pop-ey { font-size: 12px; margin-bottom: 12px; }
+  .vd-pop-t { font-size: 24px; }
+  .vd-pop-b { max-width: 66%; font-size: 13.5px; margin-top: 10px; }
+  .vd-pop-cta { left: 24px; bottom: 26px; height: 42px; padding: 0 18px; font-size: 14px; }
+  .vd-pop-img { width: 44%; border-radius: 22px; }
+}
+@media (max-width: 340px) { .vd-pop-b { max-width: none; } .vd-pop-img { width: 36%; } }
+@media (prefers-reduced-motion: reduce) { .vd-pop-bg, .vd-pop-wrap, .vd-pop-img { animation: none !important; } .vd-pop-cta { transition: none; } }
