@@ -4383,6 +4383,12 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       cfg86.server.url === "https://www.doogoclass.com/#/vod" && cfg86.server.allowNavigation.indexOf("www.doogoclass.com") >= 0 && cfg86.server.errorPath === "offline.html" && fs.existsSync(path.join(MB86, "www/offline.html")) &&
       Object.keys(pk86.dependencies).every((k) => /^\d+\.\d+\.\d+$/.test(pk86.dependencies[k])) && /\n\/mobile\n/.test(vi86) && /android:name="\.MainActivity"/.test(man86) && /com\.doogoclass\.app/.test(fs.readFileSync(path.join(MB86, "android/app/build.gradle"), "utf8")),
       "mobile/ (Capacitor 8): 앱 ID com.doogoclass.app · 이름 두고클래스 · 사용자 에이전트에 DoogoClassApp/ (사이트가 앱을 알아봄) · 운영 사이트를 열고 못 열면 offline.html · 버전 고정 · 안드로이드 프로젝트 · Vercel 배포에서 빼기(.vercelignore)");
+    const ma86 = fs.readFileSync(path.join(MB86, "android/app/src/main/java/com/doogoclass/app/MainActivity.java"), "utf8");
+    ok(/bridge\.setWebViewClient\(new BridgeWebViewClient\(bridge\)/.test(ma86) && /Intent\.parseUri\(url, Intent\.URI_INTENT_SCHEME\)/.test(ma86) && /market:\/\/details\?id=/.test(ma86) &&
+      /if \(URLUtil\.isNetworkUrl\(url\) \|\| URLUtil\.isJavaScriptUrl\(url\)\) return false;/.test(ma86) && /return super\.shouldOverrideUrlLoading\(view, request\);/.test(ma86) &&
+      /<queries>[\s\S]*viva\.republica\.toss[\s\S]*com\.kbcard\.cxh\.appcard[\s\S]*kvp\.jjy\.MispAndroid320[\s\S]*<\/queries>/.test(man86) &&
+      ["assets/icon-only.png", "assets/icon-foreground.png", "assets/splash.png", "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"].every((f) => fs.existsSync(path.join(MB86, f))),
+      "안드로이드 앱: 결제창이 여는 카드사 · 은행 · 간편결제 앱 주소(intent:// 등)는 그 앱을 열고, 없으면 Play 스토어로 (토스페이먼츠 웹뷰 가이드) · 웹 주소는 Capacitor 기본 그대로 · 앱 목록(queries) · 아이콘 · 스플래시(사이트 앱 아이콘 그대로)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

@@ -1145,7 +1145,10 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
   - 두잉고 강의실 머리띠: LIVE 수강생도 **두고클래스 ↗** 바로가기(스토어로 돌아갈 길 · 휴대폰에서는 짧은 글자 `.dc-back-s` · 예전 `app.js` = React `ui/dg/Shell.jsx`). 웹 휴대폰은 예전처럼 VOD 수강생만 · 큰 화면에서만.
 - **`mobile/` (Capacitor 8 · Vercel 배포에서 빼요 `.vercelignore /mobile`)**: 앱 ID · 이름 두고클래스 · 운영 사이트 스토어 주소를 열어요(`server.url` — 사이트를 고치면 앱도 바로 바뀜) · 안에서 열리는 주소 `allowNavigation`(우리 도메인 · 토스페이먼츠 결제창) · 사이트를 못 열면 `www/offline.html`(인터넷 연결 확인 · 다시 시도). 안드로이드 프로젝트 `mobile/android`(`npx cap add android`) · iOS 는 Mac/클라우드 빌드 단계에서.
   - 설치 · 맞추기: `cd mobile && npm install && npx cap sync`. 패키지 판은 고정(`package.json`).
-  - 아직 할 것: 안드로이드 시험판(APK) 빌드(이 작업 환경에서 안드로이드 SDK 받는 주소 허용 필요) · 앱 아이콘 · 스플래시 · 결제창에서 카드사/토스 앱으로 넘어가기(intent://) · 푸시 알림 · Apple 로그인 · 링크로 앱 열기 · 회원 탈퇴 앱 안에서.
+  - 결제창 → 카드사 · 은행 · 간편결제 앱 (`android/.../MainActivity.java`): 결제창이 여는 앱 주소(intent:// · ispmobile:// 등)는 그 앱을 열고, 앱이 없으면 Play 스토어의 그 앱 화면으로 — 토스페이먼츠 문서 ‘웹뷰(WebView) 연동하기’ 방법 그대로. 웹 주소(http · https)는 Capacitor 기본 처리(우리 도메인 · 결제창은 앱 안 · 그 밖은 바깥 브라우저). 안드로이드 11+ 앱 목록 `AndroidManifest.xml <queries>`(토스페이먼츠 목록).
+  - 아이콘 · 스플래시: 사이트 앱 아이콘(`class/assets/brand/app-icon.svg`)으로 `mobile/assets/icon-only.png · icon-foreground.png(둥근 자르기에 안 잘리게 62%) · icon-background.png · splash.png` → `npx capacitor-assets generate --android`.
+  - 안드로이드 시험판 빌드: 안드로이드 SDK(`platforms;android-36` · `build-tools;36.0.0` · `platform-tools`) + JDK 21 → `cd mobile/android && ./gradlew assembleDebug` (`local.properties` 의 `sdk.dir` · 저장소에는 안 올려요). 작업 환경 네트워크에 SDK 받는 주소(dl.google.com) 허용 필요 · Maven Central 이 요청 많다고(429) 거절하면 `--max-workers=1 -Dorg.gradle.internal.repository.max.tentatives=12 -Dorg.gradle.internal.repository.initial.backoff=3000` 으로 다시.
+  - 아직 할 것: 푸시 알림 · Apple 로그인 · 링크로 앱 열기 · 회원 탈퇴 앱 안에서 · iOS 프로젝트(Mac/클라우드 빌드) · 결정 3 · 4(iOS VOD 결제 · 가격)에 맞춘 앱 안 구매 화면.
 - **테스트**: `node scripts/vod-test.js` 86) 앱 알아보기(보통 브라우저 그대로 · 앱 사용자 에이전트 · ?app=1 · ?app=0 · 예전 = React 같은 코드) · 아래 메뉴(웹 그대로 · 앱 두잉고 탭) · 강의실 바로가기 · mobile 설정. 화면 확인: 앱 사용자 에이전트로 스토어 → 두잉고 탭(로그인) → 강의실(두고클래스 ↗) → 스토어 → 두잉고 탭(바로 강의실).
 
 ## 과제 검수 — 전체 선택 표시 · 중복 승인 막기 · 승인 취소(검수 대기로) (2026-11-22)
