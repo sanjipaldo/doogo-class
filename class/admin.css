@@ -311,8 +311,8 @@ textarea.a-input { min-height: 0; resize: vertical; line-height: 1.6; }
 /* 1:1 요청 답변 스레드 (2026-11-24): 답을 글 그대로 다 보여 주고 · 글마다 누가 · 언제 · 답글은 들여서 이어지게 */
 .a-qt { list-style: none; margin: 0 0 12px 48px; padding: 0; display: grid; gap: 8px; }
 .a-qt-it { padding: 12px 14px; border-radius: 12px; background: var(--m-success-soft); border: 1px solid var(--m-hairline-soft); }
-.a-qt-it.re { position: relative; margin-left: 24px; background: var(--m-canvas); border-color: var(--m-hairline); }
-.a-qt-it.re::before { content: ""; position: absolute; left: -16px; top: -9px; width: 11px; height: 28px; border-left: 2px solid var(--m-hairline); border-bottom: 2px solid var(--m-hairline); border-bottom-left-radius: 8px; }
+.a-qt-it.is-re { position: relative; margin-left: 24px; background: var(--m-canvas); border-color: var(--m-hairline); }
+.a-qt-it.is-re::before { content: ""; position: absolute; left: -16px; top: -9px; width: 11px; height: 28px; border-left: 2px solid var(--m-hairline); border-bottom: 2px solid var(--m-hairline); border-bottom-left-radius: 8px; }
 .a-qt-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .a-qt-top small { font-size: 12px; color: var(--m-steel); }
 .a-qt-act { margin-left: auto; display: inline-flex; gap: 12px; }
@@ -320,7 +320,7 @@ textarea.a-input { min-height: 0; resize: vertical; line-height: 1.6; }
 .a-qt-act .a-link.danger { color: var(--m-critical-strong); }
 .a-qt-body { margin-top: 6px; font-size: 15px; line-height: 1.65; color: var(--m-charcoal); white-space: pre-line; overflow-wrap: anywhere; }
 .a-qt-body a { color: var(--m-primary); text-decoration: underline; }
-@media (max-width: 720px) { .a-qt { margin-left: 0; } .a-qt-it.re { margin-left: 16px; } }
+@media (max-width: 720px) { .a-qt { margin-left: 0; } .a-qt-it.is-re { margin-left: 16px; } }
 .a-confirm { margin: 0; font-size: 15px; line-height: 1.7; color: var(--m-charcoal); }
 
 /* 모달 */

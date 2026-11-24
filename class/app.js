@@ -1702,7 +1702,7 @@
       // 답변 스레드 (2026-11-24): 첫 답변 + 이어진 답글 — 누가(강사 · 코치 · 운영팀) · 언제 썼는지 함께 (React ui/dg/Board.jsx 와 같게)
       '<div class="section-head"><h2>' + (th.length > 1 ? "답변 " + th.length + "개" : "답변") + "</h2></div>" +
       (th.length
-        ? '<div class="req-thread">' + th.map((e, k) => { const t = new Date(e.at || q.at); return '<section class="card req-answer' + (k ? " re" : "") + '"><div class="req-answer-top"><b>' + (k ? '<span class="req-re">답글</span>' : "") + esc(e.by || D.brand.instructor + " · 운영자") + "</b><span>" + (e.at ? DB.date.toStr(t) + " " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0") : "") + (e.editedAt ? " · 수정됨" : "") + '</span></div><div class="body">' + DB.linkify(e.body) + "</div></section>"; }).join("") + "</div>"
+        ? '<div class="req-thread">' + th.map((e, k) => { const t = new Date(e.at || q.at); return '<section class="card req-answer' + (k ? " is-re" : "") + '"><div class="req-answer-top"><b>' + (k ? '<span class="req-re">답글</span>' : "") + esc(e.by || D.brand.instructor + " · 운영자") + "</b><span>" + (e.at ? DB.date.toStr(t) + " " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0") : "") + (e.editedAt ? " · 수정됨" : "") + '</span></div><div class="body">' + DB.linkify(e.body) + "</div></section>"; }).join("") + "</div>"
         : '<section class="card empty">' + icon("clock") + "<div>강사님이 확인하고 있어요. 답변이 달리면 여기에 바로 보여요.</div>" + (preview ? "" : '<button type="button" class="btn btn-secondary btn-sm" data-action="req-cancel" data-id="' + esc(q.id) + '">' + (vq && q.coach ? "질문 취소하고 코칭권 돌려받기" : "요청 취소하기") + "</button>") + "</section>") +
       "</div>";
   }

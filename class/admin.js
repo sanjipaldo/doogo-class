@@ -1223,7 +1223,7 @@
   const qCanEdit = (e) => { const ac = actor(); return ac.role === "coach" ? !!e.byId && e.byId === ac.byId : true; }; // 코치는 자기 글만 · 강사 · 운영팀은 모두
   function qThreadHtml(x, rows, ph) {
     const q = x.q, list = DB.qThread(q), dd = ' data-sid="' + esc(x.s.id) + '" data-qid="' + esc(q.id) + '"';
-    const items = list.map((e, i) => '<li class="a-qt-it' + (i ? " re" : "") + '"><div class="a-qt-top"><span class="a-by">' + icon(i ? "message" : "user", "xs") + esc(e.by || "강사") + "</span><small>" + (i ? "답글" : "답변") + (e.at ? " · " + fmtStamp(e.at) : "") + (e.editedAt ? " · 수정됨" : "") + "</small>" +
+    const items = list.map((e, i) => '<li class="a-qt-it' + (i ? " is-re" : "") + '"><div class="a-qt-top"><span class="a-by">' + icon(i ? "message" : "user", "xs") + esc(e.by || "강사") + "</span><small>" + (i ? "답글" : "답변") + (e.at ? " · " + fmtStamp(e.at) : "") + (e.editedAt ? " · 수정됨" : "") + "</small>" +
       (qCanEdit(e) ? '<span class="a-qt-act"><button type="button" class="a-link" data-action="q-edit"' + dd + ' data-rid="' + esc(e.id) + '">수정</button>' + (i ? '<button type="button" class="a-link danger" data-action="q-del"' + dd + ' data-rid="' + esc(e.id) + '">지우기</button>' : "") + "</span>" : "") +
       '</div><div class="a-qt-body">' + DB.linkify(e.body) + "</div></li>").join("");
     return (items ? '<ol class="a-qt" aria-label="답변 ' + list.length + '개">' + items + "</ol>" : "") +

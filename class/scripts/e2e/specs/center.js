@@ -114,7 +114,7 @@ module.exports = {
       const F = (id) => '.a-q-form[data-qid="' + id + '"]';
       const send = async (txt) => { await page.click('[data-action="q-tab"][data-k="all"]').catch(() => {}); await page.waitForTimeout(300); const b0 = await page.$eval(F(qid) + " button[type=submit]", (b) => b.textContent).catch(() => ""); await page.fill(F(qid) + ' textarea[name="answer"]', txt); await page.click(F(qid) + " button[type=submit]"); await page.waitForTimeout(500); await L.flushed(page); return b0; };
       const centerView = () => page.evaluate((id) => { const f = document.querySelector('.a-q-form[data-qid="' + id + '"]'), a = f && f.closest(".a-q");
-        return a ? { items: Array.from(a.querySelectorAll(".a-qt-it")).map((li) => ({ re: li.classList.contains("re"), by: (li.querySelector(".a-by") || {}).textContent || "", meta: (li.querySelector(".a-qt-top small") || {}).textContent || "", body: (li.querySelector(".a-qt-body") || {}).innerText || "", edit: !!li.querySelector('[data-action="q-edit"]') })), btn: (f.querySelector("button[type=submit]") || {}).textContent || "", ta: (f.querySelector("textarea") || {}).value } : null; }, qid);
+        return a ? { items: Array.from(a.querySelectorAll(".a-qt-it")).map((li) => ({ re: li.classList.contains("is-re"), by: (li.querySelector(".a-by") || {}).textContent || "", meta: (li.querySelector(".a-qt-top small") || {}).textContent || "", body: (li.querySelector(".a-qt-body") || {}).innerText || "", edit: !!li.querySelector('[data-action="q-edit"]') })), btn: (f.querySelector("button[type=submit]") || {}).textContent || "", ta: (f.querySelector("textarea") || {}).value } : null; }, qid);
       let r = null;
       if (qid) {
         const b1 = await send(LONG);
@@ -131,7 +131,7 @@ module.exports = {
         for (const mode of ["off", "all"]) {
           await L.reactCookie(stu, base, mode); await L.open(stu, base, "/home"); // 다시 로그인하지 않고 (세션 그대로) 새로 불러오기
           await stu.evaluate((id) => { window.ROUTE.hash = "#/qna/requests/" + id; }, qid); await stu.waitForTimeout(800);
-          sv[mode] = await stu.evaluate(() => ({ head: Array.from(document.querySelectorAll(".section-head h2")).map((h) => h.textContent).find((t) => /^답변/.test(t)) || "", cards: Array.from(document.querySelectorAll(".req-thread .req-answer")).map((c) => ({ re: c.classList.contains("re"), who: (c.querySelector(".req-answer-top b") || {}).textContent || "", when: (c.querySelector(".req-answer-top > span") || {}).textContent || "", body: (c.querySelector(".body") || {}).innerText || "" })) }));
+          sv[mode] = await stu.evaluate(() => ({ head: Array.from(document.querySelectorAll(".section-head h2")).map((h) => h.textContent).find((t) => /^답변/.test(t)) || "", cards: Array.from(document.querySelectorAll(".req-thread .req-answer")).map((c) => ({ re: c.classList.contains("is-re"), who: (c.querySelector(".req-answer-top b") || {}).textContent || "", when: (c.querySelector(".req-answer-top > span") || {}).textContent || "", body: (c.querySelector(".body") || {}).innerText || "" })) }));
         }
         await page.context().clearCookies({ name: "dc_next" });
         r = { b1, b2, edited: !!ed, cv, ins, sv };

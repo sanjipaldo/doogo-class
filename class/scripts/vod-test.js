@@ -4164,7 +4164,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /"q-edit-form": saveQEdit/.test(ad83) && /case "q-edit":/.test(ad83) && /case "q-del":/.test(ad83) && /return ac\.role === "coach" \? !!e\.byId && e\.byId === ac\.byId : true;/.test(ad83) &&
       ui83.every((t) => /<Isl key=\{x\.q\.id \+ ":" \+ n\} html=\{A\.qThreadHtml\(x, [34], A\.Q_PH(_CO)?\)\} \/>/.test(t) && !/a-q-by|defaultValue=\{x\.q\.answer/.test(t)),
       "강사센터: 1:1 요청 · 오류 신고 모아보기 · 1:1 코칭 답변 세 곳이 같은 스레드(글 전체 · 누가 · 언제 · 수정/지우기) — 첫 답변이 있으면 ‘답글 달기’ · 코치는 자기 글만 고쳐요 (예전 화면 = React)");
-    ok(/th = DB\.qThread\(q\)/.test(ap83) && /th = DB\.qThread\(q\)/.test(bd83) && /req-answer' \+ \(k \? " re" : ""\)/.test(ap83) && /"card req-answer" \+ \(k \? " re" : ""\)/.test(bd83) &&
+    ok(/th = DB\.qThread\(q\)/.test(ap83) && /th = DB\.qThread\(q\)/.test(bd83) && /req-answer' \+ \(k \? " is-re" : ""\)/.test(ap83) && /"card req-answer" \+ \(k \? " is-re" : ""\)/.test(bd83) && !/\.req-answer\.re\b|\.a-qt-it\.re\b/.test(fs.readFileSync(path.join(ROOT, "styles.css"), "utf8") + fs.readFileSync(path.join(ROOT, "admin.css"), "utf8")) &&
       /esc\(e\.by \|\| D\.brand\.instructor \+ " · 운영자"\)/.test(ap83) && /\{e\.by \|\| D\.brand\.instructor \+ " · 운영자"\}/.test(bd83) && (ap83.match(/DB\.qLastAt\(/g) || []).length === 3 && !/<h2>강사 답변<\/h2>/.test(ap83 + bd83),
       "수강생 화면: 답변 · 답글을 쓴 사람 이름(강사 · 코치 · 운영팀)과 시각까지 차례로 · 답글은 들여서 · 새 답글도 ‘새 답변’ 표시 (예전 화면 = React)");
   }
