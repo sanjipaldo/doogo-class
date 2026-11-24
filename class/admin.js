@@ -4916,7 +4916,7 @@
       ? (rv.length ? '<div class="a-table-wrap"><table class="a-table vda-table"><thead><tr><th>작성일</th><th>클래스</th><th>작성자</th><th>별점</th><th>내용</th><th>상태</th><th class="right">관리</th></tr></thead><tbody>' +
           rv.map((r) => { const p = vdP(r.pid) || {}; return "<tr" + (r.hidden ? ' class="a-dim"' : "") + "><td>" + esc(DB.date.toStr(new Date(r.at))) + "</td><td>" + esc(p.title || "삭제된 클래스") + "</td><td>" + esc(r.name) + '</td><td class="num">' + "★".repeat(r.rating) + '<span class="a-muted">' + "★".repeat(5 - r.rating) + '</span></td><td class="vda-rv">' + esc(r.text) + "</td><td>" + (r.hidden ? pill("숨김", "mute") : pill("공개", "ok")) + (r.best ? pill("베스트", "info") : "") + '</td><td class="right">' + btn(r.best ? "베스트 빼기" : "베스트로", "vda-rv-best", "a-btn-ghost a-btn-sm", ' data-id="' + esc(r.id) + '"') + btn(r.hidden ? "다시 보이기" : "숨기기", "vda-rv-hide", "a-btn-ghost a-btn-sm", ' data-id="' + esc(r.id) + '"') + "</td></tr>"; }).join("") + "</tbody></table></div>" : emptyBox("star", "아직 후기가 없어요."))
       : '<p class="crm-move">' + icon("users", "sm") + '<span>가입 방식 · 단계 · 구매 · 쿠폰 · 포인트 · 소식 받기 동의까지 보는 자세한 회원 관리는 <a class="a-link" href="#/center/master/vod-crm">회원 DB</a>에서 해요.</span></p>' + (members.length ? '<div class="a-table-wrap"><table class="a-table vda-table"><thead><tr><th>이름</th><th>이메일</th><th>휴대폰</th><th>가입일</th><th>구매</th><th>마케팅</th><th>상태</th><th class="right">관리</th></tr></thead><tbody>' +
-          members.map((m) => { const b = buys(m); return "<tr" + (m.blocked ? ' class="a-dim"' : "") + "><td><b>" + esc(m.name) + "</b></td><td>" + esc(m.email) + "</td><td>" + esc(m.phone || "-") + "</td><td>" + esc(DB.date.toStr(new Date(m.createdAt))) + '</td><td class="num">' + b.length + "건" + (b.length ? '<small class="a-memo">' + won(vdSum(b)) + "</small>" : "") + "</td><td>" + (m.marketing ? pill("동의", "info") : '<span class="a-muted">-</span>') + "</td><td>" + (m.blocked ? pill("이용 중지", "bad") : pill("정상", "ok")) + '</td><td class="right">' + btn("상세", "vda-mem", "a-btn-ghost a-btn-sm", ' data-id="' + esc(m.id) + '"') + btn(m.blocked ? "중지 풀기" : "이용 중지", "vda-block", "a-btn-ghost a-btn-sm", ' data-id="' + esc(m.id) + '"') + "</td></tr>"; }).join("") + "</tbody></table></div>" : emptyBox("users", "조건에 맞는 회원이 없어요."));
+          members.map((m) => { const b = buys(m); return "<tr" + (m.blocked ? ' class="a-dim"' : "") + "><td><b>" + esc(m.name) + "</b></td><td>" + esc(m.email) + "</td><td>" + esc(m.phone || "-") + "</td><td>" + esc(DB.date.toStr(new Date(m.createdAt))) + '</td><td class="num">' + b.length + "건" + (b.length ? '<small class="a-memo">' + won(vdSum(b)) + "</small>" : "") + "</td><td>" + (m.marketing ? pill("동의", "info") : '<span class="a-muted">-</span>') + "</td><td>" + (m.withdrawnAt ? pill("탈퇴", "mute") + (m.withdrawWhy ? '<small class="a-memo">' + esc(m.withdrawWhy) + "</small>" : "") : m.blocked ? pill("이용 중지", "bad") : pill("정상", "ok")) + '</td><td class="right">' + btn("상세", "vda-mem", "a-btn-ghost a-btn-sm", ' data-id="' + esc(m.id) + '"') + (m.withdrawnAt ? "" : btn(m.blocked ? "중지 풀기" : "이용 중지", "vda-block", "a-btn-ghost a-btn-sm", ' data-id="' + esc(m.id) + '"')) + "</td></tr>"; }).join("") + "</tbody></table></div>" : emptyBox("users", "조건에 맞는 회원이 없어요."));
     return head("후기 · 다짐 · 문의", "DOOGO CLASS 회원이 남긴 수강 후기 · 다짐 한마디 · 1:1 문의를 관리해요. ‘베스트로’를 누르면 그 클래스 상세 탭 위 ‘베스트 후기’ 줄에 보여요. 회원 정보 · 구매 · 쿠폰 · 포인트 · 메시지는 ‘회원 DB’에서 해요.", '<a class="a-btn a-btn-ghost" href="#/center/master/vod-crm">' + icon("users", "sm") + "회원 DB</a>" + vdStoreBtn()) +
       '<div class="a-kpis">' +
         kpi("VOD 회원", v.members.length + "명", "이번 달 가입 " + v.members.filter((m) => vdYM(m.createdAt) === todayStr().slice(0, 7)).length + "명", "#/center/master/vod-crm", "ok") +
@@ -6522,10 +6522,10 @@
   const crmAgo = (ms) => { if (!ms) return "-"; const d = crmDays(ms); return d <= 0 ? "오늘" : d === 1 ? "어제" : d < 30 ? d + "일 전" : d < 365 ? Math.floor(d / 30) + "개월 전" : Math.floor(d / 365) + "년 전"; };
   const crmDate = (ms) => (ms ? DB.date.toStr(new Date(ms)).replace(/-/g, ".") : "-");
   const crmStamp = (ms) => { if (!ms) return "-"; const d = new Date(ms); return crmDate(ms) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
-  const CRM_ORDER = ["fan", "repeat", "first", "free", "new", "lead", "risk", "sleep", "blocked"];
+  const CRM_ORDER = ["fan", "repeat", "first", "free", "new", "lead", "risk", "sleep", "blocked", "out"];
   const crmStage = (k) => {
     const R = CRM().rules;
-    return ({ fan: ["열성팬", "dark", "결제 " + R.fanN + "회 이상 또는 누적 " + won(R.fanAmt) + " 이상 · 최근 " + R.fanDays + "일 안에 활동"], repeat: ["재구매", "ok", "2번 이상 결제"], first: ["첫 구매", "info", "1번 결제"], free: ["무료 체험", "info", "무료 LIVE · 무료 특강만 신청"], new: ["신규 가입", "warn", "가입 " + R.newDays + "일 이내 · 아직 결제 전"], lead: ["구매 전", "mute", "가입했지만 아직 신청 · 결제 없음"], risk: ["이탈 위험", "bad", "결제한 적 있지만 " + R.riskDays + "일 넘게 활동 없음"], sleep: ["휴면", "mute", R.sleepDays + "일 넘게 활동 없음"], blocked: ["이용 중지", "bad", "운영자가 이용을 막은 회원"] })[k] || ["-", "mute", ""];
+    return ({ fan: ["열성팬", "dark", "결제 " + R.fanN + "회 이상 또는 누적 " + won(R.fanAmt) + " 이상 · 최근 " + R.fanDays + "일 안에 활동"], repeat: ["재구매", "ok", "2번 이상 결제"], first: ["첫 구매", "info", "1번 결제"], free: ["무료 체험", "info", "무료 LIVE · 무료 특강만 신청"], new: ["신규 가입", "warn", "가입 " + R.newDays + "일 이내 · 아직 결제 전"], lead: ["구매 전", "mute", "가입했지만 아직 신청 · 결제 없음"], risk: ["이탈 위험", "bad", "결제한 적 있지만 " + R.riskDays + "일 넘게 활동 없음"], sleep: ["휴면", "mute", R.sleepDays + "일 넘게 활동 없음"], blocked: ["이용 중지", "bad", "운영자가 이용을 막은 회원"], out: ["탈퇴", "mute", "마이페이지에서 스스로 탈퇴한 회원 (이름 · 연락처는 지워지고 주문 기록만 남아요)"] })[k] || ["-", "mute", ""];
   };
   const CRM_SRC = { instagram: "인스타그램", youtube: "유튜브", naver: "네이버", google: "구글", kakao: "카카오톡 채널", meta: "메타 광고", ins: "강사 링크", migrate: "기존 사이트 이관", direct: "직접 방문" };
   const crmSrcK = (m) => ((m.src || {}).s || "direct");
@@ -6556,7 +6556,7 @@
     const t0 = todayStr(), mcs = (v.memberCoupons || {})[m.id] || [], cpOk = mcs.filter((x) => !x.usedAt && (!x.exp || x.exp >= t0));
     const likes = (v.likes || {})[m.id] || [], idle = crmDays(last), dp = crmDays(lastPay);
     const rS = !lastPay ? 0 : dp <= 14 ? 5 : dp <= 30 ? 4 : dp <= 60 ? 3 : dp <= 120 ? 2 : 1, fS = Math.min(5, paid.length), mS = !ltv ? 0 : ltv >= 500000 ? 5 : ltv >= 300000 ? 4 : ltv >= 150000 ? 3 : ltv >= 50000 ? 2 : 1;
-    const stage = m.blocked ? "blocked" : idle > R.sleepDays ? "sleep" : paid.length && idle > R.riskDays ? "risk" : (paid.length >= R.fanN || ltv >= R.fanAmt) && idle <= R.fanDays ? "fan" : paid.length >= 2 ? "repeat" : paid.length === 1 ? "first" : free.length ? "free" : crmDays(m.createdAt) <= R.newDays ? "new" : "lead";
+    const stage = m.withdrawnAt ? "out" : m.blocked ? "blocked" : idle > R.sleepDays ? "sleep" : paid.length && idle > R.riskDays ? "risk" : (paid.length >= R.fanN || ltv >= R.fanAmt) && idle <= R.fanDays ? "fan" : paid.length >= 2 ? "repeat" : paid.length === 1 ? "first" : free.length ? "free" : crmDays(m.createdAt) <= R.newDays ? "new" : "lead";
     const c = m.consent || {}, sub = !!(c.mkt != null ? c.mkt : m.marketing), reAt = sub && c.at ? c.at + 730 * DAY : 0;
     return { m, os, paid, free, ltv, aov: paid.length ? Math.round(ltv / paid.length) : 0, lastPay, firstPay: isFinite(firstPay) ? firstPay : 0, last, idle, pids, ins, pct, prog, cpOk, mcs, likes, rvs, iqs, rfm: [rS, fS, mS], score: rS + fS + mS, stage, sub, reAt, reDue: !!reAt && reAt - Date.now() < 30 * DAY && !m.blocked };
   }
@@ -6602,7 +6602,7 @@
   function pageCrm(r) {
     if (r && r.parts && r.parts[2]) return crmMemberPage(decodeURIComponent(r.parts[2]));
     const v = VD(), F = crmF(), all = crmAll(), list = crmList(), sel = crmSelIds(), N = ui.crmN || 50, ym = todayStr().slice(0, 7), pym = vdYMadd(ym, -1);
-    const cnt = (k) => all.filter((pf) => crmIn(pf, k)).length, act = all.filter((pf) => !pf.m.blocked);
+    const cnt = (k) => all.filter((pf) => crmIn(pf, k)).length, act = all.filter((pf) => !pf.m.blocked && !pf.m.withdrawnAt);
     const newM = all.filter((pf) => vdYM(pf.m.createdAt) === ym), newP = all.filter((pf) => vdYM(pf.m.createdAt) === pym).length, buyers = act.filter((pf) => pf.paid.length).length;
     const kk = all.filter((pf) => pf.m.via === "kakao").length, subs = cnt("sub");
     const kb = (k, label, val, sub, tone) => '<button type="button" class="a-kpi crm-kpi ' + (tone || "") + (F.seg === k ? " on" : "") + '" data-action="crm-seg" data-k="' + k + '"><span>' + label + "</span><b>" + val + "</b><small>" + sub + "</small></button>";
@@ -6868,7 +6868,7 @@
 
   /* ---------- 5) 회원 분석 ---------- */
   function pageCrmReport() {
-    const all = crmAll(), act = all.filter((pf) => !pf.m.blocked), buyers = act.filter((pf) => pf.paid.length), rep = buyers.filter((pf) => pf.paid.length >= 2);
+    const all = crmAll(), act = all.filter((pf) => !pf.m.blocked && !pf.m.withdrawnAt), buyers = act.filter((pf) => pf.paid.length), rep = buyers.filter((pf) => pf.paid.length >= 2);
     const ttf = buyers.filter((pf) => pf.firstPay).map((pf) => Math.max(0, Math.round((pf.firstPay - pf.m.createdAt) / DAY))), avgT = ttf.length ? Math.round(ttf.reduce((a, b) => a + b, 0) / ttf.length) : 0;
     const kp = (l, val, sub) => '<div class="a-kpi"><span>' + l + "</span><b>" + val + "</b><small>" + sub + "</small></div>";
     // 주별 가입 (최근 8주) — 이메일 · 카카오 쌓은 막대

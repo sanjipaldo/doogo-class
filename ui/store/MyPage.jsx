@@ -10,11 +10,11 @@ import Icon from "../lib/Icon.jsx";
 import Raw from "../lib/Raw.jsx";
 import { VOD, DB, today, hash, storeRoute, toast, go } from "../lib/legacy.js";
 import { Classes, Free, Vods, Badges, Points, Posts, Alarm, Likes } from "./MyTabs.jsx";
-import { Coupons, Ebooks, Live, Devices, Reviews, Help, Account, Addons } from "./MyTabs2.jsx";
+import { Coupons, Ebooks, Live, Devices, Reviews, Help, Account, Addons, Withdraw } from "./MyTabs2.jsx";
 import { ShipStrip, Pending, OrderList, Ship, RfNowModal } from "./MyOrders.jsx";
 
 /* React 로 옮긴 마이페이지 메뉴 — 마이페이지 메뉴 전부 (class/shared/screens.js 의 vod-my 주소 규칙과 같게) */
-const TABS = { "": null, classes: Classes, free: Free, vod: Vods, addons: Addons, ebooks: Ebooks, live: Live, alarm: Alarm, likes: Likes, pending: Pending, orders: OrderList, ship: Ship, coupons: Coupons, points: Points, reviews: Reviews, posts: Posts, badges: Badges, account: Account, devices: Devices, help: Help };
+const TABS = { "": null, classes: Classes, free: Free, vod: Vods, addons: Addons, ebooks: Ebooks, live: Live, alarm: Alarm, likes: Likes, pending: Pending, orders: OrderList, ship: Ship, coupons: Coupons, points: Points, reviews: Reviews, posts: Posts, badges: Badges, account: Account, devices: Devices, help: Help, withdraw: Withdraw };
 
 const TITLE = "DOOGO CLASS — 돈 되는 클래스";
 const fmt = (at) => DB().date.toStr(new Date(at));

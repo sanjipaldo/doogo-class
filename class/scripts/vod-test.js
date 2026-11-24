@@ -684,6 +684,43 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   ok(r.status === 403, "체험 계정 비밀번호는 못 바꿔요", r.json);
   r = await call("vod-auth", { body: { action: "withdraw", pw: "vod" } });
   ok(r.status === 403, "체험 계정은 탈퇴 못 해요", r.json);
+  // 회원 탈퇴 (2026-11-24 · 마이페이지 › 회원 탈퇴): 비밀번호 확인 · 떠나는 이유는 정해 둔 보기만 · 이름 · 연락처를 지우고 주문 번호는 남겨요
+  //  · 같은 이메일로 다시 가입할 수 있어요 · 소개 화면 ‘회원 N명’(bootstrap pub)은 탈퇴 · 체험 계정을 빼고 세요
+  {
+    const BS = require(path.join(TMP, "class/api/bootstrap.js")), jarDemo = saveJar();
+    useJar({}); BS.pubReset();
+    const n0 = ((await boot()).pub || {}).members;
+    r = await call("vod-auth", { body: { action: "signup", email: "wd@example.com", pw: "test1234w", name: "탈OO", phone: "010-0000-7777", agree: true } });
+    const wid = r.json.member && r.json.member.id;
+    BS.pubReset();
+    const n1 = ((await boot()).pub || {}).members;
+    ok(wid && typeof n0 === "number" && n1 === n0 + 1, "소개 화면 숫자 ‘회원’: 새로 가입하면 1명 늘어요 (체험 계정은 세지 않아요)", { n0, n1 });
+    BS.pubReset();
+    const jC = await call("bootstrap", { method: "GET", query: { since: String(Date.now() - 1000) } });
+    ok(jC.json.pub === undefined, "바뀐 것만 받을 때(since)는 회원 수를 다시 세지 않아요", jC.json.pub);
+    r = await call("vod-auth", { body: { action: "withdraw", pw: "wrong1234", why: "가격이 부담돼요" } });
+    ok(r.status === 401 && /비밀번호/.test(r.json.message), "비밀번호가 틀리면 탈퇴 안 돼요", r.json);
+    r = await call("vod-auth", { body: { action: "withdraw", pw: "test1234w", why: "가격이 부담돼요" } });
+    ok(r.json.ok, "비밀번호 맞으면 탈퇴", r.json);
+    r = await call("vod-auth", { body: { action: "me" } });
+    ok(!r.json.member, "탈퇴하면 바로 로그아웃", r.json);
+    r = await call("vod-auth", { body: { action: "login", email: "wd@example.com", pw: "test1234w" } });
+    ok(!r.json.ok, "탈퇴한 이메일 · 비밀번호로는 로그인 안 돼요", r.json);
+    const keep = saveJar(); useJar({ dc_a: auth.sign({ r: "master" }) });
+    const wm = docOf(await boot(), "vm:" + wid) || {};
+    ok(wm.withdrawnAt && wm.withdrawWhy === "가격이 부담돼요" && wm.name === "탈퇴 회원" && !wm.email && !wm.phone && !wm.pwHash, "마스터: 탈퇴 시각 · 떠난 이유만 남고 이름 · 이메일 · 연락처 · 비밀번호는 지워져요", { name: wm.name, why: wm.withdrawWhy, email: !!wm.email });
+    useJar(keep);
+    BS.pubReset();
+    const n2 = ((await boot()).pub || {}).members;
+    ok(n2 === n0, "탈퇴 회원은 ‘회원’ 숫자에서 빠져요", { n0, n2 });
+    r = await call("vod-auth", { body: { action: "signup", email: "wd@example.com", pw: "test1234w", name: "탈OO", phone: "010-0000-7777", agree: true } });
+    ok(r.json.ok && r.json.member.id !== wid, "같은 이메일로 다시 가입하면 새 회원", r.json);
+    r = await call("vod-auth", { body: { action: "withdraw", pw: "test1234w", why: "<b>내 이름은 홍길동</b>" } });
+    useJar({ dc_a: auth.sign({ r: "master" }) });
+    const wm2 = (await boot()).docs.filter((d) => /^vm:/.test(d[0]) && d[1].withdrawnAt && d[0] !== "vm:" + wid).map((d) => d[1])[0] || {};
+    ok(r.json.ok && wm2.withdrawWhy === "", "보기에 없는 이유(자유 글 · 개인정보)는 남기지 않아요", wm2.withdrawWhy);
+    useJar(jarDemo); BS.pubReset();
+  }
   const ran2 = await require(path.join(TMP, "class/api/_lib/init.js")).runPendingOps();
   ok(!ran2.length, "다음 배포 때는 다시 돌지 않아요", ran2);
   // 2026-11-23-choi-home-off: 배포 때 강사 choi 를 두잉고 소개 · 수강생 로그인 강사 목록에서만 빼요 (homeOff — 계정은 운영 중 그대로)
@@ -4167,6 +4204,38 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(/th = DB\.qThread\(q\)/.test(ap83) && /th = DB\.qThread\(q\)/.test(bd83) && /req-answer' \+ \(k \? " is-re" : ""\)/.test(ap83) && /"card req-answer" \+ \(k \? " is-re" : ""\)/.test(bd83) && !/\.req-answer\.re\b|\.a-qt-it\.re\b/.test(fs.readFileSync(path.join(ROOT, "styles.css"), "utf8") + fs.readFileSync(path.join(ROOT, "admin.css"), "utf8")) &&
       /esc\(e\.by \|\| D\.brand\.instructor \+ " · 운영자"\)/.test(ap83) && /\{e\.by \|\| D\.brand\.instructor \+ " · 운영자"\}/.test(bd83) && (ap83.match(/DB\.qLastAt\(/g) || []).length === 3 && !/<h2>강사 답변<\/h2>/.test(ap83 + bd83),
       "수강생 화면: 답변 · 답글을 쓴 사람 이름(강사 · 코치 · 운영팀)과 시각까지 차례로 · 답글은 들여서 · 새 답글도 ‘새 답변’ 표시 (예전 화면 = React)");
+
+    console.log("84) 회원 탈퇴 (마이페이지 › 회원 탈퇴) · 소개 화면 개편 — ‘회원’ 숫자 · 사진 슬라이드 · ‘강의를 듣고 나면’ 사진 · 강사진 한 줄 슬라이드 (2026-11-24)");
+    const vj84 = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), va84 = fs.readFileSync(path.join(ROOT, "api/vod-auth.js"), "utf8"), bs84 = fs.readFileSync(path.join(ROOT, "api/bootstrap.js"), "utf8");
+    const ab84 = fs.readFileSync(path.join(ROOT, "../ui/store/AboutPage.jsx"), "utf8"), hp84 = fs.readFileSync(path.join(ROOT, "../ui/store/HomePage.jsx"), "utf8"), rl84 = fs.readFileSync(path.join(ROOT, "../ui/store/Rail.jsx"), "utf8");
+    const mt84 = fs.readFileSync(path.join(ROOT, "../ui/store/MyTabs2.jsx"), "utf8"), mp84 = fs.readFileSync(path.join(ROOT, "../ui/store/MyPage.jsx"), "utf8"), css84 = fs.readFileSync(path.join(ROOT, "vod.css"), "utf8");
+    const why84 = (t) => { const m = t.match(/const WD_WHY = (\[[^\]]+\]);/); return m ? JSON.parse(m[1]) : null; };
+    ok(JSON.stringify(why84(vj84)) === JSON.stringify(why84(va84)) && why84(vj84).length === 6 && /\["withdraw", "회원 탈퇴", "userX"\]/.test(vj84) && /sub === "withdraw"\) body = wdBody\(m, d\)/.test(vj84) &&
+      /f\.matches\("\[data-vd-wd\]"\)\) \{ e\.preventDefault\(\); doWithdraw\(f\); return; \}/.test(vj84) && /<a class="vd-wd-lnk" href="#\/vod\/my\/withdraw">회원 탈퇴<\/a>/.test(vj84) &&
+      /export function Withdraw\(\{ m, d \}\)/.test(mt84) && /onSubmit=\{submitWith\(X\.doWithdraw\)\}/.test(mt84) && /className="vd-wd-lnk" href="#\/vod\/my\/withdraw"/.test(mt84) && /withdraw: Withdraw/.test(mp84) &&
+      /withdrawWhy: why/.test(va84) && /WD_WHY\.indexOf\(String\(b\.why \|\| ""\)\) >= 0 \? String\(b\.why\) : ""/.test(va84) && /\.vd-btn-danger \{/.test(css84),
+      "회원 탈퇴: 마이페이지 계정 메뉴 · 회원 정보 수정 아래 링크 → 탈퇴 화면(남는 것 · 지워지는 것 · 이유 · 비밀번호 또는 카카오 확인 · 동의) · 이유 보기는 화면 = 서버 같은 목록 (예전 화면 = React)");
+    const ad84 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), md84 = fs.readFileSync(path.join(ROOT, "../ui/center/MasterDc.jsx"), "utf8");
+    ok(/const stage = m\.withdrawnAt \? "out" : m\.blocked \? "blocked"/.test(ad84) && /out: \["탈퇴", "mute"/.test(ad84) && /"blocked", "out"\];/.test(ad84) &&
+      /m\.withdrawnAt \? pill\("탈퇴", "mute"\) \+ \(m\.withdrawWhy/.test(ad84) && /m\.withdrawnAt \? <><Pill cls="mute">탈퇴<\/Pill>\{m\.withdrawWhy/.test(md84) && (ad84.match(/!pf\.m\.blocked && !pf\.m\.withdrawnAt/g) || []).length === 2,
+      "마스터: 회원 간단 목록 · 회원 DB 단계에 ‘탈퇴’(떠난 이유) · 이용 중지 버튼은 숨기고 · 활성 회원 숫자에서 빼요 (예전 화면 = React)");
+    const sl84 = (() => { const m = vj84.match(/const AB_SLIDES = \[([\s\S]*?)\n  \];/); return m ? JSON.parse("[" + m[1] + "]") : []; })();
+    ok(sl84.length === 3 && sl84.every((x) => x.length === 6 && /^assets\/vod\/about-slide-\d\.webp$/.test(x[3]) && /AI 예시 이미지/.test(x[4]) && /^\d+% \d+%$/.test(x[5]) && fs.existsSync(path.join(ROOT, x[3])) && fs.statSync(path.join(ROOT, x[3])).size < 150e3) &&
+      fs.existsSync(path.join(ROOT, "assets/vod/about-learn.webp")) && fs.statSync(path.join(ROOT, "assets/vod/about-learn.webp")).size < 150e3,
+      "소개 사진 4장(슬라이드 3 · ‘강의를 듣고 나면’ 1): 파일이 있고 가벼워요(150KB 아래) · 설명에 ‘AI 예시 이미지’ · 휴대폰 사진 위치", sl84.map((x) => x[3]));
+    ok(/stat\(members, "명\+", "회원"\)/.test(vj84) && !/"누적 수강생"\) \+ stat\(tl\.length/.test(vj84) && /<Stat n=\{members\} unit="명\+" label="회원" \/>/.test(ab84) && !/label="누적 수강생"/.test(ab84) &&
+      /if \(SRV\(\)\) return Math\.max\(0, Number\(\(DB\.remote\.pub \|\| \{\}\)\.members\) \|\| 0\);/.test(vj84) && /!m\.withdrawnAt && !m\.blocked && !m\.demo && m\.id !== "vm-demo"/.test(vj84) &&
+      /!r\.v\.withdrawnAt && !r\.v\.blocked && !r\.v\.demo && r\.k !== "vm:vm-demo"/.test(bs84) && /const pub = since == null \? await pubStats\(now\) : undefined;/.test(bs84),
+      "소개 맨 위 숫자 ‘누적 수강생’ → ‘회원’: 서버가 센 공개 숫자(탈퇴 · 이용 중지 · 체험 빼고 · 10분 기억) · 서버 없으면 이 기기 데이터로 (예전 화면 = React)");
+    ok(/<div class="ab-card ab-card-ph" aria-live="polite">' \+ abCard\(sl\) \+ '<\/div>/.test(vj84) && /if \(c\) \{ c\.innerHTML = abCard\(sl\);/.test(vj84) && /<div key=\{sl\.k\} className=\{"ab-card ab-card-ph" \+ \(sl\.k \? " in" : ""\)\} aria-live="polite"><AbCard X=\{X\} sl=\{sl\.i\} \/><\/div>/.test(ab84) &&
+      /alt=\{i === sl \? x\[4\] : ""\} className=\{i === sl \? "on" : undefined\} aria-hidden=\{i === sl \? undefined : "true"\} loading="lazy" style=\{\{ objectPosition: x\[5\] \}\}/.test(ab84) &&
+      /<figure class="ab-learn-ph" data-rv><img src="' \+ AB_LEARN\[0\] \+ '" alt="' \+ AB_LEARN\[1\] \+ '" loading="lazy"><\/figure>/.test(vj84) && /<figure className="ab-learn-ph" data-rv=""><img src=\{X\.AB_LEARN\[0\]\} alt=\{X\.AB_LEARN\[1\]\} loading="lazy" \/><\/figure>/.test(ab84) &&
+      /\.ab-learn \{ padding-bottom: 60px; \}/.test(css84) && /\.ab-card\.ab-card-ph \{ aspect-ratio: 4 \/ 5;/.test(css84),
+      "소개 슬라이드: 사진 카드로 크게(PC 4:3 · 휴대폰 4:5 · 사진 3장 깔고 지금 것만) · 넘기면 같은 모양 · ‘강의를 듣고 나면’ 오른쪽 사진 · 아래 여백 줄임 (예전 화면 = React)");
+    ok(/'<div class="vd-teach-box"><div class="vd-teach-g vd-teach-rail" id="ab-r-teach" data-rv-kids data-drag>' \+ tl\.map\(tcCard\)\.join\(""\) \+ "<\/div>" \+ teachArr\("ab-r-teach"\)/.test(vj84) && /data-prog="ab-r-teach"/.test(vj84) &&
+      /id="ab-r-teach" data-rv-kids="" data-drag="">\{tl\.map\(\(t, i\) => <TcCard key=\{t\.iid\} t=\{t\} i=\{i\} \/>\)\}<\/div><TeachArrows id="ab-r-teach" \/><\/div><Prog id="ab-r-teach" \/>/.test(ab84) &&
+      /export function Prog\(/.test(rl84) && /export function TeachArrows\(/.test(rl84) && /import \{ Prog, TeachArrows \} from "\.\/Rail\.jsx";/.test(hp84) && /import \{ Prog, TeachArrows \} from "\.\/Rail\.jsx";/.test(ab84) && !/function Prog\(/.test(hp84),
+      "소개 강사진: 4명 고정 → 모든 강사 한 줄 슬라이드 (홈 강사진과 같은 화살표 · 끌기 · 밀기 · 막대 — 부품은 Rail.jsx 하나로) (예전 화면 = React)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

@@ -75,13 +75,16 @@ async function kakaoOff(req, res) {
   const next = await V.update(V.K.member(m.id), (cur) => cur && Object.assign(cur, { kakaoId: "", kakaoUnlinkedAt: Date.now(), kakaoUnlinkWhy: "member" }));
   send(res, 200, { ok: true, member: V.pub(next || m) });
 }
+// 떠나는 이유: 정해 둔 보기 중 하나만 남겨요 (자유 글 · 개인정보 없이 — 화면 vod.js WD_WHY 와 같은 목록 · 2026-11-24)
+const WD_WHY = ["원하는 강의가 없어요", "가격이 부담돼요", "강의 · 사이트 이용이 불편해요", "다른 서비스를 이용할게요", "개인정보가 걱정돼요", "기타"];
 async function withdraw(req, res, b) {
   const m = await V.current(req); if (!m) return send(res, 401, { ok: false, message: "로그인이 필요해요." });
   if (m.demo) return send(res, 403, { ok: false, message: "체험 계정은 탈퇴할 수 없어요." });
   if (m.pwHash && !V.checkPw(String(b.pw || ""), m.pwHash)) return send(res, 401, { ok: false, message: "비밀번호가 맞지 않아요." });
   if (m.kakaoId && process.env.KAKAO_ADMIN_KEY) { try { await kakao.unlink(m.kakaoId); } catch (e) { console.error("[vod-auth] kakao unlink", e.message); } }
   // 결제 · 환불 기록은 전자상거래법에 따라 5년 보관 — 회원 정보만 지우고 주문의 회원번호는 남겨요
-  await V.update(V.K.member(m.id), (cur) => cur && { id: cur.id, via: cur.via, name: "탈퇴 회원", email: "", phone: "", withdrawnAt: Date.now(), createdAt: cur.createdAt, points: 0, coupons: [] });
+  const why = WD_WHY.indexOf(String(b.why || "")) >= 0 ? String(b.why) : "";
+  await V.update(V.K.member(m.id), (cur) => cur && { id: cur.id, via: cur.via, name: "탈퇴 회원", email: "", phone: "", withdrawnAt: Date.now(), withdrawWhy: why, createdAt: cur.createdAt, points: 0, coupons: [] });
   if (m.email) await V.update(V.K.email(m.email), () => null);
   if (m.kakaoId) await V.update(V.K.kakao(m.kakaoId), () => null);
   V.logout(req, res);

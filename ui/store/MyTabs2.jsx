@@ -181,8 +181,23 @@ export function Account({ m, act }) {
         <div className="vd-acct-ch"><span>받을 곳</span>{X.CH3.map((c) => <label key={c[0]}><input type="checkbox" name={"ch_" + c[0]} defaultChecked={!!X.chOn(m, c[0])} /><span>{c[1]}</span></label>)}<label><input type="checkbox" name="night" defaultChecked={!!(m.consent && m.consent.night)} /><span>밤 9시 ~ 아침 8시에도 받기</span></label></div>
         {m.consent && m.consent.mkt ? <p className="vd-muted vd-acct-cs">{fmtFull(m.consent.at)}에 소식 받기에 동의했어요. 2년마다 한 번 동의 여부를 다시 알려 드려요.</p> : null}
         <details className="vd-pwbox" hidden={m.via === "kakao" && !m.pw}><summary>비밀번호 바꾸기</summary><label>지금 비밀번호<PwField name="pw0" ac="current-password" ph="지금 비밀번호" /></label><label>새 비밀번호<PwField name="pw1" ac="new-password" ph="영문 · 숫자 8자 이상" /></label></details>
-        <p className="vd-err" id="vd-acct-err" role="alert" /><div className="vd-acct-f"><button type="submit" className="vd-btn vd-btn-p">저장</button><button type="button" className="vd-btn vd-btn-o" data-v="logout" onClick={act.logout}>로그아웃</button></div><p className="vd-muted">가입일 {fmtFull(m.createdAt)}</p></form>
+        <p className="vd-err" id="vd-acct-err" role="alert" /><div className="vd-acct-f"><button type="submit" className="vd-btn vd-btn-p">저장</button><button type="button" className="vd-btn vd-btn-o" data-v="logout" onClick={act.logout}>로그아웃</button></div><p className="vd-muted vd-acct-foot"><span>가입일 {fmtFull(m.createdAt)}</span><a className="vd-wd-lnk" href="#/vod/my/withdraw">회원 탈퇴</a></p></form>
     </>
+  );
+}
+
+/* ---------- 회원 탈퇴 (2026-11-24 · 예전 vod.js wdBody 와 같은 모양 · 처리는 X.doWithdraw) ---------- */
+export function Withdraw({ m, d }) {
+  const X = VOD(), demo = X.wdDemo(m), info = X.wdInfo(m, d);
+  return (
+    <div className="vd-wd"><div className="vd-wd-hd"><span className="vd-wd-ic"><Icon n="userX" /></span><div><b>DOOGO CLASS를 떠나시나요?</b><small>탈퇴하기 전에 아래 내용을 꼭 확인해 주세요.</small></div></div>
+      <ul className="vd-wd-list">{info.map((x) => <li key={x[1]}><i><Icon n={x[0]} c="sm" /></i><div><b>{x[1]}</b><small>{x[2]}</small></div></li>)}</ul>
+      {d.pending.length ? <p className="vd-wd-warn"><Icon n="alert" c="xs" />{"입금 대기 중인 주문이 " + d.pending.length + "건 있어요. 이미 입금했다면 탈퇴하기 전에 고객센터로 알려 주세요."}</p> : null}
+      <p className="vd-wd-note">환불이 필요하면 탈퇴하기 전에 <a href="#/vod/my/orders">주문 · 결제 내역</a>에서 먼저 신청해 주세요. 궁금한 점은 <a href="#/vod/my/help">고객센터</a>로 물어보세요.</p>
+      <form className="vd-form vd-wdf" data-vd-wd="" noValidate onSubmit={submitWith(X.doWithdraw)}><label>떠나는 이유 <small>(선택 · 더 나은 서비스를 만드는 데만 써요)</small><select name="why" defaultValue=""><option value="">고르지 않을게요</option>{X.WD_WHY.map((w) => <option key={w}>{w}</option>)}</select></label>
+        {demo ? null : X.wdPw(m) ? <label>비밀번호 확인<PwField name="pw" ac="current-password" ph="지금 비밀번호" /></label> : <p className="vd-muted">카카오로 가입한 계정이라 비밀번호 확인 없이 탈퇴해요.</p>}
+        <label className="vd-agree"><input type="checkbox" name="ok" disabled={demo || undefined} /><span>위 안내를 모두 확인했고, 회원 탈퇴에 동의해요.</span></label>
+        <p className="vd-err" id="vd-wd-err" role="alert">{demo ? "체험 계정은 탈퇴할 수 없어요." : null}</p><div className="vd-acct-f"><button type="submit" className="vd-btn vd-btn-danger" disabled={demo || undefined}>회원 탈퇴</button><a className="vd-btn vd-btn-o" href="#/vod/my/account">취소</a></div></form></div>
   );
 }
 

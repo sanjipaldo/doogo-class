@@ -840,6 +840,7 @@
     R.me = j.me || { student: null, admin: null };
     R.epoch = j.epoch || R.epoch;
     R.now = j.now;
+    if (j.pub) R.pub = j.pub; // 공개 숫자 (회원 수 — api/bootstrap.js pubStats · 2026-11-24)
     R.ver = {}; R.last = {}; R.prog = {}; R.inq = {}; R.bill = {};
     const d = { instructors: [], content: {}, cohorts: [], students: [] };
     (j.docs || []).forEach((x) => { R.ver[x[0]] = x[2]; R.last[x[0]] = JSON.stringify(x[1]); placeIn(d, x[0], x[1]); });
@@ -1158,6 +1159,7 @@
   const remote = {
     get on() { return R.on; },
     get me() { return R.me; },
+    get pub() { return R.pub || {}; },
     connect, refresh, flush, poll, call,
     login: (payload) => call("auth", payload),
     logout: (which) => flush().catch(() => {}).then(() => call("auth", { action: "logout", which })),

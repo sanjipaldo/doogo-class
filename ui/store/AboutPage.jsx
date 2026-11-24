@@ -1,12 +1,13 @@
 "use client";
 /* DOOGO CLASS 소개 (/vod/about) — 예전 vod.js pageAbout 을 React 로 (Next.js 전환 · 스토어 공개 화면)
  *  · 글 · 그림 칸은 예전 화면이 그린 모양 그대로 옮겼어요 (손으로 옮겨 적지 않고 예전 화면 출력을 JSX 로 바꿔서 — 틀린 글자가 없게)
- *  · 움직이는 곳만 React: 숫자(수강생 · 강사 · 클래스 · 후기 평균) · 흐르는 줄 멈춤 · 슬라이드 · 강사진 카드
+ *  · 움직이는 곳만 React: 숫자(회원 · 강사 · 클래스 · 후기 평균) · 흐르는 줄 멈춤 · 사진 슬라이드 · 강사진 한 줄 슬라이드
  *  · 슬라이드 몇 번째 · 흐르는 줄 멈춤은 예전처럼 다른 화면에 다녀와도 남아요 (VOD.abUi)
  *  · 검색 · 공유 미리보기는 서버가 예전처럼 넣어요 (app/(react)/layout.js → pagemeta) */
 import { Fragment, useEffect, useState } from "react";
 import Shell from "./Shell.jsx";
 import { TcCard } from "./TeachersPage.jsx";
+import { Prog, TeachArrows } from "./Rail.jsx";
 import SysMock from "./Mocks.jsx";
 import Icon from "../lib/Icon.jsx";
 import { Eg, useMotion } from "../lib/motion.jsx";
@@ -14,12 +15,20 @@ import { VOD } from "../lib/legacy.js";
 
 const TITLE = "DOOGO CLASS — 돈 되는 클래스";
 const lines = (t) => String(t || "").split("\n").map((x, i) => <Fragment key={i}>{i ? <br /> : null}{x}</Fragment>);
+/** 사진 슬라이드 카드 안쪽 (예전 abCard 와 같은 모양 — 사진 3장을 깔고 지금 것만 on) */
+function AbCard({ X, sl }) {
+  const S = X.AB_SLIDES[sl];
+  return <>
+    {X.AB_SLIDES.map((x, i) => <img key={i} src={x[3]} alt={i === sl ? x[4] : ""} className={i === sl ? "on" : undefined} aria-hidden={i === sl ? undefined : "true"} loading="lazy" style={{ objectPosition: x[5] }} />)}
+    <small>{String(sl + 1).padStart(2, "0")} / 03</small><div className="ab-card-t"><b>{S[0]}<br />{S[1]}</b><p>{lines(S[2])}</p></div>
+  </>;
+}
 function Stat({ n, unit, label }) {
   return <div><b><i data-count={n}>{Number(n).toLocaleString()}</i>{unit}</b><span>{label}</span></div>;
 }
 
 export default function AboutPage({ n, moved }) {
-  const X = VOD(), { ps, tl, learners, avg } = X.aboutView();
+  const X = VOD(), { ps, tl, members, avg } = X.aboutView();
   const [sl, setSl] = useState(() => ({ i: X.abUi().slide, k: 0 }));
   const [mq, setMq] = useState(() => ({ p: X.abUi().paused, t: false }));
   const slide = (d) => setSl((s) => ({ i: X.abUi({ slide: (s.i + d + X.AB_SLIDES.length) % X.AB_SLIDES.length }).slide, k: s.k + 1 }));
@@ -45,7 +54,7 @@ export default function AboutPage({ n, moved }) {
               </div>
             </div>
             <div className="ab2-stats" data-rv-kids="">
-              <Stat n={learners} unit="명+" label="누적 수강생" /><Stat n={tl.length} unit="명" label="강의 중인 강사" /><Stat n={ps.length} unit="개" label="지금 열린 클래스" />
+              <Stat n={members} unit="명+" label="회원" /><Stat n={tl.length} unit="명" label="강의 중인 강사" /><Stat n={ps.length} unit="개" label="지금 열린 클래스" />
               {avg ? <div><b>{avg.toFixed(1)}<small> / 5</small></b><span>수강 후기 평균</span></div> : null}
             </div>
           </div>
@@ -243,7 +252,7 @@ export default function AboutPage({ n, moved }) {
             <div className="ab-car ab2-car">
               <div className="ab-car-l"><Eg as="h2">필요한 것만,<br />필요한 만큼.</Eg><p data-rv="">실제로 어떻게 하는지, 무엇부터 시작할지.<br />해 본 사람의 화면과 사례로 배우고, 바로 따라 해요.</p></div>
               <div className="ab-car-r" data-rv="">
-                <div key={sl.k} className={"ab-card" + (sl.k ? " in" : "")} aria-live="polite"><small>{String(sl.i + 1).padStart(2, "0")} / 03</small><b>{X.AB_SLIDES[sl.i][0]}<br />{X.AB_SLIDES[sl.i][1]}</b><p>{lines(X.AB_SLIDES[sl.i][2])}</p></div>
+                <div key={sl.k} className={"ab-card ab-card-ph" + (sl.k ? " in" : "")} aria-live="polite"><AbCard X={X} sl={sl.i} /></div>
                 <div className="ab-car-ctl">
                   <small>{String(sl.i + 1).padStart(2, "0")} / 03</small>
                   <button type="button" data-v="ab-slide" data-d="-1" aria-label="이전" onClick={() => slide(-1)}>←</button>
@@ -253,11 +262,16 @@ export default function AboutPage({ n, moved }) {
             </div>
           </div>
         </section>
-        <section className="ab-sec">
+        <section className="ab-sec ab-learn">
           <div className="vd-wrap">
-            <p className="ab-dot"><i />강의를 듣고 나면</p>
-            <Eg as="h2">무엇을 팔고,<br />어떻게 시작할지.</Eg>
-            <p className="ab-sub" data-rv="">어떤 상품을 고르고, 어디서 고객을 만나고, 어떻게 첫 매출을 내는지.<br />직접 해 본 사람에게 배웁니다.</p>
+            <div className="ab-learn-top">
+              <div className="ab-learn-l">
+                <p className="ab-dot"><i />강의를 듣고 나면</p>
+                <Eg as="h2">무엇을 팔고,<br />어떻게 시작할지.</Eg>
+                <p className="ab-sub" data-rv="">어떤 상품을 고르고, 어디서 고객을 만나고, 어떻게 첫 매출을 내는지.<br />직접 해 본 사람에게 배웁니다.</p>
+              </div>
+              <figure className="ab-learn-ph" data-rv=""><img src={X.AB_LEARN[0]} alt={X.AB_LEARN[1]} loading="lazy" /></figure>
+            </div>
             <h3 className="ab-h3" data-rv="">배우고 나면, 이런 것들이 보이도록.</h3>
             <div className="ab-three" data-rv-kids="">
               <div><small>01</small><b>무엇을 팔면 될까?</b><p>시장과 상품을 고르는 기준,<br />마진이 남는 구조를 알아봐요.</p></div>
@@ -285,7 +299,7 @@ export default function AboutPage({ n, moved }) {
               <div><p className="ab-dot"><i />이 사람들에게 배워요</p><Eg as="h2">직접 해서 번 사람만<br /><span data-accent="">가르칩니다.</span></Eg></div>
               <a className="ab2-more" href="#/vod/teachers">{"강사진 전체보기 "}<Icon n="arrowRight" c="xs" /></a>
             </div>
-            <div className="vd-teach-g" data-rv-kids="">{tl.slice(0, 4).map((t, i) => <TcCard key={t.iid} t={t} i={i} />)}</div>
+            <div className="vd-teach-box"><div className="vd-teach-g vd-teach-rail" id="ab-r-teach" data-rv-kids="" data-drag="">{tl.map((t, i) => <TcCard key={t.iid} t={t} i={i} />)}</div><TeachArrows id="ab-r-teach" /></div><Prog id="ab-r-teach" />
           </div>
         </section>
         </> : null}

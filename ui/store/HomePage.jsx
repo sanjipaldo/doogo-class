@@ -5,11 +5,12 @@
  *  · 어떤 배너 · 섹션 · 클래스를 어떤 순서로 보여 줄지는 예전 계산 그대로 (VOD.liveBanners · homeRails · railItems · catTabs · teachHome)
  *  · 배너 몇 번째 · 멈춤 · 고른 분야 탭은 예전처럼 다른 화면에 다녀와도 남아요 (VOD.homeUi)
  *  · 검색 · 공유 미리보기는 서버가 예전처럼 넣어요 (app/(react)/layout.js → pagemeta) */
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Shell from "./Shell.jsx";
 import Card, { AnyCard } from "./Card.jsx";
 import { TcCard } from "./TeachersPage.jsx";
 import { Pager } from "./ListPage.jsx";
+import { Prog, TeachArrows } from "./Rail.jsx";
 import SysMock from "./Mocks.jsx";
 import Icon from "../lib/Icon.jsx";
 import { Eg, useMotion } from "../lib/motion.jsx";
@@ -142,39 +143,6 @@ function Topics({ r, onTopic }) {
     <section className="vd-sec vd-topics"><div className="vd-topics-h"><Eg as="h2" t={r.t} /><p data-rv="">다음에 열 부업은 찜으로 골라요. <b>찜이 많은 부업부터 클래스를 열어요.</b><small>마우스를 올리면 멈춰요 · <a href="#/vod/my/likes?t=topics">내가 찜한 부업 보기 ›</a></small></p></div>
       {rows.map((x, ri) => <div key={ri} className={"vd-chiprow" + (ri % 2 ? " rev" : "")} data-rv="fade" style={{ "--d": ri * 0.12 + "s" }}><div className="vd-chipmq" style={{ "--dur": 48 + ri * 8 + "s" }}>{x.map((t, k) => chip(t, false, "a" + k))}{x.map((t, k) => chip(t, true, "b" + k))}</div></div>)}</section>
   );
-}
-/** 가로 줄 진행 막대 (예전 wireRails 의 data-prog) */
-function Prog({ id }) {
-  const [st, setSt] = useState({ w: "100.00%", l: "0.00%", one: true });
-  // 화면에 보이기 전에 재요 (예전 wireRails 처럼 첫 화면부터 맞는 막대)
-  useLayoutEffect(() => {
-    const el = document.getElementById(id); if (!el) return undefined;
-    const upd = () => { const sw = el.scrollWidth, cw = el.clientWidth, w = sw > cw + 2 ? cw / sw : 1, nx = { w: (w * 100).toFixed(2) + "%", l: (sw > cw ? (el.scrollLeft / sw) * 100 : 0).toFixed(2) + "%", one: w >= 1 }; setSt((s) => (s.w === nx.w && s.l === nx.l && s.one === nx.one ? s : nx)); };
-    el.addEventListener("scroll", upd, { passive: true }); upd();
-    const ro = "ResizeObserver" in window ? new ResizeObserver(upd) : null; if (ro) ro.observe(el);
-    return () => { el.removeEventListener("scroll", upd); if (ro) ro.disconnect(); };
-  }, [id]);
-  return <div className={"vd-teach-prog" + (st.one ? " one" : "")} data-prog={id} aria-hidden="true"><i style={{ width: st.w, left: st.l }} /></div>;
-}
-/** 홈 강사진 좌우 화살표 (한 줄 슬라이드 · 예전 teachArr + wireRails) — 누를 때만 한 화면씩 넘겨요 · 처음 · 끝에서는 그쪽 화살표가 꺼져요
- *  · 마우스로 끌어 넘기기도 같이 묶어요 (예전 dragWire 그대로 — 끄는 동안 표시는 data-dragging 이라 React 가 그린 class 는 그대로) */
-function TeachArrows({ id }) {
-  const [st, setSt] = useState({ start: true, end: true });
-  // 화면에 보이기 전에 재요 (첫 화면부터 ‘다음’ 화살표가 켜져 있게)
-  useLayoutEffect(() => {
-    const el = document.getElementById(id); if (!el) return undefined;
-    const upd = () => { const e = VOD().railEnds(el); setSt((s) => (s.start === e.start && s.end === e.end ? s : { start: e.start, end: e.end })); };
-    let t = 0; const onSc = () => { clearTimeout(t); t = setTimeout(upd, 60); };
-    el.addEventListener("scroll", onSc, { passive: true }); upd();
-    const ro = "ResizeObserver" in window ? new ResizeObserver(upd) : null; if (ro) ro.observe(el);
-    VOD().dragWire(el);
-    return () => { el.removeEventListener("scroll", onSc); clearTimeout(t); if (ro) ro.disconnect(); };
-  }, [id]);
-  const move = (d) => { const el = document.getElementById(id); if (el) { const r = VOD().railStep(el); el.scrollBy({ left: d * r.step * r.per, behavior: "smooth" }); } };
-  return <>
-    <button type="button" className="vd-teach-arr prev" data-v="rail" data-r={id} data-d="-1" data-arr={id} aria-label="이전 강사" disabled={st.start} onClick={() => move(-1)}><Icon n="chevLeft" c="sm" /></button>
-    <button type="button" className="vd-teach-arr next" data-v="rail" data-r={id} data-d="1" data-arr={id} aria-label="다음 강사" disabled={st.end} onClick={() => move(1)}><Icon n="chevRight" c="sm" /></button>
-  </>;
 }
 function Teach({ r }) {
   const list = VOD().teachHome(r).slice(0, 8);

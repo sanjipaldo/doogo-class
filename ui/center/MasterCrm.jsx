@@ -13,7 +13,7 @@ const Opts = ({ list }) => list.map((x) => <option key={x[0]} value={x[0]}>{x[1]
 
 export function MasterCrm() {
   const A = ADM(), DB = window.DB, ui = A.ui, won = A.won, v = A.VD(), F = A.crmF(), all = A.crmAll(), list = A.crmList(), sel = A.crmSelIds(), N = ui.crmN || 50, ym = DB.date.todayStr().slice(0, 7), pym = A.vdYMadd(ym, -1), C = A.CRM();
-  const cnt = (k) => all.filter((pf) => A.crmIn(pf, k)).length, act = all.filter((pf) => !pf.m.blocked);
+  const cnt = (k) => all.filter((pf) => A.crmIn(pf, k)).length, act = all.filter((pf) => !pf.m.blocked && !pf.m.withdrawnAt);
   const newM = all.filter((pf) => A.vdYM(pf.m.createdAt) === ym), newP = all.filter((pf) => A.vdYM(pf.m.createdAt) === pym).length, buyers = act.filter((pf) => pf.paid.length).length;
   const kk = all.filter((pf) => pf.m.via === "kakao").length, subs = cnt("sub"), selMap = ui.crmSel || {};
   const Kb = ({ k, label, val, sub, tone }) => <button type="button" className={"a-kpi crm-kpi " + (tone || "") + (F.seg === k ? " on" : "")} data-action="crm-seg" data-k={k}><span>{label}</span><b>{val}</b><small>{sub}</small></button>;
@@ -152,7 +152,7 @@ function HBar({ rows, tot }) {
   return <ul className="crm-hb">{rows.map((r, i) => <li key={i}><span className="crm-hb-l">{r[0]}</span><span className="crm-hb-t"><i style={{ width: (tot ? Math.max(r[1] ? 2 : 0, Math.round(r[1] / tot * 100)) : 0) + "%" }} /></span><span className="crm-hb-v num"><b>{r[1]}명</b>{r[2] != null ? " · " + r[2] : ""}</span></li>)}</ul>;
 }
 export function MasterCrmReport() {
-  const A = ADM(), DB = window.DB, won = A.won, DAY = 864e5, all = A.crmAll(), act = all.filter((pf) => !pf.m.blocked), buyers = act.filter((pf) => pf.paid.length), rep = buyers.filter((pf) => pf.paid.length >= 2);
+  const A = ADM(), DB = window.DB, won = A.won, DAY = 864e5, all = A.crmAll(), act = all.filter((pf) => !pf.m.blocked && !pf.m.withdrawnAt), buyers = act.filter((pf) => pf.paid.length), rep = buyers.filter((pf) => pf.paid.length >= 2);
   const ttf = buyers.filter((pf) => pf.firstPay).map((pf) => Math.max(0, Math.round((pf.firstPay - pf.m.createdAt) / DAY))), avgT = ttf.length ? Math.round(ttf.reduce((a, b) => a + b, 0) / ttf.length) : 0;
   const Kp = ({ l, val, sub }) => <div className="a-kpi"><span>{l}</span><b>{val}</b><small>{sub}</small></div>;
   const t0 = Date.parse(DB.date.todayStr() + "T00:00:00"), wk = [];

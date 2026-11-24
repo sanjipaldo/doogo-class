@@ -31,7 +31,13 @@ async function update(k, fn) {
   }
   throw new Error("busy");
 }
-async function create(k, v) { return (await store.writeDoc(k, v, null)) !== false; }
+// 새로 만들기 — 이미 값이 있으면 false. 지운 자리(값이 빈 줄 · 탈퇴 · 카카오 연결 끊기로 지운 이메일 · 카카오 색인)는 다시 써요
+//  (2026-11-24 고침: 예전에는 빈 줄이 남아 있어 탈퇴한 이메일 · 카카오로 다시 가입하면 ‘이미 가입한 이메일’로 막혔어요)
+async function create(k, v) {
+  if ((await store.writeDoc(k, v, null)) !== false) return true;
+  const r = await store.getDoc(k);
+  return !!(r && r.v == null && (await store.writeDoc(k, v, r.ver)) !== false);
+}
 
 /* ---------------- 로그인 쿠키 (dc_v) ---------------- */
 const COOKIE = "dc_v", MAX_AGE = 30 * 24 * 3600;

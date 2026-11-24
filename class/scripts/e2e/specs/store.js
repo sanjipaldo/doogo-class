@@ -204,6 +204,51 @@ module.exports = {
       await run.check(s1.before === "true" && s1.after === "false" && !s1.shown && s2.after === "true" && s2.shown,
         "마스터 › VOD 전시 · 쿠폰 · 설정 › ‘스토어 팝업’ 스위치: 끄면 스토어에 안 뜨고 다시 켜면 떠요", { s1, s2 }, adm);
     }
+    // 10) 회원 탈퇴 (2026-11-24 · 카카오로 1초 가입한 회원도 스스로): 회원 정보 수정 아래 ‘회원 탈퇴’ → 탈퇴 화면(남는 것 · 지워지는 것) →
+    //     동의 없이 → 빨간 안내 · 비밀번호 틀림 → 서버 안내 · 맞으면 탈퇴 → 로그아웃 · 스토어 첫 화면 · 같은 이메일로 다시 로그인 안 됨 → 마스터 회원 목록에 ‘탈퇴 · 이유’ (예전 화면 = React)
+    {
+      const out = {};
+      for (const mode of ["off", "all"]) {
+        const pg = await L.newPage(browser), o = out[mode] = {};
+        run.watch(pg, "회원 탈퇴 " + mode);
+        const em = "wd-" + mode + "-" + Date.now().toString(36) + "@example.com", pw = "wdtest1234";
+        await L.fresh(pg, base);
+        await L.reactCookie(pg, base, mode);
+        await L.open(pg, base, "/vod/login"); // fresh 는 빈 화면(about:blank)으로 끝나요 — 사이트 주소에서 가입 요청
+        o.su =await pg.evaluate(([em, pw]) => fetch("/api/vod-auth", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "signup", email: em, pw, pw2: pw, name: "탈퇴시험", phone: "010-2222-3333", agree: true }) }).then((r) => r.json()).then((j) => !!j.ok), [em, pw]);
+        await L.open(pg, base, "/vod/my/account"); await pg.waitForTimeout(500);
+        o.react = await pg.evaluate(() => !!window.DC_REACT_PAGE);
+        o.link = !!(await pg.$('.vd-acct-foot a.vd-wd-lnk[href="#/vod/my/withdraw"]'));
+        o.menu = !!(await pg.$('.vd-my-nav a[href="#/vod/my/withdraw"]'));
+        if (o.link) { await pg.click(".vd-acct-foot a.vd-wd-lnk"); await pg.waitForTimeout(500); }
+        o.page = await pg.evaluate(() => ({ path: location.pathname, items: document.querySelectorAll(".vd-wd-list li").length, why: document.querySelectorAll('form[data-vd-wd] select[name="why"] option').length, pw: !!document.querySelector('form[data-vd-wd] input[name="pw"]'), btn: !!document.querySelector("form[data-vd-wd] .vd-btn-danger") }));
+        await pg.click("form[data-vd-wd] .vd-btn-danger"); await pg.waitForTimeout(300);
+        o.noAgree = await L.text(pg, "#vd-wd-err");
+        await pg.check('form[data-vd-wd] input[name="ok"]');
+        await pg.fill('form[data-vd-wd] input[name="pw"]', "wrongpass99");
+        await pg.click("form[data-vd-wd] .vd-btn-danger"); await pg.waitForTimeout(1200);
+        o.badPw = await L.text(pg, "#vd-wd-err");
+        await pg.selectOption('form[data-vd-wd] select[name="why"]', "원하는 강의가 없어요");
+        await pg.fill('form[data-vd-wd] input[name="pw"]', pw);
+        await pg.click("form[data-vd-wd] .vd-btn-danger");
+        await pg.waitForFunction(() => location.pathname === "/vod" || location.pathname === "/", null, { timeout: 10000 }).catch(() => {});
+        await pg.waitForTimeout(600);
+        o.after = { path: await pg.evaluate(() => location.pathname), toast: await L.toasts(pg), me: !!(((await FL.serverMe(pg)) || {}).vod) };
+        o.relogin = await pg.evaluate(([em, pw]) => fetch("/api/vod-auth", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "login", email: em, pw }) }).then((r) => r.json()).then((j) => !!j.ok), [em, pw]);
+        o.em = em;
+        await pg.context().close();
+      }
+      const ok10 = (o, react) => o.su && o.react === react && o.link && o.menu && o.page.path === "/vod/my/withdraw" && o.page.items >= 4 && o.page.why === 7 && o.page.pw && o.page.btn &&
+        /동의/.test(o.noAgree || "") && /비밀번호/.test(o.badPw || "") && /^\/(vod)?$/.test(o.after.path) && /탈퇴했어요/.test(o.after.toast) && !o.after.me && !o.relogin;
+      await run.check(ok10(out.off, false) && ok10(out.all, process.env.E2E_SERVER === "next"),
+        "회원 탈퇴: 회원 정보 수정 아래 · 계정 메뉴의 ‘회원 탈퇴’ → 탈퇴 화면(남는 것 · 지워지는 것 · 이유 · 비밀번호) → 동의 · 비밀번호 확인 → 탈퇴 · 로그아웃 · 다시 로그인 안 됨 (예전 화면 = React)", out);
+      // 마스터 › 후기 · 다짐 · 문의 › 회원 간단 목록: 탈퇴 표시 · 떠난 이유 · 이용 중지 버튼 없음
+      await L.open(adm, base, "/center/master/vod-members"); await adm.waitForTimeout(500);
+      const mt = await adm.$('[data-action="vda-mt"][data-k="members"]'); if (mt) { await mt.click(); await adm.waitForTimeout(400); }
+      const rows = await adm.$$eval(".vda-table tbody tr", (trs) => trs.map((tr) => ({ t: tr.textContent.replace(/\s+/g, " "), block: !!tr.querySelector('[data-action="vda-block"]') }))).catch(() => []);
+      const wdRows = rows.filter((r) => /탈퇴 회원/.test(r.t) && /원하는 강의가 없어요/.test(r.t));
+      await run.check(wdRows.length >= 2 && wdRows.every((r) => /탈퇴/.test(r.t) && !r.block), "마스터 회원 간단 목록: 탈퇴한 회원은 ‘탈퇴 · 떠난 이유’ · 이용 중지 버튼 없음 (이름 · 연락처는 지워짐)", { n: rows.length, wd: wdRows.length }, adm);
+    }
     await mem.context().close(); await adm.context().close();
   }
 };
