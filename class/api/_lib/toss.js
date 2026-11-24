@@ -62,7 +62,8 @@ function idemOf(seed) {
 async function call(method, path, body, idem) {
   const r = await fetch(API + path, { method, headers: hdr(idem), body: body ? JSON.stringify(body) : undefined, signal: timeout(15000) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error((j && j.message) || "toss " + r.status); e.status = r.status; e.code = String((j && j.code) || ""); e.body = j; throw e; }
+  // v1 오류 { code, message } · v2 오류(에스크로 · 배송 API) { error: { code, message } }
+  if (!r.ok) { const er = (j && j.error) || j || {}; const e = new Error(er.message || "toss " + r.status); e.status = r.status; e.code = String(er.code || ""); e.body = j; throw e; }
   return j;
 }
 /** 결제 승인 → Payment (DONE · 가상계좌는 WAITING_FOR_DEPOSIT) */
@@ -81,6 +82,23 @@ function cancel(paymentKey, x) {
 }
 /** 마지막 취소 거래 (cancels[] 끝) */
 const lastCancel = (pay) => { const c = (pay && pay.cancels) || []; return c.length ? c[c.length - 1] : null; };
+
+/* ---------- 에스크로 (구매안전서비스 · docs.tosspayments.com/guides/v2/escrow · 2026-11-24) ----------
+ *  TOSS_ESCROW=on — 토스 상점관리자에서 에스크로를 신청한 뒤 켜요 → 종이책(배송 상품)도 퀵계좌이체로 받아요.
+ *    결제창은 useEscrow 를 보내지 않아 ‘구매자가 에스크로를 고르는’ 기본 그대로 (계좌이체 · 가상계좌 · 카드 중 에스크로를 신청한 수단만 토스 창에 나와요)
+ *  에스크로로 낸 결제(Payment.useEscrow · escrowKey)는 배송을 등록해야 자동확정 기한이 시작되고 정산돼요:
+ *    배송 없는 상품(VOD · 전자책 · 코칭권 …) → 결제 완료 때 바로 ‘직접 전달(DIRECT)’로 등록 · 종이책 → 발송(송장) 때 ‘택배(SHIPMENT)’로 등록
+ *  거래 조회 GET /v2/escrows/{escrowKey} → products[].id · 배송 등록 POST /v2/deliveries · 배송 수정 POST /v2/deliveries/{id} (응답은 entityBody 로 감싸 올 수 있어요) */
+const escrowOn = () => /^(1|on|true|yes|transfer)$/i.test(String(process.env.TOSS_ESCROW || "").trim());
+const v2 = (j) => (j && j.entityBody) || j || {};
+const escrowGet = (id) => call("GET", "/v2/escrows/" + encodeURIComponent(id)).then(v2);
+const deliveryAdd = (b) => call("POST", "/v2/deliveries", b, idemOf("dlv:" + b.targetId + ":" + b.deliveryMethod + ":" + ((b.shipment && b.shipment.trackingNumber) || ""))).then(v2);
+const deliveryEdit = (id, b) => call("POST", "/v2/deliveries/" + encodeURIComponent(id), b).then(v2);
+/** 우리 택배사 이름(화면 CARRIERS) → 토스 택배사 코드 (docs.tosspayments.com/codes/org-codes#택배사-코드) */
+const CARRIER = { "CJ대한통운": "CJ", "우체국택배": "PO", "한진택배": "HJ", "롯데택배": "LOTTE", "로젠택배": "LG", "경동택배": "KD", "CU 편의점택배": "CN", "GS25 편의점택배": "CN" };
+const carrierCode = (name) => CARRIER[String(name || "").trim()] || "";
+/** ms → "yyyy-MM-ddTHH:mm:ss+09:00" (토스 v2 시각 모양 · 한국 시각) */
+const kstIso = (ms) => new Date((Number(ms) || Date.now()) + 9 * 36e5).toISOString().slice(0, 19) + "+09:00";
 
 /* ---------- Payment → 우리 기록 ---------- */
 const METHOD = { "카드": "card", "계좌이체": "transfer", "가상계좌": "vbank", "간편결제": "easy", "휴대폰": "phone" };
@@ -101,6 +119,8 @@ function pgOf(pay) {
   if (c && c.approveNo) out.approveNo = String(c.approveNo);
   if (e && e.provider) out.easy = String(e.provider);
   if (t && t.bankCode) out.bank = RF.bankName(t.bankCode);
+  // 에스크로 결제 (판별은 useEscrow — 가상계좌는 입금 전 escrowKey 가 비어 있어요)
+  if (pay.useEscrow) { out.escrow = true; if (pay.escrowKey) out.escrowKey = String(pay.escrowKey); }
   return out;
 }
 /** 마스터 ‘토스 결제 조회’ 화면용 */
@@ -132,4 +152,5 @@ async function check() {
   return out;
 }
 
-module.exports = { on, ck, mode, testKey, testOnLive, methods, EASY, vbankHours, variant, PG_METHOD_KEYS, idemOf, confirm, get, getByOrder, cancel, lastCancel, methodKey, cardName, kstMs, pgOf, view, check };
+module.exports = { on, ck, mode, testKey, testOnLive, methods, EASY, vbankHours, variant, PG_METHOD_KEYS, idemOf, confirm, get, getByOrder, cancel, lastCancel, methodKey, cardName, kstMs, pgOf, view, check,
+  escrowOn, escrowGet, deliveryAdd, deliveryEdit, CARRIER, carrierCode, kstIso };

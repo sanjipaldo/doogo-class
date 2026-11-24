@@ -3110,6 +3110,12 @@ a.a-noperm, a.a-noperm * { color: var(--m-stone, #9a9aa3) !important; cursor: no
 .bo-t em { flex: none; padding: 1px 7px; border-radius: 6px; background: #fff4e5; color: #b45309; font-style: normal; font-size: 12.5px; font-weight: 800; }
 .bo-sum { margin: -4px 0 0; font-size: 13px; color: var(--m-slate, #475569); }
 .bo-dep { display: flex; gap: 6px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 10px; background: #fff8eb; color: #7c4a03; font-size: 13px; line-height: 1.5; }
+/* 에스크로 결제 (토스 배송 등록 상태 · 다시 등록 버튼) */
+.bo-esc { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 0; padding: 8px 10px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.bo-esc > span { flex: 1 1 200px; min-width: 0; }
+.bo-esc-info { background: #eef5ff; color: #1d4f91; }
+.bo-esc-ok { background: #ecfbf1; color: #17663a; }
+.bo-esc-warn { background: #fff3f0; color: #a3321a; }
 .bo-dep .icon { flex: none; margin-top: 3px; }
 .bo-addr { display: grid; gap: 4px; margin: 0; font-size: 13px; }
 .bo-addr > div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; }

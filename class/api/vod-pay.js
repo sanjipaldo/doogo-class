@@ -5,7 +5,7 @@
  *        rs { c: 홍보 링크 코드, p: 링크의 상품, at: 링크를 누른 때 } → 맞으면 수강권 주문에 온드미디어 RS 를 남겨요 (_lib/media.js)
  *        종이책: qty(1~10권) · ship { name, phone, zip, addr1, addr2, memo } → 주문에 배송지 · 배송 상태(ship.st ready → prep → ship → done)를 남겨요
  *        → 서버가 금액을 계산해 ‘결제 대기’ 주문을 만들고 { paymentId(= 토스 orderId), amount, orderName, no, customerKey } 를 돌려줘요 (0원이면 바로 완료)
- *        method: transfer(퀵계좌이체 · 종이책은 안 받아요) · toss(토스페이) · naver(네이버페이) · kakao(카카오페이) · card(카드 · 간편결제) · vbank(가상계좌) — 토스 결제창(구버전 · ck 키 · TOSS_METHODS 로 연 것만)
+ *        method: transfer(퀵계좌이체 · 종이책은 TOSS_ESCROW 를 켠 뒤에만 — 결제창에서 구매자가 에스크로를 고를 수 있어요) · toss(토스페이) · naver(네이버페이) · kakao(카카오페이) · card(카드 · 간편결제) · vbank(가상계좌) — 토스 결제창(구버전 · ck 키 · TOSS_METHODS 로 연 것만)
  *                / tp — 토스 결제창형(gck 키 · 토스 창에서 수단을 골라요)
  *                | bank (무통장 입금 · depositor 입금자명 → 자동 입금 확인 또는 마스터 확인) — 0원은 바로 완료
  *   { action: "complete", paymentId, paymentKey, amount }  결제창에서 돌아오면(successUrl) — 서버가 정해 둔 금액과 같을 때만 토스에 승인 요청
@@ -26,6 +26,7 @@
  *   { action: "bankCancel", no }               입금 전 주문 취소 (쿠폰 · 포인트 돌려주기)
  *   { action: "bankLog" }                      최근 입금 알림(자동 입금 확인) · 못 맞춘 입금
  *   { action: "bankLink", id, no }             못 맞춘 입금을 주문에 직접 연결 → 입금 확인
+ *   { action: "escrowShip", nos }              에스크로로 낸 종이책을 발송(송장)하면 토스에 택배 배송 등록 · 송장을 고치면 배송 수정 · 실패한 등록 다시 보내기 (운영자 포함)
  *  마스터 · 그 클래스 강사 (dc_a 로그인)
  *   { action: "updNotify", pid, uid }          VOD 최신성 업데이트를 산 회원에게 알림톡 (수강 중 · 수강 끝남 나눠서) — _lib/vodupd.js
  *  토스 웹훅  POST /api/vod-pay?hook=toss  (토스 개발자센터 › 웹훅에 이 주소 · PAYMENT_STATUS_CHANGED · DEPOSIT_CALLBACK 등록)
@@ -85,7 +86,60 @@ async function markPaid(paymentId, idx, orders, pay) {
   }
   // 쿠폰 · 포인트는 결제가 확인된 뒤에만 써요 (가상계좌는 발급 때 이미 썼어요 — 같은 결제로 두 번 쓰지 않아요)
   await useCouponPoints(orders[0] && orders[0].mid, orders, paymentId, idx.nos[0]);
+  // 에스크로로 낸 결제: 배송 없는 상품(VOD · 전자책 · 코칭권 …)은 받은 즉시 쓸 수 있으니 바로 ‘직접 전달’로 배송 등록 (종이책은 발송 때 택배로)
+  const paidNow = done.filter((o) => o && o.status === "paid");
+  if (pg.escrow && paidNow.length && !paidNow.some(isShipOrder)) await escrowDeliver(paidNow, "DIRECT");
   return { ok: true, no: idx.nos[0], orders: done };
+}
+/* ---------- 에스크로 배송 등록 (토스 v2 · docs.tosspayments.com/guides/v2/escrow) ----------
+ *  배송을 등록해야 자동확정 기한이 시작되고 정산돼요. 결과는 같은 결제의 주문마다 pg.escrowDlv 에 남겨요:
+ *    { st: "ok" | "err", how: "DIRECT" | "SHIPMENT", ids: [토스 배송 id], car(토스 택배사 코드), inv, at, err }
+ *  실패해도 결제 · 주문은 그대로예요 — 마스터 ‘종이책 주문 · 배송’ › 주문 카드의 ‘토스 에스크로 배송 등록’으로 다시 보내요 */
+const isShipOrder = (o) => !!(o && (o.ship || o.shipFee != null));
+async function escrowDeliver(os, how) {
+  const o = os.find(isShipOrder) || os[0], key = o && o.pg && o.pg.escrowKey, prev = (o && o.pg && o.pg.escrowDlv) || {}, at = Date.now();
+  const save = async (rec) => { for (const x of os) await V.update(V.K.order(x.no), (y) => (y && y.pg ? Object.assign(y, { pg: Object.assign({}, y.pg, { escrowDlv: rec }) }) : undefined)); return rec; };
+  try {
+    if (!key) throw new Error("에스크로 거래 키(escrowKey)가 없어요.");
+    if (how === "SHIPMENT") {
+      const s = o.ship || {}, car = toss.carrierCode(s.carrier), inv = String(s.inv || "").replace(/[^0-9A-Za-z-]/g, "");
+      if (!inv) throw new Error("송장 번호가 없어요. 발송 처리를 먼저 해 주세요.");
+      if (!car) throw new Error("토스페이먼츠에 없는 택배사예요 (" + String(s.carrier || "").slice(0, 20) + ").");
+      if (prev.st === "ok" && prev.how === "SHIPMENT" && (prev.ids || []).length) {
+        if (prev.inv === inv && prev.car === car) return { ok: true, same: true, rec: prev };
+        // 송장을 고쳤어요 → 배송 수정 (배송중일 때만 돼요 — 배송완료면 토스가 거절)
+        for (const id of prev.ids) await toss.deliveryEdit(id, { deliveryMethod: "SHIPMENT", shipment: { carrierCode: car, trackingNumber: inv } });
+        return { ok: true, rec: await save({ st: "ok", how, ids: prev.ids, car, inv, at }) };
+      }
+      const es = await toss.escrowGet(key), ids = [];
+      for (const p of es.products || []) { const d = await toss.deliveryAdd({ targetType: "ESCROW_PRODUCT", targetId: String(p.id), deliveryMethod: "SHIPMENT", shipment: { carrierCode: car, trackingNumber: inv, shippedAt: toss.kstIso(s.shipAt || at) } }); ids.push(String(d.id || "")); }
+      if (!ids.length) throw new Error("토스페이먼츠 에스크로 거래에 상품이 없어요.");
+      return { ok: true, rec: await save({ st: "ok", how, ids, car, inv, at }) };
+    }
+    if (prev.st === "ok") return { ok: true, same: true, rec: prev };
+    const es = await toss.escrowGet(key), ids = [], who = String((o.buyer && o.buyer.name) || "구매자").slice(0, 50);
+    for (const p of es.products || []) { const d = await toss.deliveryAdd({ targetType: "ESCROW_PRODUCT", targetId: String(p.id), deliveryMethod: "DIRECT", direct: { receivedAt: toss.kstIso(at), receiverName: who, receiverRelation: "BUYER" } }); ids.push(String(d.id || "")); }
+    if (!ids.length) throw new Error("토스페이먼츠 에스크로 거래에 상품이 없어요.");
+    return { ok: true, rec: await save({ st: "ok", how, ids, at }) };
+  } catch (e) {
+    console.error("[vod-pay] escrow delivery", how, o && o.no, e.status || "", e.code || "", e.message);
+    const msg = String((e && e.message) || "배송 등록 실패").slice(0, 160);
+    await save(Object.assign({}, prev.st === "ok" ? prev : {}, { st: prev.st === "ok" ? "ok" : "err", how: prev.st === "ok" ? prev.how : how, err: msg, errAt: at })).catch(() => {});
+    return { ok: false, message: msg };
+  }
+}
+/** 마스터: 발송한 종이책의 에스크로 배송 등록 (발송 처리 · 송장 엑셀 · 다시 보내기) — 에스크로 결제가 아니면 건너뛰어요 */
+async function escrowShip(res, b) {
+  const nos = [].concat(b.nos || b.no || []).map(String).filter(Boolean).slice(0, 200), out = [];
+  for (const no of nos) {
+    const o = await V.get(V.K.order(no));
+    if (!o || !(o.pg && o.pg.escrow)) { out.push({ no, ok: true, skip: true }); continue; }
+    if (o.status !== "paid") { out.push({ no, ok: false, message: "결제 완료 주문이 아니에요." }); continue; }
+    const idx = o.paymentId ? await V.get(V.K.pay(o.paymentId)) : null, os = idx ? (await ordersOf(idx)).filter((x) => x.status === "paid") : [o];
+    const r = isShipOrder(o) ? await escrowDeliver(os.length ? os : [o], "SHIPMENT") : await escrowDeliver(os.length ? os : [o], "DIRECT");
+    out.push(Object.assign({ no }, r.ok ? { ok: true, same: !!r.same } : { ok: false, message: r.message }));
+  }
+  send(res, 200, { ok: out.every((x) => x.ok), results: out });
 }
 /** 가상계좌 발급: 주문을 ‘입금 대기’로 (계좌 · 은행 · 입금 기한) — 두 번 와도 한 번만. 입금되면 토스 웹훅(DEPOSIT_CALLBACK)이 결제 완료로 바꿔요 */
 async function vbankIssued(paymentId, idx, orders, pay) {
@@ -199,8 +253,8 @@ async function prepare(res, m, b) {
   if (q.total > 0) {
     if (isPgMethod(method) && !(toss.on() && toss.methods().indexOf(method) >= 0)) return fail(res, 409, toss.on() ? "이 결제수단은 받지 않아요. 다른 결제 방법을 골라 주세요." : "결제 준비 중이에요. 결제가 열리면 바로 알려 드릴게요.");
     if (!isPgMethod(method) && method !== "bank") return fail(res, 400, "결제 방법을 골라 주세요.");
-    // 종이책(배송 상품)은 퀵계좌이체로 받지 않아요 — 현금 결제엔 구매안전서비스(에스크로)가 필요해서 (화면 vod.js payOpts 도 같게 · 2026-11-24)
-    if (method === "transfer" && q.items.some((it) => it.ship || it.shipFee != null)) return fail(res, 409, "종이책은 퀵계좌이체로 결제할 수 없어요. 카드 · 토스페이로 결제해 주세요.");
+    // 종이책(배송 상품)을 현금(퀵계좌이체)으로 받으려면 구매안전서비스(에스크로)가 있어야 해요 — 토스 에스크로를 켜기 전(TOSS_ESCROW)엔 막아요 (화면 payOpts 도 같게 · 2026-11-24)
+    if (method === "transfer" && !toss.escrowOn() && q.items.some((it) => it.ship || it.shipFee != null)) return fail(res, 409, "종이책은 퀵계좌이체로 결제할 수 없어요. 카드 · 토스페이로 결제해 주세요.");
   }
   // 무통장 입금: 마스터 ‘무통장 입금 받기’ — 자동이면 토스 라이브 키가 들어간 뒤로는 받지 않아요 (가상계좌로) · 이미 들어온 무통장 주문은 그대로 처리돼요
   if (q.total > 0 && method === "bank" && !(await BM.open())) return fail(res, 409, "지금은 무통장 입금을 받지 않아요. 가상계좌나 다른 결제 방법을 골라 주세요.");
@@ -448,7 +502,7 @@ module.exports = handler(["POST"], async (req, res) => {
   if (!edge.originOk(req)) return fail(res, 403, "forbidden");
   if (process.env.VOD_SERVER_AUTH !== "1") return fail(res, 404, "서버 결제가 아직 꺼져 있어요.");
   const b = await body(req), a = String(b.action || "");
-  if (a === "refund" || a === "pgInfo" || a === "catalog" || a === "bankOk" || a === "bankCancel" || a === "bankLog" || a === "bankLink") {
+  if (a === "refund" || a === "pgInfo" || a === "catalog" || a === "bankOk" || a === "bankCancel" || a === "bankLog" || a === "bankLink" || a === "escrowShip") {
     const ids = await auth.identify(req);
     if (!(ids.admin && ids.admin.role === "master")) return fail(res, 403, "마스터만 할 수 있어요.");
     const by = String((ids.admin && (ids.admin.name || ids.admin.id)) || "마스터").slice(0, 20);
@@ -458,6 +512,7 @@ module.exports = handler(["POST"], async (req, res) => {
       if (a === "bankLog") return send(res, 200, Object.assign({ ok: true }, await BM.log()));
       if (a === "bankLink") return send(res, 200, await BM.link(String(b.id || ""), String(b.no || ""), by));
       if (a === "pgInfo") return await pgInfo(res, b);
+      if (a === "escrowShip") return await escrowShip(res, b);
       return a === "refund" ? await refund(res, b) : await saveCatalog(res, b);
     } catch (e) {
       console.error("[vod-pay] master", a, e.status || "", e.code || "", e.message);

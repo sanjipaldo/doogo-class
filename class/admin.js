@@ -6269,8 +6269,11 @@
         if (["ready", "prep", "ship"].indexOf(st) < 0) break;
         Object.assign(o.ship, { st: "ship", carrier: car ? car.value : X.shipSet().carrier, inv: no, prepAt: o.ship.prepAt || Date.now(), shipAt: st === "ship" && o.ship.shipAt ? o.ship.shipAt : Date.now(), by: (staffMe() || {}).name || "마스터" });
         ui.vsEdit = ""; (ui.vsPick || new Set()).delete(o.id);
-        commit(st === "ship" ? "송장을 고쳤어요." : "발송 처리했어요."); break;
+        commit(st === "ship" ? "송장을 고쳤어요." : "발송 처리했어요.");
+        if (o.pg && o.pg.escrow) boEscrowRun([o.no]);
+        break;
       }
+      case "vda-escrow-ship": { const o = O(); if (o) boEscrowRun([o.no]); break; }
       case "vda-ship-edit": ui.vsEdit = d.id || ""; render(); break;
       case "vda-ship-done": { const o = O(); if (!o || !o.ship || VX().shipStOf(o) !== "ship") break; Object.assign(o.ship, { st: "done", doneAt: Date.now(), doneBy: (staffMe() || {}).name || "마스터" }); commit("‘" + o.no + "’ 주문을 배송 완료로 바꿨어요."); break; }
       case "bo-bdone": { const pk = ui.vsPick || new Set(), X = VX(), list = vdShipAll().filter((o) => pk.has(o.id) && X.shipStOf(o) === "ship"); if (!list.length) break; const at = Date.now(), by = (staffMe() || {}).name || "마스터"; list.forEach((o) => Object.assign(o.ship, { st: "done", doneAt: at, doneBy: by })); pk.clear(); commit(list.length + "건을 배송 완료로 바꿨어요."); break; }
@@ -7043,6 +7046,7 @@
         (st === "wait" && o.method !== "vbank" ? '<p class="bo-dep">' + icon("coins", "xs") + "<span>입금자명 <b>" + esc(vdDep(o)) + "</b> · <b>" + won(vdGrpAmt(o)) + "</b> · " + esc(boWhen(vdDue(o))) + "까지</span></p>" : "") +
         '<dl class="bo-addr"><div><dt>받는 분</dt><dd><b>' + esc(s.name || "") + "</b> · " + esc(s.phone || "") + "</dd></div><div><dt>주소</dt><dd>" + (s.zip ? "(" + esc(s.zip) + ") " : "") + esc((s.addr1 || "") + " " + (s.addr2 || "")) + ' <button type="button" class="a-link bo-copy" data-action="vda-ship-copy" data-id="' + esc(o.id) + '">복사</button></dd></div>' + (s.memo ? "<div><dt>요청</dt><dd>" + esc(s.memo) + "</dd></div>" : "") + (boCash(o) ? "<div><dt>현금영수증</dt><dd>" + esc(boCash(o)) + (o.cashRcpt.done ? "" : ' <button type="button" class="a-link" data-action="bo-cash-done" data-id="' + esc(o.id) + '">발급 완료로 표시</button>') + "</dd></div>" : "") + "</dl>" +
         (c ? boClaimBox(o, c) : "") +
+        (boEsc(o) ? '<div class="bo-esc bo-esc-' + boEsc(o).tone + '">' + icon("shieldCheck", "xs") + "<span>" + esc(boEsc(o).t) + "</span>" + (boEsc(o).btn ? btn(boEsc(o).btn, "vda-escrow-ship", "a-btn-ghost a-btn-sm", ' data-id="' + esc(o.id) + '"') : "") + "</div>" : "") +
         (act ? '<div class="bo-act">' + act + "</div>" : "") + "</div></article>";
   }
   function pageVodShip() {
@@ -7227,10 +7231,33 @@
     const err = document.getElementById("vsb-err"), res = (ui.boUp || []).filter((x) => x.ok);
     if (!res.length) { err.textContent = "반영할 송장이 없어요. 파일을 고르거나 붙여 넣은 내용을 확인해 주세요."; return; }
     const at = Date.now(), by = (staffMe() || {}).name || "마스터"; let n = 0;
-    res.forEach((x) => { const o = VD().orders.find((y) => y.no === x.no && y.ship && y.status === "paid"); if (!o || ["ready", "prep"].indexOf(VX().shipStOf(o)) < 0) return; Object.assign(o.ship, { st: "ship", carrier: x.car, inv: x.inv, prepAt: o.ship.prepAt || at, shipAt: at, by }); n++; });
+    const esc0 = [];
+    res.forEach((x) => { const o = VD().orders.find((y) => y.no === x.no && y.ship && y.status === "paid"); if (!o || ["ready", "prep"].indexOf(VX().shipStOf(o)) < 0) return; Object.assign(o.ship, { st: "ship", carrier: x.car, inv: x.inv, prepAt: o.ship.prepAt || at, shipAt: at, by }); n++; if (o.pg && o.pg.escrow) esc0.push(o.no); });
     ui.boUp = null; (ui.vsPick || new Set()).clear();
     commit("종이책 " + n + "건을 발송 처리했어요.");
+    boEscrowRun(esc0);
   }
+  /** 에스크로로 낸 종이책: 발송(송장)을 토스페이먼츠에 배송 등록해야 구매확정 · 정산이 진행돼요 (서버 /api/vod-pay escrowShip)
+   *  발송 처리 · 송장 수정 · 송장 엑셀 · ‘토스에 다시 등록’ 버튼이 불러요 — 저장(동기화)이 끝난 뒤 서버가 주문의 송장을 읽어요 */
+  function boEscrowRun(nos) {
+    if (!nos || !nos.length || !vdSrv()) return;
+    DB.remote.flush().catch(() => {}).then(() => VX().payApi("escrowShip", { nos })).then((r) => {
+      const bad = ((r && r.results) || []).filter((x) => !x.ok), done = ((r && r.results) || []).filter((x) => x.ok && !x.skip && !x.same).length;
+      if (bad.length) toast("토스 에스크로 배송 등록 실패 " + bad.length + "건 — 주문 카드에서 다시 등록해 주세요.", "warn");
+      else if (done) toast("토스페이먼츠에 에스크로 배송 " + done + "건을 등록했어요.");
+      return DB.remote.refresh().then(() => render());
+    }, () => toast("서버에 닿지 못해 토스 에스크로 배송 등록을 못 했어요. 주문 카드에서 다시 등록해 주세요.", "warn"));
+  }
+  /** 에스크로 결제 표시 (주문 카드) — null 이면 에스크로가 아니에요 · { t: 안내, tone: ok | warn | info, btn: 다시 등록 버튼 글자 } */
+  const boEsc = (o) => {
+    if (!(o && o.pg && o.pg.escrow)) return null;
+    const d = o.pg.escrowDlv || {}, st = VX().shipStOf(o), sent = st === "ship" || st === "done";
+    if (d.st === "ok" && d.how === "SHIPMENT") return { t: "에스크로 결제 · 토스페이먼츠에 송장 등록됨", tone: "ok", btn: "" };
+    if (d.st === "err") return { t: "에스크로 결제 · 토스페이먼츠 배송 등록 실패 — " + (d.err || "다시 등록해 주세요."), tone: "warn", btn: "토스에 다시 등록" };
+    if (sent) return { t: "에스크로 결제 · 토스페이먼츠에 송장을 아직 등록하지 않았어요", tone: "warn", btn: "토스에 송장 등록" };
+    if (o.status !== "paid") return null;
+    return { t: "에스크로 결제 · 발송 처리하면 송장이 토스페이먼츠에 자동 등록돼요 (등록해야 구매확정 · 정산이 진행돼요)", tone: "info", btn: "" };
+  };
   function pageVodRefund() {
     const v = VD(), X = VX(), r = X.rfSet(), ym = todayStr().slice(0, 7), reqs = vdRefReqs().sort((a, b) => (b.refundReq.at || 0) - (a.refundReq.at || 0));
     const refd = v.orders.filter((o) => o.status === "refunded").sort((a, b) => (b.refundedAt || 0) - (a.refundedAt || 0)), mon = refd.filter((o) => o.refundedAt && vdYM(o.refundedAt) === ym);
@@ -9438,7 +9465,7 @@
     vodProds, VD_ST, vdMember, VD_OST, vdMask, vdRsTag, vdRbTag, VD_PAY, vdOnline, vdLive, vdYM, vdYMtxt, vdPayDate, vuChip, vdP, SALES_SUB, adTypeName,
     vdKey, vdKeep, vdStmt, vdStState, vdRefundsOf, vdRfAmt, vdRfKind, vdRfSettle, vdRfSum, vdRfCases, vdYMadd, vcMan, vsPayLine, vsPaySchedule, vdProf, vsMarkSeen, vsThisMonth, vsPayCard, vsRateCard, vdChTags, vdAdCell, vdNextTxt, teaItem, annSeenKey,
     // 마스터: 대시보드 · 강사 플랫폼 · 전체 수강생 (운영자 계정이면 맡지 않은 버튼 · 링크를 빼요 — staffStrip)
-    sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, VD_BANK_MODES, vdBankMode, vdCash, vdCashTodo, vdCashMemo, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqDeckTx, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqRegHtml, inqAcc, inqTodo, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
+    sumMoney, dgSplitBtn, insName, billKpis, masterLevels, staffStrip, SITE_FIELDS, tagCard, serverBackups, snapshot, insOk, insTheme, cohortStudents, dLeft, SLA, slaRows, hoursTxt, ageH, allRequests, vdRecruitNew, vdAlarmOf, vdShipAll, boClaimOn, vdRefReqs, adTypeShort, HM_CUT, RAIL_MODE, BAN_PC, BAN_M, vdCpStat, vdSrv, rkRange, rkAgg, RK_PER, FIN_KIND, vdKeyName, vdRateIns, vdRoas, roasTxt, vdAdLocked, AD_CH, adChName, vdName, vdStmtKeys, vdKindsOf, vdKindChips, vdTaxCell, vdProfPill, vdRuleTxt, vdRateKeys, vdRateNextTxt, pageSlice, finMemoRun, vdFin, vdNetBetween, ymStart, finShort, vdSold, vdPayKey, vdKeep, vdFee, vdFeeRate, VD_PAY_KEYS, vdKindKey, vdLive, vdRefAmt, vdYM, vdRefWait, VD_BANK_MODES, vdBankMode, vdCash, vdCashTodo, vdCashMemo, vdAcctTxt, RF_KIND, rfKindOf, rfPg, BO_ST, BO_TABS, boIn, boTab, boPickable, boWhen, boPayTxt, boCash, boEsc, vdDue, vdDep, vdGrpAmt, vdBankLoad, vdWhen, vdCare, vdExpired, vdPending, vdRqTxt, adTypeName, vdFunMemo, vuChip, vdRoster, crmF, crmAll, crmList, crmSelIds, crmIn, CRM_CHIPS, crmStage, crmChs, crmAv, crmE, crmVia, crmDate, CRM_SRC, crmSrcK, crmAgo, CH3n, CRM, KK_IC, crmStamp, crmTest, CRM_FIELDS, crmFld, crmOpts, crmRuleTxt, CRM_AUTO, crmReach, CRM_CH, crmCfg, crmSendCfg, crmLive, CRM_LINK, VU_TPL, crmConv, crmChipName, CRM_ORDER, mdSeed, mdList, mdStmt, mdOrders, manTxt, mdYtLink, mdSubsTxt, mdRateWhy, mdSum, mdRs, mdPeriod, mdInPeriod, mdBase, mdOf, mdLinkProducts, MD_PERIODS, mdCreator, mdLinkRow, mdRange, mdRangeOrders, MD_RANGES, mdRangeOf, mdOrderTable, mdStState, billTodo, CAL_TYPES, billEvents, paidIn, BILL_KIND, dayOf, BILL_TABS, planEvs, certData, certNoOf, certNoLegacy, CONTRACTS, DOCS, contractState, docMissing, STAFF, masterNavRaw, masterDcNavRaw, affList, affSum, affMonths, inqAff, affNet, affRate, monthKo, TAX, affTaxKey, AFFN, affNoticeList, inqStatus, vidKind, matChip, vuHist, esc, crmProf, crmPh, crmSrc, customPages, inqIsVod, INQ_TODO, msgUnreadM, inqIsPt, markInqSeen, inqLink, inqFormRows, inqDeckTx, inqLogHtml, INQ_STATUS, TRACK_TAB, refUrl, affInsCell, AFF_ST, affRows, affInqs, inqUpdated, findInq, inqTrack, inqRegHtml, inqAcc, inqTodo, inqThread, maskPhone, maskMail, drawAffQr, affKitT, AFF_FAQ, mdPaidOut, mdOst, mdMonths, lpDraft, FREE_TABS, LP_HINT, vdDraft, vdPrevHtml, vdFunPrev, vdDimgs, DM_OPTS, IMG_SPEC, adKind, adWhere, pageTrack, VOD_ONLY_PAGES, trackLockCard,
     /** 아직 React 로 옮기지 않은 화면 · 다른 영역 안내 화면의 본문 (예전 HTML — React 틀 안에 그대로) */
     legacyPage: (p) => { const r = p.r; if (p.area === "partner") return (PPAGES[r.parts[1] || ""] || pagePartnerHome)(r); if (p.area === "media") return (MDPAGES[r.parts[1] || ""] || pageMediaHome)(r);
       const fn = p.master ? (MPAGES[r.parts[1] || ""] || pageMasterHome) : p.offTrack ? trackOffPage : (PAGES[p.k0] || pageDashboard);

@@ -96,7 +96,7 @@ function BoCard({ o, tab, pick }) {
     : st === "done" ? <span className="bo-trk"><Icon n="check" c="sm" />{day(X.shipDoneAt(o)) + " 배송 완료" + (s.doneAt ? "" : " (자동)")}{s.inv ? <Trk o={o} tu={tu} /> : null}</span>
     : c ? (o.refundPay && o.refundPay.st === "wait" ? <span className="bo-trk"><Icon n="coins" c="sm" />계좌 송금 대기 · <a className="a-link" href="#/center/master/vod-refund">환불 · 취소 관리에서 송금 완료</a></span> : null)
     : <span className="bo-trk"><Icon n="x" c="sm" />{o.status === "refunded" ? won(o.refundAmount != null ? o.refundAmount : o.amount) + " 환불 · " + day(o.refundedAt || o.at) + (o.refundPay && o.refundPay.st === "wait" ? " · 계좌 송금 대기" : "") : (o.canceledBy === "기한 지남" ? "입금 기한이 지나 취소" : "취소된 주문") + " · " + day(o.canceledAt || o.at)}</span>;
-  const cash = A.boCash(o);
+  const cash = A.boCash(o), es = A.boEsc ? A.boEsc(o) : null;
   return <article className={"bo-card bo-" + st + (on ? " on" : "")}>{sel}
     <div className="bo-b"><div className="bo-meta"><Pill cls={lab[1]}>{lab[0]}</Pill>{c ? <Pill cls={c.st === "req" ? "bad" : c.st === "pick" ? "warn" : "mute"}>{X.claimTxt(c)}</Pill> : null}{late ? <Pill cls="warn">입금 기한 지남</Pill> : null}<small>{A.boWhen(st === "wait" ? o.at : o.paidAt || o.at)} · <a className="a-link num" href="#" data-action="vda-od" data-id={o.id}>{o.no}</a></small></div>
       <p className="bo-t"><b>{o.title}</b><em>{Number(o.qty) || 1}권</em></p>
@@ -104,6 +104,7 @@ function BoCard({ o, tab, pick }) {
       {st === "wait" && o.method !== "vbank" ? <p className="bo-dep"><Icon n="coins" c="xs" /><span>입금자명 <b>{A.vdDep(o)}</b> · <b>{won(A.vdGrpAmt(o))}</b> · {A.boWhen(A.vdDue(o))}까지</span></p> : null}
       <dl className="bo-addr"><div><dt>받는 분</dt><dd><b>{s.name || ""}</b> · {s.phone || ""}</dd></div><div><dt>주소</dt><dd>{(s.zip ? "(" + s.zip + ") " : "") + (s.addr1 || "") + " " + (s.addr2 || "")} <button type="button" className="a-link bo-copy" data-action="vda-ship-copy" data-id={o.id}>복사</button></dd></div>{s.memo ? <div><dt>요청</dt><dd>{s.memo}</dd></div> : null}{cash ? <div><dt>현금영수증</dt><dd>{cash}{o.cashRcpt.done ? null : <> <button type="button" className="a-link" data-action="bo-cash-done" data-id={o.id}>발급 완료로 표시</button></>}</dd></div> : null}</dl>
       {c ? <BoClaim o={o} c={c} /> : null}
+      {es ? <div className={"bo-esc bo-esc-" + es.tone}><Icon n="shieldCheck" c="xs" /><span>{es.t}</span>{es.btn ? <Btn action="vda-escrow-ship" cls="a-btn-ghost a-btn-sm" {...id}>{es.btn}</Btn> : null}</div> : null}
       {act ? <div className="bo-act">{act}</div> : null}</div></article>;
 }
 export function MasterVodShip({ n: rn }) {

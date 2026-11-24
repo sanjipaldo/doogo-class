@@ -17,7 +17,7 @@ module.exports = handler(["GET"], async (req, res) => {
   send(res, 200, { cfg: {
     auth,
     kakao: auth && kakao.on(),
-    toss: auth && toss.on() ? { ck: toss.ck(), mode: toss.mode(), methods: toss.methods(), vbankHours: toss.vbankHours(), variant: toss.variant(), test: toss.testKey(), live: toss.testOnLive() } : null,
+    toss: auth && toss.on() ? { ck: toss.ck(), mode: toss.mode(), methods: toss.methods(), vbankHours: toss.vbankHours(), variant: toss.variant(), test: toss.testKey(), live: toss.testOnLive(), escrow: toss.escrowOn() } : null,
     turnstile: e.TURNSTILE_SITE_KEY && e.TURNSTILE_SECRET ? e.TURNSTILE_SITE_KEY : "",
     bankAuto: auth && payaction.auto()
   } });

@@ -1110,7 +1110,8 @@
   const PAY_OPT = { transfer: ["transfer", "", "퀵계좌이체"], toss: ["toss", "tsp", "토스페이"], naver: ["naver", "np", "네이버페이"], kakao: ["kakao", "kp", "카카오페이"], card: ["card", "", "신용 · 체크카드"], vbank: ["vbank", "", "가상계좌 입금"], tp: ["tp", "", "카드 · 간편결제 · 가상계좌"] };
   const PAY_ORD = ["transfer", "toss", "naver", "kakao", "card", "vbank", "tp"], PAY_ALL = ["transfer", "toss", "naver", "kakao", "card", "vbank"];
   function payOpts(p) {
-    const T = SRV() ? CFG && CFG.toss : null, ship = !!(p && isBook(p));
+    // 종이책(배송 상품)을 퀵계좌이체로 받으려면 구매안전서비스(에스크로)가 있어야 해요 — 서버 TOSS_ESCROW 가 켜져 있을 때만(toss.escrow) 열어요 (서버 prepare 도 같게)
+    const T = SRV() ? CFG && CFG.toss : null, ship = !!(p && isBook(p)) && !(T && T.escrow);
     const ms = SRV() ? (T && T.methods) || [] : PAY_ALL, ks = PAY_ORD.filter((k) => ms.indexOf(k) >= 0 && !(ship && k === "transfer"));
     const lab = (k, easy) => (k === "card" && easy ? ["card", "", "카드/간편결제"] : PAY_OPT[k]);
     const easy = ks.indexOf("toss") >= 0 || ks.indexOf("naver") >= 0 || ks.indexOf("kakao") >= 0, o = ks.map((k) => lab(k, easy));
@@ -1122,13 +1123,13 @@
   function bankOpen() { return (V().settings || {}).bankMode === "on"; }
   /** 처음 골라 둘 결제 수단 — 카드(탈잉처럼) · 카드가 없으면 열린 첫 수단 */
   const payFirst = (opts) => { const ok = (opts || payOpts()).filter((y) => !y[3]); return ((ok.find((y) => y[0] === "card") || ok[0]) || [])[0] || ""; };
-  /** 간편결제 배지 (토스페이 toss pay · 네이버페이 N Pay · 카카오페이 pay) — 글자로 그린 표시 (그림 파일 없이) */
-  const payBadge = (b) => (b === "tsp" ? '<i class="vd-pay-bd vd-pay-tsp" aria-hidden="true"><b>toss</b>pay</i>' : b === "np" ? '<i class="vd-pay-bd vd-pay-np" aria-hidden="true"><b>N</b>Pay</i>' : b === "kp" ? '<i class="vd-pay-bd vd-pay-kp" aria-hidden="true"><b></b>pay</i>' : "");
+  /** 간편결제 배지 — 토스페이는 공식 로고 그림(assets/vod/pay-tosspay.png · 2026-11-24 대표님이 준 로고) · 네이버페이 N Pay · 카카오페이 pay 는 글자로 그린 표시 */
+  const payBadge = (b) => (b === "tsp" ? '<i class="vd-pay-bd vd-pay-tsp" aria-hidden="true"><img src="assets/vod/pay-tosspay.png" alt="" width="99" height="19" decoding="async"></i>' : b === "np" ? '<i class="vd-pay-bd vd-pay-np" aria-hidden="true"><b>N</b>Pay</i>' : b === "kp" ? '<i class="vd-pay-bd vd-pay-kp" aria-hidden="true"><b></b>pay</i>' : "");
   /** 고른 결제 수단 바로 아래 안내 (카드 할부 · 가상계좌 입금 기한) — 그 수단을 고르면 펼쳐져요 (formChange) */
   function paySub(k, on) {
     const h = Number(SRV() && CFG && CFG.toss && CFG.toss.vbankHours) || 72, due = h % 24 ? h + "시간" : h / 24 + "일";
     const t = k === "card" ? [icon("creditCard", "xs") + "할부 개월 수는 다음 결제창에서 고를 수 있어요.", "고르지 않으면 일시불로 결제돼요. (할부는 5만 원 이상 결제부터)", "카드사별 무이자 혜택은 결제창의 ‘(무)’ 표시를 확인해 주세요."]
-      : k === "transfer" ? [icon("building", "xs") + "다음 결제창에서 은행을 고르고 바로 이체해요.", "공인인증서 없이 계좌 비밀번호로 간편하게 결제해요.", "현금영수증은 결제창에서 바로 신청할 수 있어요."]
+      : k === "transfer" ? [icon("building", "xs") + "다음 결제창에서 은행을 고르고 바로 이체해요.", "공인인증서 없이 계좌 비밀번호로 간편하게 결제해요.", SRV() && CFG && CFG.toss && CFG.toss.escrow ? "현금영수증 · 에스크로(구매안전서비스)는 결제창에서 고를 수 있어요." : "현금영수증은 결제창에서 바로 신청할 수 있어요."]
       : k === "vbank" ? [icon("building", "xs") + "결제하기를 누르면 내 입금 계좌가 바로 만들어져요.", due + " 안에 입금하면 확인되는 대로 바로 이용할 수 있어요.", "입금 계좌는 주문 · 결제 내역에서도 다시 볼 수 있어요."] : null;
     return t ? '<div class="vd-pay-sub' + (on ? " on" : "") + '" data-pay-note="' + k + '"><b>' + t[0] + "</b><ul><li>" + t[1] + "</li><li>" + t[2] + "</li></ul></div>" : "";
   }

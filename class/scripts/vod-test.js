@@ -21,7 +21,7 @@ const API = (n) => require(path.join(TMP, "class/api", n + ".js"));
 const auth = require(path.join(TMP, "class/api/_lib/auth.js"));
 
 // ---------- 가짜 외부 서버 ----------
-const PG = {}, TIDEM = {}, AMT = {}, calls = [], PAY = [], AI = { reqs: [], next: null }, SOL = [], RES = [], VDC = [];
+const PG = {}, TIDEM = {}, AMT = {}, ESC = {}, calls = [], PAY = [], AI = { reqs: [], next: null }, SOL = [], RES = [], VDC = [];
 // 2부 B1: 가짜 Supabase Storage (새 키 sb_secret_… · 예전 service_role JWT 키 둘 다)
 const FAKE_ST = require(path.join(ROOT, "scripts/fake-storage.js")), FS38 = FAKE_ST.make("sb_secret_test38"), FSJ = FAKE_ST.make("eyJhbGciOi.legacy.jwt38");
 let kakaoUser = null;
@@ -46,7 +46,22 @@ global.fetch = async (url, opt) => {
       Object.assign(p, { status: p._st, approvedAt: p._st === "DONE" ? new Date().toISOString() : null });
       return R(200, p);
     }
-    let m = u.pathname.match(/^\/v1\/payments\/orders\/([^/]+)$/);
+    // 에스크로 v2 (거래 조회 · 배송 등록 · 배송 수정) — ESC[escrowKey] = { products: [{ id }], dels: [] } · 응답은 entityBody 로 감싸요 · 오류는 { error: { code, message } }
+    const E2 = (status, code, message) => R(status, { version: "2", traceId: "t", error: { code, message } }), allDel = () => [].concat.apply([], Object.keys(ESC).map((k) => ESC[k].dels));
+    let m = u.pathname.match(/^\/v2\/escrows\/([^/]+)$/);
+    if (opt.method !== "POST" && m) { const id = decodeURIComponent(m[1]), e = ESC[id]; return e ? R(200, { version: "2", traceId: "t", entityType: "escrow", entityBody: { id, status: "IN_PROGRESS", products: e.products, deliveryIds: e.dels.map((d) => d.id) } }) : E2(404, "NOT_FOUND", "에스크로 거래가 없어요. (시험)"); }
+    if (opt.method === "POST" && u.pathname === "/v2/deliveries") {
+      const e = Object.keys(ESC).map((k) => ESC[k]).find((x) => x.products.some((p) => p.id === b.targetId));
+      if (!e || b.targetType !== "ESCROW_PRODUCT") return E2(404, "NOT_FOUND", "없는 에스크로 상품이에요. (시험)");
+      if (b.deliveryMethod === "SHIPMENT" && ["CJ", "PO", "HJ", "LOTTE", "LG", "KD", "CN"].indexOf(String((b.shipment || {}).carrierCode || "").toUpperCase()) < 0) return E2(400, "INVALID_CARRIER_CODE", "지원하지 않는 택배사 코드예요. (시험)");
+      if (b.deliveryMethod === "SHIPMENT" && !/^[0-9]{10,14}$/.test(String((b.shipment || {}).trackingNumber || ""))) return E2(400, "INVALID_REQUEST", "송장번호 형식이 올바르지 않아요. (시험)");
+      if (b.deliveryMethod === "DIRECT" && !(b.direct && b.direct.receivedAt && b.direct.receiverName && b.direct.receiverRelation)) return E2(400, "INVALID_REQUEST", "직접 전달 정보가 없어요. (시험)");
+      const d = { id: "dlv_" + (allDel().length + 1), targetType: b.targetType, targetId: b.targetId, deliveryMethod: b.deliveryMethod, status: b.deliveryMethod === "DIRECT" ? "COMPLETED" : "IN_TRANSIT", shipment: b.shipment || null, direct: b.direct || null };
+      e.dels.push(d); return R(200, { version: "2", traceId: "t", entityType: "delivery", entityBody: d });
+    }
+    m = u.pathname.match(/^\/v2\/deliveries\/([^/]+)$/);
+    if (opt.method === "POST" && m) { const d = allDel().find((x) => x.id === decodeURIComponent(m[1])); if (!d) return E2(404, "NOT_FOUND", "없는 배송 (시험)"); if (d.status === "COMPLETED") return E2(403, "FORBIDDEN_COMPLETED_DELIVERY", "배송완료된 배송은 수정할 수 없어요. (시험)"); Object.assign(d.shipment, b.shipment || {}); return R(200, { version: "2", traceId: "t", entityType: "delivery", entityBody: d }); }
+    m = u.pathname.match(/^\/v1\/payments\/orders\/([^/]+)$/);
     if (opt.method !== "POST" && m) return PG[decodeURIComponent(m[1])] ? R(200, PG[decodeURIComponent(m[1])]) : R(404, NF);
     m = u.pathname.match(/^\/v1\/payments\/([^/]+)(\/cancel)?$/);
     const p = m && byKey(decodeURIComponent(m[1]));
@@ -1146,6 +1161,29 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(pi.json.ok && pi.json.pay.method.type === "transfer" && pi.json.pay.method.bank === "88", "토스 결제 조회: 계좌이체 · 은행 코드", pi.json.pay);
     const x = await call("vod-pay", { body: { action: "cancel", no } });
     ok(x.json.ok && x.json.way === "pg" && PG[p].status === "CANCELED", "퀵계좌이체 바로 취소 → 토스 결제 취소 (계좌로 돌려줘요 · 환불 계좌는 안 물어요)", x.json); }
+  // 에스크로로 낸 퀵계좌이체 (배송 없는 VOD) → 결제 완료 때 바로 ‘직접 전달’로 토스에 배송 등록 (등록해야 구매확정 · 정산이 진행돼요)
+  { const q = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "transfer", buyer: { name: "가상OO", phone: "010-0000-7777" } } }); const p = q.json.paymentId, no = q.json.no;
+    ESC.esc_vod1 = { products: [{ id: "ep_vod1", name: "시험 주문", quantity: 1 }], dels: [] };
+    paidLike(p, q.json.amount, { method: "계좌이체", card: null, transfer: { bankCode: "88", settlementStatus: "COMPLETED" }, useEscrow: true, escrowKey: "esc_vod1" });
+    const c = await call("vod-pay", { body: cpl(p) }), o = (await store.getDoc("vo:" + no)).v, d = ESC.esc_vod1.dels[0] || {};
+    ok(c.json.ok && o.status === "paid" && o.pg.escrow === true && o.pg.escrowKey === "esc_vod1" && o.pg.escrowDlv && o.pg.escrowDlv.st === "ok" && o.pg.escrowDlv.how === "DIRECT" && o.pg.escrowDlv.ids.join() === "dlv_1" &&
+      d.deliveryMethod === "DIRECT" && d.targetId === "ep_vod1" && d.direct.receiverRelation === "BUYER" && d.direct.receiverName === "가상OO" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+09:00$/.test(d.direct.receivedAt),
+      "에스크로 퀵계좌이체(VOD) → 결제 완료 · 주문에 에스크로 표시 · 토스에 ‘직접 전달’(구매자 · 한국 시각) 배송 등록", { pg: o.pg, d });
+    const again = await call("vod-pay", { body: cpl(p) });
+    ok(again.json.ok && ESC.esc_vod1.dels.length === 1, "같은 결제가 다시 와도 배송 등록은 한 번만", ESC.esc_vod1.dels.length);
+    await call("vod-pay", { body: { action: "cancel", no } }); }
+  // 에스크로 거래를 못 찾으면(토스 오류) 결제는 그대로 완료 · 주문에 ‘배송 등록 실패’를 남겨 마스터가 다시 보내요
+  { const q = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "transfer" } }); const p = q.json.paymentId, no = q.json.no;
+    paidLike(p, q.json.amount, { method: "계좌이체", card: null, transfer: { bankCode: "88" }, useEscrow: true, escrowKey: "esc_missing" });
+    const c = await call("vod-pay", { body: cpl(p) }), o = (await store.getDoc("vo:" + no)).v;
+    ok(c.json.ok && o.status === "paid" && o.pg.escrowDlv.st === "err" && /에스크로 거래가 없어요/.test(o.pg.escrowDlv.err), "에스크로 배송 등록 실패 → 결제는 완료 그대로 · 실패 이유를 주문에 (v2 오류 { error: { message } } 읽기)", o.pg);
+    ESC.esc_missing = { products: [{ id: "ep_miss" }], dels: [] };
+    jar.dc_a = MASTER; const r2 = await call("vod-pay", { body: { action: "escrowShip", nos: [no] } }); delete jar.dc_a;
+    const o2 = (await store.getDoc("vo:" + no)).v;
+    ok(r2.json.ok && o2.pg.escrowDlv.st === "ok" && o2.pg.escrowDlv.how === "DIRECT" && ESC.esc_missing.dels.length === 1, "마스터 ‘토스에 다시 등록’ → 직접 전달로 등록 완료", { r: r2.json, pg: o2.pg });
+    const r3 = await call("vod-pay", { body: { action: "escrowShip", nos: [no] } });
+    ok(r3.status === 403, "에스크로 배송 등록은 마스터(운영자)만", r3.status);
+    await call("vod-pay", { body: { action: "cancel", no } }); }
   // 카드 결제 (토스 상점관리자에서 직접 취소하는 경우 확인용)
   r = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "card" } });
   const vaPt = r.json.paymentId, vaNt = r.json.no; paidLike(vaPt, r.json.amount);
@@ -1258,6 +1296,37 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   r = await call("vod-pay", { body: { action: "prepare", pid: "b2", kind: "course", qty: 1, method: "toss", ship: SHIP, expect: 13800 } });
   ok(r.json.ok && r.json.amount === 13800, "종이책 토스페이는 OK", r.json);
   await call("vod-pay", { body: { action: "abort", paymentId: r.json.paymentId, code: "PAY_PROCESS_CANCELED" } });
+  // 토스 에스크로(구매안전서비스)를 켜면(TOSS_ESCROW=on) 종이책도 퀵계좌이체 — 결제창에서 구매자가 에스크로를 골라요
+  process.env.TOSS_ESCROW = "on";
+  r = await call("vod-config", { method: "GET" });
+  ok(r.json.cfg.toss.escrow === true, "설정: TOSS_ESCROW=on → 화면에 escrow: true (종이책 결제 화면에 퀵계좌이체가 나와요)", r.json.cfg.toss);
+  { const q = await call("vod-pay", { body: { action: "prepare", pid: "b2", kind: "course", qty: 1, method: "transfer", ship: SHIP, expect: 13800 } }); const p = q.json.paymentId, no = q.json.no;
+    ok(q.json.ok && q.json.amount === 13800, "에스크로를 켜면 종이책 퀵계좌이체 결제 준비 OK", q.json);
+    ESC.esc_book1 = { products: [{ id: "ep_book1", name: "배송비 있는 책", quantity: 1 }], dels: [] };
+    paidLike(p, 13800, { method: "계좌이체", card: null, transfer: { bankCode: "88" }, useEscrow: true, escrowKey: "esc_book1" });
+    const c = await call("vod-pay", { body: cpl(p) }); let o = (await store.getDoc("vo:" + no)).v;
+    ok(c.json.ok && o.status === "paid" && o.method === "transfer" && o.pg.escrow && !o.pg.escrowDlv && !ESC.esc_book1.dels.length, "종이책 에스크로 결제 → 결제 완료 · 배송 등록은 아직 (발송할 때 택배로)", o.pg);
+    jar.dc_a = auth.sign({ r: "master" });
+    let s = await call("vod-pay", { body: { action: "escrowShip", nos: [no] } }); o = (await store.getDoc("vo:" + no)).v;
+    ok(!s.json.ok && /송장 번호가 없어요/.test(s.json.results[0].message) && o.pg.escrowDlv.st === "err", "발송 전엔 택배 배송 등록을 못 해요 (송장 없음)", s.json);
+    const VL = require(path.join(ROOT, "api/_lib/vod")), shipAt = Date.parse("2026-11-25T10:00:00+09:00");
+    await VL.update(VL.K.order(no), (x) => Object.assign(x, { ship: Object.assign(x.ship, { st: "ship", carrier: "CJ대한통운", inv: "123456789012", shipAt }) }));
+    s = await call("vod-pay", { body: { action: "escrowShip", nos: [no] } }); o = (await store.getDoc("vo:" + no)).v; const d = ESC.esc_book1.dels[0] || {};
+    ok(s.json.ok && o.pg.escrowDlv.st === "ok" && o.pg.escrowDlv.how === "SHIPMENT" && o.pg.escrowDlv.car === "CJ" && o.pg.escrowDlv.inv === "123456789012" && !o.pg.escrowDlv.err &&
+      d.deliveryMethod === "SHIPMENT" && d.targetId === "ep_book1" && d.shipment.carrierCode === "CJ" && d.shipment.trackingNumber === "123456789012" && d.shipment.shippedAt === "2026-11-25T10:00:00+09:00",
+      "발송(CJ대한통운 · 송장) → 토스에 택배 배송 등록 (택배사 코드 CJ · 발송 시각 한국 시각)", { pg: o.pg, d });
+    s = await call("vod-pay", { body: { action: "escrowShip", nos: [no] } });
+    ok(s.json.ok && s.json.results[0].same && ESC.esc_book1.dels.length === 1, "같은 송장으로 다시 눌러도 한 번만", s.json);
+    await VL.update(VL.K.order(no), (x) => Object.assign(x, { ship: Object.assign(x.ship, { carrier: "한진택배", inv: "987654321098" }) }));
+    s = await call("vod-pay", { body: { action: "escrowShip", nos: [no] } }); o = (await store.getDoc("vo:" + no)).v;
+    ok(s.json.ok && ESC.esc_book1.dels.length === 1 && ESC.esc_book1.dels[0].shipment.carrierCode === "HJ" && ESC.esc_book1.dels[0].shipment.trackingNumber === "987654321098" && o.pg.escrowDlv.car === "HJ", "송장을 고치면 토스 배송 수정 (새로 등록하지 않아요)", { pg: o.pg, d: ESC.esc_book1.dels[0] });
+    await VL.update(VL.K.order(no), (x) => Object.assign(x, { ship: Object.assign(x.ship, { carrier: "모르는택배" }) }));
+    s = await call("vod-pay", { body: { action: "escrowShip", nos: [no] } }); o = (await store.getDoc("vo:" + no)).v;
+    ok(!s.json.ok && /토스페이먼츠에 없는 택배사/.test(s.json.results[0].message) && o.pg.escrowDlv.st === "ok" && /없는 택배사/.test(o.pg.escrowDlv.err), "토스에 없는 택배사면 등록 안 하고 이유를 남겨요 (이미 등록한 배송은 그대로)", { r: s.json, pg: o.pg });
+    s = await call("vod-pay", { body: { action: "escrowShip", nos: ["DC-NOPE", no + "x"] } });
+    ok(s.json.ok && s.json.results.every((x) => x.skip), "에스크로 결제가 아닌 주문 · 없는 주문은 건너뛰어요", s.json);
+    delete jar.dc_a; }
+  delete process.env.TOSS_ESCROW;
   delete process.env.TOSS_METHODS;
   r = await call("vod-pay", { body: { action: "prepare", pid: "b1", kind: "course", qty: 2, method: "card", ship: SHIP } });
   ok(r.status === 409 && /1권/.test(r.json.message), "재고 3권 · 2권 팔림 → 2권은 막고 남은 권수를 알려 줘요", r.json);
@@ -3284,7 +3353,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     await setMode("on"); useJar({}); // 뒤 시험들이 쓰는 예전 무통장 흐름 그대로 (시험 DB 만)
     const vj = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), aj = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mo = fs.readFileSync(path.join(ROOT, "../ui/center/MasterOrders.jsx"), "utf8"), ms35 = fs.readFileSync(path.join(ROOT, "../ui/center/MasterStore.jsx"), "utf8");
     ok(/function bankOpen\(\) \{ return \(V\(\)\.settings \|\| \{\}\)\.bankMode === "on"; \}/.test(vj) && /const bankO = bankOpen\(\) \? \[SRV\(\) && !bankInfo\(\)\.real \? \["bank", "", "무통장 입금", "준비 중"\] : \["bank", "", "무통장 입금"\]\] : \[\];/.test(vj) &&
-      /const PAY_ORD = \["transfer", "toss", "naver", "kakao", "card", "vbank", "tp"\], PAY_ALL = \["transfer", "toss", "naver", "kakao", "card", "vbank"\];/.test(vj) && /transfer: \["transfer", "", "퀵계좌이체"\], toss: \["toss", "tsp", "토스페이"\]/.test(vj) && /PAY_ALL\.filter\(\(k\) => !\(ship && k === "transfer"\)\)\.map\(\(k\) => lab\(k, true\)\.concat\("결제 준비 중"\)\)/.test(vj) &&
+      /const PAY_ORD = \["transfer", "toss", "naver", "kakao", "card", "vbank", "tp"\], PAY_ALL = \["transfer", "toss", "naver", "kakao", "card", "vbank"\];/.test(vj) && /transfer: \["transfer", "", "퀵계좌이체"\], toss: \["toss", "tsp", "토스페이"\]/.test(vj) && /PAY_ALL\.filter\(\(k\) => !\(ship && k === "transfer"\)\)\.map\(\(k\) => lab\(k, true\)\.concat\("결제 준비 중"\)\)/.test(vj) && /ship = !!\(p && isBook\(p\)\) && !\(T && T\.escrow\)/.test(vj) && /vd-pay-tsp" aria-hidden="true"><img src="assets\/vod\/pay-tosspay\.png"/.test(vj) && fs.existsSync(path.join(ROOT, "assets/vod/pay-tosspay.png")) &&
       !/vda-bankmode/.test(aj + ms35) && /<label>무통장 입금<\/label><p class="a-muted p-small">받지 않아요 — /.test(aj) && /<label>무통장 입금<\/label><p className="a-muted p-small">받지 않아요 — /.test(ms35) &&
       /function vdCash\(o\)/.test(aj) && /\["cash", "현금영수증"\]/.test(aj) && /"현금영수증 발급", "무통장 주문의 현금영수증을/.test(aj) && /"현금영수증 용도", "현금영수증 번호", "현금영수증 금액", "현금영수증 상태"/.test(aj) && /A\.vdCash\(o\)/.test(mo),
       "화면: 결제수단 퀵계좌이체 · 토스페이 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 중 연 것만(탈잉 순서 · 종이책은 퀵계좌이체 빼기 · 토스 키가 없으면 모두 ‘결제 준비 중’) · 무통장은 서버와 같은 규칙(\"on\" 일 때만) · 마스터 설정 스위치 대신 ‘받지 않아요’ 안내 · 주문 목록(현금영수증 탭 · 표시) · 상세 · 엑셀 · 대시보드 할 일");

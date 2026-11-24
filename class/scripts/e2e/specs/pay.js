@@ -31,7 +31,7 @@ module.exports = {
       const bank = document.querySelector("[data-bank-note]");
       return { keys: opts.map((x) => x.value), names: opts.map((x) => x.nextElementSibling.textContent), checked: (opts.find((x) => x.checked) || {}).value || "", on, bankOn: !!(bank && bank.classList.contains("on")),
         badges: Array.from(document.querySelectorAll(".vd-pay-bd")).map((x) => x.className + ":" + x.textContent), subs: Array.from(document.querySelectorAll(".vd-pay-sub")).map((x) => x.dataset.payNote + ":" + x.textContent),
-        testNote: !!document.querySelector(".vd-co-tptest"), btn: (document.querySelector("button[data-co-btn]") || {}).textContent || "", tot: ((document.querySelector("[data-co-tot]") || {}).textContent || "").replace(/[^0-9]/g, "") };
+        testNote: !!document.querySelector(".vd-co-tptest"), tsp: (() => { const i = document.querySelector(".vd-pay-tsp img"); return i ? i.getAttribute("src").split("/").pop() + ":" + (i.complete && i.naturalWidth > 0 ? 1 : 0) : ""; })(), btn: (document.querySelector("button[data-co-btn]") || {}).textContent || "", tot: ((document.querySelector("[data-co-tot]") || {}).textContent || "").replace(/[^0-9]/g, "") };
     });
     const pick = async (k) => { await page.click(".vd-pay-opt:has(input[value=" + k + "])"); await page.waitForTimeout(150); return st(); };
     const shape = {};
@@ -40,8 +40,8 @@ module.exports = {
       await L.open(page, base, "/vod/checkout/v8"); await page.waitForTimeout(500);
       const s0 = await st();
       shape[mode] = await L.domShape(page);
-      await run.check(s0.keys.join() === "transfer,toss,naver,kakao,card,vbank" && s0.names.join("|") === "퀵계좌이체|토스페이tosspay|네이버페이NPay|카카오페이pay|카드/간편결제|가상계좌 입금" && s0.badges.length === 3 && /vd-pay-tsp/.test(s0.badges[0]) && /vd-pay-np/.test(s0.badges[1]) && /vd-pay-kp/.test(s0.badges[2]) && !s0.testNote,
-        "결제 수단(" + mode + "): 퀵계좌이체 · 토스페이(toss pay) · 네이버페이(N Pay) · 카카오페이(pay) · 카드/간편결제 · 가상계좌 입금 (탈잉 순서) — 무통장 없음", s0, page);
+      await run.check(s0.keys.join() === "transfer,toss,naver,kakao,card,vbank" && s0.names.join("|") === "퀵계좌이체|토스페이|네이버페이NPay|카카오페이pay|카드/간편결제|가상계좌 입금" && s0.badges.length === 3 && /vd-pay-tsp/.test(s0.badges[0]) && s0.tsp === "pay-tosspay.png:1" && /vd-pay-np/.test(s0.badges[1]) && /vd-pay-kp/.test(s0.badges[2]) && !s0.testNote,
+        "결제 수단(" + mode + "): 퀵계좌이체 · 토스페이(공식 로고 그림 · 로드됨) · 네이버페이(N Pay) · 카카오페이(pay) · 카드/간편결제 · 가상계좌 입금 (탈잉 순서) — 무통장 없음", s0, page);
       await run.check(s0.checked === "card" && s0.on.join() === "card" && /할부 개월 수는 다음 결제창에서/.test(s0.subs.find((x) => /^card:/.test(x)) || "") && /2일 안에 입금하면/.test(s0.subs.find((x) => /^vbank:/.test(x)) || "") && !s0.bankOn,
         "처음엔 카드 + 바로 아래 할부 안내 · 가상계좌 안내는 접혀 있어요 (" + mode + ")", s0, page);
       const sT = await pick("transfer"), sN = await pick("naver"), sV = await pick("vbank"), sC = await pick("card");
