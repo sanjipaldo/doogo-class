@@ -3831,7 +3831,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     ok(/if \(setReview\(l\[l\.length - 1\], status, comment, true\)\) \{ n\+\+; changed = true; \} else skip\+\+;/.test(aj70) && /if \(changed\) DB\.saveProgress\(sid, p\);/.test(aj70) && /이미 승인된 " \+ S\.approved \+ "개는 그대로 둬요/.test(aj70) &&
       /case "rev-bulk-undo": \{/.test(aj70) && /\(\) => bulkReview\("pending"\)\);/.test(aj70) && /case "review-undo": \{/.test(aj70) && /const ok = !!sub && setReview\(sub, "pending"\);/.test(aj70) &&
       /if \(!setReview\(sub, d\.status, comment\.trim\(\)\)\) \{ closeModal\(\); render\(\); toast\("이미 승인된 과제예요\."\); break; \}/.test(aj70) && /revLogHtml\(sub\) \+/.test(aj70) && /revBulkBtns\(ui\.revFilter\)\.map\(\(b\) => btn\(icon\(b\[0\], "sm"\) \+ b\[1\], b\[2\], b\[3\]\)\)/.test(aj70) &&
-      /reviewPill, revBulkBtns, cohortName,/.test(aj70) && (aj70.match(/\.review = Object\.assign\(/g) || []).length === 1,
+      /reviewPill, revWho, revWhoName, revBulkBtns, cohortName,/.test(aj70) && (aj70.match(/\.review = Object\.assign\(/g) || []).length === 1,
       "일괄 승인 · 보완 요청 · 되돌리기 = 같은 setReview(이미 그 상태면 건너뛰고 개수를 알려 줌 · 바뀐 수강생만 저장) · 낱개 승인도 다시 승인 안 함 · 검수 창에 검수 기록 · 검수 결과를 쓰는 곳은 setReview 한 곳");
     const rj70 = fs.readFileSync(path.join(ROOT, "../ui/center/Reviews.jsx"), "utf8");
     ok(/\{A\.revBulkBtns\(ui\.revFilter\)\.map\(\(b\) => <Btn key=\{b\[2\]\} action=\{b\[2\]\} cls=\{b\[3\]\}><Icon n=\{b\[0\]\} c="sm" \/>\{b\[1\]\}<\/Btn>\)\}/.test(rj70) && !/선택 승인<\/Btn>/.test(rj70) &&
@@ -4328,6 +4328,32 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       /id="ab-r-teach" data-rv-kids="" data-drag="">\{tl\.map\(\(t, i\) => <TcCard key=\{t\.iid\} t=\{t\} i=\{i\} \/>\)\}<\/div><TeachArrows id="ab-r-teach" \/><\/div><Prog id="ab-r-teach" \/>/.test(ab84) &&
       /export function Prog\(/.test(rl84) && /export function TeachArrows\(/.test(rl84) && /import \{ Prog, TeachArrows \} from "\.\/Rail\.jsx";/.test(hp84) && /import \{ Prog, TeachArrows \} from "\.\/Rail\.jsx";/.test(ab84) && !/function Prog\(/.test(hp84),
       "소개 강사진: 4명 고정 → 모든 강사 한 줄 슬라이드 (홈 강사진과 같은 화살표 · 끌기 · 밀기 · 막대 — 부품은 Rail.jsx 하나로) (예전 화면 = React)");
+  }
+
+  {
+    console.log("85) 과제 검수 ‘검수자’ 칸 — 이 과제를 검수한 사람 이름(먼저 검수한 사람부터 · 같은 사람 한 번) (2026-11-24)");
+    const aj85 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), i85 = aj85.indexOf("  function revWho(x) {"), j85 = aj85.indexOf("  /* ---------------- 강사: 수강생 관리", i85);
+    const sb85 = { esc: (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;") };
+    require("vm").createContext(sb85); require("vm").runInContext((i85 > 0 && j85 > i85 ? aj85.slice(i85, j85) : "") + "\n;this.out = { revWho, revWhoName, revWhoHtml };", sb85);
+    const W85 = sb85.out || {}, X85 = (subs) => ({ m: { id: "m1" }, sub: subs[subs.length - 1], p: { submissions: { m1: subs } } });
+    const two85 = X85([{ at: 1, review: { status: "fix", by: "가나 코치", at: 10 } }, { at: 2, review: { status: "approved", by: "다라 코치", at: 30 }, reviewLog: [{ status: "fix", by: "가나 코치", at: 20, end: "approved", endBy: "다라 코치" }] }]);
+    const one85 = X85([{ at: 1, review: { status: "approved", by: "가나 코치", at: 10 }, reviewLog: [{ status: "fix", by: "가나 코치", at: 5, end: "approved" }] }]);
+    const undo85 = X85([{ at: 1, reviewLog: [{ status: "approved", by: "마바 강사", at: 5, end: "undo", endBy: "사아 코치", endAt: 6 }] }]);
+    const none85 = X85([{ at: 1, result: { pass: true } }]), old85 = X85([{ at: 1, review: { status: "approved", at: 3 } }]);
+    const ord85 = X85([{ at: 1, review: { status: "approved", by: "늦은 코치", at: 50 }, reviewLog: [{ status: "fix", by: "먼저 강사", at: 9, end: "approved" }] }]);
+    ok(W85.revWho && W85.revWho(two85).join("|") === "가나 코치|다라 코치" && W85.revWho(one85).join("|") === "가나 코치" && W85.revWho(undo85).join("|") === "마바 강사" &&
+      !W85.revWho(none85).length && !W85.revWho(old85).length && W85.revWho(ord85).join("|") === "먼저 강사|늦은 코치" &&
+      W85.revWhoName("가나 코치") === "가나" && W85.revWhoName("마바 강사") === "마바" && W85.revWhoName("자차 (운영팀)") === "자차" && W85.revWhoName("두잉고 운영팀") === "두잉고 운영팀" &&
+      W85.revWhoHtml(two85) === '<span class="a-rev-who" title="가나 코치 · 다라 코치">가나 · 다라</span>' && W85.revWhoHtml(none85) === '<span class="a-muted">—</span>' &&
+      W85.revWhoHtml(X85([{ at: 1, review: { status: "fix", by: "<b> 코치", at: 1 } }])).indexOf("<b>") < 0,
+      "검수자: 다시 낸 제출 · 검수 기록까지 모아 먼저 검수한 사람부터 ‘가나 · 다라’(같은 사람은 한 번 · 승인 취소만 한 사람은 빼요 · 이름 없는 예전 검수는 —) · 표에는 이름만, 마우스를 올리면 ‘코치 · 강사’까지",
+      W85.revWho ? [W85.revWho(two85), W85.revWho(undo85), W85.revWho(ord85)] : "revWho 없음");
+    const rj85 = fs.readFileSync(path.join(ROOT, "../ui/center/Reviews.jsx"), "utf8"), css85 = fs.readFileSync(path.join(ROOT, "admin.css"), "utf8");
+    ok(/<th>과제<\/th><th>검수자<\/th><th>제출<\/th>/.test(aj85) && /"<\/td><td>" \+ revWhoHtml\(x\) \+ '<\/td><td class="num">' \+ x\.count \+ "회<\/td>/.test(aj85) &&
+      /<th>과제<\/th><th>검수자<\/th><th>제출<\/th>/.test(rj85) && /who = A\.revWho\(x\);/.test(rj85) &&
+      /<td>\{who\.length \? <span className="a-rev-who" title=\{who\.join\(" · "\)\}>\{who\.map\(A\.revWhoName\)\.join\(" · "\)\}<\/span> : <span className="a-muted">—<\/span>\}<\/td>/.test(rj85) &&
+      /\.a-rev-who \{ font-size: 13px; font-weight: 600;/.test(css85),
+      "과제 검수 표: 과제 → 검수자 → 제출 순서 (예전 화면 = React · 같은 revWho)");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");

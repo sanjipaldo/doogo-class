@@ -27,6 +27,8 @@ module.exports = {
     const row = 'tr[data-action="review-open"][data-sid="' + info.student.sid + '"][data-mid="' + MID + '"]';
     const found = await ins.waitForSelector(row, { timeout: 10000 }).catch(() => null);
     await run.check(!!found, "강사: 과제 검수 목록에 방금 제출이 보여요", null, ins);
+    const who0 = found ? (await L.text(ins, row + " td:nth-child(5)")).trim() : "";
+    await run.check(who0 === "—", "강사: 검수 전엔 ‘검수자’ 칸이 — (2026-11-24)", who0, ins);
     if (found) {
       await ins.click(row);
       await ins.waitForSelector('button[data-action="review-save"][data-status="approved"]', { timeout: 10000 });
@@ -45,6 +47,9 @@ module.exports = {
     await L.open(ins, base, "/center/reviews");
     await ins.click('button[data-action="rev-tab"][data-k="approved"]').catch(() => {});
     await ins.waitForTimeout(500);
+    const who1 = (await L.text(ins, row + " td:nth-child(5)")).trim(), ths = await ins.$$eval(".a-rev-table thead th", (t) => t.map((x) => x.textContent.trim())).catch(() => []);
+    await run.check(ths.indexOf("검수자") === 4 && ths.indexOf("과제") === 3 && !!who1 && who1 !== "—" && !/ (강사|코치)$/.test(who1) && !!(await ins.$(row + " td:nth-child(5) .a-rev-who[title]")),
+      "강사: 승인하면 ‘검수자’ 칸(과제 다음)에 검수한 사람 이름 · 마우스를 올리면 전체 (React)", ths.join(",") + " · " + who1, ins);
     const acts = await ins.$$eval(".a-rev-bulk [data-action]", (bs) => bs.map((b) => b.getAttribute("data-action"))).catch(() => []);
     await run.check(acts.indexOf("rev-bulk-undo") >= 0 && acts.indexOf("rev-bulk-approve") < 0, "강사: 승인 탭 일괄 버튼 = 보완 요청 · 승인 취소 (다시 승인 없음)", acts.join(","), ins);
     await ins.check("#rev-all-2").catch(() => {});

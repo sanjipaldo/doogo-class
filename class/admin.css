@@ -832,6 +832,8 @@ body[data-master="1"] .a-logo-role { padding: 2px 10px; border-radius: 8px; back
 .a-coach-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: #e7f7f3; color: #00664f; font-size: 13px; line-height: 1.5; }
 .a-coach-note .icon { flex: none; margin-top: 2px; }
 .a-by { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #00866b; }
+/* 과제 검수 ‘검수자’ 칸 (2026-11-24) — 검수한 사람 이름 ‘김OO · 이OO’ */
+.a-rev-who { font-size: 13px; font-weight: 600; line-height: 1.4; }
 body[data-coach="1"] .a-logo-role { color: #00866b; }
 @media (max-width: 720px) {
   .a-perm-group { grid-template-columns: 1fr; }

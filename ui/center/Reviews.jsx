@@ -1,7 +1,8 @@
 "use client";
 /* 강사센터 과제 검수 #/center/reviews — 상태 탭 · 기수 · 주차 · 일괄 승인 / 보완 요청 · 제출물 열기(팝업)
  * 예전 admin.js pageReviews · bulkBar 를 React 로 (Next.js 전환 6단계) · 탭 · 고르기 · 체크 · 버튼은 예전 admin.js 이벤트가 받아요
- * 2026-11-22: 일괄 버튼은 탭마다 다르게(A.revBulkBtns — 승인 탭은 ‘선택 승인 취소’) · 체크 칸은 고른 상태에 맞게 새로 그려요 */
+ * 2026-11-22: 일괄 버튼은 탭마다 다르게(A.revBulkBtns — 승인 탭은 ‘선택 승인 취소’) · 체크 칸은 고른 상태에 맞게 새로 그려요
+ * 2026-11-24: ‘검수자’ 칸 — 이 과제를 검수한 사람 이름(A.revWho · 먼저 검수한 사람부터 ‘김OO · 이OO’, 없으면 —) */
 import Icon from "../lib/Icon.jsx";
 import { ADM, DBX, Btn, Head, Empty, Isl, fmtStamp } from "./bits.jsx";
 
@@ -22,11 +23,12 @@ export default function Reviews() {
       {shown.length ? <>
         <div className="a-bulk a-rev-bulk"><label className="a-check"><input key={"all2-" + allOn} type="checkbox" id="rev-all-2" defaultChecked={allOn} /><span>전체 선택 ({keys.length})</span></label><span className="a-muted">{picked}개 선택</span>
           {A.revBulkBtns(ui.revFilter).map((b) => <Btn key={b[2]} action={b[2]} cls={b[3]}><Icon n={b[0]} c="sm" />{b[1]}</Btn>)}</div>
-        <div className="a-table-wrap"><table className="a-table a-rev-table"><thead><tr><th className="w-check"><input key={"all-" + allOn} type="checkbox" id="rev-all" aria-label="모두 선택" defaultChecked={shown.every((x) => ui.revPicked.has(x.s.id + "|" + x.m.id))} /></th><th>제출 시각</th><th>수강생</th><th>과제</th><th>제출</th><th>상태</th><th className="right" /></tr></thead><tbody>
-          {shown.map((x) => { const key = x.s.id + "|" + x.m.id, on = ui.revPicked.has(key); return (
+        <div className="a-table-wrap"><table className="a-table a-rev-table"><thead><tr><th className="w-check"><input key={"all-" + allOn} type="checkbox" id="rev-all" aria-label="모두 선택" defaultChecked={shown.every((x) => ui.revPicked.has(x.s.id + "|" + x.m.id))} /></th><th>제출 시각</th><th>수강생</th><th>과제</th><th>검수자</th><th>제출</th><th>상태</th><th className="right" /></tr></thead><tbody>
+          {shown.map((x) => { const key = x.s.id + "|" + x.m.id, on = ui.revPicked.has(key), who = A.revWho(x); return (
             <tr key={key} className="clickable" data-action="review-open" data-sid={x.s.id} data-mid={x.m.id}><td className="w-check"><input key={on ? "on" : "off"} type="checkbox" className="rev-pick" data-key={key} defaultChecked={on} aria-label={x.s.name + " " + x.m.title + " 선택"} /></td>
               <td className="num">{fmtStamp(x.sub.at)}</td><td><b>{x.s.name}</b><small className="a-memo">{A.cohortName(x.s.cohortId)}</small></td>
               <td>{x.w.no}주차 · {x.m.title}{x.m.required ? null : <> <small className="a-muted">{DB.MISSION_KINDS.find((k) => k.key === DB.missionKind(x.m)).short}</small></>}</td>
+              <td>{who.length ? <span className="a-rev-who" title={who.join(" · ")}>{who.map(A.revWhoName).join(" · ")}</span> : <span className="a-muted">—</span>}</td>
               <td className="num">{x.count}회</td><td><Isl html={A.reviewPill(x)} /></td><td className="right"><Btn action="review-open" cls="a-btn-ghost a-btn-sm" data-sid={x.s.id} data-mid={x.m.id}>열기</Btn></td></tr>); })}
         </tbody></table></div></> : <Empty ic="inbox">{ui.revFilter === "pending" ? "검수할 제출물이 없어요." : "해당하는 제출물이 없어요."}</Empty>}
     </section>

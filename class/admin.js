@@ -676,6 +676,22 @@
     if (x.review === "fix") return pill("보완 요청", "bad");
     return x.sub.result.pass ? pill("검수 대기 · 자동 통과", "info") : pill("검수 대기 · 자동 보완", "warn");
   }
+  /* 검수자 칸 (2026-11-24 · 대표님 요청) — 이 과제를 검수한 사람: 모든 제출(다시 낸 것 포함)의 지금 검수 + 검수 기록(바뀌기 전 결과)에서
+   *  먼저 검수한 사람부터 · 같은 사람은 한 번만 → ‘김OO · 이OO’ (보통 1명). 표에는 이름만(‘ 코치’ · ‘ 강사’ · ‘ (운영팀)’ 뺌), 마우스를 올리면 전체.
+   *  승인 취소만 한 사람은 넣지 않아요(검수 결과를 쓴 사람만) · 아직 아무도 검수 안 했으면 — (React Reviews.jsx 도 같이) */
+  function revWho(x) {
+    const subs = (x.p && x.p.submissions && x.p.submissions[x.m.id]) || [x.sub], L = [], seen = {};
+    subs.forEach((s) => {
+      (Array.isArray(s.reviewLog) ? s.reviewLog : []).forEach((e) => { if (e && e.by) L.push([Number(e.at) || 0, e.by]); });
+      if (s.review && s.review.by) L.push([Number(s.review.at) || 0, s.review.by]);
+    });
+    return L.sort((a, b) => a[0] - b[0]).map((e) => String(e[1]).trim()).filter((b) => b && !seen[b] && (seen[b] = 1));
+  }
+  const revWhoName = (by) => String(by).replace(/\s*\(운영팀\)$/, "").replace(/\s+(코치|강사)$/, "") || String(by);
+  function revWhoHtml(x) {
+    const L = revWho(x);
+    return L.length ? '<span class="a-rev-who" title="' + esc(L.join(" · ")) + '">' + esc(L.map(revWhoName).join(" · ")) + "</span>" : '<span class="a-muted">—</span>';
+  }
 
   /* ---------------- 강사: 수강생 관리 ---------------- */
   function pageStudents(r) {
@@ -1102,8 +1118,8 @@
       '<section class="a-card"><div class="a-toolbar"><div class="a-tabs">' + tabs + "</div>" +
         '<div class="a-filters"><select class="a-input a-sm" id="rev-cohort" aria-label="기수"><option value="all">전체 기수</option>' + cos.map((co) => '<option value="' + co.id + '"' + (ui.revCohort === co.id ? " selected" : "") + ">" + esc(co.name) + "</option>").join("") + "</select>" +
         '<select class="a-input a-sm" id="rev-week" aria-label="주차"><option value="all">전체 주차</option>' + Array.from({ length: Math.max(0, ...DB.curricula(iid).map((x) => x.weeks.length)) }, (_, i) => i + 1).map((no) => '<option value="' + no + '"' + (ui.revWeek === String(no) ? " selected" : "") + ">" + no + "주차</option>").join("") + "</select></div></div>" +
-        (shown.length ? bulkBar(shown) + '<div class="a-table-wrap"><table class="a-table a-rev-table"><thead><tr><th class="w-check"><input type="checkbox" id="rev-all" aria-label="모두 선택"' + (shown.every((x) => ui.revPicked.has(x.s.id + "|" + x.m.id)) ? " checked" : "") + '></th><th>제출 시각</th><th>수강생</th><th>과제</th><th>제출</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
-          shown.map((x) => { const key = x.s.id + "|" + x.m.id; return '<tr class="clickable" data-action="review-open" data-sid="' + x.s.id + '" data-mid="' + x.m.id + '"><td class="w-check"><input type="checkbox" class="rev-pick" data-key="' + key + '"' + (ui.revPicked.has(key) ? " checked" : "") + ' aria-label="' + esc(x.s.name + " " + x.m.title) + ' 선택"></td><td class="num">' + fmtStamp(x.sub.at) + "</td><td><b>" + esc(x.s.name) + "</b><small class=\"a-memo\">" + esc(cohortName(x.s.cohortId)) + "</small></td><td>" + x.w.no + "주차 · " + esc(x.m.title) + (x.m.required ? "" : ' <small class="a-muted">' + DB.MISSION_KINDS.find((k) => k.key === DB.missionKind(x.m)).short + "</small>") + '</td><td class="num">' + x.count + "회</td><td>" + reviewPill(x) + '</td><td class="right">' + btn("열기", "review-open", "a-btn-ghost a-btn-sm", ' data-sid="' + x.s.id + '" data-mid="' + x.m.id + '"') + "</td></tr>"; }).join("") +
+        (shown.length ? bulkBar(shown) + '<div class="a-table-wrap"><table class="a-table a-rev-table"><thead><tr><th class="w-check"><input type="checkbox" id="rev-all" aria-label="모두 선택"' + (shown.every((x) => ui.revPicked.has(x.s.id + "|" + x.m.id)) ? " checked" : "") + '></th><th>제출 시각</th><th>수강생</th><th>과제</th><th>검수자</th><th>제출</th><th>상태</th><th class="right"></th></tr></thead><tbody>' +
+          shown.map((x) => { const key = x.s.id + "|" + x.m.id; return '<tr class="clickable" data-action="review-open" data-sid="' + x.s.id + '" data-mid="' + x.m.id + '"><td class="w-check"><input type="checkbox" class="rev-pick" data-key="' + key + '"' + (ui.revPicked.has(key) ? " checked" : "") + ' aria-label="' + esc(x.s.name + " " + x.m.title) + ' 선택"></td><td class="num">' + fmtStamp(x.sub.at) + "</td><td><b>" + esc(x.s.name) + "</b><small class=\"a-memo\">" + esc(cohortName(x.s.cohortId)) + "</small></td><td>" + x.w.no + "주차 · " + esc(x.m.title) + (x.m.required ? "" : ' <small class="a-muted">' + DB.MISSION_KINDS.find((k) => k.key === DB.missionKind(x.m)).short + "</small>") + "</td><td>" + revWhoHtml(x) + '</td><td class="num">' + x.count + "회</td><td>" + reviewPill(x) + '</td><td class="right">' + btn("열기", "review-open", "a-btn-ghost a-btn-sm", ' data-sid="' + x.s.id + '" data-mid="' + x.m.id + '"') + "</td></tr>"; }).join("") +
           "</tbody></table></div>" : emptyBox("inbox", ui.revFilter === "pending" ? "검수할 제출물이 없어요." : "해당하는 제출물이 없어요.")) +
       "</section>";
   }
@@ -9455,7 +9471,7 @@
     // 그린 뒤 할 일 (표 칸 이름 · 대화창 · 영상 길이 · 알림)
     labelTables, ktInit, vdurFill, notifyBills, notifyPartnerMsgs, notifyPartnerSide,
     // 대시보드
-    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, accessChip, lvBadge, levelOfStudent, reviewPill, revBulkBtns, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
+    counts, studentProgressRows, allSubmissions, annFor, billBanner, newCohortBtn, levelBoard, progressTable, weekStrip, libDashCard, resPills, libCatAdmin, accessChip, lvBadge, levelOfStudent, reviewPill, revWho, revWhoName, revBulkBtns, cohortName, coachMenusCard, coachCore, coachMore, homeOf, coachCourse, schedCal,
     vdShareStrip, vodAddonTodo, vdStoreBtn, vdPopCard, qThreadHtml, Q_PH, Q_PH_CO, vdThumb, vbName, vdPaidIn, vdSum, vdInsAmt, won, VD, VX, mdDow, COHORT_CLS, STU,
     // 수강생 · 기수 · 과제 검수 · 1:1 요청 · 다음 기수 신청
     classText, planChips, billGuide, billCard,
