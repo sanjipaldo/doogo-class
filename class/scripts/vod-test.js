@@ -1039,10 +1039,14 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   const MASTER = auth.sign({ r: "master" });
   process.env.TOSS_METHODS = "kakao,card,vbank,naver,transfer,phone"; process.env.TOSS_VBANK_HOURS = "48";
   r = await call("vod-config", { method: "GET" });
-  ok(r.json.cfg.toss.methods.join() === "naver,kakao,card,vbank" && r.json.cfg.toss.vbankHours === 48, "설정: TOSS_METHODS → 결제 화면 순서(네이버페이 · 카카오페이 · 카드 · 가상계좌 · 퀵계좌이체 · 모르는 값은 버림) · 입금 기한 48시간", r.json.cfg.toss);
+  ok(r.json.cfg.toss.methods.join() === "transfer,naver,kakao,card,vbank" && r.json.cfg.toss.vbankHours === 48, "설정: TOSS_METHODS → 결제 화면 순서(탈잉처럼 퀵계좌이체 · 네이버페이 · 카카오페이 · 카드 · 가상계좌 · 모르는 값은 버림) · 입금 기한 48시간", r.json.cfg.toss);
   process.env.TOSS_METHODS = "card,transfer"; delete process.env.TOSS_VBANK_HOURS;
   r = await call("vod-config", { method: "GET" });
-  ok(r.json.cfg.toss.methods.join() === "card" && r.json.cfg.toss.vbankHours === 72, "설정에서 빼면 가상계좌 · 간편결제는 닫혀요 · 퀵계좌이체는 넣어도 안 열려요 (입금 기한 기본 72시간)", r.json.cfg.toss);
+  ok(r.json.cfg.toss.methods.join() === "transfer,card" && r.json.cfg.toss.vbankHours === 72, "설정에서 빼면 가상계좌 · 간편결제는 닫혀요 · 퀵계좌이체는 2026-11-24 계약으로 다시 열어요 (입금 기한 기본 72시간)", r.json.cfg.toss);
+  process.env.TOSS_METHODS = " card, toss ,transfer ";
+  r = await call("vod-config", { method: "GET" });
+  ok(r.json.cfg.toss.methods.join() === "transfer,toss,card", "운영 계약(신용카드 · 계좌이체 · 토스페이) TOSS_METHODS=transfer,toss,card → 퀵계좌이체 · 토스페이 · 카드 순서 (빈칸 무시)", r.json.cfg.toss);
+  process.env.TOSS_METHODS = "card,transfer";
   delete jar.dc_v; delete jar.dc_a;
   await store.rlClear(["vip:1.2.3.4"]); // 같은 IP 로 가입을 여러 번 해서
   r = await call("vod-auth", { body: { action: "signup", email: "va@example.com", pw: "test1234a", pw2: "test1234a", name: "가상OO", phone: "010-0000-7777", agree: true } });
@@ -1053,7 +1057,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   ok(r.status === 409, "가상계좌가 닫혀 있으면 결제 준비 거절", r.json);
   r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "naver" } });
   ok(r.status === 409 && /받지 않아요/.test(r.json.message), "네이버페이를 열지 않았으면 결제 준비 거절", r.json);
-  process.env.TOSS_METHODS = "card,transfer,vbank,naver,kakao";
+  process.env.TOSS_METHODS = "card,transfer,vbank,naver,kakao,toss";
   r = await call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, points: 1000, method: "vbank" } });
   ok(r.json.ok && r.json.paymentId && r.json.amount > 0 && r.json.customerKey && /^[A-Za-z0-9_=.@-]{2,50}$/.test(r.json.customerKey), "가상계좌 결제 준비 (포인트 1,000 사용 · 토스 구매자 키)", r.json);
   const vaP = r.json.paymentId, vaN = r.json.no, vaAmt = r.json.amount, VA_DUE = "2026-11-02T23:59:59";
@@ -1132,9 +1136,16 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   ok(r.json.orders.find((o) => o.no === vaN2).status === "canceled" && PG[vaP2].closed && PG[vaP2].status === "CANCELED" && calls.indexOf("POST api.tosspayments.com/v1/payments/" + PG[vaP2].paymentKey + "/cancel") >= 0, "입금 전 취소 → 주문 취소 · 토스 결제 취소로 가상계좌 닫기 (취소 뒤 입금 안 되게)");
   r = await call("vod-auth", { body: { action: "me" } });
   ok(r.json.member.points === vaPt0, "입금 전 취소하면 써 둔 포인트 500을 돌려받아요", r.json.member.points);
-  // 퀵계좌이체(실시간 계좌이체)는 2026-11-15 부터 받지 않아요 — TOSS_METHODS 에 있어도 서버가 막아요
-  r = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "transfer" } });
-  ok(r.status === 409 && !r.json.paymentId && /받지 않아요/.test(r.json.message), "퀵계좌이체는 받지 않아요 (TOSS_METHODS 에 있어도 409 · 주문을 만들지 않음)", r.json);
+  // 퀵계좌이체(실시간 계좌이체) — 2026-11-15 에 뺐다가 2026-11-24 토스 계약(신용카드 · 계좌이체 · 토스페이)으로 다시 열어요
+  { const q = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "transfer" } }); const p = q.json.paymentId, no = q.json.no;
+    ok(q.json.ok && p && q.json.amount > 0, "퀵계좌이체 결제 준비 (TOSS_METHODS 에 transfer)", q.json);
+    paidLike(p, q.json.amount, { method: "계좌이체", card: null, transfer: { bankCode: "88", settlementStatus: "COMPLETED" } });
+    const c = await call("vod-pay", { body: cpl(p) }), o = (await store.getDoc("vo:" + no)).v;
+    ok(c.json.ok && o.status === "paid" && o.method === "transfer" && o.pg.bank === "신한은행" && !o.pg.card, "퀵계좌이체 → 결제 완료 · 주문 결제수단 계좌이체 · 은행 이름 남김", o);
+    jar.dc_a = MASTER; const pi = await call("vod-pay", { body: { action: "pgInfo", no } }); delete jar.dc_a;
+    ok(pi.json.ok && pi.json.pay.method.type === "transfer" && pi.json.pay.method.bank === "88", "토스 결제 조회: 계좌이체 · 은행 코드", pi.json.pay);
+    const x = await call("vod-pay", { body: { action: "cancel", no } });
+    ok(x.json.ok && x.json.way === "pg" && PG[p].status === "CANCELED", "퀵계좌이체 바로 취소 → 토스 결제 취소 (계좌로 돌려줘요 · 환불 계좌는 안 물어요)", x.json); }
   // 카드 결제 (토스 상점관리자에서 직접 취소하는 경우 확인용)
   r = await call("vod-pay", { body: { action: "prepare", pid: "v6", kind: "course", plan: 180, method: "card" } });
   const vaPt = r.json.paymentId, vaNt = r.json.no; paidLike(vaPt, r.json.amount);
@@ -1180,6 +1191,10 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   ok(r.json.ok && r.json.way === "pg" && PG[ez.p].status === "CANCELED", "네이버페이 바로 취소 → 토스 결제 취소", r.json);
   ez = await ezPay("v5", "kakao", "카카오페이", { card: null, easyPay: { provider: "카카오페이", amount: 1, discountAmount: 0 } });
   ok(ez.c.json.ok && ez.o.status === "paid" && ez.o.method === "kakao" && ez.o.pg.easy === "카카오페이" && !ez.o.pg.card, "카카오페이(카카오머니) → 결제 완료 · 결제수단 카카오페이", ez.o);
+  ez = await ezPay("v6", "toss", "토스페이");
+  ok(ez.q.json.ok && ez.c.json.ok && ez.o.status === "paid" && ez.o.method === "toss" && ez.o.pg.easy === "토스페이", "토스페이 버튼(간편결제 자체창 TOSSPAY) → 결제 완료 · 주문 결제수단 토스페이", ez.o);
+  r = await call("vod-pay", { body: { action: "cancel", no: ez.no } });
+  ok(r.json.ok && r.json.way === "pg" && PG[ez.p].status === "CANCELED", "토스페이 바로 취소 → 토스 결제 취소", r.json);
   ez = await ezPay("v6", "card", "토스페이");
   ok(ez.c.json.ok && ez.o.method === "toss" && ez.o.pg.easy === "토스페이", "카드/간편결제 창에서 토스페이로 내면 주문 결제수단은 토스페이", ez.o);
   ez = await ezPay("v5", "card", "페이코");
@@ -1236,6 +1251,14 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
   ok((((await store.getDoc("vstat")).v.sold) || {}).b1 === 2, "판매 수는 권수만큼 (2권)", (await store.getDoc("vstat")).v.sold);
   r = await call("vod-pay", { body: { action: "prepare", pid: "b2", kind: "course", qty: 1, method: "card", ship: SHIP, points: 0, expect: 13800 } });
   ok(r.json.ok && r.json.amount === 13800, "할인가 10,800원 + 배송비 3,000원 = 13,800원", r.json);
+  // 종이책(배송 상품)은 퀵계좌이체 X — 현금 결제엔 구매안전서비스(에스크로)가 필요해서 (화면에서도 빠져요 · 2026-11-24)
+  process.env.TOSS_METHODS = "transfer,toss,card";
+  r = await call("vod-pay", { body: { action: "prepare", pid: "b2", kind: "course", qty: 1, method: "transfer", ship: SHIP } });
+  ok(r.status === 409 && !r.json.paymentId && /종이책은 퀵계좌이체/.test(r.json.message), "종이책은 퀵계좌이체로 결제할 수 없어요 (TOSS_METHODS 에 있어도 409 · 주문 안 만듦)", r.json);
+  r = await call("vod-pay", { body: { action: "prepare", pid: "b2", kind: "course", qty: 1, method: "toss", ship: SHIP, expect: 13800 } });
+  ok(r.json.ok && r.json.amount === 13800, "종이책 토스페이는 OK", r.json);
+  await call("vod-pay", { body: { action: "abort", paymentId: r.json.paymentId, code: "PAY_PROCESS_CANCELED" } });
+  delete process.env.TOSS_METHODS;
   r = await call("vod-pay", { body: { action: "prepare", pid: "b1", kind: "course", qty: 2, method: "card", ship: SHIP } });
   ok(r.status === 409 && /1권/.test(r.json.message), "재고 3권 · 2권 팔림 → 2권은 막고 남은 권수를 알려 줘요", r.json);
   // 배송지 바꾸기: 보내기 전에는 회원이 바꿀 수 있고, 배송 상태 · 송장은 못 바꿔요
@@ -3261,10 +3284,10 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     await setMode("on"); useJar({}); // 뒤 시험들이 쓰는 예전 무통장 흐름 그대로 (시험 DB 만)
     const vj = fs.readFileSync(path.join(ROOT, "vod.js"), "utf8"), aj = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mo = fs.readFileSync(path.join(ROOT, "../ui/center/MasterOrders.jsx"), "utf8"), ms35 = fs.readFileSync(path.join(ROOT, "../ui/center/MasterStore.jsx"), "utf8");
     ok(/function bankOpen\(\) \{ return \(V\(\)\.settings \|\| \{\}\)\.bankMode === "on"; \}/.test(vj) && /const bankO = bankOpen\(\) \? \[SRV\(\) && !bankInfo\(\)\.real \? \["bank", "", "무통장 입금", "준비 중"\] : \["bank", "", "무통장 입금"\]\] : \[\];/.test(vj) &&
-      /const PAY_ORD = \["naver", "kakao", "card", "vbank", "tp"\], PAY_ALL = \["naver", "kakao", "card", "vbank"\];/.test(vj) && !/transfer: \["transfer"/.test(vj) && /PAY_ALL\.map\(\(k\) => lab\(k, true\)\.concat\("결제 준비 중"\)\)/.test(vj) &&
+      /const PAY_ORD = \["transfer", "toss", "naver", "kakao", "card", "vbank", "tp"\], PAY_ALL = \["transfer", "toss", "naver", "kakao", "card", "vbank"\];/.test(vj) && /transfer: \["transfer", "", "퀵계좌이체"\], toss: \["toss", "tsp", "토스페이"\]/.test(vj) && /PAY_ALL\.filter\(\(k\) => !\(ship && k === "transfer"\)\)\.map\(\(k\) => lab\(k, true\)\.concat\("결제 준비 중"\)\)/.test(vj) &&
       !/vda-bankmode/.test(aj + ms35) && /<label>무통장 입금<\/label><p class="a-muted p-small">받지 않아요 — /.test(aj) && /<label>무통장 입금<\/label><p className="a-muted p-small">받지 않아요 — /.test(ms35) &&
       /function vdCash\(o\)/.test(aj) && /\["cash", "현금영수증"\]/.test(aj) && /"현금영수증 발급", "무통장 주문의 현금영수증을/.test(aj) && /"현금영수증 용도", "현금영수증 번호", "현금영수증 금액", "현금영수증 상태"/.test(aj) && /A\.vdCash\(o\)/.test(mo),
-      "화면: 결제수단 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌만(퀵계좌이체 없음 · 토스 키가 없으면 네 칸 모두 ‘결제 준비 중’) · 무통장은 서버와 같은 규칙(\"on\" 일 때만) · 마스터 설정 스위치 대신 ‘받지 않아요’ 안내 · 주문 목록(현금영수증 탭 · 표시) · 상세 · 엑셀 · 대시보드 할 일");
+      "화면: 결제수단 퀵계좌이체 · 토스페이 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 중 연 것만(탈잉 순서 · 종이책은 퀵계좌이체 빼기 · 토스 키가 없으면 모두 ‘결제 준비 중’) · 무통장은 서버와 같은 규칙(\"on\" 일 때만) · 마스터 설정 스위치 대신 ‘받지 않아요’ 안내 · 주문 목록(현금영수증 탭 · 표시) · 상세 · 엑셀 · 대시보드 할 일");
   }
 
   {

@@ -5,10 +5,12 @@
  *                      test_gck_ · live_gck_ ‘주문서형 · 결제창형 연동 키’ → 결제창형: 토스 창이 떠서 그 안에서 결제수단을 골라요 (토스 상점관리자 › 결제 UI 설정)
  *  TOSS_SECRET_KEY   시크릿 키 (비밀 · 승인 · 조회 · 취소) — 클라이언트 키와 한 세트 (ck ↔ sk · gck ↔ gsk · test ↔ live)
  *  TOSS_METHODS      결제창(구버전)에서 열 결제수단 (기본 card,vbank — 계약한 것만 남겨요)
- *                      card(카드 · 간편결제 통합결제창) · vbank(가상계좌) · (transfer 퀵계좌이체는 2026-11-15 부터 받지 않아요 — 넣어도 무시)
- *                      naver(네이버페이) · kakao(카카오페이) — 간편결제 자체창: 우리 결제 화면의 버튼에서 그 간편결제 창을 바로 열어요 (2026-11 · 탈잉처럼)
- *                        토스페이먼츠 계약에 네이버페이 · 카카오페이를 함께 신청해 승인되면 넣어요 (카카오페이는 계약한 상점의 테스트 키로만 시험돼요)
- *                      예) TOSS_METHODS=card,vbank,naver,kakao — 화면 순서는 늘 같아요 (네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌)
+ *                      transfer(퀵계좌이체 · 2026-11-24 계약으로 다시 열어요 — 종이책처럼 배송하는 상품은 빼요: 현금 결제엔 구매안전서비스가 필요해서)
+ *                      card(카드 · 간편결제 통합결제창) · vbank(가상계좌)
+ *                      toss(토스페이) · naver(네이버페이) · kakao(카카오페이) — 간편결제 자체창: 우리 결제 화면의 버튼에서 그 간편결제 창을 바로 열어요 (2026-11 · 탈잉처럼)
+ *                        토스페이먼츠 계약에 그 간편결제가 들어 있을 때만 넣어요 (카카오페이는 계약한 상점의 테스트 키로만 시험돼요)
+ *                      예) 운영(2026-11-24 계약: 신용카드 · 계좌이체 · 토스페이) TOSS_METHODS=transfer,toss,card
+ *                          화면 순서는 늘 같아요 (퀵계좌이체 · 토스페이 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌)
  *  TOSS_VBANK_HOURS  가상계좌 입금 기한 시간 (기본 72 · 최대 2160) — 결제창(구버전)만 (결제창형은 토스 상점관리자 설정)
  *  TOSS_VARIANT      결제창형 결제 UI variantKey (기본 DEFAULT)
  *
@@ -31,10 +33,10 @@ const mode = () => (/_gck_/.test(ck()) ? "widget" : "window");
 const testKey = () => /^test_/.test(sk());
 /** 운영 사이트(Vercel production)에 시험 키를 넣었으면 결제를 승인하지 않아요 — 토스 심사 때는 결제창만 열리면 되고, 시험 승인(실제 돈 안 나감)으로 강의가 열리면 안 되니까 */
 const testOnLive = () => testKey() && process.env.VERCEL_ENV === "production";
-// 2026-11-15 대표님 요청: 퀵계좌이체(transfer)는 받지 않아요 — TOSS_METHODS 에 있어도 열지 않아요 (예전 계좌이체 주문의 환불 · 조회는 그대로)
-const ALL = ["naver", "kakao", "card", "vbank"], DEF = ["card", "vbank"];
+// 화면 순서 (탈잉처럼) — 2026-11-15 에 뺐던 퀵계좌이체(transfer)는 2026-11-24 토스 계약(신용카드 · 계좌이체 · 토스페이)으로 다시 열어요 · 토스페이(toss) 버튼 더함
+const ALL = ["transfer", "toss", "naver", "kakao", "card", "vbank"], DEF = ["card", "vbank"];
 /** 간편결제 자체창 — 결제수단 키 → 토스 간편결제 코드 (requestPayment card.easyPay · flowMode DIRECT) */
-const EASY = { naver: "NAVERPAY", kakao: "KAKAOPAY" };
+const EASY = { toss: "TOSSPAY", naver: "NAVERPAY", kakao: "KAKAOPAY" };
 /** 화면 결제수단 — 결제창(구버전): TOSS_METHODS(계약한 것 · 화면 순서로) · 결제창형: tp 하나(토스 창에서 골라요) */
 function methods() {
   if (!on()) return [];

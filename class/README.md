@@ -508,13 +508,17 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 | --- | --- |
 | `TOSS_CLIENT_KEY` | 토스페이먼츠 개발자센터 › API 키 › 클라이언트 키 — 미리보기 `test_ck_…` · 운영 `live_ck_…` (공개 값 · 화면으로 가요) |
 | `TOSS_SECRET_KEY` | 같은 화면의 시크릿 키 `test_sk_…` · `live_sk_…` (**비밀** · 클라이언트 키와 한 세트) |
-| `TOSS_METHODS` | 결제 화면에 열 결제수단 — 기본 `card,transfer,vbank` · 네이버페이 · 카카오페이 승인 뒤 `card,transfer,vbank,naver,kakao` |
+| `TOSS_METHODS` | 결제 화면에 열 결제수단 (쉼표로 · 화면 순서는 늘 퀵계좌이체 → 토스페이 → 네이버페이 → 카카오페이 → 카드 → 가상계좌) — `transfer`(퀵계좌이체) · `toss`(토스페이) · `naver` · `kakao` · `card`(카드/간편결제) · `vbank`(가상계좌) · 비우면 `card,vbank` · **운영 지금 `transfer,toss,card`** |
 | `TOSS_VBANK_HOURS` | 가상계좌 입금 기한(시간 · 기본 72) |
 | `TOSS_VARIANT` | 결제위젯 키(gck)일 때만 결제 UI variantKey (기본 `DEFAULT`) |
 
-- **운영 라이브 (2026-11-24)**: 토스페이먼츠 계약 완료 — 상점아이디(MID) `doogoclass` · 계약 결제수단 **신용카드 · 계좌이체 · 토스페이** · 정산 월정산+4영업일 · 과세 ‘부분면세’. Vercel **Production** 에 `TOSS_CLIENT_KEY`(라이브 **API 개별 연동 키** `live_ck_…`) · `TOSS_SECRET_KEY`(`live_sk_…` · Sensitive) · `TOSS_METHODS=card`(카드/간편결제 창 — 토스페이 포함). 가상계좌 · 네이버페이 · 카카오페이는 계약되면 `vbank` · `naver` · `kakao` 를 더해요(계약 안 된 수단을 열면 결제창 오류). 미리보기(시험용 DB)는 화면 보기용 임시 키 그대로 — 라이브 키를 미리보기에 넣지 않아요. 결제위젯 키(gck) · 보안 키 · 머트 키는 쓰지 않아요.
+- **운영 라이브 (2026-11-24)**: 토스페이먼츠 계약 완료 — 상점아이디(MID) `doogoclass` · 계약 결제수단 **신용카드 · 계좌이체 · 토스페이** · 정산 월정산+4영업일 · 과세 ‘부분면세’. Vercel **Production** 에 `TOSS_CLIENT_KEY`(라이브 **API 개별 연동 키** `live_ck_…`) · `TOSS_SECRET_KEY`(`live_sk_…` · Sensitive) · `TOSS_METHODS=card`(카드/간편결제 창 — 토스페이 포함) → 같은 날 탈잉처럼 목록으로 `TOSS_METHODS=transfer,toss,card` 로 바꿨어요(다음 배포부터 · 미리보기는 화면 보기용 `card,transfer,vbank,naver,kakao,toss`). 가상계좌 · 네이버페이 · 카카오페이는 계약되면 `vbank` · `naver` · `kakao` 를 더해요(계약 안 된 수단을 열면 결제창 오류). 미리보기(시험용 DB)는 화면 보기용 임시 키 그대로 — 라이브 키를 미리보기에 넣지 않아요. 결제위젯 키(gck) · 보안 키 · 머트 키는 쓰지 않아요.
   - 토스 개발자센터 › 웹훅에 `https://www.doogoclass.com/api/vod-pay?hook=toss` (`PAYMENT_STATUS_CHANGED`) 등록 — 토스 상점관리자에서 직접 취소한 결제도 주문에 반영돼요.
   - 책(종이책 · 전자책) 면세 금액(`taxFreeAmount`)은 아직 보내지 않아요 — 지금은 모두 과세로 잡혀요(세무 확인 뒤 추가).
+  - **탈잉처럼 결제수단 목록 (2026-11-24)**: 계약 결제수단에 맞춰 `TOSS_METHODS=transfer,toss,card` → 결제 화면 **퀵계좌이체 · 토스페이(toss pay 표시) · 카드/간편결제** 세로 목록 (처음엔 카드). 토스페이는 **간편결제 자체창**(`card.flowMode: DIRECT` · `easyPay: TOSSPAY`)이라 토스 앱 · 창이 바로 떠요 · 퀵계좌이체는 토스 계좌이체 창(`TRANSFER` — 은행 고르고 계좌 비밀번호 · 현금영수증은 결제창에서). 주문 결제수단은 `transfer` · `toss`(카드/간편결제 창에서 토스페이로 내도 `toss`) — 회원 바로 취소 · 마스터 환불은 토스 결제 취소로 계좌 · 토스페이에 바로 돌려줘요(환불 계좌 안 물어요).
+    - **종이책(배송 상품)은 퀵계좌이체를 빼요** — 현금 결제(계좌이체)로 배송 상품을 팔면 구매안전서비스(에스크로)가 필요해서(전자상거래법). 화면 `payOpts(p)` 가 종이책이면 `transfer` 를 빼고, 서버 `vod-pay.js prepare` 도 배송 상품 + `transfer` 는 409 ‘종이책은 퀵계좌이체로 결제할 수 없어요’ (전자책 · VOD 는 그대로).
+    - 웹훅은 꼭 필요하진 않아요(카드 · 계좌이체 · 토스페이는 결제창에서 돌아올 때 바로 승인) — 다만 토스 상점관리자에서 직접 취소한 결제를 주문에 반영하려면 위 웹훅 주소(`PAYMENT_STATUS_CHANGED`)를 등록해 두면 좋아요.
+    - 테스트: `vod-test.js` 18) TOSS_METHODS 순서(운영 `transfer,toss,card`) · 퀵계좌이체 결제 → 결제수단 계좌이체 · 은행 이름 · 토스 조회 · 바로 취소 / 토스페이 버튼 결제 · 취소 / 19) 종이책 퀵계좌이체 409 · 토스페이 OK / 35) 화면 코드 모양 — e2e `pay` (퀵계좌이체 · 토스페이 · 네이버페이 · 카카오페이 · 카드 · 가상계좌 순서 · 배지 · 퀵계좌이체 안내 · 종이책엔 퀵계좌이체 없음 · TOSSPAY · TRANSFER 로 결제창 · 예전 화면 = React).
   - **운영 배포 확인 (2026-11-24 · main `b23fff9`)**: 빌드 기록 `[pay] 토스페이먼츠 연결 확인: 됐어요 (시크릿 키 맞음) · 결제창(구버전 · 결제수단: card) · 라이브 키` · 결제 대조 0건 · 운영 `/api/vod-config` = `mode: window · methods: [card] · test: false` · 서버 오류 0. 대표님 실제 결제 · 환불 시험 대기.
 
 - **결제 화면 (탈잉처럼 · 2026-11-11):** 세로 목록 — 실시간 계좌이체 · 네이버페이(N Pay 표시) · 카카오페이(pay 표시) · 카드/간편결제 · 가상계좌 입금 · 무통장 입금, 처음엔 카드를 골라 둬요. 고른 수단 바로 아래 안내(카드: 할부 개월 수는 다음 결제창에서 · 무이자 ‘(무)’ 표시 / 가상계좌: 입금 계좌 · 기한). 네이버페이 · 카카오페이는 **간편결제 자체창**(`card.flowMode: DIRECT` · `easyPay: NAVERPAY | KAKAOPAY`)이라 그 앱 · 창이 바로 떠요. 네이버페이 · 카카오페이를 열면 카드 칸 이름이 ‘카드/간편결제’(통합결제창에서 토스페이 · 페이코 같은 다른 간편결제도).
@@ -1050,7 +1054,7 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
 
 ## 결제수단 네 가지 · 체험 주문 1시간 정리 · 정식 운영 전 테스트 주문 정리 (2026-11-15)
 
-- **결제수단 = 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 입금** (탈잉처럼 · 대표님 요청): 퀵계좌이체(실시간 계좌이체) · 무통장 입금은 받지 않아요.
+- **결제수단 = 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 입금** (탈잉처럼 · 대표님 요청): 퀵계좌이체(실시간 계좌이체) · 무통장 입금은 받지 않아요. → **2026-11-24 토스 계약(신용카드 · 계좌이체 · 토스페이)으로 퀵계좌이체를 다시 열고 토스페이 버튼을 더했어요** (위 ‘탈잉처럼 결제수단 목록 (2026-11-24)’ — 아래 줄들은 그때 기록).
   - 화면(`vod.js payOpts` — React 결제 화면도 같은 함수): 서버가 연 토스 결제수단만 위 순서로. 토스 키가 없으면 네 칸 모두 ‘결제 준비 중’으로 잠가요(누를 수 없음).
   - 서버: `api/_lib/toss.js ALL = naver · kakao · card · vbank`(TOSS_METHODS 에 transfer 가 있어도 안 열림 · 기본 card,vbank) · `api/_lib/bank.js openOf` = `settings.bankMode === "on"` 일 때만(예전 ‘자동’도 이제 닫힘 · 마스터 설정의 ‘무통장 입금 받기’ 스위치는 없애고 ‘받지 않아요’ 안내 한 줄). 이미 들어온 무통장 · 계좌이체 주문의 입금 확인 · 취소 · 환불 · 현금영수증은 그대로 처리돼요.
   - **운영에서 실제로 결제를 받으려면**: Vercel Production 에 `TOSS_CLIENT_KEY` · `TOSS_SECRET_KEY`(토스페이먼츠 라이브 키) + `TOSS_METHODS=card,vbank,naver,kakao`(네이버페이 · 카카오페이는 토스에서 승인된 뒤) — 키가 없는 동안은 결제할 방법이 없어요(무통장도 닫혀서). 토스 웹훅 주소(`/api/vod-pay?hook=toss`)도 등록.

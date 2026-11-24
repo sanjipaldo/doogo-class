@@ -1,8 +1,8 @@
-/* 결제 화면 — 토스페이먼츠 결제수단 (탈잉처럼 세로 목록 · 2026-11-11 · 2026-11-15 네 가지만)
+/* 결제 화면 — 토스페이먼츠 결제수단 (탈잉처럼 세로 목록 · 2026-11-11 · 2026-11-24 토스 계약: 퀵계좌이체 · 토스페이 다시 / 더함)
  *  서버에 시험용 토스 키(가짜 값 · 진짜 토스에는 닿지 않아요)와 결제수단(TOSS_METHODS)을 넣고 확인해요:
- *   · 순서: 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 입금 (퀵계좌이체 · 무통장은 받지 않아요 — TOSS_METHODS 에 transfer 가 있어도) / 처음엔 카드 / 고른 수단 바로 아래 안내
+ *   · 순서: 퀵계좌이체 · 토스페이 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌 입금 (무통장은 받지 않아요 · 종이책은 퀵계좌이체 빠짐) / 처음엔 카드 / 고른 수단 바로 아래 안내
  *   · 예전 화면 = React 화면 (모양이 같아요)
- *   · 결제하기: 토스 SDK 대신 가짜 SDK 로 결제창에 넘기는 값 (네이버페이 · 카카오페이 = 카드 · DIRECT · 간편결제 코드 / 카드 = 통합결제창 / 가상계좌 입금 기한 · 금액 · 주문 번호 · 돌아올 주소)
+ *   · 결제하기: 토스 SDK 대신 가짜 SDK 로 결제창에 넘기는 값 (토스페이 · 네이버페이 · 카카오페이 = 카드 · DIRECT · 간편결제 코드 / 퀵계좌이체 = TRANSFER / 카드 = 통합결제창 / 가상계좌 입금 기한 · 금액 · 주문 번호 · 돌아올 주소)
  *   · 결제창에서 취소하고 돌아오면(failUrl) 안내 + 결제 대기 주문은 ‘결제 안 됨’
  *  E2E_PAY_SHOTS=<폴더>: 결제 수단 칸 사진 (PC · 휴대폰 — 주문자 정보 칸은 찍지 않아요) */
 "use strict";
@@ -17,8 +17,8 @@ const FAKE_SDK = [
 ].join("\n");
 
 module.exports = {
-  title: "결제 화면 · 토스페이먼츠 결제수단 (네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌)",
-  env: { TOSS_CLIENT_KEY: "test_ck_e2e_fake", TOSS_SECRET_KEY: "test_sk_e2e_fake", TOSS_METHODS: "card,transfer,vbank,naver,kakao", TOSS_VBANK_HOURS: "48" },
+  title: "결제 화면 · 토스페이먼츠 결제수단 (퀵계좌이체 · 토스페이 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌)",
+  env: { TOSS_CLIENT_KEY: "test_ck_e2e_fake", TOSS_SECRET_KEY: "test_sk_e2e_fake", TOSS_METHODS: "card,transfer,vbank,naver,kakao,toss", TOSS_VBANK_HOURS: "48" },
   async run({ base, info, browser, run, L }) {
     const page = await L.newPage(browser);
     run.watch(page, "결제 화면");
@@ -40,13 +40,21 @@ module.exports = {
       await L.open(page, base, "/vod/checkout/v8"); await page.waitForTimeout(500);
       const s0 = await st();
       shape[mode] = await L.domShape(page);
-      await run.check(s0.keys.join() === "naver,kakao,card,vbank" && s0.names.join("|") === "네이버페이NPay|카카오페이pay|카드/간편결제|가상계좌 입금" && s0.badges.length === 2 && /vd-pay-np/.test(s0.badges[0]) && /vd-pay-kp/.test(s0.badges[1]) && !s0.testNote,
-        "결제 수단(" + mode + "): 네이버페이(N Pay) · 카카오페이(pay) · 카드/간편결제 · 가상계좌 입금 — 퀵계좌이체 · 무통장 없음", s0, page);
+      await run.check(s0.keys.join() === "transfer,toss,naver,kakao,card,vbank" && s0.names.join("|") === "퀵계좌이체|토스페이tosspay|네이버페이NPay|카카오페이pay|카드/간편결제|가상계좌 입금" && s0.badges.length === 3 && /vd-pay-tsp/.test(s0.badges[0]) && /vd-pay-np/.test(s0.badges[1]) && /vd-pay-kp/.test(s0.badges[2]) && !s0.testNote,
+        "결제 수단(" + mode + "): 퀵계좌이체 · 토스페이(toss pay) · 네이버페이(N Pay) · 카카오페이(pay) · 카드/간편결제 · 가상계좌 입금 (탈잉 순서) — 무통장 없음", s0, page);
       await run.check(s0.checked === "card" && s0.on.join() === "card" && /할부 개월 수는 다음 결제창에서/.test(s0.subs.find((x) => /^card:/.test(x)) || "") && /2일 안에 입금하면/.test(s0.subs.find((x) => /^vbank:/.test(x)) || "") && !s0.bankOn,
         "처음엔 카드 + 바로 아래 할부 안내 · 가상계좌 안내는 접혀 있어요 (" + mode + ")", s0, page);
-      const sN = await pick("naver"), sV = await pick("vbank"), sC = await pick("card");
-      await run.check(sN.checked === "naver" && !sN.on.length && !sN.bankOn && sV.on.join() === "vbank" && !sV.bankOn && sC.on.join() === "card" && !sC.bankOn,
-        "고른 수단 아래 안내만 펼쳐져요 — 네이버페이(안내 없음) · 가상계좌(입금 기한 2일) · 다시 카드 (" + mode + ")", { sN, sV, sC }, page);
+      const sT = await pick("transfer"), sN = await pick("naver"), sV = await pick("vbank"), sC = await pick("card");
+      await run.check(sT.on.join() === "transfer" && /은행을 고르고 바로 이체/.test(sT.subs.find((x) => /^transfer:/.test(x)) || "") && sN.checked === "naver" && !sN.on.length && !sN.bankOn && sV.on.join() === "vbank" && !sV.bankOn && sC.on.join() === "card" && !sC.bankOn,
+        "고른 수단 아래 안내만 펼쳐져요 — 퀵계좌이체(은행 고르고 바로 이체) · 네이버페이(안내 없음) · 가상계좌(입금 기한 2일) · 다시 카드 (" + mode + ")", { sT, sN, sV, sC }, page);
+      // 종이책(배송 상품)은 퀵계좌이체가 빠져요 — 현금 결제엔 구매안전서비스가 필요해서 (서버도 409)
+      const bid = await page.evaluate(() => { const X = window.VOD, b = X.listed().find((x) => X.isBook(x) && x.status === "on" && X.priceOf(x) > 0); return b ? b.id : ""; });
+      if (bid) {
+        await L.open(page, base, "/vod/checkout/" + bid); await page.waitForTimeout(500);
+        const sB = await st();
+        await run.check(sB.keys.join() === "toss,naver,kakao,card,vbank" && sB.checked === "card", "종이책 결제(" + mode + "): 퀵계좌이체 없이 토스페이 · 네이버페이 · 카카오페이 · 카드/간편결제 · 가상계좌", sB, page);
+        await L.open(page, base, "/vod/checkout/v8"); await page.waitForTimeout(400);
+      }
       if (process.env.E2E_PAY_SHOTS) {
         const dir = process.env.E2E_PAY_SHOTS;
         await (await page.$("[data-co-pay]")).screenshot({ path: path.join(dir, "pay-" + mode + "-pc.png") });
@@ -76,13 +84,14 @@ module.exports = {
       return { q, tot: Number(tot), saved };
     };
     const ok = (x) => !!(x.q && x.q.ck === "test_ck_e2e_fake" && x.q.customerKey && x.q.customerKey !== "@@ANONYMOUS" && /^pay_/.test(x.q.req.orderId) && x.q.req.amount.currency === "KRW" && x.q.req.amount.value === x.tot && x.tot > 0 && x.q.req.successUrl === base + "/" && x.q.req.failUrl === base + "/" && x.q.req.orderName && x.saved && x.saved.id === x.q.req.orderId);
-    const pN = await pay("naver"), pK = await pay("kakao"), pC = await pay("card"), pV = await pay("vbank");
-    await run.check(ok(pN) && pN.q.req.method === "CARD" && pN.q.req.card.flowMode === "DIRECT" && pN.q.req.card.easyPay === "NAVERPAY" && ok(pK) && pK.q.req.card.flowMode === "DIRECT" && pK.q.req.card.easyPay === "KAKAOPAY",
-      "결제하기: 네이버페이 · 카카오페이 → 그 간편결제 창을 바로 (카드 · flowMode DIRECT · NAVERPAY · KAKAOPAY) · 서버가 정한 금액 · 주문 번호 · 돌아올 주소", { pN, pK }, page);
-    // 퀵계좌이체 · 무통장은 서버도 받지 않아요 (화면에 없어도 직접 보내 보기)
-    const noT = await page.evaluate(() => Promise.all(["transfer", "bank"].map((m) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid: "v8", kind: "course", plan: 365, method: m, depositor: "체험회원" }) }).then((r) => r.status))));
-    await run.check(ok(pC) && pC.q.req.method === "CARD" && pC.q.req.card.flowMode === "DEFAULT" && !pC.q.req.card.easyPay && ok(pV) && pV.q.req.method === "VIRTUAL_ACCOUNT" && pV.q.req.virtualAccount.validHours === 48 && sdkLoads >= 1 && noT.join() === "409,409",
-      "결제하기: 카드 → 카드/간편결제 통합결제창 · 가상계좌 → 입금 기한 48시간 · 퀵계좌이체 · 무통장은 서버가 409", { pC, pV, noT }, page);
+    const pS = await pay("toss"), pN = await pay("naver"), pK = await pay("kakao"), pT = await pay("transfer"), pC = await pay("card"), pV = await pay("vbank");
+    await run.check(ok(pS) && pS.q.req.method === "CARD" && pS.q.req.card.flowMode === "DIRECT" && pS.q.req.card.easyPay === "TOSSPAY" && ok(pN) && pN.q.req.method === "CARD" && pN.q.req.card.flowMode === "DIRECT" && pN.q.req.card.easyPay === "NAVERPAY" && ok(pK) && pK.q.req.card.flowMode === "DIRECT" && pK.q.req.card.easyPay === "KAKAOPAY",
+      "결제하기: 토스페이 · 네이버페이 · 카카오페이 → 그 간편결제 창을 바로 (카드 · flowMode DIRECT · TOSSPAY · NAVERPAY · KAKAOPAY) · 서버가 정한 금액 · 주문 번호 · 돌아올 주소", { pS, pN, pK }, page);
+    await run.check(ok(pT) && pT.q.req.method === "TRANSFER" && !pT.q.req.card, "결제하기: 퀵계좌이체 → 토스 계좌이체 창 (TRANSFER · 은행 고르기)", pT, page);
+    // 무통장은 서버도 받지 않아요 (화면에 없어도 직접 보내 보기) · 퀵계좌이체는 받아요
+    const noT = await page.evaluate(() => Promise.all(["bank"].map((m) => fetch("/api/vod-pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "prepare", pid: "v8", kind: "course", plan: 365, method: m, depositor: "체험회원" }) }).then((r) => r.status))));
+    await run.check(ok(pC) && pC.q.req.method === "CARD" && pC.q.req.card.flowMode === "DEFAULT" && !pC.q.req.card.easyPay && ok(pV) && pV.q.req.method === "VIRTUAL_ACCOUNT" && pV.q.req.virtualAccount.validHours === 48 && sdkLoads >= 1 && noT.join() === "409",
+      "결제하기: 카드 → 카드/간편결제 통합결제창 · 가상계좌 → 입금 기한 48시간 · 무통장은 서버가 409", { pC, pV, noT }, page);
     // 결제창에서 취소하고 돌아오면(failUrl · 토스는 orderId 를 안 보내요) → 이 브라우저에 기억한 주문을 ‘결제 안 됨’으로
     const oid = pV.q && pV.q.req.orderId;
     await L.open(page, base, "/?code=PAY_PROCESS_CANCELED&message=" + encodeURIComponent("사용자에 의해 결제가 취소되었습니다."));

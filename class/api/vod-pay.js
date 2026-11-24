@@ -5,7 +5,7 @@
  *        rs { c: 홍보 링크 코드, p: 링크의 상품, at: 링크를 누른 때 } → 맞으면 수강권 주문에 온드미디어 RS 를 남겨요 (_lib/media.js)
  *        종이책: qty(1~10권) · ship { name, phone, zip, addr1, addr2, memo } → 주문에 배송지 · 배송 상태(ship.st ready → prep → ship → done)를 남겨요
  *        → 서버가 금액을 계산해 ‘결제 대기’ 주문을 만들고 { paymentId(= 토스 orderId), amount, orderName, no, customerKey } 를 돌려줘요 (0원이면 바로 완료)
- *        method: card(카드 · 간편결제) · transfer(실시간 계좌이체) · vbank(가상계좌) · naver(네이버페이) · kakao(카카오페이) — 토스 결제창(구버전 · ck 키 · TOSS_METHODS 로 연 것만)
+ *        method: transfer(퀵계좌이체 · 종이책은 안 받아요) · toss(토스페이) · naver(네이버페이) · kakao(카카오페이) · card(카드 · 간편결제) · vbank(가상계좌) — 토스 결제창(구버전 · ck 키 · TOSS_METHODS 로 연 것만)
  *                / tp — 토스 결제창형(gck 키 · 토스 창에서 수단을 골라요)
  *                | bank (무통장 입금 · depositor 입금자명 → 자동 입금 확인 또는 마스터 확인) — 0원은 바로 완료
  *   { action: "complete", paymentId, paymentKey, amount }  결제창에서 돌아오면(successUrl) — 서버가 정해 둔 금액과 같을 때만 토스에 승인 요청
@@ -74,7 +74,7 @@ async function applyPay(paymentId, pay) {
 }
 /** 결제 완료 (카드 · 계좌이체 승인 · 가상계좌 입금) — 주문 paid · 결제수단(결제창형 · 카드/간편결제 창은 토스 창에서 고른 수단) · 쿠폰 · 포인트
  *  네이버페이 · 카카오페이 버튼(간편결제 자체창)으로 낸 주문은 고른 수단 그대로 (토스는 ‘간편결제’로 알려 줘요) */
-const KEEP_METHOD = ["naver", "kakao"];
+const KEEP_METHOD = ["naver", "kakao", "toss"];
 async function markPaid(paymentId, idx, orders, pay) {
   if (orders.length && orders.every((o) => o.status === "paid")) return { ok: true, no: idx.nos[0], orders };
   const at = Date.now(), done = [], mk = toss.methodKey(pay), pg = Object.assign(toss.pgOf(pay), { st: "paid" });
@@ -149,7 +149,7 @@ async function finalizeFree(paymentId) {
 }
 
 /** 이번에 토스 결제창으로 받을 수 있는 결제수단 (새 주문) */
-const isPgMethod = (m) => ["card", "transfer", "vbank", "naver", "kakao", "tp"].indexOf(m) >= 0;
+const isPgMethod = (m) => ["card", "transfer", "vbank", "toss", "naver", "kakao", "tp"].indexOf(m) >= 0;
 /** 쿠폰 사용 · 포인트 차감 (결제가 확인됐거나 무통장 주문을 받았을 때 한 번만) */
 async function useCouponPoints(mid, orders, key, no) {
   const pts = orders.reduce((a, o) => a + (o.pointOff || 0), 0), mcid = (orders.find((o) => o.mcid) || {}).mcid, at = Date.now();
@@ -199,6 +199,8 @@ async function prepare(res, m, b) {
   if (q.total > 0) {
     if (isPgMethod(method) && !(toss.on() && toss.methods().indexOf(method) >= 0)) return fail(res, 409, toss.on() ? "이 결제수단은 받지 않아요. 다른 결제 방법을 골라 주세요." : "결제 준비 중이에요. 결제가 열리면 바로 알려 드릴게요.");
     if (!isPgMethod(method) && method !== "bank") return fail(res, 400, "결제 방법을 골라 주세요.");
+    // 종이책(배송 상품)은 퀵계좌이체로 받지 않아요 — 현금 결제엔 구매안전서비스(에스크로)가 필요해서 (화면 vod.js payOpts 도 같게 · 2026-11-24)
+    if (method === "transfer" && q.items.some((it) => it.ship || it.shipFee != null)) return fail(res, 409, "종이책은 퀵계좌이체로 결제할 수 없어요. 카드 · 토스페이로 결제해 주세요.");
   }
   // 무통장 입금: 마스터 ‘무통장 입금 받기’ — 자동이면 토스 라이브 키가 들어간 뒤로는 받지 않아요 (가상계좌로) · 이미 들어온 무통장 주문은 그대로 처리돼요
   if (q.total > 0 && method === "bank" && !(await BM.open())) return fail(res, 409, "지금은 무통장 입금을 받지 않아요. 가상계좌나 다른 결제 방법을 골라 주세요.");

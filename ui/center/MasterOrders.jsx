@@ -50,7 +50,7 @@ export function MasterVodRefund({ n }) {
         : <Empty ic="refresh">아직 환불 내역이 없어요.</Empty>}</section>
     <section className="a-card crm-card rf-pg"><div className="a-card-head"><h2>결제(PG) 연결</h2>{pgOn ? <Pill cls="ok">토스페이먼츠 연결됨</Pill> : <Pill cls="warn">시안 · 연결 전</Pill>}</div>
       <p>{pgOn ? "회원 바로 취소 · 마스터 환불을 누르면 토스페이먼츠로 결제가 자동 취소돼요 (가상계좌는 적은 환불 계좌로 · 영업일 2일). 부분 환불은 그 금액만큼만 취소해요." : "지금은 시안이라 환불 · 취소 기록만 남고 실제 결제는 취소되지 않아요. 정식 서버에 토스페이먼츠 키를 넣으면 같은 버튼이 결제를 자동으로 취소해요."}</p>
-      {pgOn && X.payOpts ? <p className="a-muted p-small">결제 화면에 열린 결제수단: <b>{X.payOpts().filter((z) => !z[3]).map((z) => z[2]).join(" · ")}</b><br />토스 결제수단은 Vercel 환경 변수 TOSS_METHODS 로 바꿔요 (card,vbank,naver,kakao — 네이버페이 · 카카오페이는 토스페이먼츠에서 승인된 뒤에 넣어요 · 퀵계좌이체 · 무통장은 받지 않아요).</p> : null}</section>
+      {pgOn && X.payOpts ? <p className="a-muted p-small">결제 화면에 열린 결제수단: <b>{X.payOpts().filter((z) => !z[3]).map((z) => z[2]).join(" · ")}</b><br />토스 결제수단은 Vercel 환경 변수 TOSS_METHODS 로 바꿔요 (지금 계약: transfer,toss,card = 퀵계좌이체 · 토스페이 · 카드/간편결제 — 네이버페이(naver) · 카카오페이(kakao) · 가상계좌(vbank)는 토스페이먼츠에서 승인된 뒤에 넣어요 · 종이책은 퀵계좌이체가 자동으로 빠져요).</p> : null}</section>
   </>;
 }
 
