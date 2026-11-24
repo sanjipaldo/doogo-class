@@ -512,6 +512,10 @@ CLASS_SQLITE=/tmp/class.db MASTER_PASSWORD=test node scripts/dev-server.js 4400 
 | `TOSS_VBANK_HOURS` | 가상계좌 입금 기한(시간 · 기본 72) |
 | `TOSS_VARIANT` | 결제위젯 키(gck)일 때만 결제 UI variantKey (기본 `DEFAULT`) |
 
+- **운영 라이브 (2026-11-24)**: 토스페이먼츠 계약 완료 — 상점아이디(MID) `doogoclass` · 계약 결제수단 **신용카드 · 계좌이체 · 토스페이** · 정산 월정산+4영업일 · 과세 ‘부분면세’. Vercel **Production** 에 `TOSS_CLIENT_KEY`(라이브 **API 개별 연동 키** `live_ck_…`) · `TOSS_SECRET_KEY`(`live_sk_…` · Sensitive) · `TOSS_METHODS=card`(카드/간편결제 창 — 토스페이 포함). 가상계좌 · 네이버페이 · 카카오페이는 계약되면 `vbank` · `naver` · `kakao` 를 더해요(계약 안 된 수단을 열면 결제창 오류). 미리보기(시험용 DB)는 화면 보기용 임시 키 그대로 — 라이브 키를 미리보기에 넣지 않아요. 결제위젯 키(gck) · 보안 키 · 머트 키는 쓰지 않아요.
+  - 토스 개발자센터 › 웹훅에 `https://www.doogoclass.com/api/vod-pay?hook=toss` (`PAYMENT_STATUS_CHANGED`) 등록 — 토스 상점관리자에서 직접 취소한 결제도 주문에 반영돼요.
+  - 책(종이책 · 전자책) 면세 금액(`taxFreeAmount`)은 아직 보내지 않아요 — 지금은 모두 과세로 잡혀요(세무 확인 뒤 추가).
+
 - **결제 화면 (탈잉처럼 · 2026-11-11):** 세로 목록 — 실시간 계좌이체 · 네이버페이(N Pay 표시) · 카카오페이(pay 표시) · 카드/간편결제 · 가상계좌 입금 · 무통장 입금, 처음엔 카드를 골라 둬요. 고른 수단 바로 아래 안내(카드: 할부 개월 수는 다음 결제창에서 · 무이자 ‘(무)’ 표시 / 가상계좌: 입금 계좌 · 기한). 네이버페이 · 카카오페이는 **간편결제 자체창**(`card.flowMode: DIRECT` · `easyPay: NAVERPAY | KAKAOPAY`)이라 그 앱 · 창이 바로 떠요. 네이버페이 · 카카오페이를 열면 카드 칸 이름이 ‘카드/간편결제’(통합결제창에서 토스페이 · 페이코 같은 다른 간편결제도).
 - 키 종류에 따라 저절로: API 개별 연동 키(ck · sk) → 위처럼 우리 화면에서 고르기 / 결제위젯 연동 키(gck · gsk) → 토스 창 하나에서 고르기(결제수단 칸 하나 `tp`). **운영 사이트에 시험 키(test_)** 를 넣으면(토스 심사) 결제창은 열리지만 서버가 승인하지 않고 결제 화면에 ‘실제로 결제되지 않아요’ 안내.
 - 흐름: `prepare`(서버가 금액 계산 · 결제 대기 주문 · 토스 orderId `pay_…`) → 결제창 → 첫 화면으로 돌아옴(`?paymentKey&orderId&amount`) → `complete` 가 금액을 확인하고 토스 **승인**(10분 안 · 멱등키) → 결제 완료(가상계좌는 입금 대기). 결제창을 닫으면 `failUrl` → 결제 대기 주문은 ‘결제 안 됨’.
