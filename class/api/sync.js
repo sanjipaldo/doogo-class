@@ -13,7 +13,18 @@ const DR = require("../shared/data-rules");
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const MAX_DOC = 2 * 1024 * 1024;
 
-async function applyChange(ch, ids) {
+const subCount = (p) => { const s = p && p.submissions && typeof p.submissions === "object" ? p.submissions : {}; return Object.keys(s).reduce((a, m) => a + (Array.isArray(s[m]) ? s[m].length : 0), 0); };
+/** 진행 기록 지키기 (2026-11-25 · 수강생 진도가 사라진 일): 과제 제출은 지워지지 않아요(제출을 지우는 기능은 없어요) — 저장 결과에 서버에 있던 제출이 빠졌으면 되돌려 넣고,
+ *  제출이 하나도 없는 기록으로 바뀌려 하면(통째로 비우기) 서버 기록 위에 합쳐요(질문 · 대화 · 읽음 · 시청 · 노트도 남김). 하나씩 지우는 질문 · 대화 지우기는 그대로 돼요 */
+function guardProg(o, n) {
+  if (!o || typeof o !== "object" || !n || typeof n !== "object") return n;
+  if (subCount(o) > 0 && subCount(n) === 0) return DR.progUnion(n, o);
+  const os = o.submissions && typeof o.submissions === "object" ? o.submissions : {}, keep = {};
+  Object.keys(os).forEach((mid) => { if (Array.isArray(os[mid]) && os[mid].length) keep[mid] = os[mid]; });
+  return Object.keys(keep).length ? DR.progUnion(n, { submissions: keep }) : n;
+}
+
+async function applyChange(ch, ids, dels) {
   const k = String((ch && ch.k) || "");
   if (!access.parseKey(k)) return { k, error: "key" };
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -30,7 +41,13 @@ async function applyChange(ch, ids) {
     // (빈 진행 기록이 서버 기록을 통째로 덮어써 수강생 과제 · 대화 · 공지 읽음이 모두 사라졌던 일 · 2026-11-25)
     if (exists && ch.put !== undefined && naive != null && (Number(ch.base) || 0) !== row.ver && k.indexOf("prog:") === 0) naive = DR.progUnion(naive, row.v);
     if (!exists && naive == null) return { k, ver: row ? row.ver : 0, doc: null };
+    // 진행 기록 지우기는 그 수강생(stu)도 같이 지울 때만 — 수강생은 그대로인데 화면에서 진행 기록만 빠져 ‘지우기’가 오던 일 (2026-11-25 · 한 분은 진행 기록이 통째로 지워졌어요)
+    if (exists && naive == null && k.indexOf("prog:") === 0) {
+      const sk = "stu:" + k.slice(5), stu = dels && dels.has(sk) ? null : await store.getDoc(sk);
+      if (stu && stu.v != null) return { k, ver: row.ver, doc: access.view(k, row.v, ids) };
+    }
     let next = w.fix(exists ? clone(row.v) : null, clone(naive));
+    if (exists && next != null && k.indexOf("prog:") === 0) next = guardProg(row.v, next);
     let modified = (Number(ch.base) || 0) !== (row ? row.ver : 0) || JSON.stringify(next) !== JSON.stringify(naive);
     if (next != null) {
       const doc = next;
@@ -60,6 +77,7 @@ module.exports = handler(["POST"], async (req, res) => {
   const b = await body(req);
   const changes = Array.isArray(b.changes) ? b.changes.slice(0, 300) : [];
   const results = [];
-  for (const ch of changes) results.push(await applyChange(ch, ids));
+  const dels = new Set(changes.filter((ch) => ch && ch.del).map((ch) => String(ch.k || "")));
+  for (const ch of changes) results.push(await applyChange(ch, ids, dels));
   send(res, 200, { now: Date.now(), me: auth.publicMe(ids), results });
 });

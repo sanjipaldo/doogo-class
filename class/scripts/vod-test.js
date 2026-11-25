@@ -4444,6 +4444,27 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     r = await call("sync", { body: { changes: [{ k: pk88, base: vNow, put: keep88 }] } });
     const h88 = (await st88.getDoc(pk88)).v;
     ok(h88.questions.length === 0 && h88.submissions["m1-1"][0].review.status === "approved", "지금 판(base)을 알고 보낸 통째 저장은 예전처럼 그대로 (질문 지우기 같은 변경도 돼요) · 강사 검수는 서버 값 유지", h88);
+    // 지우기 막기: 수강생(stu)은 그대로인데 진행 기록만 지우라는 저장은 받지 않아요 (강사 · 코치 화면에서 와도) — 수강생과 같이 지울 때만
+    useJar({ dc_a: auth.sign({ r: "instructor", iid: "moon" }) });
+    const vd88 = (await st88.getDoc(pk88)).ver;
+    r = await call("sync", { body: { changes: [{ k: pk88, base: vd88, del: true }] } });
+    const d88 = await st88.getDoc(pk88);
+    ok(d88 && d88.v && d88.v.submissions["m1-1"].length === 1 && r.json.results[0].doc && d88.ver === vd88, "진행 기록만 지우라는 저장(del)은 수강생이 남아 있으면 받지 않고 서버 기록을 돌려줘요 (강사 화면이어도)", r.json.results[0]);
+    // 제출은 지워지지 않아요: 지금 판을 알고 보낸 저장이라도 서버에 있던 제출이 빠지면 되돌려 넣어요 · 통째로 비우면 합쳐요
+    r = await call("sync", { body: { changes: [{ k: pk88, base: vd88, ops: [{ p: ["submissions", "m1-2"], d: true }] }] } });
+    const e88 = (await st88.getDoc(pk88)).v;
+    const v2 = (await st88.getDoc(pk88)).ver, wipe88 = Object.assign(DR88.emptyProgress(), { guideV: 2, level: 0 });
+    r = await call("sync", { body: { changes: [{ k: pk88, base: v2, put: wipe88 }] } });
+    const f88 = (await st88.getDoc(pk88)).v;
+    ok(e88.submissions["m1-2"] && e88.submissions["m1-2"].length === 1 && f88.submissions["m1-1"].length === 1 && f88.submissions["m1-1"][0].review.status === "approved" && f88.submissions["m1-2"].length === 1 && Object.keys(f88.readNotices).length >= 3,
+      "과제 제출은 지워지지 않아요: 제출을 빼는 저장은 되돌려 넣고, 지금 판을 알고 보냈어도 기록을 통째로 비우는 저장(제출 0개)은 서버 기록 위에 합쳐요 (승인 · 읽음 그대로)", f88);
+    // 수강생을 지울 때는 진행 기록도 같이 지워져요
+    await st88.writeDoc("stu:moon:s88x", { id: "s88x", instructorId: "moon", cohortId: "c4", name: "라OO", status: "approved" }, null);
+    await st88.writeDoc("prog:moon:s88x", Object.assign(DR88.emptyProgress(), { submissions: { m1: [{ at: 5 }] } }), null);
+    const sx = await st88.getDoc("stu:moon:s88x"), px = await st88.getDoc("prog:moon:s88x");
+    r = await call("sync", { body: { changes: [{ k: "stu:moon:s88x", base: sx.ver, del: true }, { k: "prog:moon:s88x", base: px.ver, del: true }] } });
+    ok(!((await st88.getDoc("stu:moon:s88x")) || {}).v && !((await st88.getDoc("prog:moon:s88x")) || {}).v, "강사가 수강생을 삭제하면(수강생 · 진행 기록을 같이 보냄) 진행 기록도 지워져요", r.json.results);
+    useJar({ dc_s: auth.sign({ r: "student", sid: sid88, iid: "moon" }) });
     // 강사 검수 지키기: 순서가 아니라 제출 시각(at)으로 같은 제출을 찾아요
     const AC88 = require(path.join(TMP, "class/api/_lib/access.js"));
     const ks88 = (() => { const src = fs.readFileSync(path.join(ROOT, "api/_lib/access.js"), "utf8"); return /ol\.find\(\(x\) => x && x\.at === s\.at\)/.test(src); })();
@@ -4475,7 +4496,7 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       Object.keys(rr.readNotices).sort().join() === "a,x" && w88["stu:moon:r1"] && w88["stu:moon:r1"].demo === false && !w88["prog:moon:r2"] && !w88["prog:moon:gone"] && !w88["stu:moon:s1"] &&
       out88.result.restored.length === 2 && /나OO/.test(JSON.stringify(out88.result.restored)) && !/체험표시":"있었음/.test(JSON.stringify(out88.result.restored.filter((x) => /s1/.test(x.who)))),
       "되살리기(2026-11-25-prog-restore): 백업 두 개를 합쳐 사라진 과제 3개 · 강사 승인 · 코치 답변 · 마인드 기록 · 공지 읽음을 더함(지금 읽음도 그대로) · 며칠에 걸쳐 제출한 수강생의 잘못된 체험 표시는 풂 · 그대로인 수강생 · 지운 수강생은 건너뜀 · 체험 계정(s1)은 표시 그대로", out88.result);
-    ok(OF88.OPS.some((o) => o.id === "2026-11-25-prog-restore" && o.run === OF88.progRestore) && /await op\.run\(get, keys, ctx\)/.test(fs.readFileSync(path.join(ROOT, "api/_lib/init.js"), "utf8")),
+    ok(OF88.OPS.some((o) => o.id === "2026-11-25-prog-restore" && o.run === OF88.progRestore) && OF88.OPS.some((o) => o.id === "2026-11-25-prog-restore-2" && o.run === OF88.progRestore) && /await op\.run\(get, keys, ctx\)/.test(fs.readFileSync(path.join(ROOT, "api/_lib/init.js"), "utf8")),
       "일회성 작업 목록에 되살리기 · 배포 때 작업에 백업 · 저장 시각 도구를 넘겨요(비동기 작업 기다림)");
   }
 
