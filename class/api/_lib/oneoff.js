@@ -1085,6 +1085,21 @@ function progSum(p) {
   const cnt = (x) => (isObj(x) ? Object.keys(x).length : Array.isArray(x) ? x.length : 0);
   return "제출 " + n + "(과제 " + Object.keys(subs).filter((m) => Array.isArray(subs[m]) && subs[m].length).length + ") · 질문 " + cnt(o.questions) + " · 공지 읽음 " + cnt(o.readNotices) + " · 시청 " + cnt(o.watched) + " · 노트 " + cnt(o.notes) + " · 대화 " + cnt(o.chat);
 }
+/** 과제 이름 찾기 (기본 커리큘럼 · 다른 커리큘럼 모두) — 복구 기록에 제목만 남겨요 (제출 내용은 안 남김) */
+function missionTitle(c, mid) {
+  const lists = isObj(c) ? [c.weeks].concat((Array.isArray(c.curricula) ? c.curricula : []).map((cu) => isObj(cu) && cu.weeks)) : [];
+  for (const ws of lists) for (const w of Array.isArray(ws) ? ws : []) for (const m of isObj(w) && Array.isArray(w.missions) ? w.missions : []) if (isObj(m) && m.id === mid) return (w.no ? w.no + "주차 " : "") + String(m.title || mid).slice(0, 40);
+  return mid;
+}
+/** 복구한 과제 목록: 과제 이름 · 마지막 제출 시각 · 검수 상태 (되살린 제출이 있는 과제는 ★) */
+function subList(c, p, lost) {
+  const subs = isObj(p) && isObj(p.submissions) ? p.submissions : {}, lostM = new Set(lost.map((x) => x.split("@")[0]));
+  const RV = { approved: "승인", fix: "보완 요청" };
+  return Object.keys(subs).filter((m) => Array.isArray(subs[m]) && subs[m].length).map((m) => {
+    const l = subs[m][subs[m].length - 1] || {};
+    return (lostM.has(m) ? "★ " : "") + missionTitle(c, m) + " · " + kstTxt(l.at) + " · " + (l.review && l.review.status ? RV[l.review.status] || l.review.status : "검수 대기") + (subs[m].length > 1 ? " · 제출 " + subs[m].length + "번" : "");
+  });
+}
 const subAts = (p) => { const out = []; const subs = isObj(p) && isObj(p.submissions) ? p.submissions : {}; Object.keys(subs).forEach((m) => (Array.isArray(subs[m]) ? subs[m] : []).forEach((x) => { if (x && x.at) out.push(m + "@" + x.at); })); return out; };
 async function progRestore(get, keys, ctx) {
   const DR = require("../../shared/data-rules");
@@ -1105,7 +1120,7 @@ async function progRestore(get, keys, ctx) {
     const days = new Set(subAts(uni).map((x) => kstDay(Number(x.split("@")[1])))).size;
     const merged = DR.progUnion(isObj(cur) ? cur : DR.emptyProgress(), uni);
     writes[pk] = merged;
-    const row = { who: maskNm(s.name) + " (" + iid + " · " + sid + " · 기수 " + (s.cohortId || "-") + ")", 마지막_저장: kstTxt(ctx && ctx.updated ? ctx.updated(pk) : 0), 지금: progSum(cur), 지금_칸: isObj(cur) ? Object.keys(cur).join(",") : "없음", 되살린_제출: lost.length, 되살린_뒤: progSum(merged), 쓴_백업: used.join(" "), 제출한_날: days };
+    const row = { who: maskNm(s.name) + " (" + iid + " · " + sid + " · 기수 " + (s.cohortId || "-") + ")", 마지막_저장: kstTxt(ctx && ctx.updated ? ctx.updated(pk) : 0), 지금: progSum(cur), 지금_칸: isObj(cur) ? Object.keys(cur).join(",") : "없음", 되살린_제출: lost.length, 되살린_뒤: progSum(merged), 쓴_백업: used.join(" "), 제출한_날: days, 과제: subList(get("content:" + iid), merged, lost) };
     if (s.demo === true) {
       row.체험표시 = "있음";
       if (DEMO_SIDS.indexOf(sid) < 0 && days >= 2) { writes[sk] = Object.assign({}, s, { demo: false }); row.체험표시 = "있었음 → 풀었어요 (며칠에 걸친 실제 제출)"; }
