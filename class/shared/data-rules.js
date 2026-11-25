@@ -22,6 +22,41 @@
   const addDays = D.addDays;
   const KEY_PROGRESS = "moonclass:progress:";
   function emptyProgress() { return { submissions: {}, watched: {}, docs: {}, questions: [], chat: [], notes: {}, journal: {}, readNotices: {}, guide: {} }; }
+  /* 진행 기록 합치기 (2026-11-25 · 수강생 진도가 통째로 사라진 일 뒤로) — a 는 그대로 두고 b 에만 있는 것을 더해요. 아무것도 지우지 않아요.
+   *  · 과제 제출(submissions): 과제마다 제출 시각(at)이 다른 제출만 더하고 시각 순으로 (마지막 = 최신 그대로)
+   *  · 목록(질문 questions · 챗봇 대화 chat · 마진표 등): id(없으면 내용)가 같은 것이 없으면 더하고, 모두 시각이 있으면 시각 순으로
+   *  · 칸 모음(강의 시청 · 공지 읽음 · 노트 · 서류 · 시작 가이드 · 다시보기 …): a 에 없는 칸만 더함
+   *  · 레벨(level)은 큰 쪽 · 그 밖의 값은 a 그대로
+   *  쓰는 곳: 서버 sync(통째 저장이 서버의 지금 판을 모를 때 · api/sync.js) · 복구 일회성 작업(api/_lib/oneoff.js progRestore) */
+  function progUnion(a, b) {
+    const isO = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+    const out = isO(a) ? clone(a) : {};
+    if (!isO(b)) return out;
+    Object.keys(b).forEach((k) => {
+      const bv = b[k], av = out[k];
+      if (av === undefined || av === null) { if (bv !== undefined) out[k] = bv == null ? bv : clone(bv); return; }
+      if (k === "submissions" && isO(av) && isO(bv)) {
+        Object.keys(bv).forEach((mid) => {
+          const al = Array.isArray(av[mid]) ? av[mid] : [], bl = Array.isArray(bv[mid]) ? bv[mid] : [];
+          const seen = new Set(al.map((x) => (x ? x.at : undefined))), add = bl.filter((x) => x && !seen.has(x.at));
+          if (!add.length) { if (!Array.isArray(av[mid]) && bl.length) av[mid] = clone(bl); return; }
+          av[mid] = al.concat(clone(add)).sort((x, y) => (Number(x && x.at) || 0) - (Number(y && y.at) || 0));
+        });
+        return;
+      }
+      if (Array.isArray(av) && Array.isArray(bv)) {
+        const keyOf = (x) => (isO(x) && x.id != null ? "id:" + x.id : JSON.stringify(x));
+        const seen = new Set(av.map(keyOf)), add = bv.filter((x) => !seen.has(keyOf(x)));
+        if (!add.length) return;
+        const list = av.concat(clone(add));
+        out[k] = list.every((x) => isO(x) && Number(x.at)) ? list.sort((x, y) => x.at - y.at) : list;
+        return;
+      }
+      if (isO(av) && isO(bv)) { Object.keys(bv).forEach((s) => { if (av[s] === undefined) av[s] = clone(bv[s]); }); return; }
+      if (k === "level" && typeof av === "number" && typeof bv === "number") out[k] = Math.max(av, bv);
+    });
+    return out;
+  }
 
   function make(ctx) {
     const SEED = () => ctx.seed();
@@ -821,5 +856,5 @@
 
     return { LANDING_SECTIONS, landingOf, FREE_SECTIONS, freeStarter, freeOf, THEMES, themeOf, STUDENT_MENUS, OLD_MENU_LABELS, botNameOf, OLD_BOT_NAME, RENAME_PHRASES, QL_RENAME, renameWord, renameContentPhrases, NOTE_PROMPTS, LIB_MENUS, CUSTOM_ICONS, VOD_MENUS, VOD_LIVE_ONLY, VOD_LABEL, splitMid, menuConfig, vodMenuConfig, isCustom, menuOn, libOn, template, QL_ICONS, defaultQuickLinks, MISSION_KINDS, missionKind, normalizeWeeks, normalizeContent, fullDemoProgress, fromSeed, migrate2to3, loadFixups, loadLocal, emptyProgress };
   }
-  return { make, emptyProgress, KEY_PROGRESS };
+  return { make, emptyProgress, progUnion, KEY_PROGRESS };
 });

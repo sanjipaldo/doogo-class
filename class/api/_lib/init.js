@@ -55,13 +55,27 @@ async function runPendingOps(log) {
   const pending = oneoff.OPS.filter((op) => !done.has(op.id) && (!op.when || op.when()));
   if (!pending.length) return [];
   const rows = await store.allDocRows();
-  const cur = {}, ver = {};
-  rows.forEach((r) => { cur[r.k] = r.v == null ? null : JSON.parse(r.v); ver[r.k] = r.ver; });
+  const cur = {}, ver = {}, upd = {};
+  rows.forEach((r) => { cur[r.k] = r.v == null ? null : JSON.parse(r.v); ver[r.k] = r.ver; upd[r.k] = Number(r.updated) || 0; });
+  // 작업에 넘기는 도구 (2026-11-25): 문서를 마지막으로 바꾼 시각 · 배포 전 백업(since 이후 · prefixes 로 시작하는 문서만) — 복구 작업용
+  const ctx = {
+    updated: (k) => upd[k] || 0,
+    backups: async (since, prefixes) => {
+      const out = [];
+      for (const b of await store.listBackups()) {
+        if (Number(b.at) < (Number(since) || 0)) continue;
+        const docs = {};
+        ((await store.backupRows(b.id)) || []).forEach((r) => { if (!prefixes || prefixes.some((p) => String(r.k).indexOf(p) === 0)) docs[r.k] = r.v == null ? null : typeof r.v === "string" ? JSON.parse(r.v) : r.v; });
+        out.push({ id: Number(b.id), at: Number(b.at), reason: String(b.reason || ""), docs });
+      }
+      return out.sort((x, y) => x.at - y.at);
+    },
+  };
   const get = (k) => (cur[k] == null ? cur[k] : JSON.parse(JSON.stringify(cur[k])));
   const keys = (prefix) => Object.keys(cur).filter((k) => k.indexOf(prefix) === 0).sort();
   const ran = [];
   for (const op of pending) {
-    const { writes, result, retry } = op.run(get, keys);
+    const { writes, result, retry } = await op.run(get, keys, ctx);
     let ok = true;
     for (const k of Object.keys(writes)) {
       let v = writes[k];

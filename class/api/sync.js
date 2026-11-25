@@ -8,6 +8,7 @@ const auth = require("./_lib/auth");
 const access = require("./_lib/access");
 const { applyOps, extractFiles } = require("./_lib/ops");
 const VA = require("./_lib/vodaccess");
+const DR = require("../shared/data-rules");
 
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o)));
 const MAX_DOC = 2 * 1024 * 1024;
@@ -24,6 +25,10 @@ async function applyChange(ch, ids) {
     if (ch.del) naive = null;
     else if (ch.put !== undefined) naive = clone(ch.put);
     else naive = applyOps(clone(exists ? row.v : null), ch.ops);
+    // 진행 기록(prog)을 통째로(put) 보냈는데 보낸 화면이 서버의 지금 판을 몰랐으면(base ≠ 지금 판 — 서버 기록을 받기 전에 저장했거나 오래된 화면),
+    // 통째로 바꾸지 않고 서버 기록 위에 합쳐요: 보낸 내용이 이기고, 서버에만 있는 제출 · 질문 · 읽음 · 시청 등은 그대로 남아요.
+    // (빈 진행 기록이 서버 기록을 통째로 덮어써 수강생 과제 · 대화 · 공지 읽음이 모두 사라졌던 일 · 2026-11-25)
+    if (exists && ch.put !== undefined && naive != null && (Number(ch.base) || 0) !== row.ver && k.indexOf("prog:") === 0) naive = DR.progUnion(naive, row.v);
     if (!exists && naive == null) return { k, ver: row ? row.ver : 0, doc: null };
     let next = w.fix(exists ? clone(row.v) : null, clone(naive));
     let modified = (Number(ch.base) || 0) !== (row ? row.ver : 0) || JSON.stringify(next) !== JSON.stringify(naive);

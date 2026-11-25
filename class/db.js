@@ -643,6 +643,8 @@
   // 서버 모드에서도 미리보기(preview-…) 기록은 이 브라우저에만 둔다
   const localSid = (sid) => /^preview-/.test(String(sid));
   const progress = (sid) => Object.assign(emptyProgress(), R.on && !localSid(sid) ? clone(R.prog[sid] || {}) : store.get(KEY_PROGRESS + sid, {}));
+  /** 서버 진행 기록을 받았는지 (서버 모드) — 받기 전 빈 기록을 저절로 저장하지 않게 (app.js 시작 가이드 · 레벨 · 2026-11-25) */
+  const progressLoaded = (sid) => !R.on || localSid(sid) || Object.prototype.hasOwnProperty.call(R.prog, sid);
   const saveProgress = (sid, p) => {
     if (R.on && !localSid(sid)) { R.prog[sid] = clone(p); schedule(); return true; }
     return store.set(KEY_PROGRESS + sid, p);
@@ -1188,7 +1190,7 @@
     REQUEST_CATEGORIES, maskName, requests, inquiries, saveInquiry, removeInquiry, applyPartner, applyTrack, siteInfo, saveSite, SITE_DEFAULT, opsKakao,
     BILLING_DEFAULT, BILL_VAT, BILL_STATE, billingInfo, saveBilling, bills, saveBill, removeBill, billMoney, billState, won,
     THEMES, themeOf, STUDENT_MENUS, LIB_MENUS, CUSTOM_ICONS, menuConfig, menuOn, libOn, isCustom, NOTE_PROMPTS, botNameOf,
-    emptyProgress, progress, saveProgress, allProgress, lastSub, subState, stats,
+    emptyProgress, progress, progressLoaded, saveProgress, allProgress, lastSub, subState, stats,
     session, remote, onSave,
     date: { DOW, todayStr, parseDate, addDays, diffDays, fmtMD, fmtFull, fmtKo, fmtStamp, toStr }
   };

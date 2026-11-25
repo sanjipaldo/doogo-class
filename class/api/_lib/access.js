@@ -296,7 +296,8 @@ function keepStaffFields(o, n) {
   const subs = (n && n.submissions) || {};
   Object.keys(subs).forEach((mid) => {
     (subs[mid] || []).forEach((s, i) => {
-      const os = ((o.submissions || {})[mid] || [])[i], same = !!os && os.at === s.at;
+      // 같은 제출 = 제출 시각(at)이 같은 것 (순서가 아니라 시각으로 찾아요 — 합쳐진 기록은 순서가 달라질 수 있어서 · 2026-11-25)
+      const ol = (o.submissions || {})[mid] || [], os = ol[i] && ol[i].at === s.at ? ol[i] : ol.find((x) => x && x.at === s.at), same = !!os && os.at === s.at;
       if (same && os.review) s.review = os.review; else delete s.review;
       if (same && os.reviewLog) s.reviewLog = os.reviewLog; else delete s.reviewLog;
     });

@@ -1070,6 +1070,59 @@ function demoResetNow(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 수강생 진도 되살리기 (2026-11-25 · 대표님 요청 — 문대표 3기 수강생 한 분의 과제 · 대화 · 공지 읽음이 통째로 사라짐) ----------
+ * 배포 전 자동 백업(최근 7일)에 있던 제출이 지금 진행 기록(prog)에 없는 수강생만 골라, 지금 기록은 그대로 두고 빠진 것만 더해요(DR.progUnion —
+ * 과제 제출 · 질문 · 대화 · 공지 읽음 · 강의 시청 · 노트 등). 아무것도 지우지 않아요. 지금 수강생 기록(stu)이 없는(지운) 수강생은 건너뛰어요.
+ * 체험 계정(demo: true)으로 표시된 수강생이 백업에 서로 다른 날의 제출이 있으면 실제 수강생이 잘못 표시된 것으로 보고 표시를 풀어요
+ * (체험 계정은 로그인 · 로그아웃마다 처음으로 돌아가서 며칠에 걸친 제출이 쌓일 수 없어요) — 그대로 두면 다음 로그인 때 또 지워져요.
+ * 원인을 알 수 있게 기록에 남겨요(이름은 가림): 지금 기록을 마지막으로 바꾼 시각 · 지금 남은 것 · 되살린 것 · 쓴 백업 · 체험 표시 · 같은 이름 수강생 */
+const DEMO_SIDS = ["demo1", "demo2", "s1"]; // 체험 계정으로 만든 계정 (moonDemoAccounts)
+const kstTxt = (t) => (t ? new Date(Number(t) + 9 * 36e5).toISOString().slice(5, 16).replace("T", " ") : "-");
+const kstDay = (t) => new Date(Number(t) + 9 * 36e5).toISOString().slice(0, 10);
+function progSum(p) {
+  const o = isObj(p) ? p : {}, subs = isObj(o.submissions) ? o.submissions : {};
+  const n = Object.keys(subs).reduce((a, m) => a + (Array.isArray(subs[m]) ? subs[m].length : 0), 0);
+  const cnt = (x) => (isObj(x) ? Object.keys(x).length : Array.isArray(x) ? x.length : 0);
+  return "제출 " + n + "(과제 " + Object.keys(subs).filter((m) => Array.isArray(subs[m]) && subs[m].length).length + ") · 질문 " + cnt(o.questions) + " · 공지 읽음 " + cnt(o.readNotices) + " · 시청 " + cnt(o.watched) + " · 노트 " + cnt(o.notes) + " · 대화 " + cnt(o.chat);
+}
+const subAts = (p) => { const out = []; const subs = isObj(p) && isObj(p.submissions) ? p.submissions : {}; Object.keys(subs).forEach((m) => (Array.isArray(subs[m]) ? subs[m] : []).forEach((x) => { if (x && x.at) out.push(m + "@" + x.at); })); return out; };
+async function progRestore(get, keys, ctx) {
+  const DR = require("../../shared/data-rules");
+  const since = Date.now() - 7 * DAY;
+  const bks = ctx && ctx.backups ? await ctx.backups(since, ["prog:", "stu:"]) : [];
+  const writes = {}, result = { backups: bks.map((b) => "#" + b.id + " " + kstTxt(b.at)), checked: 0, restored: [], demoFlag: [], sameName: [] };
+  const pks = new Set(keys("prog:"));
+  bks.forEach((b) => Object.keys(b.docs).forEach((k) => { if (k.indexOf("prog:") === 0) pks.add(k); }));
+  Array.from(pks).sort().forEach((pk) => {
+    const parts = pk.split(":"), iid = parts[1], sid = parts[2], sk = "stu:" + iid + ":" + sid, s = get(sk);
+    if (!isObj(s)) return; // 지운 수강생은 건너뛰어요
+    result.checked++;
+    const cur = get(pk), have = new Set(subAts(cur));
+    let uni = null; const used = [];
+    bks.forEach((b) => { const v = b.docs[pk]; if (!isObj(v)) return; const before = uni ? subAts(uni).length : 0; uni = DR.progUnion(uni || {}, v); if (subAts(uni).length > before) used.push("#" + b.id); });
+    const lost = uni ? subAts(uni).filter((x) => !have.has(x)) : [];
+    if (!lost.length) return;
+    const days = new Set(subAts(uni).map((x) => kstDay(Number(x.split("@")[1])))).size;
+    const merged = DR.progUnion(isObj(cur) ? cur : DR.emptyProgress(), uni);
+    writes[pk] = merged;
+    const row = { who: maskNm(s.name) + " (" + iid + " · " + sid + " · 기수 " + (s.cohortId || "-") + ")", 마지막_저장: kstTxt(ctx && ctx.updated ? ctx.updated(pk) : 0), 지금: progSum(cur), 지금_칸: isObj(cur) ? Object.keys(cur).join(",") : "없음", 되살린_제출: lost.length, 되살린_뒤: progSum(merged), 쓴_백업: used.join(" "), 제출한_날: days };
+    if (s.demo === true) {
+      row.체험표시 = "있음";
+      if (DEMO_SIDS.indexOf(sid) < 0 && days >= 2) { writes[sk] = Object.assign({}, s, { demo: false }); row.체험표시 = "있었음 → 풀었어요 (며칠에 걸친 실제 제출)"; }
+    }
+    result.restored.push(row);
+  });
+  keys("stu:").forEach((k) => {
+    const s = get(k);
+    if (isObj(s) && s.demo === true) result.demoFlag.push(maskNm(s.name) + " (" + k.split(":")[1] + " · " + s.id + " · 기수 " + (s.cohortId || "-") + (writes[k] ? " · 표시 풀었어요" : "") + ")");
+  });
+  const byName = {};
+  keys("stu:").forEach((k) => { const s = get(k); if (!isObj(s) || !s.name) return; const key = k.split(":")[1] + "|" + String(s.name).replace(/\s+/g, ""); (byName[key] = byName[key] || []).push(s.id + "(" + (s.status || "-") + " · " + (s.cohortId || "-") + " · " + progSum(get("prog:" + k.split(":")[1] + ":" + s.id)).split(" · ")[0] + ")"); });
+  Object.keys(byName).forEach((key) => { if (byName[key].length > 1) result.sameName.push(maskNm(key.split("|")[1]) + " (" + key.split("|")[0] + "): " + byName[key].join(" / ")); });
+  if (!Object.keys(writes).length) result.none = "백업보다 제출이 줄어든 수강생이 없어요";
+  return { writes, result };
+}
+
 /* ---------- 문대표 2주차 시장조사 제목 ‘10개’ → ‘3개’ (2026-11-10 · 대표님 요청) ----------
  * 4주 압축 과정 등 다른 커리큘럼에 예전 제목(‘… 시장조사 10개’)이 남아 있으면 ‘시장조사 3개’로 (기본 커리큘럼과 같게). 제목 말고는 그대로 */
 function moonW2Title3(get) {
@@ -1513,7 +1566,8 @@ const OPS = [
   { id: "2026-11-23-choi-store-off", note: "강사 choi 두고클래스 스토어 숨김: insOff — 클래스 · 배너 · 강사진 카드가 스토어에서 빠지고 상세 · 결제 막힘 · 결제 가격표도 hidden (클래스는 지우지 않음 · 산 회원은 계속 수강 · 마스터 › DOOGO CLASS › 강사 관리에서 다시 켜요 · 이미 숨김이면 그대로)", run: choiStoreOff },
   { id: "2026-11-23-choi-store-on", note: "강사 choi 두고클래스 스토어 다시 보이기(유나 ON · 같은 날 숨김 되돌림): insOff 에서 choi 빼기 · 결제 가격표의 그 강사 상품을 원래 판매 상태로 (두잉고 소개 목록 OFF 는 그대로 · 이미 보이면 그대로)", run: choiStoreOn },
   { id: "2026-11-23-store-home-order", note: "두고클래스 첫 화면: 중국 구매대행(v14) 배너 끄기(지우지 않음) → 그 자리에 ‘귤 하나로 월매출 10억’(v3) 배너 · 홈 섹션 순서 고정(새로 올라온: v4 → v8 · v11 · v3 → b1 → v2 · v5 → 나머지 자동, v14 맨 뒤 / 가장 많이 듣는: v3 · v4 · v8 → 나머지 자동) — 마스터 › 홈 꾸미기와 같은 저장 · 마스터가 고친 섹션은 그대로", run: storeHomeOrder },
+  { id: "2026-11-25-prog-restore", note: "수강생 진도 되살리기: 배포 전 자동 백업(최근 7일)에 있던 과제 제출이 지금 진행 기록에 없는 수강생만 — 지금 기록은 그대로 두고 빠진 제출 · 질문 · 대화 · 공지 읽음 · 시청 · 노트를 더해요(지우지 않음) · 며칠에 걸쳐 제출한 수강생에게 잘못 붙은 체험 계정 표시는 풀어요 · 원인 기록(이름 가림)", run: progRestore },
   { id: "2026-11-24-store-pop-on", note: "두고클래스 스토어 팝업 켜기: 정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중 (닫기 · 오늘 그만 보기) — 마스터 › VOD 전시 · 쿠폰 · 설정 › 스토어 팝업에서 끄기 · 문구 수정 · 마스터가 이미 정했으면 그대로", run: storePopOn },
 ];
 
-module.exports = { OPS, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, progRestore, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

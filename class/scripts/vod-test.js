@@ -4415,6 +4415,70 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "마스터 › DOOGO CLASS 주문: 목록 결제수단 아래 ‘앱 · 안드로이드 / 앱 · iOS’ (예전 화면 = React) · 결제 상세 ‘결제한 곳’(웹 · 앱) · 엑셀 ‘결제한 곳’ 칸");
   }
 
+  {
+    console.log("88) 수강생 진도가 통째로 사라진 일 (2026-11-25) — 빈 기록 통째 저장이 서버 기록을 덮지 않게 · 백업에서 빠진 것만 되살리기");
+    const DR88 = require(path.join(TMP, "class/shared/data-rules.js")), st88 = require(path.join(TMP, "class/api/_lib/store.js"));
+    const OF88 = require(path.join(TMP, "class/api/_lib/oneoff.js"));
+    // 합치기: a 그대로 + b 에만 있는 것 (아무것도 안 지움)
+    const u88 = DR88.progUnion({ submissions: { m1: [{ at: 30, text: "새" }] }, questions: [{ id: "q2", at: 5 }], readNotices: { n2: 1 }, level: 1, guideV: 2 },
+      { submissions: { m1: [{ at: 10, text: "예전" }, { at: 30, text: "같은 시각" }], m2: [{ at: 20 }] }, questions: [{ id: "q1", at: 4, answer: "답" }, { id: "q2", at: 5, answer: "서버" }], readNotices: { n1: 1 }, level: 3, watched: { l1: 1 } });
+    ok(u88.submissions.m1.map((x) => x.at + x.text).join() === "10예전,30새" && u88.submissions.m2.length === 1 && u88.questions.map((q) => q.id).join() === "q1,q2" && !u88.questions[1].answer &&
+      Object.keys(u88.readNotices).sort().join() === "n1,n2" && u88.level === 3 && u88.guideV === 2 && u88.watched.l1 === 1,
+      "진행 기록 합치기(progUnion): 제출은 시각이 다른 것만 더하고 시각 순 · 같은 시각은 a 그대로 · 질문은 id 로 · 읽음 · 시청 칸 더하기 · 레벨은 큰 쪽", u88);
+    // 서버 sync: 수강생이 서버 판을 모르고(base 0) 빈 기록을 통째로 보내도 서버 기록이 남아요
+    const sid88 = "s88", pk88 = "prog:moon:" + sid88;
+    await st88.writeDoc("stu:moon:" + sid88, { id: sid88, instructorId: "moon", cohortId: "c4", name: "가OO", phone4: "8888", status: "approved", appliedAt: "2026-11-20" }, null);
+    const full88 = Object.assign(DR88.emptyProgress(), { guideV: 2, submissions: { "m1-1": [{ at: 1000, text: "마인드셋", review: { status: "approved", by: "코치", at: 1500 } }], "m1-2": [{ at: 2000, text: "수강후기" }] },
+      questions: [{ id: "q88", at: 1200, title: "질문", answer: "답변", answeredAt: 1300 }], readNotices: { a1: 1, a2: 2 } });
+    await st88.writeDoc(pk88, full88, null);
+    const v88 = (await st88.getDoc(pk88)).ver;
+    useJar({ dc_s: auth.sign({ r: "student", sid: sid88, iid: "moon" }) });
+    const empty88 = Object.assign(DR88.emptyProgress(), { guideV: 2 });
+    r = await call("sync", { body: { changes: [{ k: pk88, base: 0, put: Object.assign({}, empty88, { readNotices: { a3: 3 } }) }] } });
+    const g88 = (await st88.getDoc(pk88)).v;
+    ok(r.json.results[0].ver > v88 && g88.submissions["m1-1"].length === 1 && g88.submissions["m1-1"][0].review.status === "approved" && g88.submissions["m1-2"].length === 1 &&
+      g88.questions.length === 1 && g88.questions[0].answer === "답변" && Object.keys(g88.readNotices).sort().join() === "a1,a2,a3" && r.json.results[0].doc,
+      "서버 sync: 서버 판을 모르는(base 0) 통째 저장(put)은 덮어쓰지 않고 합쳐요 — 제출 2개 · 강사 승인 · 질문 답변 · 예전 공지 읽음이 그대로 + 새 읽음 더함 · 합친 결과를 돌려줘 화면도 맞춰요", g88);
+    const vNow = (await st88.getDoc(pk88)).ver, keep88 = JSON.parse(JSON.stringify(g88));
+    keep88.questions = []; // 수강생이 자기 질문을 지움 — 지금 판(base)을 알고 보낸 통째 저장은 그대로 받아요
+    r = await call("sync", { body: { changes: [{ k: pk88, base: vNow, put: keep88 }] } });
+    const h88 = (await st88.getDoc(pk88)).v;
+    ok(h88.questions.length === 0 && h88.submissions["m1-1"][0].review.status === "approved", "지금 판(base)을 알고 보낸 통째 저장은 예전처럼 그대로 (질문 지우기 같은 변경도 돼요) · 강사 검수는 서버 값 유지", h88);
+    // 강사 검수 지키기: 순서가 아니라 제출 시각(at)으로 같은 제출을 찾아요
+    const AC88 = require(path.join(TMP, "class/api/_lib/access.js"));
+    const ks88 = (() => { const src = fs.readFileSync(path.join(ROOT, "api/_lib/access.js"), "utf8"); return /ol\.find\(\(x\) => x && x\.at === s\.at\)/.test(src); })();
+    ok(ks88 && typeof AC88.writer === "function", "수강생 저장의 강사 검수 지키기(keepStaffFields): 같은 제출을 시각(at)으로 찾아요 (합친 기록은 순서가 바뀔 수 있어서)");
+    // 화면: 서버 기록을 받기 전에는 시작 가이드 · 레벨을 저절로 저장하지 않아요
+    const app88 = fs.readFileSync(path.join(ROOT, "app.js"), "utf8"), db88 = fs.readFileSync(path.join(ROOT, "db.js"), "utf8");
+    ok(/if \(had && DB\.progressLoaded\(me\.id\)\) saveProgress\(\);/.test(app88) && /if \(!preview && DB\.progressLoaded\(me\.id\) && lv\.idx > 0\) saveProgress\(\); return; \}/.test(app88) &&
+      /const progressLoaded = \(sid\) => !R\.on \|\| localSid\(sid\) \|\| Object\.prototype\.hasOwnProperty\.call\(R\.prog, sid\);/.test(db88) && /emptyProgress, progress, progressLoaded, saveProgress,/.test(db88),
+      "강의실 화면: 서버 진행 기록을 받기 전(빈 기록)에는 시작 가이드 정리 · 첫 레벨을 저절로 저장하지 않아요 (DB.progressLoaded)");
+    // 되살리기 작업: 백업에 있던 제출이 지금 없으면 빠진 것만 더해요 · 며칠에 걸친 제출이 있는 체험 표시는 풀어요
+    const D88 = 864e5, t0 = Date.parse("2026-11-23T10:00:00+09:00");
+    const docs88 = {
+      "stu:moon:r1": { id: "r1", name: "나OO", cohortId: "c4", status: "approved", demo: true },
+      "prog:moon:r1": Object.assign(DR88.emptyProgress(), { guideV: 2, readNotices: { x: 1 } }),
+      "stu:moon:r2": { id: "r2", name: "다OO", cohortId: "c4", status: "approved" },
+      "prog:moon:r2": { submissions: { m1: [{ at: t0 }] }, guideV: 2 },
+      "stu:moon:s1": { id: "s1", name: "체험 수강생", cohortId: "c4", status: "approved", demo: true },
+      "prog:moon:s1": Object.assign(DR88.emptyProgress(), { guideV: 2 }),
+    };
+    const bk88 = [
+      { id: 7, at: t0 + D88, docs: { "prog:moon:r1": { submissions: { m1: [{ at: t0 }], m2: [{ at: t0 + 2e6, review: { status: "approved" } }] }, questions: [{ id: "q1", at: t0, answer: "코치 답" }], readNotices: { a: 1 } },
+        "prog:moon:r2": { submissions: { m1: [{ at: t0 }] } }, "prog:moon:s1": { submissions: { m1: [{ at: t0 }], m2: [{ at: t0 + D88 }] } }, "prog:moon:gone": { submissions: { m1: [{ at: t0 }] } } } },
+      { id: 9, at: t0 + 2 * D88, docs: { "prog:moon:r1": { submissions: { m1: [{ at: t0 }], m2: [{ at: t0 + 2e6 }], m3: [{ at: t0 + D88 + 5 }] }, journal: { d1: "마인드" } } } },
+    ];
+    const get88 = (k) => (docs88[k] == null ? docs88[k] : JSON.parse(JSON.stringify(docs88[k]))), keys88 = (p) => Object.keys(docs88).filter((k) => k.indexOf(p) === 0).sort();
+    const out88 = await OF88.progRestore(get88, keys88, { updated: () => t0 + 3 * D88, backups: async () => bk88 });
+    const w88 = out88.writes, rr = w88["prog:moon:r1"];
+    ok(rr && Object.keys(rr.submissions).sort().join() === "m1,m2,m3" && rr.submissions.m2[0].review.status === "approved" && rr.questions[0].answer === "코치 답" && rr.journal.d1 === "마인드" &&
+      Object.keys(rr.readNotices).sort().join() === "a,x" && w88["stu:moon:r1"] && w88["stu:moon:r1"].demo === false && !w88["prog:moon:r2"] && !w88["prog:moon:gone"] && !w88["stu:moon:s1"] &&
+      out88.result.restored.length === 2 && /나OO/.test(JSON.stringify(out88.result.restored)) && !/체험표시":"있었음/.test(JSON.stringify(out88.result.restored.filter((x) => /s1/.test(x.who)))),
+      "되살리기(2026-11-25-prog-restore): 백업 두 개를 합쳐 사라진 과제 3개 · 강사 승인 · 코치 답변 · 마인드 기록 · 공지 읽음을 더함(지금 읽음도 그대로) · 며칠에 걸쳐 제출한 수강생의 잘못된 체험 표시는 풂 · 그대로인 수강생 · 지운 수강생은 건너뜀 · 체험 계정(s1)은 표시 그대로", out88.result);
+    ok(OF88.OPS.some((o) => o.id === "2026-11-25-prog-restore" && o.run === OF88.progRestore) && /await op\.run\(get, keys, ctx\)/.test(fs.readFileSync(path.join(ROOT, "api/_lib/init.js"), "utf8")),
+      "일회성 작업 목록에 되살리기 · 배포 때 작업에 백업 · 저장 시각 도구를 넘겨요(비동기 작업 기다림)");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

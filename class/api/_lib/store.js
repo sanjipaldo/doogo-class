@@ -397,7 +397,7 @@ async function putSys(json) {
   if (!r.affected) await exec("INSERT INTO docs (k, v, ver, updated, created) VALUES ('sys', ?, 1, ?, -1) ON CONFLICT(k) DO NOTHING", [json, Date.now()]);
 }
 /** 모든 문서 (지운 것도) — 일회성 작업이 지금 상태를 읽을 때 */
-async function allDocRows() { const u = readUnion("k, v, ver"); return (await exec(u.sql, u.args)).rows; }
+async function allDocRows() { const u = readUnion("k, v, ver, updated"); return (await exec(u.sql, u.args)).rows; }
 
 /* ---------------- 배포 기록용 확인 (DB 전환 A0) ---------------- */
 /** 사진 · 첨부 개수와 크기 (읽기만) */

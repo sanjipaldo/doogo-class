@@ -592,7 +592,8 @@
     }
     P = DB.progress(me.id);
     // 시작 가이드에 ‘완료’ 버튼이 생기면서, 테스트하며 눌러 둔 체크를 한 번만 비운다 (이후에는 ‘완료’를 누른 가이드는 다시 안 뜬다)
-    if (!preview && P.guideV !== 2) { P.guide = {}; P.guideClosed = {}; P.guideV = 2; saveProgress(); }
+    // 서버 진행 기록을 아직 못 받았으면(새 수강생이거나 받기 전) 저절로 저장하지 않아요 — 빈 기록이 서버 기록을 덮어쓰지 않게 (2026-11-25)
+    if (!preview && P.guideV !== 2) { const had = P.guideV != null || Object.keys(P.guide || {}).length; P.guide = {}; P.guideClosed = {}; P.guideV = 2; if (had && DB.progressLoaded(me.id)) saveProgress(); }
     checkLevelUp();
     draft = { missionId: null, files: [] };
     calCursor = null; calSel = null;
@@ -871,7 +872,7 @@
   // 지난번 접속 때보다 레벨이 올랐으면 한 번 축하
   function checkLevelUp() {
     const lv = LV();
-    if (P.level == null) { P.level = lv.idx; saveProgress(); return; }
+    if (P.level == null) { P.level = lv.idx; if (!preview && DB.progressLoaded(me.id) && lv.idx > 0) saveProgress(); return; }
     if (lv.idx > P.level) { P.level = lv.idx; saveProgress(); setTimeout(() => toast("레벨업! 이제 ‘" + lv.cur.name + "’ 단계예요 🎉"), 400); }
     else if (lv.idx !== P.level) { P.level = lv.idx; saveProgress(); }
   }
