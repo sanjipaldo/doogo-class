@@ -243,7 +243,15 @@ async function confirmPay(res, m, b) {
   const soft = err && err.status >= 400 && err.status < 500;
   return fail(res, soft ? 409 : 502, soft && err.message ? String(err.message).slice(0, 200) : "결제를 확인하지 못했어요. 잠시 뒤 주문 · 결제 내역을 확인하거나 문의하기로 알려 주세요.");
 }
-async function prepare(res, m, b) {
+/** 앱에서 낸 결제인지 — 앱은 사용자 에이전트 끝에 앱 표시(DoogoClassApp/…)를 붙여요(mobile/capacitor.config.json appendUserAgent)
+ *  → "ios" | "android" | "" (웹). 스토어 수수료 · 판매 보고(Apple 월별 · 구글 24시간)에 써요 (iPad 앱은 데스크톱 모양 사용자 에이전트라 Macintosh) */
+function appOf(req) {
+  const ua = String((req && req.headers && req.headers["user-agent"]) || "");
+  if (!/DoogoClassApp\//.test(ua)) return "";
+  return /iPhone|iPad|iPod|Macintosh/.test(ua) ? "ios" : /Android/.test(ua) ? "android" : "app";
+}
+async function prepare(res, m, b, req) {
+  const app = appOf(req);
   const orders = await V.ordersOf(m.id), q = await V.quote(m, b, orders);
   if (!q.ok) return fail(res, 409, q.message);
   const method = String(b.method || "card");
@@ -278,6 +286,7 @@ async function prepare(res, m, b) {
     let no = V.newNo(); const it = q.items[i];
     const ch = ["web", "ins", "ad"].indexOf(b.ch) >= 0 ? b.ch : "web";
     const o = Object.assign({ id: "", no, mid: m.id, method: q.total > 0 ? method.slice(0, 12) : q.points ? "point" : "free", status: bank ? "pending" : "ready", createdAt: at, at, paymentId, ch }, it, i ? { grp: nos[0] } : {}, buyer ? { buyer } : {}, bank ? { pg: { st: "bank" }, depositor, dueAt: at + bk.days * 864e5, bankTo: { bank: bk.bank, account: bk.account, holder: bk.holder } } : {});
+    if (app) o.app = app; // 앱에서 낸 주문 (안드로이드 · iOS) — 마스터 주문 상세 ‘결제한 곳’
     if (m.demo) o.demo = true; // 체험 계정 주문 — 1시간 뒤 정리 (_lib/demoorders.js)
     if (i === 0 && cr) o.cashRcpt = { type: cr.type, no: crNo };
     if (i === 0 && rs) o.rs = rs;
@@ -286,7 +295,7 @@ async function prepare(res, m, b) {
     for (let t = 0; t < 4 && !(await V.create(V.K.order(no), Object.assign(o, { id: "vo-" + no, no }))); t++) no = V.newNo();
     nos.push(no);
   }
-  await V.create(V.K.pay(paymentId), { nos, mid: m.id, total: q.total, at, bank });
+  await V.create(V.K.pay(paymentId), Object.assign({ nos, mid: m.id, total: q.total, at, bank }, app ? { app } : {}));
   await V.addOrderNos(m.id, nos);
   if (q.total === 0) { const r = await finalizeFree(paymentId); return send(res, 200, Object.assign({ free: true }, r)); }
   if (bank) {
@@ -528,7 +537,7 @@ module.exports = handler(["POST"], async (req, res) => {
   const m = await V.current(req);
   if (!m) return fail(res, 401, "로그인이 필요해요.");
   try {
-    if (a === "prepare") return await prepare(res, m, b);
+    if (a === "prepare") return await prepare(res, m, b, req);
     if (a === "complete") return await confirmPay(res, m, b);
     if (a === "abort") { const idx = await V.get(V.K.pay(String(b.paymentId || ""))); if (!idx || idx.mid !== m.id) return send(res, 200, { ok: true }); await failOrders(idx, b.code); return send(res, 200, { ok: true }); }
     if (a === "cancel") return await cancel(res, m, b);

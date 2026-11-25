@@ -4393,6 +4393,28 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "안드로이드 앱: 결제창이 여는 카드사 · 은행 · 간편결제 앱 주소(intent:// 등)는 그 앱을 열고, 없으면 Play 스토어로 (토스페이먼츠 웹뷰 가이드) · 웹 주소는 Capacitor 기본 그대로 · 앱 목록(queries) · 아이콘 · 스플래시(사이트 앱 아이콘 그대로)");
   }
 
+  {
+    console.log("87) 앱에서 낸 결제 표시 — 앱 사용자 에이전트(DoogoClassApp/)면 주문 · 결제 묶음에 app: android | ios · 마스터 주문 ‘결제한 곳’ (2026-11-25)");
+    const st87 = require(path.join(TMP, "class/api/_lib/store.js")), mid87 = "vm-app87", got87 = async (k) => { const x = await st87.getDoc(k); return x && x.v; };
+    if (!(await got87("vm:" + mid87))) await st87.writeDoc("vm:" + mid87, { id: mid87, email: "app87@example.com", name: "앱회원", points: 0, coupons: [], orderNos: [] }, null);
+    useJar({ dc_v: auth.sign({ r: "vod", mid: mid87 }) });
+    process.env.TOSS_METHODS = "card";
+    const prep87 = (ua) => call("vod-pay", { body: { action: "prepare", pid: "v5", kind: "course", plan: 365, method: "card" }, headers: ua ? { "user-agent": ua } : {} });
+    const a87 = await prep87("Mozilla/5.0 (Linux; Android 15; SM-S921N) AppleWebKit/537.36 Chrome/131 Mobile Safari/537.36 DoogoClassApp/1.0");
+    const i87 = await prep87("Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 DoogoClassApp/1.0");
+    const p87 = await prep87("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 DoogoClassApp/1.0");
+    const w87 = await prep87("Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) Mobile/15E148 Safari/604.1");
+    const o87 = async (r) => (r.json && r.json.no ? await got87("vo:" + r.json.no) : null);
+    const oa = await o87(a87), oi = await o87(i87), op = await o87(p87), ow = await o87(w87), pa = a87.json.paymentId ? await got87("vpay:" + a87.json.paymentId) : null, pw = w87.json.paymentId ? await got87("vpay:" + w87.json.paymentId) : null;
+    ok(oa && oa.app === "android" && oi && oi.app === "ios" && op && op.app === "ios" && ow && !("app" in ow) && pa && pa.app === "android" && pw && !("app" in pw),
+      "앱 결제 표시: 안드로이드 앱 → app: android · iPhone 앱 · iPad 앱(데스크톱 모양 사용자 에이전트) → ios · 휴대폰 웹(앱 표시 없음)은 표시 없음 · 결제 묶음(vpay)에도 같게", [oa && oa.app, oi && oi.app, op && op.app, ow && ow.app, pa && pa.app]);
+    const ad87 = fs.readFileSync(path.join(ROOT, "admin.js"), "utf8"), mo87 = fs.readFileSync(path.join(ROOT, "../ui/center/MasterOrders.jsx"), "utf8");
+    ok(/const VD_APP = \{ web: "웹", android: "앱 · 안드로이드", ios: "앱 · iOS", app: "앱" \};/.test(ad87) && /row\("결제한 곳", esc\(VD_APP\[o\.app \|\| "web"\] \|\| "앱"\)\)/.test(ad87) && /"결제수단", "결제한 곳", "판매가"/.test(ad87) &&
+      /VD_PAY\[o\.method\] \|\| o\.method, VD_APP\[o\.app \|\| "web"\] \|\| "앱", X\.baseOf\(o\)/.test(ad87) && /revBulkBtns, cohortName, VD_APP,/.test(ad87) &&
+      /\(o\.app \? '<small class="a-memo">' \+ esc\(VD_APP\[o\.app\] \|\| "앱"\)/.test(ad87) && /\{o\.app \? <small className="a-memo">\{A\.VD_APP\[o\.app\] \|\| "앱"\}<\/small> : null\}/.test(mo87),
+      "마스터 › DOOGO CLASS 주문: 목록 결제수단 아래 ‘앱 · 안드로이드 / 앱 · iOS’ (예전 화면 = React) · 결제 상세 ‘결제한 곳’(웹 · 앱) · 엑셀 ‘결제한 곳’ 칸");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);
