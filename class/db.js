@@ -984,6 +984,7 @@
     }
   }
   const snapOf = (k) => { const v = docOf(k); return v === undefined ? undefined : JSON.stringify(v); };
+  const p0 = (k) => String(k).split(":")[0];
   function resnapAll() { R.snap = {}; if (!db) return; const all = splitDb(db); Object.keys(all).forEach((k) => { R.snap[k] = JSON.stringify(all[k]); }); }
 
   /* 바뀐 부분 찾기: 객체는 키별로, 배열은 끝에 추가만 했으면 '추가', 길이가 같으면 칸별로, 아니면 통째로 */
@@ -1064,6 +1065,16 @@
       if (js !== undefined && R.nope[k] === js) return;
       // 고칠 권한이 없는 문서(예: 화면용 기본값 채우기)는 서버에 보내지 않고 그대로 둔다
       if (!canWrite(k)) { if (js === undefined) delete R.snap[k]; else R.snap[k] = js; return; }
+      // 진행 기록(prog)이 문서 목록에서 빠졌어도 그 수강생(stu)이 그대로면 지우기를 보내지 않아요 (2026-11-25 · 수강생 진도가 통째로 지워진 일).
+      // 화면은 수강생 목록에 있는 수강생의 진행 기록만 문서로 만들어서(splitDb), 수강생이 화면 목록에서 잠깐 빠지면 진행 기록이 ‘지우기’로 나갔어요.
+      // 수강생 삭제(같은 저장에서 stu 도 빠짐)일 때만 지워요. 아니면 보내지 않고 예전 모습을 그대로 기억해요 (서버도 같은 규칙 · api/sync.js)
+      // 수강생을 지울 권한이 없는 화면(예: ‘수강생 관리’ 권한이 없는 코치)은 수강생이 목록에서 빠져도 진행 기록만 따로 지우지 않아요 —
+      // 예전엔 수강생 지우기는 권한이 없어 안 나가고 진행 기록 지우기만 나가, 수강생은 그대로인데 진도만 통째로 지워졌어요
+      if (js === undefined && k.indexOf("prog:") === 0) {
+        const sk = "stu:" + k.slice(5);
+        if (cur[sk] !== undefined) return;
+        if (R.snap[sk] === undefined || !canWrite(sk)) { delete R.snap[k]; return; }
+      }
       sent[k] = js; prev[k] = R.snap[k];
       const base = R.ver[k] || 0;
       if (js === undefined) changes.push({ k, base, del: true });
@@ -1142,6 +1153,15 @@
         if (ver <= (R.ver[k] || 0)) return;
         // 판 번호만 올라가고 내용은 그대로면 다시 그리지 않아요
         if (R.last[k] !== undefined && JSON.stringify(v) === R.last[k]) { R.ver[k] = ver; return; }
+        // 진행 기록인데 이 화면이 아직 문서로 기억하지 않은 것(수강생이 목록에 없을 때 · 2026-11-25): 서버 것을 받고, 화면에만 있던 것은 그 위에 얹어요
+        // — 예전에는 ‘고치는 중’으로 보고 계속 건너뛰어, 오래된 진행 기록이 남아 있다가 통째로 다시 저장됐어요
+        if (p0(k) === "prog" && R.snap[k] === undefined && v != null) {
+          const local = docOf(k), U = window.DCS && window.DCS.data && window.DCS.data.progUnion;
+          placeIn(db, k, local !== undefined && U ? U(v, local) : v);
+          R.ver[k] = ver; R.last[k] = JSON.stringify(v); R.snap[k] = JSON.stringify(v);
+          changed.push(k); if (local !== undefined && U && JSON.stringify(docOf(k)) !== R.snap[k]) schedule();
+          return;
+        }
         // 내가 고치는 중인 문서는 건너뛴다 (저장할 때 서버에서 합쳐져 돌아온다)
         if (canWrite(k) && snapOf(k) !== R.snap[k] && snapOf(k) !== R.nope[k]) return;
         placeIn(db, k, v);

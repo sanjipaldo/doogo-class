@@ -4496,6 +4496,17 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       Object.keys(rr.readNotices).sort().join() === "a,x" && w88["stu:moon:r1"] && w88["stu:moon:r1"].demo === false && !w88["prog:moon:r2"] && !w88["prog:moon:gone"] && !w88["stu:moon:s1"] &&
       out88.result.restored.length === 2 && /나OO/.test(JSON.stringify(out88.result.restored)) && !/체험표시":"있었음/.test(JSON.stringify(out88.result.restored.filter((x) => /s1/.test(x.who)))),
       "되살리기(2026-11-25-prog-restore): 백업 두 개를 합쳐 사라진 과제 3개 · 강사 승인 · 코치 답변 · 마인드 기록 · 공지 읽음을 더함(지금 읽음도 그대로) · 며칠에 걸쳐 제출한 수강생의 잘못된 체험 표시는 풂 · 그대로인 수강생 · 지운 수강생은 건너뜀 · 체험 계정(s1)은 표시 그대로", out88.result);
+    // 지우기를 보낸 화면 막기 (2026-11-25): 수강생이 그대로면 진행 기록 지우기 안 보냄 · 수강생을 지울 권한이 없는 화면(수강생 관리 권한 없는 코치)은 진행 기록만 따로 안 지움 · 서버는 막은 저장을 누가 · 어느 화면에서 보냈는지 로그로
+    const db88b = fs.readFileSync(path.join(ROOT, "db.js"), "utf8"), sy88 = fs.readFileSync(path.join(ROOT, "api/sync.js"), "utf8");
+    ok(/if \(js === undefined && k\.indexOf\("prog:"\) === 0\) \{\s*const sk = "stu:" \+ k\.slice\(5\);\s*if \(cur\[sk\] !== undefined\) return;\s*if \(R\.snap\[sk\] === undefined \|\| !canWrite\(sk\)\) \{ delete R\.snap\[k\]; return; \}/.test(db88b) &&
+      /if \(p0\(k\) === "prog" && R\.snap\[k\] === undefined && v != null\)/.test(db88b) && /logGuard\("지우기 막음", k, ids, from\)/.test(sy88) && /console\.error\("\[sync\] 진행 기록 지키기 · "/.test(sy88),
+      "화면: 수강생이 그대로면 진행 기록 지우기를 보내지 않고 · 수강생을 지울 권한이 없으면 진행 기록만 따로 안 지움 · 목록에 없던 수강생의 진행 기록도 새로 받음 / 서버: 막은 저장을 로그로(역할 · 코치 id · 화면)");
+    // 경위 기록 작업(읽기만): 백업마다 제출 수가 줄어든 적이 있는 수강생만 시간순으로
+    const dg88 = await OF88.progDiag(get88, keys88, { row: (k) => ({ ver: 3, updated: t0, created: t0 - D88 }), backups: async () => [
+      { id: 1, at: t0, docs: { "stu:moon:r1": { name: "나OO", status: "approved" }, "prog:moon:r1": { submissions: { m1: [{ at: 1 }], m2: [{ at: 2 }] } }, "prog:moon:r2": { submissions: { m1: [{ at: t0 }] } } } },
+      { id: 2, at: t0 + 36e5, docs: { "stu:moon:r1": { name: "나OO", status: "approved" }, "prog:moon:r1": null, "prog:moon:r2": { submissions: { m1: [{ at: t0 }] } } } }] });
+    ok(Object.keys(dg88.writes).length === 0 && dg88.result.list.length === 1 && /r1/.test(dg88.result.list[0].who) && dg88.result.list[0].백업별.some((x) => /진행 기록 지워짐/.test(x)) && OF88.OPS.some((o) => o.id === "2026-11-25-prog-diag"),
+      "경위 기록(2026-11-25-prog-diag): 아무것도 안 바꾸고, 제출이 줄어든 적이 있는 수강생만 백업별로(진행 기록 지워짐 표시) · 지금 문서 만든 · 바뀐 시각", dg88.result);
     ok(OF88.OPS.some((o) => o.id === "2026-11-25-prog-restore" && o.run === OF88.progRestore) && OF88.OPS.some((o) => o.id === "2026-11-25-prog-restore-2" && o.run === OF88.progRestore) && /await op\.run\(get, keys, ctx\)/.test(fs.readFileSync(path.join(ROOT, "api/_lib/init.js"), "utf8")),
       "일회성 작업 목록에 되살리기 · 배포 때 작업에 백업 · 저장 시각 도구를 넘겨요(비동기 작업 기다림)");
   }

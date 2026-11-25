@@ -55,11 +55,12 @@ async function runPendingOps(log) {
   const pending = oneoff.OPS.filter((op) => !done.has(op.id) && (!op.when || op.when()));
   if (!pending.length) return [];
   const rows = await store.allDocRows();
-  const cur = {}, ver = {}, upd = {};
-  rows.forEach((r) => { cur[r.k] = r.v == null ? null : JSON.parse(r.v); ver[r.k] = r.ver; upd[r.k] = Number(r.updated) || 0; });
+  const cur = {}, ver = {}, upd = {}, crt = {};
+  rows.forEach((r) => { cur[r.k] = r.v == null ? null : JSON.parse(r.v); ver[r.k] = r.ver; upd[r.k] = Number(r.updated) || 0; crt[r.k] = Number(r.created) || 0; });
   // 작업에 넘기는 도구 (2026-11-25): 문서를 마지막으로 바꾼 시각 · 배포 전 백업(since 이후 · prefixes 로 시작하는 문서만) — 복구 작업용
   const ctx = {
     updated: (k) => upd[k] || 0,
+    row: (k) => ({ ver: ver[k] || 0, updated: upd[k] || 0, created: crt[k] || 0, gone: k in cur && cur[k] == null }),
     backups: async (since, prefixes) => {
       const out = [];
       for (const b of await store.listBackups()) {

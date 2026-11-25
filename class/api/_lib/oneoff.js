@@ -1138,6 +1138,30 @@ async function progRestore(get, keys, ctx) {
   return { writes, result };
 }
 
+/* ---------- 진도 사라짐 경위 기록 (2026-11-25 · 읽기만 · 아무것도 안 바꿈) ----------
+ * 배포 전 자동 백업마다 수강생 기록(stu)이 있었는지 · 상태 · 진행 기록 제출 수 · 판 번호를 시간순으로 — 제출이 줄어든 적이 있는 수강생만 (이름 가림).
+ * 지금 수강생 · 진행 기록 문서가 언제 만들어지고 마지막으로 바뀌었는지도 같이 — 수강생 기록이 지워졌다 다시 생겼는지, 진행 기록만 지워졌는지 가려내요 */
+async function progDiag(get, keys, ctx) {
+  const bks = ctx && ctx.backups ? await ctx.backups(Date.now() - 8 * DAY, ["prog:", "stu:"]) : [], out = [];
+  const pks = new Set(keys("prog:"));
+  bks.forEach((b) => Object.keys(b.docs).forEach((k) => { if (k.indexOf("prog:") === 0) pks.add(k); }));
+  const cnt = (p) => subAts(p).length;
+  Array.from(pks).sort().forEach((pk) => {
+    const sk = "stu:" + pk.slice(5), line = [];
+    let prev = -1, dropped = false;
+    bks.forEach((b) => {
+      const s = b.docs[sk], p = b.docs[pk], n = p ? cnt(p) : -1;
+      if (prev > 0 && n < prev) dropped = true;
+      if (n !== prev) line.push("#" + b.id + " " + kstTxt(b.at) + ": " + (s ? "수강생 " + (s.status || "-") : "수강생 없음") + " · " + (p ? "제출 " + n : p === null ? "진행 기록 지워짐" : "진행 기록 없음"));
+      prev = n;
+    });
+    if (!dropped) return;
+    const s = get(sk), r = ctx && ctx.row ? ctx.row : () => ({});
+    out.push({ who: maskNm(s && s.name) + " (" + pk.slice(5) + ")", 지금_수강생: s ? (s.status || "-") + " · 만든 " + kstTxt(r(sk).created) + " · 바뀐 " + kstTxt(r(sk).updated) + " · 판 " + r(sk).ver : "없음", 지금_진행기록: "제출 " + cnt(get(pk)) + " · 만든 " + kstTxt(r(pk).created) + " · 바뀐 " + kstTxt(r(pk).updated) + " · 판 " + r(pk).ver, 백업별: line });
+  });
+  return { writes: {}, result: { backups: bks.length, 제출이_줄어든_적: out.length, list: out } };
+}
+
 /* ---------- 문대표 2주차 시장조사 제목 ‘10개’ → ‘3개’ (2026-11-10 · 대표님 요청) ----------
  * 4주 압축 과정 등 다른 커리큘럼에 예전 제목(‘… 시장조사 10개’)이 남아 있으면 ‘시장조사 3개’로 (기본 커리큘럼과 같게). 제목 말고는 그대로 */
 function moonW2Title3(get) {
@@ -1583,7 +1607,8 @@ const OPS = [
   { id: "2026-11-23-store-home-order", note: "두고클래스 첫 화면: 중국 구매대행(v14) 배너 끄기(지우지 않음) → 그 자리에 ‘귤 하나로 월매출 10억’(v3) 배너 · 홈 섹션 순서 고정(새로 올라온: v4 → v8 · v11 · v3 → b1 → v2 · v5 → 나머지 자동, v14 맨 뒤 / 가장 많이 듣는: v3 · v4 · v8 → 나머지 자동) — 마스터 › 홈 꾸미기와 같은 저장 · 마스터가 고친 섹션은 그대로", run: storeHomeOrder },
   { id: "2026-11-25-prog-restore", note: "수강생 진도 되살리기: 배포 전 자동 백업(최근 7일)에 있던 과제 제출이 지금 진행 기록에 없는 수강생만 — 지금 기록은 그대로 두고 빠진 제출 · 질문 · 대화 · 공지 읽음 · 시청 · 노트를 더해요(지우지 않음) · 며칠에 걸쳐 제출한 수강생에게 잘못 붙은 체험 계정 표시는 풀어요 · 원인 기록(이름 가림)", run: progRestore },
   { id: "2026-11-25-prog-restore-2", note: "수강생 진도 되살리기 한 번 더 (같은 작업 · 첫 복구 뒤 서버 지키기를 더 넣기 전까지 사이에 또 빠진 것이 있으면): 백업에 있던 제출이 지금 없는 수강생만 · 지우지 않음 · 이름 가림", run: progRestore },
+  { id: "2026-11-25-prog-diag", note: "진도 사라짐 경위 기록(읽기만 · 바꾸지 않음): 백업마다 수강생 · 진행 기록 제출 수 — 제출이 줄어든 적이 있는 수강생만 · 이름 가림", run: progDiag },
   { id: "2026-11-24-store-pop-on", note: "두고클래스 스토어 팝업 켜기: 정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중 (닫기 · 오늘 그만 보기) — 마스터 › VOD 전시 · 쿠폰 · 설정 › 스토어 팝업에서 끄기 · 문구 수정 · 마스터가 이미 정했으면 그대로", run: storePopOn },
 ];
 
-module.exports = { OPS, progRestore, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, progRestore, progDiag, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
