@@ -1227,6 +1227,16 @@ body.lib-gated #main > .page { filter: blur(6px); pointer-events: none; user-sel
 .mcard-state.done { background: var(--positive); color: #fff; }
 .mcard-state.fix { background: var(--warning-bg); color: var(--warning-deep); }
 .mcard-go { grid-column: 2; justify-self: end; margin-top: 10px; }
+/* 과제 카드 검수 줄 (2026-11-26): 누가 · 언제 검수했는지 + 피드백을 남겼는지 */
+.mcard-rv { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--body); }
+.mcard-rv > span { display: inline-flex; align-items: center; gap: 4px; }
+.mcard-rv .rv-ok { font-weight: 700; color: var(--positive-deep); }
+.mcard-rv .rv-ok svg { color: var(--positive); }
+.mcard-rv .rv-fix { font-weight: 700; color: var(--warning-deep); }
+.mcard-rv .rv-fbn { font-weight: 700; color: var(--ink); }
+.result .rv-meta { font-size: 13px; opacity: .85; }
+.result .rv-fb { margin-top: 8px; line-height: 1.7; }
+.result .rv-fb b { display: block; margin-bottom: 2px; font-size: 13px; }
 @media (max-width: 900px) { .ql-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .mcard { padding: 18px; } .mcard-main { padding-right: 0; } .mcard-state { position: static; grid-column: 2; justify-self: start; margin-top: 8px; } .mcard-go { width: 100%; justify-content: center; grid-column: 1 / -1; } .ql-card { padding: 16px; } }
 /* 자주 찾는 페이지: 아랫줄 외부 링크는 흰 카드 그대로, 아이콘만 브랜드 색 */

@@ -133,9 +133,17 @@ function MissionCard({ w, m }) {
       <div className="mcard-main"><div className="mcard-tags"><span className={"kbadge " + k.key}>{k.short}</span>{s !== "done" && left >= 0 ? <span className="mcard-d"><Icon n="clock" c="xs" />{left === 0 ? "오늘 마감" : "D-" + left}</span> : null}<span className={"mcard-due" + (late ? " late" : "")}>마감 {fmtMD(X.deadlineOf(w))}{late ? " (지남)" : ""}</span></div>
         <h3><a href={href}>{m.title}</a></h3>{m.desc ? <p className="mcard-desc" dangerouslySetInnerHTML={{ __html: window.DB.linkify(m.desc) }} /> : null}
         <p className="mcard-type">제출 방식: {typeText(m)}</p>{(m.templates || []).length ? <div className="mcard-tpl">{m.templates.map((f, i) => tplLink(f, "tpl-btn", <><Icon n="download" c="xs" />과제 양식 다운로드</>, i))}</div> : null}</div>
-      <span className={"mcard-state " + s}>{s === "done" ? <Icon n="check" c="xs" /> : null}{stLabel}</span>
+      <span className={"mcard-state " + s}>{s === "done" ? <Icon n="check" c="xs" /> : null}{stLabel}</span><ReviewLine s={X.lastSub(m.id)} />
       <a className={"btn " + (s === "done" ? "btn-secondary" : "btn-primary") + " btn-sm mcard-go"} href={href}>{s === "done" ? "제출 내용 보기" : s === "fix" ? "다시 제출" : "과제 제출"}</a></article>
   );
+}
+/** 과제 카드 검수 줄 (예전 app.js reviewLine · 2026-11-26): ‘11/25 김OO 코치님 검수 완료 · 통과’ + ‘피드백을 남겨 주셨어요’ */
+function ReviewLine({ s }) {
+  const rv = s && s.review;
+  if (!rv) return null;
+  const ok = rv.status === "approved", day = String(DBX().date.fmtStamp(rv.at)).split(" ")[0];
+  return <div className="mcard-rv"><span className={ok ? "rv-ok" : "rv-fix"}><Icon n={ok ? "check" : "alert"} c="xs" />{day + " " + DGA().reviewerName(rv) + (ok ? " 검수 완료 · 통과" : " 보완 요청")}</span>
+    {rv.comment ? <span className="rv-fbn"><Icon n="message" c="xs" />피드백을 남겨 주셨어요</span> : null}</div>;
 }
 function WeekCard({ w }) {
   const X = DGA(), s2 = X.weekStats(w), open = X.isOpen(w), nm = open ? X.nextMission(w) : null;
@@ -195,10 +203,11 @@ function Week({ no }) {
 }
 /* ---------- 과제 하나: 제출 · 자동검수 (예전 pageMissionDetail · resultBox · draftThumbs · submitMission) ---------- */
 function ResultBox({ s }) {
-  const fs = DBX().date.fmtStamp;
+  const fs = DBX().date.fmtStamp, who = s.review ? DGA().reviewerName(s.review) : ""; // 검수한 사람 (예전 app.js reviewerName · 2026-11-26)
   return <>
-    {s.review ? (s.review.status === "approved" ? <div className="result pass"><h4><Icon n="check" />강사님이 승인했어요</h4><p dangerouslySetInnerHTML={{ __html: window.DB.esc(fs(s.review.at)) + (s.review.comment ? " · " + window.DB.linkify(s.review.comment) : "") }} /></div>
-      : <div className="result fix"><h4><Icon n="alert" />강사님이 보완을 요청했어요</h4><p dangerouslySetInnerHTML={{ __html: window.DB.linkify(s.review.comment || "내용을 보완해서 다시 제출해 주세요.") }} /></div>) : null}
+    {s.review ? (s.review.status === "approved" ? <div className="result pass"><h4><Icon n="check" />{who + "이 승인했어요"}</h4><p className="rv-meta">{fs(s.review.at) + " · 검수 완료 · 통과"}</p>
+        {s.review.comment ? <p className="rv-fb"><b>{who + " 피드백"}</b><span dangerouslySetInnerHTML={{ __html: window.DB.linkify(s.review.comment) }} /></p> : null}</div>
+      : <div className="result fix"><h4><Icon n="alert" />{who + "이 보완을 요청했어요"}</h4><p className="rv-meta">{fs(s.review.at) + " 검수"}</p><p dangerouslySetInnerHTML={{ __html: window.DB.linkify(s.review.comment || "내용을 보완해서 다시 제출해 주세요.") }} /></div>) : null}
     {s.result.pass ? <div className="result pass" style={s.review ? { opacity: ".7" } : undefined}><h4><Icon n="check" />자동검수 통과</h4><p>{fs(s.at)} 제출 · 진행률에 반영되었습니다.{s.review ? "" : " 강사님이 한 번 더 확인할 수 있어요."}</p>{s.result.ok.length ? <ul>{s.result.ok.map((t, i) => <li key={i}>{t}</li>)}</ul> : null}</div>
       : <div className="result fix"><h4><Icon n="alert" />자동검수 · 보완이 필요해요</h4><p>아래 항목을 채워서 다시 제출해 주세요.</p><ul>{s.result.reasons.map((t, i) => <li key={i}>{t}</li>)}</ul></div>}
   </>;

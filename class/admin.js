@@ -1640,13 +1640,20 @@
     if (cp) copyDraft = null;
     commit(cp ? "복사본을 추가했어요." : josa(def.name, "을", "를") + " 저장했어요.");
   }
+  /** 이 과제들을 낸 수강생 수 (2026-11-26) — 과제를 지우고 새로 만들면 id 가 바뀌어 낸 과제가 ‘미제출’로 보여요 */
+  function subsFor(mids) {
+    const set = new Set(mids);
+    return DB.studentsOf(IID()).filter((s) => { const sub = (DB.progress(s.id).submissions) || {}; return Object.keys(sub).some((m) => set.has(m) && Array.isArray(sub[m]) && sub[m].length); }).length;
+  }
   function deleteItem(coll, id, ctx) {
     const def = COLL[coll], c = C();
     const list = def.list(c, ctx);
     const i = list.findIndex((x) => (x.id || String(x.no)) === id);
     if (i < 0) return;
     const label = list[i].title || list[i].q || def.name;
-    confirmModal(def.name + " 삭제", "‘" + esc(label) + "’" + josa(label, "을", "를").slice(String(label).length) + " 삭제할까요?" + (coll === "week" ? "<br>이 주차의 강의와 과제도 함께 삭제돼요." : "") + "<br>수강생 화면에서도 바로 사라져요.", "삭제", true, () => {
+    const mids = coll === "mission" ? [list[i].id] : coll === "week" ? (list[i].missions || []).map((m) => m.id) : [], nSub = mids.length ? subsFor(mids) : 0;
+    const warn = nSub ? "<br><b style=\"color:var(--m-critical-strong)\">수강생 " + nSub + "명이 이 " + (coll === "week" ? "주차 과제" : "과제") + "를 이미 냈어요.</b> 지우면 그 수강생들 진행률 · 과제 목록에서 빠지고, 지운 뒤 새로 만들면 다른 과제로 봐서 ‘미제출’로 보여요. 내용만 바꿀 거면 지우지 말고 고쳐 주세요." : "";
+    confirmModal(def.name + " 삭제", "‘" + esc(label) + "’" + josa(label, "을", "를").slice(String(label).length) + " 삭제할까요?" + (coll === "week" ? "<br>이 주차의 강의와 과제도 함께 삭제돼요." : "") + warn + "<br>수강생 화면에서도 바로 사라져요.", "삭제", true, () => {
       list.splice(i, 1);
       if (def.after) def.after(c);
       commit("삭제했어요.");

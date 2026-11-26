@@ -1139,9 +1139,9 @@
           emit("error", x.error === "too-large" ? "사진이나 첨부가 너무 커서 저장하지 못했어요. 크기를 줄여 다시 올려 주세요." : obMine(x.k) ? "로그인이 풀려 과제가 아직 저장되지 않았어요. 다시 로그인하면 이어서 저장돼요." : "저장할 권한이 없는 내용이 있어 저장하지 못했어요.");
           return;
         }
-        // 서버가 받았어요 — 보관함에서 지워요 (그새 더 고친 내용이 보관함에 있으면 그대로 둠)
+        // 서버가 받았어요 — 보관함에서 지워요 (그새 더 고친 내용이 보관함에 있으면 그대로 둠) · 보관함에서 되살린 저장이면 화면에 ‘이제 저장했어요’
         if (obMine(x.k)) { const m = obAll(); if (m[x.k] && m[x.k].v === sent[x.k]) { delete m[x.k]; obSet(m); } }
-        delete R.obSend[x.k];
+        if (R.obSend[x.k]) { delete R.obSend[x.k]; setTimeout(() => emit("restored", 1), 0); }
         R.ver[x.k] = x.ver;
         const got = x.doc != null ? JSON.stringify(x.doc) : undefined;
         // 서버가 내 변경을 하나도 받지 않았으면(권한 밖 칸만 고쳤을 때) 그 내용은 기억해 두고 화면은 다시 그리지 않아요

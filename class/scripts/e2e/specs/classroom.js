@@ -38,10 +38,14 @@ module.exports = {
       await run.check(/승인했어요/.test(await L.toasts(ins)), "강사: 승인 저장", await L.toasts(ins), ins);
       await L.flushed(ins);
     }
-    // 3) 수강생: 다시 열면 ‘강사님이 승인했어요’
+    // 3) 수강생: 다시 열면 ‘누가(강사 이름) 승인했어요 · 날짜 · 검수 완료 · 통과 · 그 사람의 피드백’ (2026-11-26) · 과제 카드에도 ‘M/D 누가 검수 완료 · 통과’ + ‘피드백을 남겨 주셨어요’
     await L.open(stu, base, "/missions/1/" + MID);
     const res = (await L.text(stu, "#result")) || (await L.bodyText(stu));
-    await run.check(/강사님이 승인했어요|강사 승인/.test(res), "수강생: 과제 화면에 강사 승인이 보여요", res.slice(0, 300), stu);
+    await run.check(/\S+님이 승인했어요/.test(res) && !/^강사님이 승인/.test(res.trim()) && /\d{1,2}\/\d{1,2} \d{2}:\d{2} · 검수 완료 · 통과/.test(res) && /님 피드백\s*잘했어요! \(E2E\)/.test(res),
+      "수강생: 과제 화면에 ‘누가(강사 이름) 승인했어요’ · 검수 날짜 · 검수 완료 · 통과 · 그 사람의 피드백", res.slice(0, 300), stu);
+    await L.open(stu, base, "/missions/1");
+    const card = await stu.evaluate((mid) => { const a = document.querySelector('.mcard h3 a[href$="/' + mid + '"]'), c = a && a.closest(".mcard"), r = c && c.querySelector(".mcard-rv"); return r ? r.textContent : ""; }, MID);
+    await run.check(/\d{1,2}\/\d{1,2} \S+님 검수 완료 · 통과/.test(card) && /피드백을 남겨 주셨어요/.test(card), "수강생: 과제 카드에 ‘M/D 누가 검수 완료 · 통과’ + ‘피드백을 남겨 주셨어요’", card, stu);
     // 4) 강사 (운영처럼 React 화면): 승인 탭엔 ‘선택 승인’ 대신 ‘선택 승인 취소’ · 전체 선택하면 줄마다 체크 (2026-11-22)
     await L.reactCookie(ins, base, "all");
     await L.open(ins, base, "/center/reviews");
@@ -80,7 +84,13 @@ module.exports = {
     // 6) 수강생: ‘강사 승인’ 표시가 사라지고 자동검수 결과만
     await L.open(stu, base, "/missions/1/" + MID);
     const res2 = (await L.text(stu, "#result")) || (await L.bodyText(stu));
-    await run.check(!/강사님이 승인했어요/.test(res2) && /자동|통과/.test(res2), "수강생: 승인 취소 뒤엔 ‘강사 승인’ 대신 자동검수 결과", res2.slice(0, 300), stu);
+    await run.check(!/님이 승인했어요/.test(res2) && /자동|통과/.test(res2), "수강생: 승인 취소 뒤엔 ‘강사 승인’ 대신 자동검수 결과", res2.slice(0, 300), stu);
+    // 7) 강사: 수강생이 낸 과제를 지우려 하면 ‘수강생 N명이 이미 냈어요’ 경고 (지우고 새로 만들면 ‘미제출’로 보여요 · 2026-11-26) → 취소
+    await L.reactCookie(ins, base, "off");
+    await L.open(ins, base, "/center/curriculum");
+    const warn = await ins.evaluate((mid) => { const b = document.createElement("button"); b.dataset.action = "item-delete"; b.dataset.coll = "mission"; b.dataset.id = mid; b.dataset.ctx = "1"; document.body.appendChild(b); b.click(); b.remove(); return new Promise((r) => setTimeout(() => r((document.getElementById("modal-root") || document.body).textContent || ""), 400)); }, MID);
+    await run.check(/수강생 \d+명이 이 과제를 이미 냈어요/.test(warn) && /내용만 바꿀 거면 지우지 말고 고쳐 주세요/.test(warn), "강사: 수강생이 낸 과제를 지우려 하면 ‘수강생 N명이 이미 냈어요’ 경고", warn.slice(0, 300), ins);
+    await ins.click('#modal-root [data-action="modal-close"], #modal-root [data-action="confirm-cancel"]').catch(() => {});;
     await stu.context().close(); await ins.context().close();
   }
 };

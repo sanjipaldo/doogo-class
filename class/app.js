@@ -1329,7 +1329,7 @@
         '<h3><a href="#/missions/' + w.no + "/" + m.id + '">' + esc(m.title) + "</a></h3>" +
         (m.desc ? '<p class="mcard-desc">' + DB.linkify(m.desc) + "</p>" : "") +
         '<p class="mcard-type">제출 방식: ' + typeText(m) + "</p>" + ((m.templates || []).length ? '<div class="mcard-tpl">' + tplBtns(m) + "</div>" : "") + "</div>" +
-      '<span class="mcard-state ' + s + '">' + (s === "done" ? icon("check", "xs") : "") + stLabel + "</span>" +
+      '<span class="mcard-state ' + s + '">' + (s === "done" ? icon("check", "xs") : "") + stLabel + "</span>" + reviewLine(lastSub(m.id)) +
       '<a class="btn ' + (s === "done" ? "btn-secondary" : "btn-primary") + ' btn-sm mcard-go" href="#/missions/' + w.no + "/" + m.id + '">' + (s === "done" ? "제출 내용 보기" : s === "fix" ? "다시 제출" : "과제 제출") + "</a></article>";
   }
   function pageWeek(no) {
@@ -1426,12 +1426,31 @@
     (c.keywords || []).forEach((k) => out.push("‘" + k + "’ 포함"));
     return out;
   }
+  /** 검수한 사람 (2026-11-26 · 대표님 요청): 수강생이 누가 · 언제 검수했는지 알게 — 강사는 화면 이름(예: 문대표님) · 코치는 ‘이름 코치님’ ·
+   *  운영팀은 ‘두잉고 운영팀’ · 예전 기록(이름이 없던 때)은 강사로 봐요. 검수 기록 review.by · role 은 강사센터가 승인할 때 남겨요(admin.js actor) */
+  function reviewerName(r) {
+    if (!r) return "";
+    const by = String(r.by || "").trim();
+    if (r.role === "master" || /운영팀/.test(by)) return "두잉고 운영팀";
+    if (r.role === "coach" || / 코치$/.test(by)) { const n = by.replace(/\s*코치$/, "").trim(); return (n && n !== "코치" ? n + " " : "") + "코치님"; }
+    return ((INS && (INS.displayName || INS.name)) || "강사") + "님";
+  }
+  /** 과제 카드의 검수 줄: ‘11/25 김OO 코치님 검수 완료 · 통과’ (보완이면 ‘보완 요청’) + 피드백을 남겼으면 ‘피드백을 남겨 주셨어요’ */
+  function reviewLine(s) {
+    const rv = s && s.review;
+    if (!rv) return "";
+    const ok = rv.status === "approved", day = String(fmtStamp(rv.at)).split(" ")[0];
+    return '<div class="mcard-rv"><span class="' + (ok ? "rv-ok" : "rv-fix") + '">' + icon(ok ? "check" : "alert", "xs") + esc(day + " " + reviewerName(rv) + (ok ? " 검수 완료 · 통과" : " 보완 요청")) + "</span>" +
+      (rv.comment ? '<span class="rv-fbn">' + icon("message", "xs") + "피드백을 남겨 주셨어요</span>" : "") + "</div>";
+  }
   function resultBox(s) {
     let html = "";
     if (s.review) {
+      const who = reviewerName(s.review);
       html += s.review.status === "approved"
-        ? '<div class="result pass"><h4>' + icon("check") + "강사님이 승인했어요</h4><p>" + esc(fmtStamp(s.review.at)) + (s.review.comment ? " · " + DB.linkify(s.review.comment) : "") + "</p></div>"
-        : '<div class="result fix"><h4>' + icon("alert") + "강사님이 보완을 요청했어요</h4><p>" + DB.linkify(s.review.comment || "내용을 보완해서 다시 제출해 주세요.") + "</p></div>";
+        ? '<div class="result pass"><h4>' + icon("check") + esc(who + "이 승인했어요") + '</h4><p class="rv-meta">' + esc(fmtStamp(s.review.at) + " · 검수 완료 · 통과") + "</p>" +
+          (s.review.comment ? '<p class="rv-fb"><b>' + esc(who + " 피드백") + "</b><span>" + DB.linkify(s.review.comment) + "</span></p>" : "") + "</div>"
+        : '<div class="result fix"><h4>' + icon("alert") + esc(who + "이 보완을 요청했어요") + '</h4><p class="rv-meta">' + esc(fmtStamp(s.review.at) + " 검수") + "</p><p>" + DB.linkify(s.review.comment || "내용을 보완해서 다시 제출해 주세요.") + "</p></div>";
     }
     if (s.result.pass) {
       html += '<div class="result pass"' + (s.review ? ' style="opacity:.7"' : "") + "><h4>" + icon("check") + "자동검수 통과</h4><p>" + esc(fmtStamp(s.at)) + " 제출 · 진행률에 반영되었습니다." + (s.review ? "" : " 강사님이 한 번 더 확인할 수 있어요.") + "</p>" +
@@ -1452,6 +1471,9 @@
       if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
         // 1MB 이하 PDF는 강사가 열어 볼 수 있게 내용까지 보관 (그보다 크면 파일 이름만)
         if (file.size > 1048576) { draft.files.push({ type: "pdf", name: file.name }); refreshThumbs(); toast("1MB 넘는 PDF는 이름만 올라가요.", "warn"); return; }
+        // 한 번에 서버로 보내는 크기 한도(약 4.5MB)를 넘지 않게 첨부 합계는 약 2MB까지 (2026-11-26 · 넘으면 저장이 계속 실패해요)
+        const used = draft.files.reduce((a, f) => a + (f.data ? f.data.length : 0), 0);
+        if (used + file.size * 1.37 > 2.8e6) { draft.files.push({ type: "pdf", name: file.name }); refreshThumbs(); toast("첨부가 커서 이 PDF는 이름만 올라가요.", "warn"); return; }
         const fr = new FileReader();
         fr.onload = () => { if (draft.files.length < 3) draft.files.push({ type: "pdf", name: file.name, data: fr.result }); refreshThumbs(); };
         fr.readAsDataURL(file);
@@ -2965,7 +2987,7 @@
     st: () => ({ me, INS, D, CO, P, TRACK, preview, previewBy, VP, botOpen, botThinking, chipTab }),
     prep, route, setVp, NAV, NAV_DEFS, navLabel, on, ML, NT, libList, LV, unreadNotices, newAnswers, newFixes,
     lessonLong, readyFirst, resReady, resDoc, resExts, resFilesTop, resTagHtml, isDrive,
-    isOpen, weekStats, overallStats, nextMissionOverall, myEvents, isUnread, kindOf, kindCount, findWeek, findMission, openOf, deadlineOf, missionState, lastSub, isDone, daysUntil, greetWord,
+    isOpen, weekStats, overallStats, nextMissionOverall, myEvents, isUnread, kindOf, kindCount, findWeek, findMission, openOf, deadlineOf, missionState, lastSub, isDone, daysUntil, greetWord, reviewerName,
     guideGroup, guideDoneCheck, quickList: () => DB.quickLinksOf(D).filter((l) => l.url && (/^https?:/i.test(l.url) || linkOk([l.title, l.url]))), linkOk, mainLec,
     vodList, vodPct, vodPctOf, vodNext, coachN, addPid, coachEnd, myCoachQs, vodExp, learnHref, vodMode, applyTheme,
     worldClockHtml, lenTxt, saveProgress, toast, logout, lessonWord, nextMission, fileSize,

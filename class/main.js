@@ -120,15 +120,18 @@
     if (type === "newver") { newVerBar(); return; }
     if (type === "error") { notify(info, "warn"); return; }
     // 서버 점검(쓰기 멈춤) 중이면 그 안내를 · 아니면 연결 안내 — 둘 다 바뀐 내용은 들고 있다가 다시 보내요
-    if (type === "offline") { notify(info && info.readonly ? "점검 중이에요. 끝나면 자동으로 저장돼요." : "연결이 불안정해 다시 저장하는 중이에요.", "warn", "offline"); return; }
-    if (type === "saving" && info === false) { const t = document.querySelector('.toast[data-key="offline"]'); if (t) t.remove(); return; }
+    // 수강생: 과제 · 진도가 서버에 닿을 때까지 알림을 띄워 두고(사라지지 않음), 저장되면 ‘저장됐어요’ (2026-11-26 · 화면엔 ‘제출 완료’인데 서버엔 없던 일)
+    //  — 못 보낸 내용은 이 브라우저 보관함에 있어 창을 닫아도 다음에 열면 저장돼요 (db.js 진도 저장 보관함)
+    if (type === "offline") { const stu = studentIn(); notify(info && info.readonly ? "점검 중이에요. 끝나면 자동으로 저장돼요." : stu ? "과제 · 진도가 아직 저장되지 않았어요. 인터넷이 연결되면 자동으로 저장돼요." : "연결이 불안정해 다시 저장하는 중이에요.", "warn", "offline", stu); return; }
+    if (type === "restored") { notify("지난번에 저장하지 못한 과제 · 진도를 이제 저장했어요.", "", "restored"); return; }
+    if (type === "saving" && info === false) { const t = document.querySelector('.toast[data-key="offline"]'); if (t) { t.remove(); if (studentIn()) notify("과제 · 진도가 저장됐어요.", "", "saved"); } return; }
     if (type !== "change") return;
     reconcile();
     if (busy()) { waiting = true; return; }
     if (navOpen()) { waiting = true; later(); return; }
     redraw();
   }
-  function notify(msg, kind, key) {
+  function notify(msg, kind, key, sticky) {
     const box = document.getElementById("toast-root");
     if (!box || (key && box.querySelector('[data-key="' + key + '"]'))) return;
     const t = document.createElement("div");
@@ -136,7 +139,7 @@
     if (key) t.dataset.key = key;
     t.innerHTML = (window.icon ? window.icon(kind === "warn" ? "alert" : "check", "sm") : "") + "<span>" + DB.esc(msg) + "</span>";
     box.appendChild(t);
-    setTimeout(() => t.remove(), 5000);
+    if (!sticky) setTimeout(() => t.remove(), 5000); // sticky: 저장될 때까지 띄워 둬요 (저장되면 onRemote 가 지움)
   }
 
   /* ---------- 자동 로그아웃 (2026-11) ----------

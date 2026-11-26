@@ -23,9 +23,9 @@ module.exports = {
     await p1.click('#submit-form button[type="submit"]');
     await p1.waitForTimeout(1500);
     const ob1 = await p1.evaluate(() => Object.keys(DB.remote.outbox()));
-    const srv1 = await subs(p1);
-    await run.check(!!(await p1.$("#result .result.pass")) && ob1.some((k) => /^prog:/.test(k)) && srv1.indexOf("m1-7") < 0,
-      "저장이 막힌 채 제출: 화면엔 통과 · 이 브라우저 보관함에 남음 · 서버엔 아직 없음", { ob1, srv1 }, p1);
+    const srv1 = await subs(p1), t1 = await L.toasts(p1);
+    await run.check(!!(await p1.$("#result .result.pass")) && ob1.some((k) => /^prog:/.test(k)) && srv1.indexOf("m1-7") < 0 && /과제 · 진도가 아직 저장되지 않았어요/.test(t1),
+      "저장이 막힌 채 제출: 화면엔 통과 · 이 브라우저 보관함에 남음 · 서버엔 아직 없음 · ‘아직 저장되지 않았어요’ 알림(저장될 때까지)", { ob1, srv1, t1 }, p1);
     // 2) 창을 닫고 다시 열면 → 보관함이 서버 기록 위에 합쳐 저장 · 보관함 비움
     await p1.close();
     const p2 = await ctx.newPage();
@@ -33,8 +33,8 @@ module.exports = {
     await L.open(p2, base, "/missions");
     await p2.waitForTimeout(2000);
     await L.flushed(p2);
-    const srv2 = await subs(p2), ob2 = await p2.evaluate(() => Object.keys(DB.remote.outbox()));
-    await run.check(srv2.indexOf("m1-7") >= 0 && !ob2.length, "창을 닫았다 다시 열면: 못 보낸 제출이 서버에 저장되고 보관함은 비어요", { srv2, ob2 }, p2);
+    const srv2 = await subs(p2), ob2 = await p2.evaluate(() => Object.keys(DB.remote.outbox())), t2 = await L.toasts(p2);
+    await run.check(srv2.indexOf("m1-7") >= 0 && !ob2.length && /지난번에 저장하지 못한 과제 · 진도를 이제 저장했어요/.test(t2), "창을 닫았다 다시 열면: 못 보낸 제출이 서버에 저장되고 보관함은 비어요 · ‘이제 저장했어요’ 알림", { srv2, ob2, t2 }, p2);
     await ctx.close();
   }
 };

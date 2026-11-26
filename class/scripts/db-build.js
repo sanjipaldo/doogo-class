@@ -129,6 +129,16 @@ const init = require("../api/_lib/init");
   if (!ran.length) console.log("[db] 새로 할 일회성 작업 없음");
   const m = await init.migrate();
   console.log("[db] 빠진 기본값 채우기: " + (m.changed.length ? m.changed.join(", ") : "바뀐 것 없음"));
+  // 진도 지키기 사건 기록 (2026-11-26): 배포할 때마다 최근 7일 — 진행 기록 지키기 · 보관함 다시 저장 · 체험 처음으로 · 체험 표시 풀기 · 수강생 삭제 · 백업 되돌리기
+  //  (Vercel 런타임 로그는 꺼내 볼 수 없어서 DB 사건 기록을 빌드 기록에 보여 줘요 — 수강생 진도가 또 줄면 누가 · 어느 화면에서인지 바로 봐요)
+  try {
+    const KIND = { guard: "진행 기록 지키기", outbox: "보관함 다시 저장", "demo-reset": "체험 처음으로", "demo-skip": "체험 표시 풀기", "stu-del": "수강생 삭제", restore: "백업 되돌리기 · 불러오기" };
+    const kst = (t) => new Date(Number(t) + 9 * 36e5).toISOString().slice(5, 16).replace("T", " ");
+    const evs = await store.listEvents(Date.now() - 7 * 864e5), by = {};
+    evs.forEach((e) => { by[e.kind] = (by[e.kind] || 0) + 1; });
+    console.log("[db] 진도 지키기 사건 기록 (최근 7일): " + (evs.length ? Object.keys(by).map((k) => (KIND[k] || k) + " " + by[k]).join(" · ") : "없음"));
+    evs.slice(-20).forEach((e) => console.log("[db]   " + kst(e.at) + " · " + (KIND[e.kind] || e.kind) + " · " + e.note + " · " + [e.data.k, e.data.who, e.data.from].filter(Boolean).join(" · ").slice(0, 220)));
+  } catch (e) { console.log("[db] 진도 지키기 사건 기록: 읽지 못했어요 (" + (e && e.message) + ")"); }
 })().then(() => store.close()).catch((e) => {
   const msg = e && e.message ? e.message : String(e);
   console.error("[db] 실패:", msg);
