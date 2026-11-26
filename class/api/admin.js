@@ -25,7 +25,7 @@ module.exports = handler(["POST"], async (req, res) => {
     const safe = (v) => String(v).replace(/[^a-z0-9_-]/gi, "");
     (Array.isArray(b.inquiries) ? b.inquiries : []).forEach((x) => { if (x && x.id) map["inq:" + safe(x.id)] = x; });
     (Array.isArray(b.bills) ? b.bills : []).forEach((x) => { if (x && x.id && x.instructorId) map["bill:" + safe(x.instructorId) + ":" + safe(x.id)] = x; });
-    return send(res, 200, { ok: true, docs: await init.replaceAll(map, "백업 파일 불러오기 전 자동 백업") });
+    return send(res, 200, { ok: true, docs: await init.replaceAll(map, "백업 파일 불러오기 전 자동 백업", true) }); // 수강생 진도는 지금 것 그대로 + 파일 것 더함 (2026-11-26)
   }
   if (b.action === "msg-status" || b.action === "msg-send") { const r = await require("./_lib/msgapi").run(ids, b); return send(res, r.status, r.json); }
   if (b.action === "backups") return send(res, 200, { ok: true, backups: await store.listBackups() });

@@ -31,20 +31,45 @@ async function ensureSeeded() {
   await setEpoch();
   return true;
 }
-/** 마스터: 처음 상태로 / 백업 파일로 되돌리기 (지금 상태를 먼저 서버 백업에 남긴다) */
-async function replaceAll(map, reason) {
+/* 수강생 진도는 되돌리지 않아요 (2026-11-26 · 3기 수강생 진도가 또 줄어든 일 뒤로): 백업 되돌리기 · 백업 파일 불러오기를 해도
+ * 지금 진행 기록(prog)의 과제 제출 · 질문 · 대화 · 읽음 등은 그대로 두고 백업 쪽 기록을 더해요(DR.progUnion) — 백업 뒤에 낸 과제가 사라지지 않게.
+ * 지금은 있는데 백업에는 없는 진행 기록도 그대로 남겨요. ‘처음 상태로’(시험용 DB 초기화)는 예전처럼 모두 지워요 */
+const DR = require("../../shared/data-rules");
+async function currentProg() {
+  const out = {};
+  (await store.listDocs({ prefixes: ["prog:%"] })).forEach((r) => { if (r.v && typeof r.v === "object") out[r.k] = r.v; });
+  return out;
+}
+/** 마스터: 처음 상태로 / 백업 파일로 되돌리기 (지금 상태를 먼저 서버 백업에 남긴다) — keepProg: 지금 진행 기록을 합쳐 남김 */
+async function replaceAll(map, reason, keepProg) {
+  const cur = keepProg ? await currentProg() : {};
   await store.backup(reason || "초기화 전 자동 백업");
+  if (keepProg) {
+    map = Object.assign({}, map);
+    Object.keys(cur).forEach((k) => { map[k] = map[k] && typeof map[k] === "object" ? DR.progUnion(cur[k], map[k]) : cur[k]; });
+    await store.logEvent("restore", reason || "불러오기", { keptProg: Object.keys(cur).length });
+  }
   await store.wipe();
   const n = await insertAll(map);
   await setEpoch();
   return n;
 }
-/** 서버 백업으로 되돌리기 (지금 상태도 먼저 백업) */
+/** 서버 백업으로 되돌리기 (지금 상태도 먼저 백업) — 진행 기록은 지금 것 위에 백업 것을 더해요 */
 async function restoreBackup(id) {
   const rows = await store.backupRows(id);
   if (!rows) return null;
+  const cur = await currentProg();
   await store.backup("백업 #" + id + " 되돌리기 전 자동 백업");
-  const n = await store.restoreRows(rows);
+  const inB = new Set(), out = rows.map((r) => {
+    const k = String(r.k); inB.add(k);
+    if (k.indexOf("prog:") !== 0 || !cur[k]) return r;
+    const bv = r.v == null ? null : typeof r.v === "string" ? JSON.parse(r.v) : r.v;
+    const v = DR.progUnion(cur[k], bv && typeof bv === "object" ? bv : {});
+    return Object.assign({}, r, { v: JSON.stringify(v) }); // 백업 줄의 v 는 JSON 글자 (restoreRows · 영역 표가 JSON.parse)
+  });
+  Object.keys(cur).forEach((k) => { if (!inB.has(k)) out.push({ k, v: JSON.stringify(cur[k]), ver: 1, created: Date.now() }); });
+  const n = await store.restoreRows(out);
+  await store.logEvent("restore", "백업 #" + id + " 되돌리기 (진행 기록은 지금 것 그대로 + 백업 것 더함)", { keptProg: Object.keys(cur).length });
   await setEpoch();
   return n;
 }
@@ -71,6 +96,8 @@ async function runPendingOps(log) {
       }
       return out.sort((x, y) => x.at - y.at);
     },
+    // 서버 사건 기록 (2026-11-26 · store.logEvent) — 점검 작업이 빌드 기록에 보여 줘요
+    events: (since, kind) => store.listEvents(since, kind),
   };
   const get = (k) => (cur[k] == null ? cur[k] : JSON.parse(JSON.stringify(cur[k])));
   const keys = (prefix) => Object.keys(cur).filter((k) => k.indexOf(prefix) === 0).sort();

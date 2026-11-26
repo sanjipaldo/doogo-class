@@ -25,9 +25,12 @@ function guardProg(o, n) {
 }
 
 /** 진행 기록을 지키려고 막거나 합친 저장을 서버 기록(Vercel 런타임 로그)에 남겨요 — 다시 생기면 누가 · 어느 화면에서 보냈는지 바로 알게 (이름 · 내용은 안 남김) */
+const whoOf = (ids) => { const a = ids && ids.admin; return a ? a.role + ":" + (a.cid || a.sid || a.id || a.iid || "") : ids && ids.student ? "student:" + ids.student.sid : "anon"; };
 function logGuard(what, k, ids, from) {
-  const a = ids && ids.admin, who = a ? a.role + ":" + (a.cid || a.sid || a.id || a.iid || "") : ids && ids.student ? "student:" + ids.student.sid : "anon";
+  const who = whoOf(ids);
   console.error("[sync] 진행 기록 지키기 · " + what + " · " + k + " · " + who + " · " + String(from || "").slice(0, 160));
+  // 런타임 로그는 꺼내 볼 수 없어서(2026-11-26) DB 사건 기록에도 — 배포 때 점검 작업이 빌드 기록에 보여 줘요
+  return store.logEvent("guard", what, { k, who, from: String(from || "").slice(0, 160) });
 }
 async function applyChange(ch, ids, dels, from) {
   const k = String((ch && ch.k) || "");
@@ -45,19 +48,25 @@ async function applyChange(ch, ids, dels, from) {
     // 통째로 바꾸지 않고 서버 기록 위에 합쳐요: 보낸 내용이 이기고, 서버에만 있는 제출 · 질문 · 읽음 · 시청 등은 그대로 남아요.
     // (빈 진행 기록이 서버 기록을 통째로 덮어써 수강생 과제 · 대화 · 공지 읽음이 모두 사라졌던 일 · 2026-11-25)
     if (exists && ch.put !== undefined && naive != null && (Number(ch.base) || 0) !== row.ver && k.indexOf("prog:") === 0) {
-      if (subCount(row.v) > subCount(naive)) logGuard("판 모르는 통째 저장 합침 (제출 " + subCount(naive) + " → 서버 " + subCount(row.v) + ")", k, ids, from);
+      if (subCount(row.v) > subCount(naive)) await logGuard("판 모르는 통째 저장 합침 (제출 " + subCount(naive) + " → 서버 " + subCount(row.v) + ")", k, ids, from);
       naive = DR.progUnion(naive, row.v);
     }
     if (!exists && naive == null) return { k, ver: row ? row.ver : 0, doc: null };
-    // 진행 기록 지우기는 그 수강생(stu)도 같이 지울 때만 — 수강생은 그대로인데 화면에서 진행 기록만 빠져 ‘지우기’가 오던 일 (2026-11-25 · 한 분은 진행 기록이 통째로 지워졌어요)
+    // 진행 기록은 화면에서 지우지 않아요 (2026-11-26 · 3기 수강생 진도가 또 줄어든 일 뒤로 더 단단히):
+    //  - 수강생이 그대로면 지우기를 막고 서버 기록을 돌려줘요 (2026-11-25 · 화면에서 진행 기록만 빠져 ‘지우기’가 오던 일)
+    //  - 수강생도 같이 지울 때(수강생 삭제)도 진행 기록은 서버에 남겨요 — 보낸 화면에는 지워진 것으로 답해요. 잘못 지운 수강생을 같은 id 로 되살리면 진도도 그대로 돌아와요
     if (exists && naive == null && k.indexOf("prog:") === 0) {
-      const sk = "stu:" + k.slice(5), stu = dels && dels.has(sk) ? null : await store.getDoc(sk);
-      if (stu && stu.v != null) { logGuard("지우기 막음", k, ids, from); return { k, ver: row.ver, doc: access.view(k, row.v, ids) }; }
+      const sk = "stu:" + k.slice(5), gone = !!(dels && dels.has(sk)), stu = gone ? null : await store.getDoc(sk);
+      if (stu && stu.v != null) { await logGuard("지우기 막음", k, ids, from); return { k, ver: row.ver, doc: access.view(k, row.v, ids) }; }
+      await logGuard("수강생 삭제 · 진행 기록은 서버에 남김 (제출 " + subCount(row.v) + ")", k, ids, from);
+      return { k, ver: row.ver, doc: null };
     }
+    // 수강생 기록 지우기도 누가 · 어느 화면에서 했는지 남겨요
+    if (exists && naive == null && k.indexOf("stu:") === 0) await store.logEvent("stu-del", "수강생 삭제", { k, who: whoOf(ids), from: String(from || "").slice(0, 160), status: row.v && row.v.status, cohort: row.v && row.v.cohortId });
     let next = w.fix(exists ? clone(row.v) : null, clone(naive));
     if (exists && next != null && k.indexOf("prog:") === 0) {
       const g = guardProg(row.v, next);
-      if (subCount(g) !== subCount(next)) logGuard(subCount(next) === 0 ? "통째 비우기 합침" : "빠진 제출 되돌림 " + (subCount(g) - subCount(next)) + "개", k, ids, from);
+      if (subCount(g) !== subCount(next)) await logGuard(subCount(next) === 0 ? "통째 비우기 합침" : "빠진 제출 되돌림 " + (subCount(g) - subCount(next)) + "개", k, ids, from);
       next = g;
     }
     let modified = (Number(ch.base) || 0) !== (row ? row.ver : 0) || JSON.stringify(next) !== JSON.stringify(naive);

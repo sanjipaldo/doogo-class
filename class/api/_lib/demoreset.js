@@ -30,6 +30,14 @@ const isFresh = (p) => {
   return Object.keys(f).every((k) => JSON.stringify(p[k]) === JSON.stringify(f[k])) && Object.keys(p).every((k) => k in f);
 };
 
+/** 실제 수강생 기록인지 (2026-11-26): 과제 제출이 2개 이상이고 첫 제출과 마지막 제출이 12시간 넘게 떨어져 있으면 —
+ *  체험 계정은 로그인 · 로그아웃(자동 로그아웃 1시간 포함)마다 처음으로 돌아가서 12시간 넘게 쌓일 수 없어요. 그러면 실제 수강생이 체험으로 잘못 표시된 거예요 */
+const DEMO_SIDS = ["demo1", "demo2", "s1"]; // 체험 계정으로 만든 계정 — 늘 처음으로
+function realWork(p) {
+  const subs = isObj(p) && isObj(p.submissions) ? p.submissions : {}, at = [];
+  Object.keys(subs).forEach((m) => (Array.isArray(subs[m]) ? subs[m] : []).forEach((x) => { if (x && Number(x.at)) at.push(Number(x.at)); }));
+  return at.length >= 2 && Math.max.apply(null, at) - Math.min.apply(null, at) >= 12 * 3600e3;
+}
 /** 서버: 이 수강생이 처음으로 돌릴 체험 계정이면 진도 기록을 처음으로 — 했으면 true */
 async function resetDemo(iid, sid) {
   if (!iid || !sid) return false;
@@ -37,13 +45,31 @@ async function resetDemo(iid, sid) {
   const s = (docs["stu:" + iid + ":" + sid] || {}).v;
   if (!resettable(s, (docs["cohorts:" + iid] || {}).v, (docs["content:" + iid] || {}).v)) return false;
   const k = "prog:" + iid + ":" + sid;
+  // 실제 수강생이 체험으로 잘못 표시돼 있으면 지우지 않고 체험 표시를 풀어요 (사건 기록에 남김)
+  if (DEMO_SIDS.indexOf(sid) < 0) {
+    const p0 = await store.getDoc(k);
+    if (p0 && realWork(p0.v)) {
+      for (let i = 0; i < 3; i++) {
+        const r = await store.getDoc("stu:" + iid + ":" + sid);
+        if (!r || !isObj(r.v) || r.v.demo !== true) break;
+        const v = Object.assign({}, r.v); delete v.demo;
+        if ((await store.writeDoc("stu:" + iid + ":" + sid, v, r.ver)) !== false) break;
+      }
+      if (store.logEvent) await store.logEvent("demo-skip", "체험 표시된 실제 수강생 — 처음으로 돌리지 않고 체험 표시 풀었어요", { k, iid, sid });
+      return false;
+    }
+  }
   for (let i = 0; i < 3; i++) {
     const cur = await store.getDoc(k);
     if (cur && isFresh(cur.v)) return true;
     const nv = await store.writeDoc(k, fresh(), cur ? cur.ver : null);
-    if (nv !== false) return true;
+    if (nv !== false) {
+      const n = cur && isObj(cur.v) && isObj(cur.v.submissions) ? Object.keys(cur.v.submissions).reduce((a, m) => a + (Array.isArray(cur.v.submissions[m]) ? cur.v.submissions[m].length : 0), 0) : 0;
+      if (n && store.logEvent) await store.logEvent("demo-reset", "체험 계정 처음으로 (제출 " + n + "개 지움)", { k, iid, sid });
+      return true;
+    }
   }
   return false;
 }
 
-module.exports = { resetDemo, resettable, isFresh, fresh, todayKst };
+module.exports = { resetDemo, resettable, isFresh, fresh, todayKst, realWork, DEMO_SIDS };

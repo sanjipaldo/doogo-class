@@ -368,6 +368,22 @@ async function restoreRows(rows) {
 /* ---------------- 일회성 작업 기록 ---------------- */
 async function opsDone() { return new Set((await exec("SELECT id FROM oplog")).rows.map((r) => r.id)); }
 async function opMark(id, note, result) { await exec("INSERT INTO oplog (id, at, note, result) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO NOTHING", [id, Date.now(), note || "", JSON.stringify(result || {}).slice(0, 2000)]); }
+/* 서버 사건 기록 (2026-11-26): 진행 기록 지키기 · 수강생 지우기 · 백업 되돌리기 같은 일을 작업 기록 표(oplog)에 id "ev:…" 로 남겨요.
+ * Vercel 런타임 로그는 우리 쪽에서 꺼내 볼 수 없어서(조회 0건) — 배포 때 점검 작업이 이 기록을 읽어 빌드 기록에 보여 줘요. 30일 지난 기록은 지워요. 실패해도 저장은 그대로 */
+const EV_KEEP = 30 * 864e5;
+async function logEvent(kind, note, data) {
+  try {
+    const at = Date.now(), id = "ev:" + String(kind || "x").replace(/[^a-z0-9-]/gi, "") + ":" + at + ":" + Math.random().toString(36).slice(2, 8);
+    await exec("INSERT INTO oplog (id, at, note, result) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO NOTHING", [id, at, String(note || "").slice(0, 300), JSON.stringify(data || {}).slice(0, 2000)]);
+    if (Math.random() < 0.05) await exec("DELETE FROM oplog WHERE id LIKE 'ev:%' AND at < ?", [at - EV_KEEP]);
+  } catch (e) { console.error("[event]", e && e.message); }
+}
+/** 사건 기록 읽기 (since 이후 · kind 를 주면 그것만 · 오래된 것부터) */
+async function listEvents(since, kind) {
+  const like = "ev:" + (kind ? String(kind).replace(/[^a-z0-9-]/gi, "") + ":" : "") + "%";
+  return (await exec("SELECT id, at, note, result FROM oplog WHERE id LIKE ? AND at > ? ORDER BY at", [like, Number(since) || 0])).rows
+    .map((r) => { let d = {}; try { d = JSON.parse(r.result || "{}"); } catch (e) {} return { kind: String(r.id).split(":")[1], at: Number(r.at), note: r.note || "", data: d }; });
+}
 
 /* ---------------- 처음 데이터 · 일회성 작업이 쓰는 것 (init.js — 예전엔 거기서 SQL 을 직접 썼어요) ---------------- */
 /** 문서 여러 개를 한 번에 넣기 (이미 있는 키는 그대로) — rows: [{ k, v: JSON 글자, created }] */
@@ -447,7 +463,7 @@ function pgAuthHint(u, why, pooler) {
 }
 
 module.exports = {
-  exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, pruneSameBackups, listBackups, backupRows, restoreRows, opsDone, opMark,
+  exec, batch, getDoc, getDocs, listDocs, writeDoc, countDocs, putFile, getFile, rlCheck, rlFail, rlClear, wipe, backup, pruneSameBackups, listBackups, backupRows, restoreRows, opsDone, opMark, logEvent, listEvents,
   insertDocs, putSys, allDocRows, fileStats, readUnion, db, pgProbe, pgAuthHint, pgSetup, close, openClient, readonly, isReadonlyError, pgSql, PG_SCHEMA, PG_TABLES,
   kind: () => getClient().kind
 };

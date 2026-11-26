@@ -1204,6 +1204,66 @@ async function progDiag(get, keys, ctx) {
   return { writes: {}, result: { backups: bks.length, 제출이_줄어든_적: out.length, list: out } };
 }
 
+/* ---------- 진도 점검 2 (2026-11-26 · 읽기만 · 아무것도 안 바꿈) ----------
+ * 3기 수강생 한 분이 ‘어제 과제 8개 완료 → 오늘 4개만 완료’ (서버 진행 기록 지키기를 넣은 11/25 뒤에도). Vercel 런타임 로그는 꺼내 볼 수 없어서
+ * 배포 때 빌드 기록에 한 줄씩 적어요 (이름은 가림 · 제출 내용은 안 남김):
+ *  ① 백업 목록과 이유 — 마스터 ‘백업 되돌리기’ · ‘백업 파일 불러오기’가 있었는지
+ *  ② 백업마다 + 지금, 제출 하나하나(과제 · 시각)를 앞 시점과 비교해 빠진 적이 있는 수강생 — 그 시점 · 빠진 과제 · 수강생 기록(상태 · 기수 · 커리큘럼 · 체험 표시) 변화 ·
+ *     지금 문서를 만든 · 바꾼 시각(진행 기록이 지워졌다 다시 생겼는지) · 지금 과제 상태(완료 · 보완 · 미제출)
+ *  ③ 같은 이름 + 뒷자리 수강생(로그인이 다른 계정으로 들어갈 수 있어요) · 체험 표시 수강생 · 서버 사건 기록(새로 남기기 시작) */
+async function progDiag2(get, keys, ctx) {
+  const say = ctx && ctx.log ? ctx.log : (t) => console.log("[db] 진도 점검 · " + t);
+  const bks = ctx && ctx.backups ? await ctx.backups(Date.now() - 8 * DAY, ["prog:", "stu:"]) : [];
+  const r = ctx && ctx.row ? ctx.row : () => ({});
+  say("① 백업 " + bks.length + "개 (최근 8일): " + bks.map((b) => "#" + b.id + " " + kstTxt(b.at) + " " + String(b.reason || "").replace("배포 전 자동 백업", "배포").slice(0, 40)).join(" · "));
+  const odd = bks.filter((b) => /되돌리기|불러오기|처음 상태|직접/.test(b.reason || ""));
+  say("① 마스터 백업 되돌리기 · 불러오기 · 직접 백업: " + (odd.length ? odd.map((b) => "#" + b.id + " " + kstTxt(b.at) + " " + b.reason).join(" · ") : "없음"));
+  const stuTxt = (x) => (isObj(x) ? [x.status || "-", "기수 " + (x.cohortId || "-"), x.curriculumId ? "커리큘럼 " + x.curriculumId : "", x.demo === true ? "체험" : ""].filter(Boolean).join("/") : "수강생 없음");
+  const mids = (p) => { const subs = isObj(p) && isObj(p.submissions) ? p.submissions : {}; return Object.keys(subs).filter((m) => Array.isArray(subs[m]) && subs[m].length).sort().map((m) => m + (subs[m].length > 1 ? "×" + subs[m].length : "")).join(","); };
+  const state = (p) => {
+    const subs = isObj(p) && isObj(p.submissions) ? p.submissions : {}, n = { 완료: 0, 보완: 0 };
+    Object.keys(subs).forEach((m) => { const l = Array.isArray(subs[m]) ? subs[m] : [], x = l[l.length - 1]; if (!x) return; const ok = x.review ? x.review.status === "approved" : !!(x.result && x.result.pass); n[ok ? "완료" : "보완"]++; });
+    return "완료 " + n.완료 + " · 보완 " + n.보완;
+  };
+  const pks = new Set(keys("prog:"));
+  bks.forEach((b) => Object.keys(b.docs).forEach((k) => { if (k.indexOf("prog:") === 0) pks.add(k); }));
+  let flagged = 0;
+  Array.from(pks).sort().forEach((pk) => {
+    const sk = "stu:" + pk.slice(5), now = get(sk);
+    const pts = bks.map((b) => ({ tag: "#" + b.id + " " + kstTxt(b.at), p: b.docs[pk], s: b.docs[sk] })).concat([{ tag: "지금", p: get(pk), s: now }]);
+    let prev = null, prevS = "", lostAny = false;
+    const lines = [];
+    pts.forEach((pt, i) => {
+      const ids = new Set(subAts(pt.p)), st = stuTxt(pt.s);
+      const lost = prev ? Array.from(prev).filter((x) => !ids.has(x)) : [];
+      if (lost.length) lostAny = true;
+      if (i === 0 || lost.length || st !== prevS || (prev && ids.size !== prev.size) || i === pts.length - 1)
+        lines.push(pt.tag + ": " + (pt.p === undefined ? "진행 기록 없음" : pt.p === null ? "진행 기록 지워짐" : "제출 " + ids.size + " [" + mids(pt.p) + "]") + " · " + st +
+          (lost.length ? " · ▼빠짐 " + lost.length + ": " + lost.slice(0, 12).map((x) => x.split("@")[0] + " " + kstTxt(Number(x.split("@")[1]))).join(", ") : ""));
+      if (pt.p !== undefined) prev = ids; // 진행 기록이 아직 없던 백업은 비교에서 건너뛰어요
+      prevS = st;
+    });
+    if (!lostAny) return;
+    flagged++;
+    say("② " + maskNm(now && now.name) + " (" + pk.slice(5) + ") · 지금 " + state(get(pk)) + " · 진행 기록 만든 " + kstTxt(r(pk).created) + " 바뀐 " + kstTxt(r(pk).updated) + " 판 " + r(pk).ver +
+      " · 수강생 만든 " + kstTxt(r(sk).created) + " 바뀐 " + kstTxt(r(sk).updated) + " 판 " + r(sk).ver);
+    lines.forEach((l) => say("    " + l));
+  });
+  say("② 제출이 빠진 적이 있는 수강생: " + flagged + "명");
+  const groups = {};
+  keys("stu:").forEach((k) => { const x = get(k); if (!isObj(x) || !x.name) return; const g = k.split(":")[1] + "|" + String(x.name).replace(/\s+/g, "") + "|" + String(x.phone4 || ""); (groups[g] = groups[g] || []).push([k, x]); });
+  let dup = 0;
+  Object.keys(groups).forEach((g) => {
+    if (groups[g].length < 2) return; dup++;
+    say("③ 같은 이름 + 뒷자리: " + maskNm(groups[g][0][1].name) + " (" + g.split("|")[0] + ") — " + groups[g].map(([k, x]) => x.id + "(" + stuTxt(x) + " · 만든 " + kstTxt(r(k).created) + " · " + progSum(get("prog:" + k.slice(4))).split(" · ")[0] + ")").join(" / "));
+  });
+  const demos = keys("stu:").filter((k) => isObj(get(k)) && get(k).demo === true);
+  say("③ 같은 이름 + 뒷자리 묶음 " + dup + "개 · 체험 표시 수강생 " + demos.length + "명: " + demos.map((k) => maskNm(get(k).name) + "(" + k.slice(4) + " · " + progSum(get("prog:" + k.slice(4))).split(" · ")[0] + ")").join(", "));
+  const evs = ctx && ctx.events ? await ctx.events(Date.now() - 8 * DAY) : [];
+  say("③ 서버 사건 기록 " + evs.length + "개" + (evs.length ? ": " + evs.slice(-30).map((e) => kstTxt(e.at) + " " + e.kind + " " + e.note + " " + JSON.stringify(e.data).slice(0, 160)).join(" | ") : ""));
+  return { writes: {}, result: { backups: bks.length, masterRestore: odd.length, flagged, sameName: dup, demo: demos.length, events: evs.length } };
+}
+
 /* ---------- 문대표 2주차 시장조사 제목 ‘10개’ → ‘3개’ (2026-11-10 · 대표님 요청) ----------
  * 4주 압축 과정 등 다른 커리큘럼에 예전 제목(‘… 시장조사 10개’)이 남아 있으면 ‘시장조사 3개’로 (기본 커리큘럼과 같게). 제목 말고는 그대로 */
 function moonW2Title3(get) {
@@ -1651,7 +1711,9 @@ const OPS = [
   { id: "2026-11-25-prog-restore-2", note: "수강생 진도 되살리기 한 번 더 (같은 작업 · 첫 복구 뒤 서버 지키기를 더 넣기 전까지 사이에 또 빠진 것이 있으면): 백업에 있던 제출이 지금 없는 수강생만 · 지우지 않음 · 이름 가림", run: progRestore },
   { id: "2026-11-25-prog-diag", note: "진도 사라짐 경위 기록(읽기만 · 바꾸지 않음): 백업마다 수강생 · 진행 기록 제출 수 — 제출이 줄어든 적이 있는 수강생만 · 이름 가림", run: progDiag },
   { id: "2026-11-24-store-pop-on", note: "두고클래스 스토어 팝업 켜기: 정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중 (닫기 · 오늘 그만 보기) — 마스터 › VOD 전시 · 쿠폰 · 설정 › 스토어 팝업에서 끄기 · 문구 수정 · 마스터가 이미 정했으면 그대로", run: storePopOn },
+  { id: "2026-11-26-prog-diag-2", note: "진도 점검 2(읽기만 · 바꾸지 않음): 백업 이유(마스터 되돌리기 · 불러오기) · 백업마다 + 지금 제출 하나하나 비교해 빠진 적 있는 수강생 시간순 · 수강생 기록 변화 · 문서 만든/바뀐 시각 · 같은 이름+뒷자리 · 체험 표시 · 서버 사건 기록 — 빌드 기록에 한 줄씩", run: progDiag2 },
+  { id: "2026-11-26-prog-restore-3", note: "수강생 진도 되살리기 3번째 (같은 작업 · 3기 수강생 ‘어제 8개 → 오늘 4개’): 배포 전 자동 백업(최근 7일)에 있던 제출이 지금 없으면 더해요 · 아무것도 안 지움 · 며칠에 걸친 제출이 있는 체험 표시는 풀어요", run: progRestore },
   { id: "2026-11-26-moon-pt-inq-clear", note: "두고 파트너스 지원: 이미 두고클래스 VOD 강사인 문대표의 지원서(처리 중 · 활동명 문대표 · 같은 이름 · 강사센터 DOOGO CLASS 열기 신청)만 지우기 + 문대표 계정의 ‘열기 신청 중’ 표시 지우기 (문대표가 VOD 강사가 아니면 · 처리 끝난 지원 · 따로 만든 계정이 있는 지원은 그대로 · 3건 넘으면 안 지움)", run: moonPtInqClear },
 ];
 
-module.exports = { OPS, moonPtInqClear, progRestore, progDiag, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonPtInqClear, progRestore, progDiag, progDiag2, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };

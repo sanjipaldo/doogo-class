@@ -4458,12 +4458,15 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
     const f88 = (await st88.getDoc(pk88)).v;
     ok(e88.submissions["m1-2"] && e88.submissions["m1-2"].length === 1 && f88.submissions["m1-1"].length === 1 && f88.submissions["m1-1"][0].review.status === "approved" && f88.submissions["m1-2"].length === 1 && Object.keys(f88.readNotices).length >= 3,
       "과제 제출은 지워지지 않아요: 제출을 빼는 저장은 되돌려 넣고, 지금 판을 알고 보냈어도 기록을 통째로 비우는 저장(제출 0개)은 서버 기록 위에 합쳐요 (승인 · 읽음 그대로)", f88);
-    // 수강생을 지울 때는 진행 기록도 같이 지워져요
+    // 수강생을 지울 때도 진행 기록은 서버에 남아요 (2026-11-26) — 보낸 화면에는 지워진 것으로 답하고 · 누가 지웠는지 사건 기록에
     await st88.writeDoc("stu:moon:s88x", { id: "s88x", instructorId: "moon", cohortId: "c4", name: "라OO", status: "approved" }, null);
     await st88.writeDoc("prog:moon:s88x", Object.assign(DR88.emptyProgress(), { submissions: { m1: [{ at: 5 }] } }), null);
     const sx = await st88.getDoc("stu:moon:s88x"), px = await st88.getDoc("prog:moon:s88x");
     r = await call("sync", { body: { changes: [{ k: "stu:moon:s88x", base: sx.ver, del: true }, { k: "prog:moon:s88x", base: px.ver, del: true }] } });
-    ok(!((await st88.getDoc("stu:moon:s88x")) || {}).v && !((await st88.getDoc("prog:moon:s88x")) || {}).v, "강사가 수강생을 삭제하면(수강생 · 진행 기록을 같이 보냄) 진행 기록도 지워져요", r.json.results);
+    const ev88 = await st88.listEvents(0);
+    ok(!((await st88.getDoc("stu:moon:s88x")) || {}).v && ((await st88.getDoc("prog:moon:s88x")) || {}).v.submissions.m1.length === 1 && r.json.results[1].doc === null &&
+      ev88.some((e) => e.kind === "stu-del" && e.data.k === "stu:moon:s88x" && /instructor:moon/.test(e.data.who)) && ev88.some((e) => e.kind === "guard" && /수강생 삭제 · 진행 기록은 서버에 남김/.test(e.note)),
+      "강사가 수강생을 삭제하면(수강생 · 진행 기록을 같이 보냄) 수강생만 지워지고 진행 기록은 서버에 남아요 (화면엔 지워진 것으로 답함) · 누가 지웠는지 서버 사건 기록에", { res: r.json.results, ev: ev88.map((e) => e.kind + " " + e.note) });
     useJar({ dc_s: auth.sign({ r: "student", sid: sid88, iid: "moon" }) });
     // 강사 검수 지키기: 순서가 아니라 제출 시각(at)으로 같은 제출을 찾아요
     const AC88 = require(path.join(TMP, "class/api/_lib/access.js"));
@@ -4539,6 +4542,58 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       !Object.keys(r3.writes).length && /5건/.test(r3.result.skipped),
       "문대표 DOOGO CLASS 가 잠겨 있거나 연결된 클래스가 없으면 아무것도 안 지움 · 고른 지원서가 3건을 넘으면 안 지움", [r1.result.skipped, r2.result.skipped, r3.result.skipped]);
     ok(OF89.OPS.some((o) => o.id === "2026-11-26-moon-pt-inq-clear" && o.run === OF89.moonPtInqClear), "일회성 작업 목록에 문대표 지원서 지우기가 있어요");
+  }
+
+  {
+    console.log("90) 진도가 또 줄어든 일 (2026-11-26) — 체험 표시 잘못 · 백업 되돌리기 · 불러오기도 진도를 못 지우게 · 서버 사건 기록 · 점검 2");
+    const st90 = require(path.join(TMP, "class/api/_lib/store.js")), in90 = require(path.join(TMP, "class/api/_lib/init.js"));
+    const DM90 = require(path.join(TMP, "class/api/_lib/demoreset.js")), OF90 = require(path.join(TMP, "class/api/_lib/oneoff.js")), H = 3600e3, t0 = Date.now() - 48 * H;
+    const cnt90 = (p) => Object.keys((p && p.submissions) || {}).reduce((a, m) => a + p.submissions[m].length, 0);
+    // ① 실제 수강생이 체험으로 잘못 표시돼 있으면(제출이 12시간 넘게 걸쳐 있음) 로그인 · 로그아웃 때 지우지 않고 체험 표시를 풀어요
+    await st90.writeDoc("stu:moon:s90r", { id: "s90r", instructorId: "moon", cohortId: "c4", name: "가OO", phone4: "9090", status: "approved", demo: true }, null);
+    await st90.writeDoc("prog:moon:s90r", Object.assign({}, { submissions: { "m1-1": [{ at: t0, result: { pass: true } }], "m1-2": [{ at: t0 + 20 * H, result: { pass: true } }] } }), null);
+    await st90.writeDoc("stu:moon:s90d", { id: "s90d", instructorId: "moon", cohortId: "c4", name: "체험 수강생", phone4: "9091", status: "approved", demo: true }, null);
+    await st90.writeDoc("prog:moon:s90d", { submissions: { "m1-1": [{ at: Date.now() - 600e3, result: { pass: true } }], "m1-2": [{ at: Date.now() - 60e3, result: { pass: true } }] } }, null);
+    const a90 = await DM90.resetDemo("moon", "s90r"), b90 = await DM90.resetDemo("moon", "s90d");
+    const pr = (await st90.getDoc("prog:moon:s90r")).v, sr = (await st90.getDoc("stu:moon:s90r")).v, pd = (await st90.getDoc("prog:moon:s90d")).v, ev1 = await st90.listEvents(0);
+    ok(a90 === false && cnt90(pr) === 2 && sr.demo === undefined && b90 === true && cnt90(pd) === 0 && ev1.some((e) => e.kind === "demo-skip" && e.data.sid === "s90r") && ev1.some((e) => e.kind === "demo-reset" && e.data.sid === "s90d"),
+      "체험 표시된 실제 수강생(제출이 12시간 넘게 걸침)은 처음으로 돌리지 않고 체험 표시를 풀어요 · 진짜 체험 계정(몇 분 안의 제출)은 그대로 처음으로 · 둘 다 사건 기록", { pr: cnt90(pr), demo: sr.demo, pd: cnt90(pd) });
+    // ② 마스터 ‘백업 되돌리기’: 진행 기록은 지금 것 그대로 + 백업 것을 더해요 (백업 뒤에 낸 과제 · 백업 뒤에 생긴 진행 기록도 남아요)
+    await st90.writeDoc("prog:moon:s90b", { submissions: { "m1-1": [{ at: t0 }] }, readNotices: { n1: 1 } }, null);
+    const bk90 = await st90.backup("시험 백업");
+    const bid = (await st90.listBackups())[0].id;
+    let rb = await st90.getDoc("prog:moon:s90b");
+    await st90.writeDoc("prog:moon:s90b", Object.assign({}, rb.v, { submissions: { "m1-1": [{ at: t0 }], "m1-2": [{ at: t0 + H }], "m1-3": [{ at: t0 + 2 * H }] } }), rb.ver);
+    await st90.writeDoc("prog:moon:s90n", { submissions: { "m2-1": [{ at: t0 + 3 * H }] } }, null);
+    await in90.restoreBackup(bid);
+    const after = (await st90.getDoc("prog:moon:s90b")).v, newer = (await st90.getDoc("prog:moon:s90n")) || {}, ev2 = await st90.listEvents(0, "restore");
+    ok(bk90 && cnt90(after) === 3 && after.readNotices.n1 === 1 && newer.v && cnt90(newer.v) === 1 && ev2.length === 1,
+      "백업 되돌리기: 진행 기록은 지금 것(제출 3개) 그대로 + 백업 것 더함 · 백업 뒤에 생긴 진행 기록도 남음 · 사건 기록", { after: cnt90(after), newer: newer.v ? cnt90(newer.v) : "없음", ev: ev2.length });
+    // ③ 백업 파일 불러오기(keepProg): 파일의 진행 기록 위에 지금 것을 합쳐요
+    const map90 = { "stu:moon:s90b": { id: "s90b", instructorId: "moon", cohortId: "c4", name: "나OO", phone4: "1111", status: "approved" }, "prog:moon:s90b": { submissions: { "m1-1": [{ at: t0 }] } } };
+    const keepMeta = (await st90.getDoc("meta")).v, keepIns = (await st90.getDoc("ins:moon")).v;
+    map90.meta = keepMeta; map90["ins:moon"] = keepIns;
+    await in90.replaceAll(map90, "시험 불러오기", true);
+    const imp = (await st90.getDoc("prog:moon:s90b")).v;
+    ok(cnt90(imp) === 3 && (await st90.listEvents(0, "restore")).length === 2, "백업 파일 불러오기: 파일의 진행 기록(제출 1개) 위에 지금 것(제출 3개)을 합쳐 남겨요", cnt90(imp));
+    // ④ 점검 2(읽기만): 백업 이유 · 백업마다 + 지금 제출 비교 · 같은 이름+뒷자리 · 체험 표시 · 사건 기록을 줄마다
+    const lines = [], D90 = {
+      "stu:moon:a": { id: "a", name: "최OO 시험", phone4: "1234", status: "approved", cohortId: "c4" }, "prog:moon:a": { submissions: { "m1-1": [{ at: 1000 }], "m1-10": [{ at: 9000, result: { pass: true } }] } },
+      "stu:moon:a2": { id: "a2", name: "최OO 시험", phone4: "1234", status: "pending", cohortId: "c4" },
+      "stu:moon:d": { id: "d", name: "다OO", phone4: "5555", status: "approved", cohortId: "c4", demo: true }
+    };
+    const g90 = (k) => (D90[k] == null ? D90[k] : JSON.parse(JSON.stringify(D90[k]))), k90 = (p) => Object.keys(D90).filter((k) => k.indexOf(p) === 0).sort();
+    const o90 = await OF90.progDiag2(g90, k90, { log: (t) => lines.push(t), row: () => ({ ver: 4, created: 1, updated: 2 }), events: async () => [{ at: 5, kind: "guard", note: "지우기 막음", data: { k: "prog:moon:a" } }],
+      backups: async () => [
+        { id: 1, at: Date.now() - 30 * H, reason: "배포 전 자동 백업 (abc1234)", docs: { "stu:moon:a": D90["stu:moon:a"], "prog:moon:a": { submissions: { "m1-1": [{ at: 1000 }], "m1-2": [{ at: 2000 }], "m1-3": [{ at: 3000 }] } } } },
+        { id: 2, at: Date.now() - 20 * H, reason: "백업 #1 되돌리기 전 자동 백업", docs: { "stu:moon:a": D90["stu:moon:a"], "prog:moon:a": { submissions: { "m1-1": [{ at: 1000 }], "m1-2": [{ at: 2000 }], "m1-3": [{ at: 3000 }] } } } }] });
+    const txt = lines.join("\n");
+    ok(Object.keys(o90.writes).length === 0 && o90.result.flagged === 1 && o90.result.masterRestore === 1 && o90.result.sameName === 1 && o90.result.demo === 1 && o90.result.events === 1 &&
+      /되돌리기 전 자동 백업/.test(txt) && /▼빠짐 2: m1-2 .*m1-3/.test(txt) && /최OO \(moon:a\)/.test(txt) && !/시험/.test(txt) && /같은 이름 \+ 뒷자리: 최OO/.test(txt) && /체험 표시 수강생 1명/.test(txt) && /지우기 막음/.test(txt),
+      "점검 2(2026-11-26-prog-diag-2): 아무것도 안 바꾸고 · 마스터 되돌리기 백업 · 지금 빠진 제출(m1-2 · m1-3) · 같은 이름+뒷자리 · 체험 표시 · 사건 기록을 빌드 기록에 줄마다 (이름 가림)", lines);
+    const ids90 = OF90.OPS.map((o) => o.id), iD = ids90.indexOf("2026-11-26-prog-diag-2"), iR = ids90.indexOf("2026-11-26-prog-restore-3");
+    ok(iD >= 0 && iR > iD && OF90.OPS[iD].run === OF90.progDiag2 && OF90.OPS[iR].run === OF90.progRestore && /events: \(since, kind\) => store\.listEvents/.test(fs.readFileSync(path.join(ROOT, "api/_lib/init.js"), "utf8")),
+      "일회성 작업: 점검 2 → 되살리기 3 순서 · 배포 때 작업에 사건 기록 읽기 도구를 넘겨요");
   }
 
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
