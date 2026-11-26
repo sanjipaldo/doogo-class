@@ -1650,24 +1650,54 @@
     if (!list.length) return '<div class="empty">' + icon("search") + '<div>검색 결과가 없어요.</div></div>';
     return list.map((f) => '<details class="faq"><summary><span class="q">Q</span><span><small class="faq-cat">' + esc(f.category || "기타") + "</small>" + esc(f.q) + "</span>" + icon("chevDown", "sm chev") + '</summary><div class="a">' + DB.linkify(f.a) + "</div></details>").join("");
   }
+  // 1:1 요청 목록 페이지 (2026-11-26 · 대표님 요청): 5개씩 · ‹ 1 2 3 4 › — 목록 · 요청 상세를 오갈 때는 보던 페이지 그대로, 다른 메뉴로 가면 1페이지부터
+  const REQ_PER = 5;
+  let reqPage = 1;
+  const reqPageKeep = (r) => { if (!(r && r.parts[0] === "qna" && r.parts[1] === "requests")) reqPage = 1; };
+  /** 몇 페이지 · 이 페이지 줄 · 번호 줄(7페이지 넘으면 1 … 4 5 6 … 20 — 0 = …) */
+  function reqPaging(list) {
+    const pages = Math.max(1, Math.ceil(list.length / REQ_PER)), page = Math.min(Math.max(1, Math.floor(Number(reqPage)) || 1), pages), nums = [];
+    reqPage = page;
+    if (pages <= 7) for (let i = 1; i <= pages; i++) nums.push(i);
+    else {
+      let a = Math.max(2, Math.min(page - 1, pages - 4)), b = Math.min(pages - 1, Math.max(page + 1, 5));
+      if (a === 3) a = 2;
+      if (b === pages - 2) b = pages - 1;
+      nums.push(1); if (a > 2) nums.push(0);
+      for (let i = a; i <= b; i++) nums.push(i);
+      if (b < pages - 1) nums.push(0); nums.push(pages);
+    }
+    return { page, pages, rows: list.slice((page - 1) * REQ_PER, page * REQ_PER), nums };
+  }
+  /** ‹ 1 2 3 4 › — 한 페이지뿐이면 없음 (React ui/dg/Board.jsx ReqPager 와 같은 모양) */
+  function reqPager(pg) {
+    if (pg.pages < 2) return "";
+    const arrow = (n, label, ic, off) => off ? '<span class="rp-btn rp-arrow off" aria-hidden="true">' + icon(ic, "sm") + "</span>"
+      : '<button type="button" class="rp-btn rp-arrow" data-action="req-page" data-k="' + n + '" aria-label="' + label + '">' + icon(ic, "sm") + "</button>";
+    return '<nav class="req-pages" aria-label="1:1 요청 페이지">' + arrow(pg.page - 1, "이전 페이지", "chevLeft", pg.page <= 1) +
+      pg.nums.map((n) => !n ? '<span class="rp-gap" aria-hidden="true">…</span>'
+        : n === pg.page ? '<button type="button" class="rp-btn rp-num on" data-action="req-page" data-k="' + n + '" aria-current="page">' + n + "</button>"
+        : '<button type="button" class="rp-btn rp-num" data-action="req-page" data-k="' + n + '">' + n + "</button>").join("") +
+      arrow(pg.page + 1, "다음 페이지", "chevRight", pg.page >= pg.pages) + "</nav>";
+  }
   // 작성일: 휴대폰에서는 연도를 빼고 월-일만 (2026-11-26 → 11-26 · 작성자 칸 자리를 내요)
   const reqDate = (at) => { const d = DB.date.toStr(new Date(at)); return '<span class="dt-y">' + d.slice(0, 5) + "</span>" + d.slice(5); };
   const myRequests = () => DB.requests(INS.id, preview ? me : null).filter((x) => !DB.isVodStudent(x.s) || (me && x.s.id === me.id));
   function pageRequests() {
-    const vod = TRACK === "vod", list = vod ? myCoachQs() : myRequests(), n = vod ? coachN() : 0, cp = vod ? addPid("coachOf") : "";
+    const vod = TRACK === "vod", list = vod ? myCoachQs() : myRequests(), n = vod ? coachN() : 0, cp = vod ? addPid("coachOf") : "", pg = reqPaging(list);
     return '<div class="page">' + pageHead(ML("qna"), vod ? "강사님께 남긴 1:1 코칭 질문이에요. 질문 1개에 코칭권 1회가 차감돼요." : "화면 오류나 불편한 점을 남기면 강사님이 직접 확인하고 답해 드려요.") + qnaTabs("req") +
       '<div class="req-bar"><span class="muted">총 <b>' + list.length + "</b>건의 " + (vod ? "코칭 질문" + (n ? " · 남은 코칭 <b>" + n + "회</b>" : "") : "1:1 요청") + "</span>" + (vod && !n ? (cp ? '<a class="btn btn-primary" href="#/vod/checkout/' + esc(cp) + '?item=coach">' + icon("message", "sm") + "코칭권 사기</a>" : "") : '<a class="btn btn-primary" href="#/qna/requests/new">' + icon("pen", "sm") + (vod ? "질문 남기기" : "요청 남기기") + "</a>") + "</div>" +
       '<div class="callout callout-ok req-note">' + icon("lock", "sm") + "<div>" + (vod ? "코칭 질문은 <b>비공개</b>예요. 나와 강사님만 볼 수 있어요." + (n ? " 코칭권은 " + esc(coachEnd()) + "까지 쓸 수 있어요." : "") : "모든 1:1 요청은 <b>비공개</b>예요. 작성자와 강사님만 볼 수 있어요. 수업 내용 질문은 라이브 시간이나 " + esc(D.brand.botName) + "에게 물어보면 더 빨라요.") + "</div></div>" +
       '<section class="card req-card">' + (list.length
         ? '<table class="req-table"><thead><tr><th class="c-no">번호</th><th class="c-st">상태</th><th>제목</th><th class="c-au">작성자</th><th class="c-dt">작성일</th><th class="c-an">답변</th></tr></thead><tbody>' +
-          list.map((x) => {
+          pg.rows.map((x) => {
             const mine = x.s.id === me.id;
             return '<tr class="' + (mine ? "mine" : "") + '" data-action="req-open" data-id="' + esc(x.q.id) + '" data-mine="' + (mine ? 1 : 0) + '" tabindex="0">' +
               '<td class="c-no num">' + x.no + '</td><td class="c-st">' + (x.q.answer ? '<span class="badge badge-positive">답변완료</span>' : '<span class="badge badge-neutral">답변대기</span>') + "</td>" +
               '<td class="c-title">' + (mine ? '<b>' + esc(x.q.title) + "</b>" + ((x.q.images || []).length ? icon("paperclip", "xs") : "") + '<span class="badge badge-ink mine-tag">내 글</span>' : '<span class="locked">' + icon("lock", "xs") + "(비공개)</span>") + (x.q.answer ? '<span class="re">RE</span>' : "") + "</td>" +
               '<td class="c-au">' + esc(mine ? me.name : DB.maskName(x.s.name)) + '</td><td class="c-dt num">' + reqDate(x.q.at) + '</td><td class="c-an num">' + (DB.qThread(x.q).length || "—") + "</td></tr>";
           }).join("") + "</tbody></table>"
-        : empty("message", vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요.")) + "</section></div>";
+        : empty("message", vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요.")) + "</section>" + reqPager(pg) + "</div>";
   }
   const COACH_CATS = ["강의 내용 질문", "내 사업에 적용", "자료 · 실습", "기타"];
   /** 강의실 노트의 ‘1:1 코칭 질문으로 보내기’ → 질문 쓰기 화면에 내용을 채워 둬요 (질문을 등록하면 노트에 표시) */
@@ -2678,6 +2708,7 @@
       return r.parts[0] !== "login" || want ? "#/login" : "";
     }
     if (r.parts[0] === "login") return "#/home";
+    reqPageKeep(r);
     if (TRACK === "vod" && r.parts[0] === "vodclass" && r.parts[1] && r.parts[1] !== "notes") setVp(decodeURIComponent(r.parts[1]));
     applyTheme();
     const top = r.parts[0];
@@ -2701,6 +2732,7 @@
       return;
     }
     if (r.parts[0] === "login") { ROUTE.replace("#/home"); return render(); }
+    reqPageKeep(r);
     if (TRACK === "vod" && r.parts[0] === "vodclass" && r.parts[1] && r.parts[1] !== "notes") setVp(decodeURIComponent(r.parts[1]));
     applyTheme();
     // 꺼진 메뉴로 들어오면 홈으로
@@ -2794,6 +2826,7 @@
         if (a.dataset.mine === "1") ROUTE.hash = "#/qna/requests/" + a.dataset.id;
         else toast("비공개 글은 작성자와 강사님만 볼 수 있어요.", "warn");
         break;
+      case "req-page": reqPage = Number(a.dataset.k) || 1; { const y = window.scrollY; render(); window.scrollTo(0, y); } break;
       case "req-remove": reqDraft.splice(Number(a.dataset.i), 1); { const t = document.getElementById("req-thumbs"); if (t) t.innerHTML = reqThumbs(); } break;
       case "guide-close": { P.guideClosed = P.guideClosed || {}; P.guideClosed[a.dataset.wk] = Date.now(); saveProgress(); render(); toast(Number(a.dataset.wk) === 1 ? "시작 가이드 완료! 1주차 과제를 시작해요." : a.dataset.wk + "주차 시작 가이드를 완료했어요!"); break; }
       case "toggle-guide": { const g = a.dataset.id, before = guideGroup(); P.guide = P.guide || {}; if (P.guide[g]) delete P.guide[g]; else P.guide[g] = Date.now(); saveProgress(); render(); guideDoneCheck(before); break; }
@@ -2917,7 +2950,7 @@
       if (!saveProgress()) { P.questions.pop(); return; }
       if (vod && !preview && me.vodMid) VX().useCoach(me.vodMid, INS.id, q.id);
       if (vod) vtAskDone(q.id);
-      reqDraft = [];
+      reqDraft = []; reqPage = 1; // 새 요청은 맨 위(1페이지)에 있어요
       ROUTE.hash = "#/qna/requests/" + q.id;
       toast(vod ? "질문을 남겼어요 · 코칭권 1회 사용" + (preview ? "" : " (남은 " + coachN() + "회)") : "1:1 요청을 남겼어요.");
     }
@@ -3020,7 +3053,7 @@
     // 동기부여(고른 영상 · 자동 재생) · 수료증(미리보기 · 도장 · 메달 · 번호 · PDF) · 다시보기 · 모범 과제(주차 칩) · 학습 노트 · 용어 사전 · 추가 메뉴
     mv: (id) => { if (id !== undefined) { mvSel = id; mvAuto = true; } return { sel: mvSel, auto: mvAuto }; },
     certPv: (flip) => { if (flip) certPreview = !certPreview; return certPreview; }, certSeal, certRosette, certNo: certNumber, certPrint, allMissions,
-    replaysSorted, rpWeek: (k) => { if (k !== undefined) rpWeek = k; return rpWeek; }, replayFlip,
+    replaysSorted, rpWeek: (k) => { if (k !== undefined) rpWeek = k; return rpWeek; }, reqPaging, reqPage: (k) => { if (k !== undefined) reqPage = Number(k) || 1; return reqPage; }, replayFlip,
     scWeek: (k) => { if (k !== undefined) scWeek = k; return scWeek; },
     promptsOf, journalSave, exportNotes, glCat: (c) => { if (c !== undefined) glCat = c; return glCat; }, initialOf,
     // 로그인 화면: 강사 목록(첫 화면 순서) · 고른 강사 · 브랜드 · 두잉고/두고클래스 탭 · 로그인 · 수강 신청 · 안내 글

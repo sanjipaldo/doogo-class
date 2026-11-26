@@ -137,19 +137,43 @@ module.exports = {
         r = { b1, b2, edited: !!ed, cv, ins, sv };
       }
       // 1-3c) 1:1 요청 목록 (2026-11-26 · 대표님 요청): 휴대폰(390px)에서도 상태 · 제목 · 작성자 · 작성일 — 내 글은 내 이름 · 가로로 넘치지 않음 · 작성일은 월-일 (예전 화면 = React)
+      // 1-3d) 페이지 (2026-11-26 · 대표님 요청): 5개씩 · ‹ 1 2 › — 요청 5개를 더 남겨 6개 → 1페이지 5줄 · 2페이지 1줄(처음 남긴 요청) · 상세에 들어갔다 뒤로 오면 보던 2페이지 그대로
+      for (let k = 1; k <= 5; k++) {
+        await stu.evaluate(() => { window.ROUTE.hash = "#/qna/requests/new"; }); await stu.waitForTimeout(500);
+        await stu.fill("#q-title", "E2E 페이지 요청 " + k); await stu.fill("#q-body", "페이지 나누기 확인용이에요.");
+        await stu.click("#request-form button[type='submit']"); await stu.waitForTimeout(500);
+      }
+      await L.flushed(stu);
       const lv = {};
       await stu.setViewportSize({ width: 390, height: 844 });
+      const pgOf = () => stu.evaluate(() => ({ rows: Array.from(document.querySelectorAll(".req-table tbody tr")).map((x) => (x.querySelector(".c-title b") || x.querySelector(".c-title") || {}).textContent.trim()),
+        pager: Array.from(document.querySelectorAll(".req-pages > *")).map((x) => (x.classList.contains("on") ? "[" + x.textContent.trim() + "]" : x.classList.contains("off") ? "x" : x.classList.contains("rp-arrow") ? ">" : x.textContent.trim())).join(" ") }));
       for (const mode of ["off", "all"]) {
         await L.reactCookie(stu, base, mode); await L.open(stu, base, "/home");
         await stu.evaluate(() => { window.ROUTE.hash = "#/qna/requests"; }); await stu.waitForTimeout(800);
+        const p1 = await pgOf();
+        await stu.click('.req-pages [data-k="2"]'); await stu.waitForTimeout(500);
+        const p2 = await pgOf();
         lv[mode] = await stu.evaluate(() => { const t = document.querySelector(".req-table"), c = document.querySelector(".req-card"), vis = (el) => !!el && getComputedStyle(el).display !== "none";
           if (!t) return null; const tr = Array.from(t.querySelectorAll("tbody tr")).find((x) => /E2E 답변 스레드 요청/.test(x.textContent));
           return { head: Array.from(t.querySelectorAll("thead th")).filter(vis).map((x) => x.textContent.trim()), au: tr ? (tr.querySelector("td.c-au") || {}).textContent : "", dt: tr ? (tr.querySelector("td.c-dt") || {}).innerText : "", scroll: c.scrollWidth > c.clientWidth + 1 }; });
+        // 상세에 들어갔다가 뒤로 → 2페이지 그대로 · 다른 메뉴에 갔다 오면 1페이지
+        await stu.click(".req-table tbody tr.mine"); await stu.waitForTimeout(600);
+        const det = await stu.evaluate(() => location.pathname + location.hash);
+        await stu.goBack(); await stu.waitForTimeout(700);
+        const back = await pgOf();
+        await stu.evaluate(() => { window.ROUTE.hash = "#/home"; }); await stu.waitForTimeout(500);
+        await stu.evaluate(() => { window.ROUTE.hash = "#/qna/requests"; }); await stu.waitForTimeout(600);
+        const again = await pgOf();
+        Object.assign(lv[mode] || {}, { p1, p2, det: /\/qna\/requests\/q[\w-]+$/.test(det), back: back.pager, again: again.pager });
       }
       await stu.setViewportSize({ width: 1280, height: 900 });
       await stu.context().close();
       await run.check(!!lv.off && JSON.stringify(lv.off.head) === JSON.stringify(["상태", "제목", "작성자", "작성일"]) && lv.off.au === info.student.name && /^\d{2}-\d{2}$/.test(String(lv.off.dt).trim()) && !lv.off.scroll && JSON.stringify(lv.off) === JSON.stringify(lv.all),
-        "1:1 요청 목록 휴대폰(390px): 상태 · 제목 · 작성자 · 작성일 칸 · 내 글 작성자 = 내 이름 · 작성일 월-일 · 가로로 넘치지 않음 (예전 화면 = React)", { off: lv.off && Object.assign({}, lv.off, { au: lv.off.au ? lv.off.au.slice(0, 1) + "…" : "" }), same: JSON.stringify(lv.off) === JSON.stringify(lv.all) }, page);
+        "1:1 요청 목록 휴대폰(390px): 상태 · 제목 · 작성자 · 작성일 칸 · 내 글 작성자 = 내 이름 · 작성일 월-일 · 가로로 넘치지 않음 (예전 화면 = React)", { off: lv.off && Object.assign({}, lv.off, { au: lv.off.au ? lv.off.au.slice(0, 1) + "…" : "", p1: undefined, p2: undefined }), same: JSON.stringify(lv.off) === JSON.stringify(lv.all) }, page);
+      const pv = lv.off || {};
+      await run.check(!!pv.p1 && pv.p1.rows.length === 5 && pv.p1.rows[0] === "E2E 페이지 요청 5" && pv.p1.pager === "x [1] 2 >" && pv.p2.rows.length === 1 && pv.p2.rows[0] === "E2E 답변 스레드 요청" && pv.p2.pager === "> 1 [2] x" && pv.det && pv.back === "> 1 [2] x" && pv.again === "x [1] 2 >" && !!lv.all && JSON.stringify(lv.all.p1) === JSON.stringify(pv.p1) && JSON.stringify(lv.all.p2) === JSON.stringify(pv.p2) && lv.all.back === pv.back && lv.all.again === pv.again,
+        "1:1 요청 목록 페이지: 5개씩 · ‹ 1 2 › · 2페이지 = 처음 남긴 요청 · 상세 갔다 뒤로 오면 보던 페이지 그대로 · 다른 메뉴 갔다 오면 1페이지 (예전 화면 = React)", { off: { p1: pv.p1, p2: pv.p2, det: pv.det, back: pv.back, again: pv.again }, all: lv.all && { p1: lv.all.p1, p2: lv.all.p2, back: lv.all.back, again: lv.all.again } }, page);
       const okC = (v) => !!v && v.items.length === 2 && !v.items[0].re && v.items[1].re && /강사$/.test(v.items[0].by) && /운영팀/.test(v.items[1].by) && v.items[0].body.trim() === LONG && /답글/.test(v.items[1].meta) && /수정됨/.test(v.items[1].meta) && v.items[1].body.trim() === "운영팀 답글이에요. (고침)" && v.btn === "답글 달기" && v.ta === "";
       const okS = (v) => !!v && v.head === "답변 2개" && v.cards.length === 2 && !v.cards[0].re && v.cards[1].re && /강사/.test(v.cards[0].who) && /운영팀/.test(v.cards[1].who) && /답글/.test(v.cards[1].who) && /수정됨/.test(v.cards[1].when) && v.cards[0].body.trim() === LONG && /END$/.test(v.cards[0].body.trim());
       await run.check(!!r && r.b1 === "답변 등록" && r.b2 === "답글 달기" && r.edited && okC(r.cv.off) && JSON.stringify(r.cv.off) === JSON.stringify(r.cv.all) && !!r.ins && r.ins.items.length === 2 && r.ins.items.every((x) => x.edit) && okS(r.sv.off) && JSON.stringify(r.sv.off) === JSON.stringify(r.sv.all),

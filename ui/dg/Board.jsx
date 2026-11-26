@@ -96,20 +96,35 @@ function Faq() {
       <p className="tiny" style={{ marginTop: "12px" }}>{vod ? <>원하는 답이 없다면 {D.brand.botName}에게 물어보거나 1:1 코칭 질문을 남겨 주세요. 결제 · 환불 · 계정 문의는 <a href="#/vod/my/help">DOOGO CLASS 고객센터</a>로 남겨 주세요.</> : "원하는 답이 없다면 " + D.brand.botName + "에게 물어보거나 라이브 시간에 질문해 주세요."}</p></div>
   );
 }
+/** 1:1 요청 목록 페이지 ‹ 1 2 3 4 › (2026-11-26) — 예전 화면 app.js reqPager 와 같은 모양 · 한 페이지뿐이면 없음 */
+function ReqPager({ pg }) {
+  const X = DGA();
+  if (pg.pages < 2) return null;
+  const go = (n) => { X.reqPage(n); redraw(); };
+  const arrow = (n, label, ic, off) => off ? <span className="rp-btn rp-arrow off" aria-hidden="true"><Icon n={ic} c="sm" /></span>
+    : <button type="button" className="rp-btn rp-arrow" data-action="req-page" data-k={n} aria-label={label} onClick={() => go(n)}><Icon n={ic} c="sm" /></button>;
+  return (
+    <nav className="req-pages" aria-label="1:1 요청 페이지">{arrow(pg.page - 1, "이전 페이지", "chevLeft", pg.page <= 1)}
+      {pg.nums.map((n, i) => !n ? <span key={"g" + i} className="rp-gap" aria-hidden="true">…</span>
+        : n === pg.page ? <button key={n} type="button" className="rp-btn rp-num on" data-action="req-page" data-k={n} aria-current="page" onClick={() => go(n)}>{n}</button>
+        : <button key={n} type="button" className="rp-btn rp-num" data-action="req-page" data-k={n} onClick={() => go(n)}>{n}</button>)}
+      {arrow(pg.page + 1, "다음 페이지", "chevRight", pg.page >= pg.pages)}</nav>
+  );
+}
 function Requests() {
-  const X = DGA(), S = st(), DB = DBX(), vod = S.TRACK === "vod", list = vod ? X.myCoachQs() : X.myRequests(), n = vod ? X.coachN() : 0, cp = vod ? X.addPid("coachOf") : "";
+  const X = DGA(), S = st(), DB = DBX(), vod = S.TRACK === "vod", list = vod ? X.myCoachQs() : X.myRequests(), n = vod ? X.coachN() : 0, cp = vod ? X.addPid("coachOf") : "", pg = X.reqPaging(list);
   const open = (x, mine) => { if (mine) window.ROUTE.hash = "#/qna/requests/" + x.q.id; else X.toast("비공개 글은 작성자와 강사님만 볼 수 있어요.", "warn"); };
   return (
     <div className="page"><PageHead title={X.ML("qna")} sub={vod ? "강사님께 남긴 1:1 코칭 질문이에요. 질문 1개에 코칭권 1회가 차감돼요." : "화면 오류나 불편한 점을 남기면 강사님이 직접 확인하고 답해 드려요."} /><QnaTabs on="req" />
       <div className="req-bar"><span className="muted">총 <b>{list.length}</b>건의 {vod ? <>코칭 질문{n ? <> · 남은 코칭 <b>{n}회</b></> : null}</> : "1:1 요청"}</span>{vod && !n ? (cp ? <a className="btn btn-primary" href={"#/vod/checkout/" + cp + "?item=coach"}><Icon n="message" c="sm" />코칭권 사기</a> : null) : <a className="btn btn-primary" href="#/qna/requests/new"><Icon n="pen" c="sm" />{vod ? "질문 남기기" : "요청 남기기"}</a>}</div>
       <div className="callout callout-ok req-note"><Icon n="lock" c="sm" /><div>{vod ? <>코칭 질문은 <b>비공개</b>예요. 나와 강사님만 볼 수 있어요.{n ? " 코칭권은 " + X.coachEnd() + "까지 쓸 수 있어요." : ""}</> : <>모든 1:1 요청은 <b>비공개</b>예요. 작성자와 강사님만 볼 수 있어요. 수업 내용 질문은 라이브 시간이나 {S.D.brand.botName}에게 물어보면 더 빨라요.</>}</div></div>
       <section className="card req-card">{list.length ? <table className="req-table"><thead><tr><th className="c-no">번호</th><th className="c-st">상태</th><th>제목</th><th className="c-au">작성자</th><th className="c-dt">작성일</th><th className="c-an">답변</th></tr></thead><tbody>
-        {list.map((x) => { const mine = x.s.id === S.me.id; return (
+        {pg.rows.map((x) => { const mine = x.s.id === S.me.id; return (
           <tr key={x.q.id} className={mine ? "mine" : ""} data-action="req-open" data-id={x.q.id} data-mine={mine ? 1 : 0} tabIndex={0} onClick={() => open(x, mine)} onKeyDown={(e) => { if (e.key === "Enter") open(x, mine); }}>
             <td className="c-no num">{x.no}</td><td className="c-st">{x.q.answer ? <span className="badge badge-positive">답변완료</span> : <span className="badge badge-neutral">답변대기</span>}</td>
             <td className="c-title">{mine ? <><b>{x.q.title}</b>{(x.q.images || []).length ? <Icon n="paperclip" c="xs" /> : null}<span className="badge badge-ink mine-tag">내 글</span></> : <span className="locked"><Icon n="lock" c="xs" />(비공개)</span>}{x.q.answer ? <span className="re">RE</span> : null}</td>
             <td className="c-au">{mine ? S.me.name : DB.maskName(x.s.name)}</td><td className="c-dt num">{(() => { const d = DB.date.toStr(new Date(x.q.at)); return <><span className="dt-y">{d.slice(0, 5)}</span>{d.slice(5)}</>; })()}</td><td className="c-an num">{DB.qThread(x.q).length || "—"}</td></tr>); })}</tbody></table>
-        : <Empty ic="message">{vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요."}</Empty>}</section></div>
+        : <Empty ic="message">{vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요."}</Empty>}</section><ReqPager pg={pg} /></div>
   );
 }
 function RequestNew() {

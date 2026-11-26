@@ -848,6 +848,18 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .req-table .locked .icon { margin: 0; }
 .mine-tag { margin-left: 6px; font-size: 11px; padding: 0 8px; }
 @media (max-width: 480px) { .req-table .dt-y { display: none; } }
+/* 1:1 요청 목록 페이지 ‹ 1 2 3 4 › (2026-11-26 · 5개씩) — 지금 페이지는 테마 색 동그라미 · 누르기 쉬운 크기(40px · 휴대폰 36px) */
+.req-pages { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.rp-btn { display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--canvas); color: var(--ink); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
+.rp-btn:hover { border-color: var(--primary); }
+.rp-btn.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); cursor: default; }
+.rp-btn.off { color: var(--line); border-color: var(--line-soft); cursor: default; }
+.rp-btn.off:hover { border-color: var(--line-soft); }
+.rp-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.rp-gap { min-width: 20px; text-align: center; color: var(--mute); font-weight: 700; }
+@media (max-width: 720px) { .req-pages { margin-bottom: 96px; } } /* 휴대폰: 맨 아래까지 내려도 오른쪽 아래 AI 조교 버튼에 › 가 가리지 않게 */
+@media (max-width: 480px) { .req-pages { gap: 4px; } .rp-btn { min-width: 36px; height: 36px; font-size: 14px; padding: 0 6px; } .rp-gap { min-width: 14px; } }
+@media (max-width: 380px) { .req-pages { gap: 3px; } .rp-btn { min-width: 32px; height: 34px; padding: 0 4px; } }
 /* 좁은 휴대폰(380px 이하): 칸 여백 · 상태 배지를 조금 줄여 ‘(비공개) RE’ 가 한 줄에 */
 @media (max-width: 380px) {
   .req-table td, .req-table th { padding-left: 6px; padding-right: 6px; }
