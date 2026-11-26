@@ -1143,6 +1143,7 @@ Wappalyzer 같은 기술 탐지 도구는 **페이지가 실제로 불러오는 
 - 휴대폰은 번호 줄 아래 여백(96px) — 맨 아래까지 내리면 오른쪽 아래 AI 조교 버튼에 › 가 가리지 않아요 · 380px 이하는 버튼을 조금 작게(9칸도 한 줄).
 - 코드: `app.js` `reqPaging` · `reqPager` · `reqPage`(목록 · 상세 사이에만 기억 — `reqPageKeep`를 `render` · `prep`에서) · 클릭 `req-page` = React `ui/dg/Board.jsx` `ReqPager`(같은 모양 · `DGA.reqPaging` · `DGA.reqPage`) · CSS `.req-pages` `.rp-btn` `.rp-gap`. VOD 1:1 코칭 질문 목록도 같은 화면이라 같이 나눠요.
 - 테스트: e2e `center` 1-3d(요청 6개 → 1페이지 5줄 · 2페이지 1줄 · 상세 → 뒤로 = 2페이지 · 다른 메뉴 → 1페이지 · 예전 화면 = React) · `reactdg`(같은 모양).
+- **운영 배포 (2026-11-26 · main `56a5d20`)**: Vercel 빌드 정상(READY) · 새 일회성 작업 없음(코드 · 화면만) · 운영 `styles.css`(.req-pages · .rp-btn · .rp-gap · 휴대폰 여백 96px) · `app.js`(reqPaging · reqPager · reqPageKeep · req-page) 새 코드 확인 · 배포 뒤 서버 오류 0.
 
 ## 1:1 요청 목록 — 휴대폰에서도 작성자 칸 (2026-11-26 · 대표님 요청)
 
