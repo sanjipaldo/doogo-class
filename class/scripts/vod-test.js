@@ -4511,6 +4511,36 @@ const hookDeposit = (oid, secret) => hook({ createdAt: new Date().toISOString(),
       "일회성 작업 목록에 되살리기 · 배포 때 작업에 백업 · 저장 시각 도구를 넘겨요(비동기 작업 기다림)");
   }
 
+  {
+    console.log("89) 두고 파트너스 지원: 이미 VOD 강사인 문대표의 지원서만 지우기 (2026-11-26)");
+    const OF89 = require(path.join(ROOT, "api/_lib/oneoff.js"));
+    const base89 = () => ({
+      "ins:moon": { id: "moon", name: "가나 다", status: "active", tracks: { live: true, vod: true }, trackReq: { vod: { at: 1, inq: "c" }, live: { at: 2, inq: "x" } } },
+      meta: { vod: { products: [{ id: "v1", iid: "moon" }, { id: "v2", iid: "logic" }] } },
+      "inq:a": { id: "a", at: 1795000000000, name: "가나다", status: "seen", source: "partners", form: { nick: "문대표", cat: "부업 · 창업" } },
+      "inq:b": { id: "b", at: 1795000000000, name: "가나다", status: "new", source: "partners", form: {} },
+      "inq:c": { id: "c", at: 1795000000000, name: "다른이름", status: "contact", addTo: "moon", want: "vod", source: "partners" },
+      "inq:d": { id: "d", at: 1795000000000, name: "가나다", status: "done", source: "partners", form: { nick: "문대표" } },
+      "inq:e": { id: "e", at: 1795000000000, name: "라마바", status: "seen", source: "partners", form: { nick: "다른 강사" } },
+      "inq:f": { id: "f", at: 1795000000000, name: "가나다", status: "seen", source: "partners", iid: "imnew1", form: { nick: "문대표" } },
+      "inq:g": { id: "g", at: 1795000000000, name: "가나다", status: "new", where: "[두잉고] 블로그", want: "live" }
+    });
+    const run89 = (d) => OF89.moonPtInqClear((k) => (d[k] == null ? d[k] : JSON.parse(JSON.stringify(d[k]))), (p) => Object.keys(d).filter((k) => k.indexOf(p) === 0).sort());
+    const o89 = run89(base89()), w89 = o89.writes;
+    ok(w89["inq:a"] === null && w89["inq:b"] === null && w89["inq:c"] === null && !("inq:d" in w89) && !("inq:e" in w89) && !("inq:f" in w89) && !("inq:g" in w89) &&
+      w89["ins:moon"] && !w89["ins:moon"].trackReq.vod && w89["ins:moon"].trackReq.live && w89["ins:moon"].tracks.vod === true &&
+      o89.result.removed.length === 3 && o89.result.kept.length === 2 && !/가나다/.test(JSON.stringify(o89.result)) && /가OO/.test(JSON.stringify(o89.result)),
+      "처리 중인 문대표 지원서(활동명 문대표 · 같은 이름(띄어쓰기 무시) · 강사센터 DOOGO CLASS 열기 신청)만 지우고 열기 신청 중 표시도 지움 · 계약 완료 · 따로 만든 계정이 있는 지원 · 다른 사람 · LIVE 문의는 그대로 · 결과에 이름은 가려서", o89.result);
+    const lock89 = base89(); lock89["ins:moon"].tracks.vod = false;
+    const np89 = base89(); np89.meta.vod.products = [{ id: "v2", iid: "logic" }];
+    const many89 = base89(); ["h", "i"].forEach((x) => { many89["inq:" + x] = { id: x, at: 1, name: "가나다", status: "new", source: "partners" }; });
+    const r1 = run89(lock89), r2 = run89(np89), r3 = run89(many89);
+    ok(!Object.keys(r1.writes).length && /VOD 강사로 등록돼 있지 않/.test(r1.result.skipped) && !Object.keys(r2.writes).length && /VOD 강사로 등록돼 있지 않/.test(r2.result.skipped) &&
+      !Object.keys(r3.writes).length && /5건/.test(r3.result.skipped),
+      "문대표 DOOGO CLASS 가 잠겨 있거나 연결된 클래스가 없으면 아무것도 안 지움 · 고른 지원서가 3건을 넘으면 안 지움", [r1.result.skipped, r2.result.skipped, r3.result.skipped]);
+    ok(OF89.OPS.some((o) => o.id === "2026-11-26-moon-pt-inq-clear" && o.run === OF89.moonPtInqClear), "일회성 작업 목록에 문대표 지원서 지우기가 있어요");
+  }
+
   console.log("\n결과: " + pass + "개 통과 · " + failN + "개 실패");
   fs.rmSync(TMP, { recursive: true, force: true });
   process.exit(failN ? 1 : 0);

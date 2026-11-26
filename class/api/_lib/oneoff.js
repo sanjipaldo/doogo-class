@@ -644,6 +644,48 @@ function demoInqClear(get, keys) {
   return { writes, result };
 }
 
+/* ---------- 두고 파트너스 지원: 이미 VOD 강사인 문대표의 지원서 지우기 (대표님 요청 2026-11-26) ----------
+ * 문대표(ins:moon)는 두고클래스 VOD 강사로 이미 등록돼 있어요 (DOOGO CLASS 영역 열림 · 두고클래스 클래스에 강사로 연결).
+ * 그런데 11/16 에 들어온 두고 파트너스 지원서(활동명 ‘문대표’)가 마스터 › DOOGO CLASS › 두고 파트너스 지원에 ‘열람’으로 남아 있어,
+ * 누가 ‘계약 완료 → VOD 강사로 등록’을 누르면 같은 사람의 강사 계정이 하나 더 생겨 로그인 · 정산이 엉킬 수 있어요. 그래서 그 지원서만 지워요.
+ * 고르는 법: 두고 파트너스 지원(지원 페이지 · 강사센터 자물쇠 신청)이면서 아직 처리 중(새 접수 · 열람 · 상담 중)이고,
+ *   활동명이 ‘문대표’ · 이름이 문대표 계정 이름과 같음 · 문대표 계정의 DOOGO CLASS 열기 신청(addTo moon · want vod) 중 하나인 것.
+ *   계약 완료 · 계약 안 됨 · 보류와 다른 사람 지원서는 그대로. 그 지원서로 따로 만든 강사 계정(iid)이 있으면 지우지 않고 결과에만 적어요.
+ * 문대표가 VOD 강사가 아니면(계정 없음 · 로그인 중지 · DOOGO CLASS 잠김 · 연결된 클래스 없음) 아무것도 안 해요. 고른 게 3건을 넘으면 이상하니 지우지 않아요.
+ * 문대표 계정에 남은 ‘DOOGO CLASS 열기 신청 중’(trackReq.vod) 표시도 지워요. 지운 지원서는 배포 전 자동 백업에 그대로 있어요 */
+const PT_TODO = ["new", "seen", "contact"];
+// 마스터 화면 inqIsVod 와 같게: 두고 파트너스 지원 · 예전 DOOGO CLASS 강사 모집 · 강사센터 DOOGO CLASS 열기 신청
+const isPtInq = (q) => isObj(q) && (q.source === "partners" || q.source === "doogoclass" || /^\[(두고 파트너스|DOOGO CLASS)/.test(String(q.where || "")) || q.want === "vod");
+const nameKey = (s) => String(s == null ? "" : s).replace(/\s+/g, "");
+function moonPtInqClear(get, keys) {
+  const K = "moon", ins = get("ins:" + K), meta = get("meta");
+  const prods = isObj(meta) && isObj(meta.vod) && Array.isArray(meta.vod.products) ? meta.vod.products.filter((p) => isObj(p) && p.iid === K) : [];
+  const vodOn = isObj(ins) && ins.status === "active" && !(isObj(ins.tracks) && ins.tracks.vod === false);
+  if (!vodOn || !prods.length) return { writes: {}, result: { skipped: "문대표가 VOD 강사로 등록돼 있지 않아요 (그대로)", account: isObj(ins) ? String(ins.status || "") : "없음", vodOpen: vodOn, products: prods.length } };
+  const nm = nameKey(ins.name), mask = (s) => (String(s || "?").slice(0, 1) + "OO");
+  const writes = {}, result = { vodInstructor: "맞음 (DOOGO CLASS 열림 · 클래스 " + prods.length + "개)", removed: [], kept: [] };
+  const hits = [];
+  keys("inq:").forEach((k) => {
+    const q = get(k);
+    if (!isPtInq(q)) return;
+    const F = isObj(q.form) ? q.form : {}, mine = (q.addTo === K && q.want === "vod") || nameKey(F.nick) === "문대표" || (!!nm && nameKey(q.name) === nm);
+    if (!mine) return;
+    const tag = k.slice(4) + " · " + mask(q.name) + (F.nick ? " (" + F.nick + ")" : "") + " · " + (q.status || "new") + " · " + kstDay(q.at || 0) + (q.addTo ? " · 강사센터 신청" : "") + (q.affId || q.ref ? " · 추천 " + (q.ref || q.affId) : "");
+    if (PT_TODO.indexOf(q.status || "new") < 0) result.kept.push(tag + " — 처리 끝난 지원이라 그대로");
+    else if (q.iid && q.iid !== K) result.kept.push(tag + " — 이 지원서로 만든 계정(" + q.iid + ")이 있어 그대로");
+    else hits.push([k, tag]);
+  });
+  if (hits.length > 3) return { writes: {}, result: Object.assign(result, { skipped: "고른 지원서가 " + hits.length + "건이라 지우지 않았어요 (확인 필요)", removed: [] }) };
+  hits.forEach((h) => { writes[h[0]] = null; result.removed.push(h[1]); });
+  if (isObj(ins.trackReq) && ins.trackReq.vod) {
+    const tr = Object.assign({}, ins.trackReq); delete tr.vod;
+    const n = Object.assign({}, ins); if (Object.keys(tr).length) n.trackReq = tr; else delete n.trackReq;
+    writes["ins:" + K] = n; result.trackReq = "DOOGO CLASS 열기 신청 중 표시 지움";
+  }
+  if (!Object.keys(writes).length) return { writes: {}, result: Object.assign(result, { skipped: "지울 지원서 없음 (그대로)" }) };
+  return { writes, result };
+}
+
 /* ---------- 예시(테스트) 파트너 계정 지우기 (2026-11) ----------
  * 두고 파트너스(추천 파트너)에 남아 있던 예시 계정(id aff-demo · 추천 코드 HAJIWON 또는 아이디 partner)과 그 계정의 RS 지급 기록(aff-demo:…)만 지워요 (사용자 요청).
  * 실제 파트너 계정은 그대로. 그 예시 파트너가 소개한 것으로 남은 입점 문의가 있으면 지우지 않고 결과에만 적어요 */
@@ -1609,6 +1651,7 @@ const OPS = [
   { id: "2026-11-25-prog-restore-2", note: "수강생 진도 되살리기 한 번 더 (같은 작업 · 첫 복구 뒤 서버 지키기를 더 넣기 전까지 사이에 또 빠진 것이 있으면): 백업에 있던 제출이 지금 없는 수강생만 · 지우지 않음 · 이름 가림", run: progRestore },
   { id: "2026-11-25-prog-diag", note: "진도 사라짐 경위 기록(읽기만 · 바꾸지 않음): 백업마다 수강생 · 진행 기록 제출 수 — 제출이 줄어든 적이 있는 수강생만 · 이름 가림", run: progDiag },
   { id: "2026-11-24-store-pop-on", note: "두고클래스 스토어 팝업 켜기: 정식 런칭 12월 중순 · 토스페이먼츠 PG 심사 중 (닫기 · 오늘 그만 보기) — 마스터 › VOD 전시 · 쿠폰 · 설정 › 스토어 팝업에서 끄기 · 문구 수정 · 마스터가 이미 정했으면 그대로", run: storePopOn },
+  { id: "2026-11-26-moon-pt-inq-clear", note: "두고 파트너스 지원: 이미 두고클래스 VOD 강사인 문대표의 지원서(처리 중 · 활동명 문대표 · 같은 이름 · 강사센터 DOOGO CLASS 열기 신청)만 지우기 + 문대표 계정의 ‘열기 신청 중’ 표시 지우기 (문대표가 VOD 강사가 아니면 · 처리 끝난 지원 · 따로 만든 계정이 있는 지원은 그대로 · 3건 넘으면 안 지움)", run: moonPtInqClear },
 ];
 
-module.exports = { OPS, progRestore, progDiag, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
+module.exports = { OPS, moonPtInqClear, progRestore, progDiag, storePopOn, storeHomeOrder, STORE_PINS, choiHomeOff, choiStoreOff, choiStoreOn,moonSeniorCats, moonSeniorDropBb, SENIOR_CATS, launchOrdersClean, TEST_NOS, moonLibItems, moonLibFiles, LIB_FILES, pgFee75, partnersTabLinks, familyDemo, bookCoupon, moon3W5Online, MOON3_W5, moonBookFinal, BOOK_OLD_TXT, moonW2Title3, demoResetNow, moonW2Benchmark, W2B_DESC, W2B_FILE, moonAciPartners, MOON_ACI_CH, MOON_PARTNERS_1109, menuOrder, menuSeq, moon3CurMain, v2Teaser, V2_TEASER, liveLectures, MOON3_LEC, moonCalV2, moonCohortDates, launchTestClean, demoPartnerClear, demoInqClear, moonCoachesLive, plans612, demoStaffStop, mediaDoogomd, mediaDoogomdChannel, storeChoiToYuna, fullProgress, docsGuideSix, motivationVideos, moonDemoAccounts, moonProfile, billingVatIncluded, menuNamesV15, logicToBualnam, foodQuickLinkDesc, farmerToGodFarmer, vodDemoMember, hanaSecondCourse, moonBook, storeBank, STORE_BANK, launchReset, moon4th, moonApplyLink, MOON_APPLY, moonFree1117, MOON_FREE, moonFreeMission, MOON_MISSION };
