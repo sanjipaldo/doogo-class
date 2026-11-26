@@ -94,10 +94,12 @@ module.exports = {
       run.watch(page, "강의실 과제 제출");
       await FL.student(page, base, info);
       const MID = "m1-7", T = (x) => x.replace(/\d{1,2}\/\d{1,2} \d{2}:\d{2}/g, "M/D hh:mm");
-      const reset = async () => { await page.evaluate((id) => { const S = window.DGA.st(); delete S.P.submissions[id]; window.DGA.saveProgress(); }, MID); await L.flushed(page); };
+      // 제출 기록 비우기: 화면에서 제출을 지워 저장하던 방법은 서버가 받지 않아요(2026-11-25 · 과제 제출은 지워지지 않음 — api/sync.js guardProg) →
+      // 시험 수강생은 체험 계정이라 다시 로그인하면 서버가 진도를 처음으로 돌려요 (_lib/demoreset.js)
+      const reset = async () => { await FL.student(page, base, info); };
       const step = async (out, fn, wait) => { await fn(); await page.waitForTimeout(wait || 400); out.push(T(await L.domShape(page))); };
       const flow = async (mode) => {
-        await L.reactCookie(page, base, mode); await L.open(page, base, "/home"); await reset();
+        await reset(); await L.reactCookie(page, base, mode); await L.open(page, base, "/home");
         await L.open(page, base, "/missions/1/" + MID); await page.evaluate(() => { window.__e2eStay = 1; });
         const out = [];
         await step(out, () => page.fill("#sub-text", "짧은 답"));
