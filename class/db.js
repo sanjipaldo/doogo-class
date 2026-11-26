@@ -1060,7 +1060,13 @@
   const OB_KEY = "doinggo:outbox", OB_KEEP = 14 * 864e5;
   const obAll = () => { try { const m = JSON.parse(localStorage.getItem(OB_KEY) || "{}"); return m && typeof m === "object" ? m : {}; } catch (e) { return {}; } };
   const obSet = (m) => { try { if (Object.keys(m).length) localStorage.setItem(OB_KEY, JSON.stringify(m)); else localStorage.removeItem(OB_KEY); return true; } catch (e) { return false; } };
-  const obMine = (k) => { const st = R.me && R.me.student; return !!st && k === "prog:" + st.iid + ":" + st.sid; };
+  // 체험(테스트) 계정은 빼요 — 로그인 · 로그아웃마다 서버가 진도를 처음으로 돌리는데, 보관함이 지운 과제를 다시 얹으면 안 돼요
+  const obMine = (k) => {
+    const st = R.me && R.me.student;
+    if (!st || k !== "prog:" + st.iid + ":" + st.sid) return false;
+    const me = db && Array.isArray(db.students) ? db.students.find((x) => x && x.id === st.sid) : null;
+    return !(me && me.demo === true);
+  };
   /** 강의실을 열 때: 보관함에 남은 내 진행 기록을 서버 기록 위에 합쳐 다시 저장 */
   function obRestore() {
     if (!R.on || !db || !R.me || !R.me.student) return [];

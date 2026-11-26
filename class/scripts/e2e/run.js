@@ -49,6 +49,7 @@ const SPECS = ["routes", "logins", "store", "classroom", "outbox", "center", "id
     if (remote && !spec.readOnly && process.env.E2E_WRITE !== "1") { console.log("- " + name + " · " + spec.title + " — 건너뜀 (데이터를 써요 · E2E_WRITE=1)"); continue; }
     const db = remote ? null : path.join(work, name + ".db");
     if (db) fs.copyFileSync(fx.db, db);
+    if (db && spec.prep) await spec.prep(db, L); // spec.prep: 그 시험만의 시험 DB 손질 (예: outbox — 체험 표시 풀기)
     const srv = remote ? { base: remote, stop: async () => {} } : await L.startServer(db, spec.env ? { env: spec.env } : undefined); // spec.env: 그 시험만의 서버 설정 (예: pay — 시험용 토스 키)
     const run = L.makeRun(name, shots);
     const t0 = Date.now();

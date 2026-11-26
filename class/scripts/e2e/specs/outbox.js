@@ -6,6 +6,8 @@ const FL = require("./_flows");
 
 module.exports = {
   title: "진도 저장 보관함 (못 보낸 과제 제출이 창을 닫아도 다음에 열 때 저장)",
+  // 시험 수강생(s1)은 체험 계정이라 보관함을 쓰지 않아요(로그인 · 로그아웃마다 처음으로) — 이 시험 DB 에서만 체험 표시를 풀어요
+  prep: (db, L) => L.runNode(`(async () => { const st = require("./api/_lib/store.js"); const r = await st.getDoc("stu:moon:s1"); if (r && r.v) { const v = Object.assign({}, r.v); delete v.demo; await st.writeDoc("stu:moon:s1", v, r.ver); } if (st.close) await st.close(); })().catch((e) => { console.error(e); process.exit(1); });`, db),
   async run({ base, info, browser, run, L }) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: "Asia/Seoul" });
     await ctx.addInitScript(() => { try { localStorage.setItem("dc:clean", "1"); localStorage.setItem("dc_pop_until", "9999-12-31"); } catch (e) { /* #주소로 */ } });
