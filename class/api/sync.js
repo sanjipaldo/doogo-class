@@ -84,6 +84,8 @@ async function applyChange(ch, ids, dels, from) {
     if (exists && next != null && JSON.stringify(next) === JSON.stringify(row.v)) { const out = { k, ver: row.ver }; if (modified) out.doc = access.view(k, row.v, ids); return out; }
     const ver = await store.writeDoc(k, next, row ? row.ver : null);
     if (ver === false) continue;
+    // 화면의 진도 저장 보관함에서 다시 보낸 저장(ob · 2026-11-26): 서버에 못 닿았던 진도가 이제 저장됐는지 사건 기록에 (제출이 늘었을 때만)
+    if (ch.ob && k.indexOf("prog:") === 0) { const add = subCount(next) - subCount(exists ? row.v : null); if (add > 0) await store.logEvent("outbox", "화면 보관함에서 다시 저장 · 제출 +" + add, { k, who: whoOf(ids), from: String(from || "").slice(0, 160) }); }
     const K = access.parseKey(k);
     if (K.vod) await VA.after(K, exists ? row.v : null, next, ids).catch((e) => console.error("[sync] vod after", k, e && e.message));
     const out = { k, ver };

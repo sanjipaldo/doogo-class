@@ -457,6 +457,7 @@
     try { if (db && Array.isArray(db.instructors) && db.content) loadFixups(); }
     finally { R.loading = false; }
     resnapAll();
+    obRestore(); // 진도 저장 보관함에 남은(서버에 못 닿은) 내 진행 기록을 합쳐 다시 저장
     return db;
   }
   const saveHooks = [];
@@ -802,14 +803,16 @@
    * /api 가 없으면(로컬 정적 서버 · 미리보기) 예전처럼 이 브라우저(localStorage)에 저장한다.
    * 서버에서는 문서 단위(강사 · 콘텐츠 · 기수 · 수강생 · 진행 기록)로 나눠 보관하고,
    * 로그인한 사람이 볼 수 있는 문서만 내려온다. */
-  const R = { on: false, fresh: null, loading: false, me: { student: null, admin: null }, epoch: null, now: 0, ver: {}, snap: {}, last: {}, nope: {}, rej: {}, prog: {}, inq: {}, bill: {}, timer: null, busy: false, again: false, fails: 0, polling: false, lastPoll: 0, listeners: [] };
+  const R = { on: false, fresh: null, loading: false, me: { student: null, admin: null }, epoch: null, now: 0, ver: {}, snap: {}, last: {}, nope: {}, rej: {}, prog: {}, inq: {}, bill: {}, timer: null, busy: false, again: false, fails: 0, polling: false, lastPoll: 0, listeners: [], obSend: {} };
   const COLLS = ["instructors", "content", "cohorts", "students"];
   const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
   const emit = (type, info) => R.listeners.forEach((fn) => { try { fn(type, info); } catch (e) { console.error(e); } });
 
-  async function call(name, payload, method) {
+  async function call(name, payload, method, keep) {
     const opt = { method: method || "POST", credentials: "same-origin", cache: "no-store", headers: { "Content-Type": "application/json" } };
     if (payload !== undefined) opt.body = JSON.stringify(payload);
+    // 창을 내리거나 닫는 중에 보내는 저장: 브라우저가 창을 정리해도 끝까지 보내요 (keepalive 는 64KB 까지 — 큰 사진이 든 저장은 보관함이 다음에 보내요)
+    if (keep && opt.body && opt.body.length < 60000) opt.keepalive = true;
     const r = await fetch("api/" + name, opt);
     const j = await r.json().catch(() => ({ error: "server" }));
     if (r.status >= 500) {
@@ -1049,9 +1052,37 @@
     return !!(st && p[0] === "prog" && p[1] === st.iid && p[2] === st.sid);
   }
 
+  /* ---------- 진도 저장 보관함 (2026-11-26 · 3기 수강생 ‘어제 과제 8개 → 오늘 4개’) ----------
+   * 서버 기록 · 배포 전 백업 어디에도 그 제출이 지워진 흔적이 없었어요 — 화면엔 ‘제출 완료’로 보였지만 서버에 닿지 못한 거예요
+   * (휴대폰에서 인터넷이 끊긴 채 창을 닫거나 앱을 바꾸면 화면이 들고 있던 저장이 사라졌어요 · 로그인이 풀린 채 저장하면 ‘권한 없음’으로 버려졌어요).
+   * 이제 수강생 본인 진행 기록(prog)은 서버에 보내기 전에 이 브라우저(localStorage)에도 남기고, 서버가 받았다고 답하면 지워요.
+   * 못 보낸 채 남아 있으면 다음에 강의실을 열 때 서버 기록 위에 합쳐(DR.progUnion · 아무것도 지우지 않음) 다시 저장해요. 14일 지난 것은 버려요 */
+  const OB_KEY = "doinggo:outbox", OB_KEEP = 14 * 864e5;
+  const obAll = () => { try { const m = JSON.parse(localStorage.getItem(OB_KEY) || "{}"); return m && typeof m === "object" ? m : {}; } catch (e) { return {}; } };
+  const obSet = (m) => { try { if (Object.keys(m).length) localStorage.setItem(OB_KEY, JSON.stringify(m)); else localStorage.removeItem(OB_KEY); return true; } catch (e) { return false; } };
+  const obMine = (k) => { const st = R.me && R.me.student; return !!st && k === "prog:" + st.iid + ":" + st.sid; };
+  /** 강의실을 열 때: 보관함에 남은 내 진행 기록을 서버 기록 위에 합쳐 다시 저장 */
+  function obRestore() {
+    if (!R.on || !db || !R.me || !R.me.student) return [];
+    const U = window.DCS && window.DCS.data && window.DCS.data.progUnion, m = obAll(), out = [];
+    if (!U) return out;
+    let tidy = false;
+    Object.keys(m).forEach((k) => {
+      const e = m[k];
+      if (!e || typeof e.v !== "string" || Date.now() - (Number(e.at) || 0) > OB_KEEP) { delete m[k]; tidy = true; return; }
+      if (!obMine(k)) return; // 같은 브라우저의 다른 수강생 것은 그 사람이 들어올 때
+      let local; try { local = JSON.parse(e.v); } catch (x) { delete m[k]; tidy = true; return; }
+      const cur = docOf(k), merged = U(cur || {}, local);
+      if (JSON.stringify(merged) === JSON.stringify(cur)) { delete m[k]; tidy = true; return; } // 서버에 이미 다 있어요
+      placeIn(db, k, merged); R.obSend[k] = 1; out.push(k);
+    });
+    if (tidy) obSet(m);
+    if (out.length) schedule();
+    return out;
+  }
   function schedule() { if (!R.on) return; clearTimeout(R.timer); R.timer = setTimeout(flush, 250); }
   /** 바뀐 문서를 서버에 보낸다 */
-  async function flush() {
+  async function flush(keep) {
     if (!R.on || !db) return;
     clearTimeout(R.timer); R.timer = null;
     if (R.busy) { R.again = true; return; }
@@ -1084,19 +1115,27 @@
       else { const ops = []; diff(JSON.parse(R.snap[k]), cur[k], [], ops); changes.push({ k, base, ops }); }
     });
     if (!changes.length) return;
+    // 진도 저장 보관함: 수강생 본인 진행 기록은 보내기 전에 이 브라우저에도 남겨요 (서버가 받으면 지움) · 보관함에서 되살린 저장은 표시(ob)를 달아 서버 사건 기록에 남겨요
+    const ob = changes.filter((c) => obMine(c.k) && sent[c.k] !== undefined);
+    if (ob.length) { const m = obAll(); ob.forEach((c) => { m[c.k] = { v: sent[c.k], at: Date.now() }; }); obSet(m); }
+    changes.forEach((c) => { if (R.obSend[c.k]) c.ob = 1; });
     R.busy = true;
     emit("saving", true);
     try {
-      const j = await call("sync", { changes });
+      const j = await call("sync", { changes }, undefined, keep);
       if (j.error) throw new Error(j.error);
       if (j.me) R.me = j.me;
       j.results.forEach((x) => {
         if (x.error) {
           if (x.error === "busy") { R.again = true; return; }
           R.snap[x.k] = sent[x.k];
-          emit("error", x.error === "too-large" ? "사진이나 첨부가 너무 커서 저장하지 못했어요. 크기를 줄여 다시 올려 주세요." : "저장할 권한이 없는 내용이 있어 저장하지 못했어요.");
+          // 내 진행 기록이 ‘권한 없음’이면 로그인이 풀린 거예요 — 보관함에 남아 있어 다시 로그인하면 이어서 저장돼요
+          emit("error", x.error === "too-large" ? "사진이나 첨부가 너무 커서 저장하지 못했어요. 크기를 줄여 다시 올려 주세요." : obMine(x.k) ? "로그인이 풀려 과제가 아직 저장되지 않았어요. 다시 로그인하면 이어서 저장돼요." : "저장할 권한이 없는 내용이 있어 저장하지 못했어요.");
           return;
         }
+        // 서버가 받았어요 — 보관함에서 지워요 (그새 더 고친 내용이 보관함에 있으면 그대로 둠)
+        if (obMine(x.k)) { const m = obAll(); if (m[x.k] && m[x.k].v === sent[x.k]) { delete m[x.k]; obSet(m); } }
+        delete R.obSend[x.k];
         R.ver[x.k] = x.ver;
         const got = x.doc != null ? JSON.stringify(x.doc) : undefined;
         // 서버가 내 변경을 하나도 받지 않았으면(권한 밖 칸만 고쳤을 때) 그 내용은 기억해 두고 화면은 다시 그리지 않아요
@@ -1177,6 +1216,10 @@
     document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
     window.addEventListener("focus", () => poll());
     window.addEventListener("beforeunload", (e) => { if (R.timer || R.busy) { flush(); e.preventDefault(); e.returnValue = ""; } });
+    // 휴대폰은 창을 내리거나 앱을 바꿀 때 beforeunload 가 오지 않아요 — 기다리던 저장을 바로 보내요 (keepalive · 2026-11-26)
+    const hideFlush = () => { if (R.timer || R.again) flush(true); };
+    document.addEventListener("visibilitychange", () => { if (document.hidden) hideFlush(); });
+    window.addEventListener("pagehide", hideFlush);
   }
   const remote = {
     get on() { return R.on; },
@@ -1186,6 +1229,7 @@
     login: (payload) => call("auth", payload),
     logout: (which) => flush().catch(() => {}).then(() => call("auth", { action: "logout", which })),
     pending: () => !!(R.timer || R.busy),
+    outbox: () => obAll(), // 진도 저장 보관함 (시험 · 점검용)
     listen: (fn) => { R.listeners.push(fn); }
   };
 
