@@ -842,10 +842,20 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .req-table .c-au { width: 80px; color: var(--body); }
 .req-table .c-dt { width: 110px; color: var(--body); white-space: nowrap; }
 .req-table .c-title { font-weight: 600; }
+.req-table thead .c-no, .req-table thead .c-au, .req-table thead .c-dt, .req-table thead .c-an { color: var(--mute); font-size: 12px; }
 .req-table .c-title .icon { margin: 0 4px; vertical-align: -2px; color: var(--mute); }
 .req-table .locked { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 700; }
 .req-table .locked .icon { margin: 0; }
 .mine-tag { margin-left: 6px; font-size: 11px; padding: 0 8px; }
+@media (max-width: 480px) { .req-table .dt-y { display: none; } }
+/* 좁은 휴대폰(380px 이하): 칸 여백 · 상태 배지를 조금 줄여 ‘(비공개) RE’ 가 한 줄에 */
+@media (max-width: 380px) {
+  .req-table td, .req-table th { padding-left: 6px; padding-right: 6px; }
+  .req-table .c-st { padding-left: 10px; }
+  .req-table .c-dt { padding-right: 10px; }
+  .req-table .c-st .badge { padding: 2px 8px; }
+  .req-table .re { margin-left: 4px; }
+}
 .re { margin-left: 6px; padding: 0 6px; border-radius: 6px; background: var(--primary-pale); color: var(--positive-deep); font-size: 10px; font-weight: 800; }
 .num { font-variant-numeric: tabular-nums; }
 .back-link { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px 4px; font-size: 14px; font-weight: 700; color: var(--ink); text-decoration: none; }
@@ -876,9 +886,16 @@ a.res-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .req-re { display: inline-flex; align-items: center; margin-right: 6px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--primary-pale); color: var(--primary); font-size: 11px; font-weight: 800; vertical-align: 1px; }
 @media (max-width: 720px) { .req-answer.is-re { margin-left: 16px; } .req-answer.is-re::before { left: -14px; width: 9px; } }
 @media (max-width: 720px) {
-  .req-table .c-no, .req-table .c-au, .req-table .c-an { display: none; }
-  .req-table .c-dt { width: auto; font-size: 12px; }
-  .req-table td, .req-table th { padding: 12px 10px; }
+  /* 휴대폰: 번호 · 답변 수는 숨기고 상태 · 제목 · 작성자 · 작성일 (2026-11-26 작성자 칸 보이게) */
+  .req-table .c-no, .req-table .c-an { display: none; }
+  .app .card.req-card { padding: 8px 0; } /* 휴대폰 카드 안쪽 여백(home.css 18px 16px) 대신 표가 카드 폭을 다 써요 — 칸 안쪽 여백이 대신해요 */
+  .req-table .c-st { width: 1%; white-space: nowrap; }
+  .req-table .c-au { width: 1%; white-space: nowrap; }
+  .req-table td.c-au { font-size: 13px; }
+  .req-table .c-dt { width: 1%; font-size: 12px; }
+  .req-table td, .req-table th { padding: 12px 8px; }
+  .req-table .c-st { padding-left: 14px; }
+  .req-table .c-dt { padding-right: 14px; }
   .req-bar { flex-wrap: wrap; }
   .utabs a { padding: 10px 12px; font-size: 15px; }
 }

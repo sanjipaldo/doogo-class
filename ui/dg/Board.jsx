@@ -108,7 +108,7 @@ function Requests() {
           <tr key={x.q.id} className={mine ? "mine" : ""} data-action="req-open" data-id={x.q.id} data-mine={mine ? 1 : 0} tabIndex={0} onClick={() => open(x, mine)} onKeyDown={(e) => { if (e.key === "Enter") open(x, mine); }}>
             <td className="c-no num">{x.no}</td><td className="c-st">{x.q.answer ? <span className="badge badge-positive">답변완료</span> : <span className="badge badge-neutral">답변대기</span>}</td>
             <td className="c-title">{mine ? <><b>{x.q.title}</b>{(x.q.images || []).length ? <Icon n="paperclip" c="xs" /> : null}<span className="badge badge-ink mine-tag">내 글</span></> : <span className="locked"><Icon n="lock" c="xs" />(비공개)</span>}{x.q.answer ? <span className="re">RE</span> : null}</td>
-            <td className="c-au">{mine ? S.me.name : DB.maskName(x.s.name)}</td><td className="c-dt num">{DB.date.toStr(new Date(x.q.at))}</td><td className="c-an num">{DB.qThread(x.q).length || "—"}</td></tr>); })}</tbody></table>
+            <td className="c-au">{mine ? S.me.name : DB.maskName(x.s.name)}</td><td className="c-dt num">{(() => { const d = DB.date.toStr(new Date(x.q.at)); return <><span className="dt-y">{d.slice(0, 5)}</span>{d.slice(5)}</>; })()}</td><td className="c-an num">{DB.qThread(x.q).length || "—"}</td></tr>); })}</tbody></table>
         : <Empty ic="message">{vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요."}</Empty>}</section></div>
   );
 }

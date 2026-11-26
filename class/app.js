@@ -1650,6 +1650,8 @@
     if (!list.length) return '<div class="empty">' + icon("search") + '<div>검색 결과가 없어요.</div></div>';
     return list.map((f) => '<details class="faq"><summary><span class="q">Q</span><span><small class="faq-cat">' + esc(f.category || "기타") + "</small>" + esc(f.q) + "</span>" + icon("chevDown", "sm chev") + '</summary><div class="a">' + DB.linkify(f.a) + "</div></details>").join("");
   }
+  // 작성일: 휴대폰에서는 연도를 빼고 월-일만 (2026-11-26 → 11-26 · 작성자 칸 자리를 내요)
+  const reqDate = (at) => { const d = DB.date.toStr(new Date(at)); return '<span class="dt-y">' + d.slice(0, 5) + "</span>" + d.slice(5); };
   const myRequests = () => DB.requests(INS.id, preview ? me : null).filter((x) => !DB.isVodStudent(x.s) || (me && x.s.id === me.id));
   function pageRequests() {
     const vod = TRACK === "vod", list = vod ? myCoachQs() : myRequests(), n = vod ? coachN() : 0, cp = vod ? addPid("coachOf") : "";
@@ -1663,7 +1665,7 @@
             return '<tr class="' + (mine ? "mine" : "") + '" data-action="req-open" data-id="' + esc(x.q.id) + '" data-mine="' + (mine ? 1 : 0) + '" tabindex="0">' +
               '<td class="c-no num">' + x.no + '</td><td class="c-st">' + (x.q.answer ? '<span class="badge badge-positive">답변완료</span>' : '<span class="badge badge-neutral">답변대기</span>') + "</td>" +
               '<td class="c-title">' + (mine ? '<b>' + esc(x.q.title) + "</b>" + ((x.q.images || []).length ? icon("paperclip", "xs") : "") + '<span class="badge badge-ink mine-tag">내 글</span>' : '<span class="locked">' + icon("lock", "xs") + "(비공개)</span>") + (x.q.answer ? '<span class="re">RE</span>' : "") + "</td>" +
-              '<td class="c-au">' + esc(mine ? me.name : DB.maskName(x.s.name)) + '</td><td class="c-dt num">' + DB.date.toStr(new Date(x.q.at)) + '</td><td class="c-an num">' + (DB.qThread(x.q).length || "—") + "</td></tr>";
+              '<td class="c-au">' + esc(mine ? me.name : DB.maskName(x.s.name)) + '</td><td class="c-dt num">' + reqDate(x.q.at) + '</td><td class="c-an num">' + (DB.qThread(x.q).length || "—") + "</td></tr>";
           }).join("") + "</tbody></table>"
         : empty("message", vod ? "아직 남긴 코칭 질문이 없어요." : "아직 남긴 1:1 요청이 없어요.")) + "</section></div>";
   }

@@ -136,7 +136,20 @@ module.exports = {
         await page.context().clearCookies({ name: "dc_next" });
         r = { b1, b2, edited: !!ed, cv, ins, sv };
       }
+      // 1-3c) 1:1 요청 목록 (2026-11-26 · 대표님 요청): 휴대폰(390px)에서도 상태 · 제목 · 작성자 · 작성일 — 내 글은 내 이름 · 가로로 넘치지 않음 · 작성일은 월-일 (예전 화면 = React)
+      const lv = {};
+      await stu.setViewportSize({ width: 390, height: 844 });
+      for (const mode of ["off", "all"]) {
+        await L.reactCookie(stu, base, mode); await L.open(stu, base, "/home");
+        await stu.evaluate(() => { window.ROUTE.hash = "#/qna/requests"; }); await stu.waitForTimeout(800);
+        lv[mode] = await stu.evaluate(() => { const t = document.querySelector(".req-table"), c = document.querySelector(".req-card"), vis = (el) => !!el && getComputedStyle(el).display !== "none";
+          if (!t) return null; const tr = Array.from(t.querySelectorAll("tbody tr")).find((x) => /E2E 답변 스레드 요청/.test(x.textContent));
+          return { head: Array.from(t.querySelectorAll("thead th")).filter(vis).map((x) => x.textContent.trim()), au: tr ? (tr.querySelector("td.c-au") || {}).textContent : "", dt: tr ? (tr.querySelector("td.c-dt") || {}).innerText : "", scroll: c.scrollWidth > c.clientWidth + 1 }; });
+      }
+      await stu.setViewportSize({ width: 1280, height: 900 });
       await stu.context().close();
+      await run.check(!!lv.off && JSON.stringify(lv.off.head) === JSON.stringify(["상태", "제목", "작성자", "작성일"]) && lv.off.au === info.student.name && /^\d{2}-\d{2}$/.test(String(lv.off.dt).trim()) && !lv.off.scroll && JSON.stringify(lv.off) === JSON.stringify(lv.all),
+        "1:1 요청 목록 휴대폰(390px): 상태 · 제목 · 작성자 · 작성일 칸 · 내 글 작성자 = 내 이름 · 작성일 월-일 · 가로로 넘치지 않음 (예전 화면 = React)", { off: lv.off && Object.assign({}, lv.off, { au: lv.off.au ? lv.off.au.slice(0, 1) + "…" : "" }), same: JSON.stringify(lv.off) === JSON.stringify(lv.all) }, page);
       const okC = (v) => !!v && v.items.length === 2 && !v.items[0].re && v.items[1].re && /강사$/.test(v.items[0].by) && /운영팀/.test(v.items[1].by) && v.items[0].body.trim() === LONG && /답글/.test(v.items[1].meta) && /수정됨/.test(v.items[1].meta) && v.items[1].body.trim() === "운영팀 답글이에요. (고침)" && v.btn === "답글 달기" && v.ta === "";
       const okS = (v) => !!v && v.head === "답변 2개" && v.cards.length === 2 && !v.cards[0].re && v.cards[1].re && /강사/.test(v.cards[0].who) && /운영팀/.test(v.cards[1].who) && /답글/.test(v.cards[1].who) && /수정됨/.test(v.cards[1].when) && v.cards[0].body.trim() === LONG && /END$/.test(v.cards[0].body.trim());
       await run.check(!!r && r.b1 === "답변 등록" && r.b2 === "답글 달기" && r.edited && okC(r.cv.off) && JSON.stringify(r.cv.off) === JSON.stringify(r.cv.all) && !!r.ins && r.ins.items.length === 2 && r.ins.items.every((x) => x.edit) && okS(r.sv.off) && JSON.stringify(r.sv.off) === JSON.stringify(r.sv.all),
